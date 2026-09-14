@@ -913,16 +913,18 @@ Route::group(['middleware' => ['auth']], function () {
 
 
 
-    
 
-    Route::get('/api/mock-subject-classes/search', [MockSubjectVettingController::class, 'searchSubjectClasses'])->name('api.mock-subject-classes.search');
-    Route::post('/api/mock-subject-classes/details', [MockSubjectVettingController::class, 'getSelectedSubjectClasses'])->name('api.mock-subject-classes.details');
 
-    Route::resource('subjectvetting', SubjectVettingController::class);
-    Route::resource('mocksubjectvetting', MockSubjectVettingController::class);
+    Route::get('mocksubjectvetting/data',  [App\Http\Controllers\MockSubjectVettingController::class, 'data'])->name('mocksubjectvetting.data');
+    Route::get('mocksubjectvetting/stats', [App\Http\Controllers\MockSubjectVettingController::class, 'stats'])->name('mocksubjectvetting.stats');
+    Route::post('mocksubjectvetting/bulk-delete', [App\Http\Controllers\MockSubjectVettingController::class, 'bulkDelete'])->name('mocksubjectvetting.bulkDelete');
 
-    Route::post('/subjectvetting/bulk-delete', [SubjectVettingController::class, 'bulkDelete'])->name('subjectvetting.bulkDelete');
-    Route::post('/mocksubjectvetting/bulk-delete', [MockSubjectVettingController::class, 'bulkDelete'])->name('mocksubjectvetting.bulkDelete');
+    // AJAX search endpoints for mock subject-classes
+    Route::get('api/mock-subject-classes/search', [App\Http\Controllers\MockSubjectVettingController::class, 'searchSubjectClasses'])->name('api.mock-subject-classes.search');
+    Route::get('api/mock-subject-classes/selected', [App\Http\Controllers\MockSubjectVettingController::class, 'getSelectedSubjectClasses'])->name('api.mock-subject-classes.selected');
+
+    // Existing resource
+    Route::resource('mocksubjectvetting', App\Http\Controllers\MockSubjectVettingController::class);
 
     // My Subject Vettings
     Route::get('/mysubjectvettings', [MySubjectVettingsController::class, 'index'])->name('mysubjectvettings.index');
