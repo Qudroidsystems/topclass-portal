@@ -189,7 +189,7 @@
                         <select class="form-select" id="create-classid" required>
                             <option value="">-- Select Class --</option>
                             @foreach ($schoolclasses as $sc)
-                                <option value="{{ $sc->id }}">{{ $sc->schoolclass }}{{ $sc->arm ? ' ('.$sc->arm.')' : '' }}</option>
+                                <option value="{{ $sc->id }}">{{ $sc->label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -251,7 +251,7 @@
                         <label class="form-label">School Class <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit-classid" required>
                             @foreach ($schoolclasses as $sc)
-                                <option value="{{ $sc->id }}">{{ $sc->schoolclass }}{{ $sc->arm ? ' ('.$sc->arm.')' : '' }}</option>
+                                <option value="{{ $sc->id }}">{{ $sc->label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -314,7 +314,7 @@
                         <select class="form-select" id="pavg-classid" required>
                             <option value="">-- Select Class --</option>
                             @foreach ($schoolclasses as $sc)
-                                <option value="{{ $sc->id }}">{{ $sc->schoolclass }}{{ $sc->arm ? ' ('.$sc->arm.')' : '' }}</option>
+                                <option value="{{ $sc->id }}">{{ $sc->label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -387,13 +387,13 @@ $(document).ready(function () {
         columns: [
             { data: 'checkbox', orderable: false, searchable: false },
             { data: 'DT_RowIndex', orderable: false, searchable: false },
-            { data: 'subject_info', orderable: false },
-            { data: 'class_info', orderable: false },
-            { data: 'term_info', orderable: false },
-            { data: 'session_info', orderable: false },
-            { data: 'min_grade_info', orderable: false },
-            { data: 'pass_avg_info', orderable: false },
-            { data: 'formatted_date', orderable: false },
+            { data: 'subject_info', orderable: false, searchable: false },
+            { data: 'class_info', orderable: false, searchable: false },
+            { data: 'term_info', orderable: false, searchable: false },
+            { data: 'session_info', orderable: false, searchable: false },
+            { data: 'min_grade_info', orderable: false, searchable: false },
+            { data: 'pass_avg_info', orderable: false, searchable: false },
+            { data: 'formatted_date', orderable: false, searchable: false },
             { data: 'action', orderable: false, searchable: false }
         ],
         dom: "<'row align-items-center mb-3'<'col-sm-6'l><'col-sm-6 text-end'f>>" +

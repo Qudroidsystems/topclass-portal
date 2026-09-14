@@ -35,11 +35,20 @@ class CompulsorySubjectClassController extends Controller
         $pagetitle = "Compulsory Subject Class Management";
 
         try {
+            // ── School classes with ARM NAME (not the FK id) ────────────────
             $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-                ->get(['schoolclass.id as id', 'schoolclass.schoolclass as schoolclass', 'schoolarm.arm as arm'])
+                ->get([
+                    'schoolclass.id as id',
+                    'schoolclass.schoolclass as schoolclass',
+                    'schoolarm.arm as arm_name',
+                ])
+                ->map(function ($c) {
+                    $c->label = trim($c->schoolclass . ($c->arm_name ? ' (' . $c->arm_name . ')' : ''));
+                    return $c;
+                })
                 ->sortBy('schoolclass');
 
-            $terms = Schoolterm::orderBy('term')->get();
+            $terms    = Schoolterm::orderBy('term')->get();
             $sessions = Schoolsession::orderBy('session')->get();
 
             $classPassAverages = collect();
@@ -79,7 +88,7 @@ class CompulsorySubjectClassController extends Controller
                     'compulsory_subject_classes.id as id',
                     'schoolclass.id as schoolclassid',
                     'schoolclass.schoolclass as schoolclass',
-                    'schoolarm.arm as schoolarm',
+                    'schoolarm.arm as arm_name',
                     'subject.id as subjectid',
                     'subject.subject as subjectname',
                     'subject.subject_code as subjectcode',
@@ -94,41 +103,67 @@ class CompulsorySubjectClassController extends Controller
 
             return DataTables::of($query)
                 ->addIndexColumn()
+
+                ->filterColumn('subjectname', function ($query, $keyword) {
+                    $query->where('subject.subject', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('subjectcode', function ($query, $keyword) {
+                    $query->where('subject.subject_code', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('schoolclass', function ($query, $keyword) {
+                    $query->where('schoolclass.schoolclass', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('termname', function ($query, $keyword) {
+                    $query->where('schoolterm.term', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('sessionname', function ($query, $keyword) {
+                    $query->where('schoolsession.session', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('formatted_date', function ($query, $keyword) {
+                    $query->whereRaw("DATE(compulsory_subject_classes.updated_at) LIKE ?", ["%{$keyword}%"]);
+                })
+
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
                 })
+
                 ->addColumn('subject_info', function ($row) {
                     return '<div>'
                         . '<span class="fw-semibold text-dark">' . e($this->cleanUtf8String($row->subjectname ?? '')) . '</span>'
                         . '<small class="text-muted d-block">' . e($row->subjectcode ?? 'N/A') . '</small>'
                         . '</div>';
                 })
+
                 ->addColumn('class_info', function ($row) {
                     $class = $this->cleanUtf8String($row->schoolclass ?? '');
-                    $arm = $this->cleanUtf8String($row->schoolarm ?? 'N/A');
+                    $arm   = $this->cleanUtf8String($row->arm_name ?? '');
                     return '<div>'
                         . '<span class="fw-semibold">' . e($class) . '</span>'
-                        . '<small class="text-muted d-block">Arm: ' . e($arm) . '</small>'
+                        . ($arm ? '<small class="text-muted d-block">Arm: ' . e($arm) . '</small>' : '')
                         . '</div>';
                 })
+
                 ->addColumn('term_info', function ($row) {
                     if ($row->termname) {
                         return '<span class="cs-badge cs-badge-term">' . e($this->cleanUtf8String($row->termname)) . '</span>';
                     }
                     return '<span class="cs-badge cs-badge-all-terms">All Terms</span>';
                 })
+
                 ->addColumn('session_info', function ($row) {
                     if ($row->sessionname) {
                         return '<span class="cs-badge cs-badge-session">' . e($this->cleanUtf8String($row->sessionname)) . '</span>';
                     }
                     return '<span class="text-muted small">Any Session</span>';
                 })
+
                 ->addColumn('min_grade_info', function ($row) {
                     if ($row->min_grade) {
                         return '<span class="cs-badge cs-badge-grade">' . e($row->min_grade) . '</span>';
                     }
                     return '<span class="text-muted small">—</span>';
                 })
+
                 ->addColumn('pass_avg_info', function ($row) {
                     if (!Schema::hasTable('schoolclass_classcategory')) {
                         return '<span class="text-muted small">—</span>';
@@ -141,12 +176,14 @@ class CompulsorySubjectClassController extends Controller
                     }
                     return '<span class="text-muted small">Not set</span>';
                 })
+
                 ->addColumn('formatted_date', function ($row) {
                     if (!$row->updated_at) return '<span class="text-muted small">—</span>';
                     return '<small class="text-muted">'
                         . \Carbon\Carbon::parse($row->updated_at)->format('d M Y')
                         . '</small>';
                 })
+
                 ->addColumn('action', function ($row) {
                     $buttons = '<div class="d-flex gap-1">';
 
@@ -178,6 +215,7 @@ class CompulsorySubjectClassController extends Controller
 
                     return $buttons . '</div>';
                 })
+
                 ->rawColumns(['checkbox', 'subject_info', 'class_info', 'term_info', 'session_info', 'min_grade_info', 'pass_avg_info', 'formatted_date', 'action'])
                 ->make(true);
 
@@ -190,14 +228,18 @@ class CompulsorySubjectClassController extends Controller
         }
     }
 
+    // =========================================================================
+    // STATS
+    // =========================================================================
+
     public function stats()
     {
         try {
             return response()->json([
                 'stats' => [
-                    'total' => CompulsorySubjectClass::count(),
-                    'total_classes' => Schoolclass::count(),
-                    'total_sessions' => Schoolsession::count(),
+                    'total'              => CompulsorySubjectClass::count(),
+                    'total_classes'      => Schoolclass::count(),
+                    'total_sessions'     => Schoolsession::count(),
                     'classes_with_rules' => CompulsorySubjectClass::distinct('schoolclassid')->count('schoolclassid'),
                 ],
             ]);
@@ -207,6 +249,10 @@ class CompulsorySubjectClassController extends Controller
             ]);
         }
     }
+
+    // =========================================================================
+    // SUBJECTS BY CLASS
+    // =========================================================================
 
     public function subjectsByClass(Request $request)
     {
@@ -297,6 +343,10 @@ class CompulsorySubjectClassController extends Controller
         ]);
     }
 
+    // =========================================================================
+    // STORE
+    // =========================================================================
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -313,7 +363,7 @@ class CompulsorySubjectClassController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -364,7 +414,7 @@ class CompulsorySubjectClassController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $msg,
-                'data' => $created
+                'data'    => $created,
             ], 201);
 
         } catch (\Exception $e) {
@@ -372,10 +422,14 @@ class CompulsorySubjectClassController extends Controller
             Log::error('Error creating compulsory subject:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create compulsory subject: ' . $e->getMessage()
+                'message' => 'Failed to create compulsory subject: ' . $e->getMessage(),
             ], 500);
         }
     }
+
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
 
     public function update(Request $request, $id)
     {
@@ -391,7 +445,7 @@ class CompulsorySubjectClassController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -419,10 +473,7 @@ class CompulsorySubjectClassController extends Controller
 
             $record = CompulsorySubjectClass::find($id);
             if (!$record) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Record not found.'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Record not found.'], 404);
             }
 
             $record->update([
@@ -438,7 +489,7 @@ class CompulsorySubjectClassController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Updated successfully.',
-                'data' => $record
+                'data'    => $record,
             ], 200);
 
         } catch (\Exception $e) {
@@ -446,10 +497,14 @@ class CompulsorySubjectClassController extends Controller
             Log::error('Error updating compulsory subject:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update compulsory subject: ' . $e->getMessage()
+                'message' => 'Failed to update compulsory subject: ' . $e->getMessage(),
             ], 500);
         }
     }
+
+    // =========================================================================
+    // UPDATE PASS AVERAGE
+    // =========================================================================
 
     public function updatePassAverage(Request $request)
     {
@@ -469,7 +524,7 @@ class CompulsorySubjectClassController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -495,11 +550,11 @@ class CompulsorySubjectClassController extends Controller
                 );
 
                 DB::table('schoolclass_classcategory')->insert([
-                    'schoolclass_id' => $schoolClassId,
-                    'classcategory_id' => $category->id,
+                    'schoolclass_id'         => $schoolClassId,
+                    'classcategory_id'       => $category->id,
                     'promotion_pass_average' => $passAverageValue,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
                 ]);
 
                 DB::commit();
@@ -515,7 +570,7 @@ class CompulsorySubjectClassController extends Controller
                 ->where('schoolclass_id', $schoolClassId)
                 ->update([
                     'promotion_pass_average' => $passAverageValue,
-                    'updated_at' => now()
+                    'updated_at'             => now(),
                 ]);
 
             DB::commit();
@@ -535,10 +590,14 @@ class CompulsorySubjectClassController extends Controller
             Log::error('Error updating pass average:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update pass average: ' . $e->getMessage()
+                'message' => 'Failed to update pass average: ' . $e->getMessage(),
             ], 500);
         }
     }
+
+    // =========================================================================
+    // DESTROY
+    // =========================================================================
 
     public function destroy($id)
     {
@@ -551,17 +610,21 @@ class CompulsorySubjectClassController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Compulsory subject removed successfully.'
+                'message' => 'Compulsory subject removed successfully.',
             ], 200);
 
         } catch (\Exception $e) {
             Log::error('Error deleting compulsory subject:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete compulsory subject: ' . $e->getMessage()
+                'message' => 'Failed to delete compulsory subject: ' . $e->getMessage(),
             ], 500);
         }
     }
+
+    // =========================================================================
+    // BULK DESTROY
+    // =========================================================================
 
     public function deleteMultiple(Request $request)
     {
@@ -579,7 +642,7 @@ class CompulsorySubjectClassController extends Controller
             }
 
             $existingIds = CompulsorySubjectClass::whereIn('id', $ids)->pluck('id')->toArray();
-            $invalidIds = array_diff($ids, $existingIds);
+            $invalidIds  = array_diff($ids, $existingIds);
             if (!empty($invalidIds)) {
                 return response()->json(['success' => false, 'message' => 'Some selected records do not exist.'], 400);
             }
@@ -589,9 +652,9 @@ class CompulsorySubjectClassController extends Controller
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => $deleted . ' record(s) deleted successfully.',
-                'deleted_count' => $deleted
+                'success'       => true,
+                'message'       => $deleted . ' record(s) deleted successfully.',
+                'deleted_count' => $deleted,
             ], 200);
 
         } catch (\Exception $e) {
@@ -599,7 +662,7 @@ class CompulsorySubjectClassController extends Controller
             Log::error('Bulk delete failed:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting records: ' . $e->getMessage()
+                'message' => 'Error deleting records: ' . $e->getMessage(),
             ], 500);
         }
     }
