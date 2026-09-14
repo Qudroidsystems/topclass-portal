@@ -4,19 +4,23 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddAppLogoToSchoolInformationTable extends Migration
+return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
-        Schema::table('school_information', function (Blueprint $table) {
-            $table->string('app_logo')->nullable()->after('school_logo');
-        });
+        if (!Schema::hasColumn('school_information', 'app_logo')) {
+            Schema::table('school_information', function (Blueprint $table) {
+                $table->string('app_logo')->nullable()->after('school_logo');
+            });
+        }
     }
 
-    public function down()
+    public function down(): void
     {
-        Schema::table('school_information', function (Blueprint $table) {
-            $table->dropColumn('app_logo');
-        });
+        if (Schema::hasColumn('school_information', 'app_logo')) {
+            Schema::table('school_information', function (Blueprint $table) {
+                $table->dropColumn('app_logo');
+            });
+        }
     }
-}
+};
