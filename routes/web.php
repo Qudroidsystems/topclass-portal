@@ -892,11 +892,28 @@ Route::group(['middleware' => ['auth']], function () {
         Route::post('/broadsheet/{schoolclassid}/{sessionid}/{termid}', [MyPrincipalsCommentController::class, 'updateComments'])->name('updateComments');
     });
 
+
+
+
+
+
+
     // ===================================================================
     // SUBJECT / MOCK VETTING
     // ===================================================================
-    Route::get('/api/subject-classes/search', [SubjectVettingController::class, 'searchSubjectClasses'])->name('api.subject-classes.search');
-    Route::post('/api/subject-classes/details', [SubjectVettingController::class, 'getSelectedSubjectClasses'])->name('api.subject-classes.details');
+
+     
+    Route::get('subjectvetting/data',  [SubjectVettingController::class, 'data'])->name('subjectvetting.data');
+    Route::get('subjectvetting/stats', [SubjectVettingController::class, 'stats'])->name('subjectvetting.stats');
+    Route::post('subjectvetting/bulk-delete', [SubjectVettingController::class, 'bulkDelete'])->name('subjectvetting.bulkDelete');
+
+    // AJAX search endpoints
+    Route::get('api/subject-classes/search', [SubjectVettingController::class, 'searchSubjectClasses'])->name('api.subject-classes.search');
+    Route::get('api/subject-classes/selected', [SubjectVettingController::class, 'getSelectedSubjectClasses'])->name('api.subject-classes.selected');
+
+
+
+    
 
     Route::get('/api/mock-subject-classes/search', [MockSubjectVettingController::class, 'searchSubjectClasses'])->name('api.mock-subject-classes.search');
     Route::post('/api/mock-subject-classes/details', [MockSubjectVettingController::class, 'getSelectedSubjectClasses'])->name('api.mock-subject-classes.details');
