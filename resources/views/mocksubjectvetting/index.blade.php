@@ -1,1032 +1,578 @@
+{{-- resources/views/mocksubjectvetting/index.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <!-- Start page title -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Mock Subject Vetting Management</h4>
-                        <div class="page-title-right">
-                            <ol class="breadcrumb m-0">
-                                <li class="breadcrumb-item"><a href="javascript:void(0);">Academics</a></li>
-                                <li class="breadcrumb-item active">Mock Subject Vetting</li>
-                            </ol>
-                        </div>
-                    </div>
+<style>
+:root {
+    --sv-primary:#1e3a5f; --sv-accent:#2563eb; --sv-success:#16a34a;
+    --sv-warning:#d97706; --sv-danger:#dc2626; --sv-muted:#6b7280;
+    --sv-border:#e2e8f0; --sv-radius:12px; --sv-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.sv-hero {
+    background:linear-gradient(135deg,#1e3a5f 0%,#7c3aed 60%,#c026d3 100%);
+    border-radius:var(--sv-radius); padding:28px 32px; margin-bottom:24px;
+    position:relative; overflow:hidden;
+}
+.sv-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:220px; height:220px; background:rgba(255,255,255,.06); border-radius:50%; }
+.sv-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
+.sv-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
+
+.stat-card { background:#fff; border:1px solid var(--sv-border); border-radius:var(--sv-radius); padding:18px 20px; cursor:pointer; transition:transform .15s, box-shadow .15s; }
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--sv-shadow); }
+.stat-card.active-stat { border-color:var(--sv-accent); box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+.stat-card .stat-value { font-size:28px; font-weight:700; color:var(--sv-primary); }
+.stat-card .stat-label { font-size:12px; color:var(--sv-muted); margin-top:4px; }
+.stat-card .stat-icon  { font-size:32px; opacity:.12; float:right; margin-top:-8px; }
+
+.sv-table th { background:var(--sv-primary); color:#fff; padding:12px 16px; font-weight:600; font-size:13px; white-space:nowrap; }
+.sv-table td { padding:11px 16px; vertical-align:middle; border-bottom:1px solid var(--sv-border); font-size:13px; }
+.sv-table tr:hover td { background:#faf5ff; }
+
+.sv-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+.sv-badge-class { background:#ede9fe; color:#6d28d9; }
+.sv-badge-session { background:#ccfbf1; color:#0f766e; }
+.sv-badge-term-first  { background:#dcfce7; color:#16a34a; }
+.sv-badge-term-second { background:#dbeafe; color:#2563eb; }
+.sv-badge-term-third  { background:#fee2e2; color:#dc2626; }
+.sv-badge-term-other  { background:#f3f4f6; color:#6b7280; }
+.sv-badge-status-pending   { background:#fee2e2; color:#dc2626; }
+.sv-badge-status-completed { background:#dcfce7; color:#16a34a; }
+.sv-badge-status-rejected  { background:#fef3c7; color:#92400e; }
+
+.sv-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid var(--sv-border); flex-shrink:0; }
+.sv-avatar-initials {
+    width:36px; height:36px; border-radius:50%;
+    background:linear-gradient(135deg,#1e3a5f 0%,#7c3aed 100%);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:13px; letter-spacing:.5px;
+    border:2px solid var(--sv-border); flex-shrink:0; user-select:none;
+}
+
+.dataTables_wrapper .dataTables_filter input { border:1.5px solid var(--sv-border); border-radius:8px; padding:7px 14px; margin-left:8px; font-size:13px; }
+.dataTables_wrapper .dataTables_filter input:focus { border-color:var(--sv-accent); outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+.dataTables_wrapper .dataTables_length select { border:1.5px solid var(--sv-border); border-radius:8px; padding:6px 10px; margin:0 6px; font-size:13px; }
+.dataTables_wrapper .paginate_button.current, .dataTables_wrapper .paginate_button.current:hover { background:var(--sv-accent) !important; border-color:var(--sv-accent) !important; color:#fff !important; }
+
+.sv-modal .modal-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15); }
+.modal-hero-bar { background:linear-gradient(135deg,#1e3a5f 0%,#7c3aed 100%); padding:22px 28px; position:relative; overflow:hidden; }
+.modal-hero-bar::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(255,255,255,.07); border-radius:50%; }
+.modal-hero-bar h5 { color:#fff; font-weight:700; margin:0; font-size:16px; position:relative; }
+.modal-hero-bar .btn-close { position:absolute; top:18px; right:20px; filter:invert(1); }
+
+.form-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
+.form-control, .form-select { border:1.5px solid var(--sv-border); border-radius:8px; font-size:13px; padding:9px 14px; }
+.form-control:focus, .form-select:focus { border-color:var(--sv-accent); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+
+.term-pills { display:flex; gap:8px; padding:10px 14px; border:1.5px solid var(--sv-border); border-radius:8px; background:#fafbfc; flex-wrap:wrap; }
+.term-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; user-select:none; transition:all .15s; }
+.term-pill input { margin:0; }
+.term-pill-term-first  { background:#dcfce7; color:#16a34a; }
+.term-pill-term-second { background:#dbeafe; color:#2563eb; }
+.term-pill-term-third  { background:#fee2e2; color:#dc2626; }
+.term-pill-term-other  { background:#f3f4f6; color:#6b7280; }
+
+.subject-search-list { max-height:300px; overflow-y:auto; border:1.5px solid var(--sv-border); border-radius:8px; }
+.subject-search-item { padding:10px 14px; border-bottom:1px solid var(--sv-border); cursor:pointer; transition:background .12s; }
+.subject-search-item:last-child { border-bottom:none; }
+.subject-search-item:hover { background:#f0f9ff; }
+.subject-search-item.term-first  { border-left:3px solid #16a34a; }
+.subject-search-item.term-second { border-left:3px solid #2563eb; }
+.subject-search-item.term-third  { border-left:3px solid #dc2626; }
+
+.selected-subject-item { background:#f8fafc; border:1px solid var(--sv-border); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+
+.bulk-bar { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; display:none; align-items:center; gap:12px; margin-bottom:12px; }
+.bulk-bar.show { display:flex; }
+
+#sv-page-loader { position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .22s, visibility .22s; }
+#sv-page-loader.active { opacity:1; visibility:visible; }
+.sv-loader-card { background:#fff; border-radius:16px; padding:32px 40px; text-align:center; box-shadow:0 24px 64px rgba(0,0,0,.22); min-width:220px; }
+.sv-loader-spinner { width:52px; height:52px; margin:0 auto 16px; border:4px solid #e2e8f0; border-top-color:var(--sv-accent); border-radius:50%; animation:sv-spin .75s linear infinite; }
+@keyframes sv-spin { to { transform:rotate(360deg); } }
+.sv-loader-label { font-size:14px; font-weight:600; color:var(--sv-primary); margin-bottom:12px; }
+
+#sv-toast-stack { position:fixed; bottom:24px; right:24px; z-index:10000; display:flex; flex-direction:column-reverse; gap:10px; pointer-events:none; }
+.sv-toast { pointer-events:all; background:#fff; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.14); padding:14px 18px; min-width:280px; max-width:360px; display:flex; align-items:flex-start; gap:12px; border-left:4px solid var(--sv-accent); transform:translateX(120%); transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
+.sv-toast.show { transform:translateX(0); }
+.sv-toast-success { border-left-color:var(--sv-success); }
+.sv-toast-error   { border-left-color:var(--sv-danger);  }
+.sv-toast-warning { border-left-color:var(--sv-warning); }
+.sv-toast .sv-toast-icon { font-size:20px; flex-shrink:0; }
+.sv-toast .sv-toast-body { flex:1; }
+.sv-toast .sv-toast-title { font-size:13px; font-weight:700; color:#111827; }
+.sv-toast .sv-toast-msg   { font-size:12px; color:var(--sv-muted); }
+.sv-toast .sv-toast-close { background:none; border:none; cursor:pointer; color:var(--sv-muted); font-size:16px; }
+
+.btn-loading { position:relative; pointer-events:none; opacity:.85; }
+.btn-loading .btn-text { visibility:hidden; }
+.btn-loading::after { content:''; position:absolute; inset:0; margin:auto; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:sv-spin .65s linear infinite; }
+</style>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<div id="sv-page-loader"><div class="sv-loader-card"><div class="sv-loader-spinner"></div><div class="sv-loader-label" id="sv-loader-label">Processing…</div></div></div>
+<div id="sv-toast-stack"></div>
+
+<div class="main-content"><div class="page-content"><div class="container-fluid">
+    <div class="sv-hero">
+        <h1><i class="ri-shield-star-line me-2"></i>Mock Subject Vetting Management</h1>
+        <p>Assign staff to vet mock scoresheets across terms and sessions.</p>
+    </div>
+
+    {{-- Filters --}}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label"><i class="ri-calendar-line me-1"></i>Term</label>
+                    <select class="form-select" id="filter-term">
+                        <option value="">All Terms</option>
+                        @foreach ($terms as $t)
+                            <option value="{{ $t->id }}">{{ $t->term }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label"><i class="ri-calendar-event-line me-1"></i>Session</label>
+                    <select class="form-select" id="filter-session">
+                        <option value="">All Sessions</option>
+                        @foreach ($sessions as $s)
+                            <option value="{{ $s->id }}">{{ $s->session }}{{ $s->status == 'Current' ? ' (Current)' : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" id="reset-filters"><i class="ri-refresh-line me-1"></i>Reset</button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <strong>Whoops!</strong> There were some problems with your input.<br><br>
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    {{-- Stat cards --}}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="stat-card" data-status="all"><div class="stat-icon"><i class="ri-file-list-line"></i></div><div class="stat-value" id="statTotal">—</div><div class="stat-label">Total Assignments</div></div></div>
+        <div class="col-md-3"><div class="stat-card" data-status="pending"><div class="stat-icon"><i class="ri-timer-line"></i></div><div class="stat-value text-danger" id="statPending">—</div><div class="stat-label">Pending</div></div></div>
+        <div class="col-md-3"><div class="stat-card" data-status="completed"><div class="stat-icon"><i class="ri-checkbox-circle-line"></i></div><div class="stat-value text-success" id="statCompleted">—</div><div class="stat-label">Completed</div></div></div>
+        <div class="col-md-3"><div class="stat-card" data-status="rejected"><div class="stat-icon"><i class="ri-close-circle-line"></i></div><div class="stat-value text-warning" id="statRejected">—</div><div class="stat-label">Rejected</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold" style="color:var(--sv-primary)">
+                    <i class="ri-list-check me-2"></i>Mock Vetting Assignments
+                    <span class="badge bg-primary ms-2" id="totalBadge">0</span>
+                </h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-danger d-none" id="bulkDeleteBtn"><i class="ri-delete-bin-line me-1"></i>Delete Selected</button>
+                    @can('Create mock-subject-vettings')
+                    <button class="btn btn-primary" id="createBtn"><i class="ri-add-line me-1"></i>Create Assignment</button>
+                    @endcan
                 </div>
-            @endif
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="bulk-bar" id="bulkBar">
+                <i class="ri-checkbox-circle-line text-warning"></i>
+                <span id="bulkCount">0</span> record(s) selected
+                <button class="btn btn-sm btn-danger ms-auto" id="bulkDeleteBtn2"><i class="ri-delete-bin-line me-1"></i>Delete Selected</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table sv-table w-100 mb-0" id="svTable">
+                    <thead>
+                        <tr>
+                            <th width="40"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                            <th>#</th>
+                            <th>Vetting Staff</th>
+                            <th>Subject</th>
+                            <th>Class</th>
+                            <th>Arm</th>
+                            <th>Teacher</th>
+                            <th>Term</th>
+                            <th>Session</th>
+                            <th>Status</th>
+                            <th>Updated</th>
+                            <th width="100">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div></div></div>
 
-            @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="ri-checkbox-circle-line me-2"></i>
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-            @if (session('danger'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="ri-error-warning-line me-2"></i>
-                    {{ session('danger') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
-            <style>
-                /* Stats Card Styles */
-                .stats-card {
-                    transition: all 0.3s ease;
-                    border: none;
-                    border-radius: 1rem;
-                    overflow: hidden;
-                    cursor: pointer;
-                }
-                .stats-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
-                }
-                .stats-icon {
-                    width: 48px;
-                    height: 48px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 12px;
-                    font-size: 24px;
-                }
-
-                /* Status Badge Styles */
-                .badge-status {
-                    padding: 6px 12px;
-                    border-radius: 20px;
-                    font-weight: 500;
-                    font-size: 11px;
-                }
-                .badge-pending {
-                    background-color: #ffe5e5;
-                    color: #dc3545;
-                }
-                .badge-completed {
-                    background-color: #e3f5ec;
-                    color: #28a745;
-                }
-                .badge-rejected {
-                    background-color: #fff4e5;
-                    color: #ffc107;
-                }
-
-                /* Table Row Status Background Colors with border-left */
-                .table-row-pending {
-                    background-color: #fff5f5 !important;
-                    border-left: 3px solid #dc3545;
-                }
-                .table-row-completed {
-                    background-color: #f0fff4 !important;
-                    border-left: 3px solid #28a745;
-                }
-                .table-row-rejected {
-                    background-color: #fffbf0 !important;
-                    border-left: 3px solid #ffc107;
-                }
-
-                /* Hover effects - border color disappears */
-                .table-row-hover {
-                    transition: all 0.2s ease;
-                }
-                .table-row-hover:hover {
-                    transform: scale(1.01);
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                    border-left-color: transparent !important;
-                }
-
-                /* Specific hover states for each status */
-                .table-row-pending:hover,
-                .table-row-completed:hover,
-                .table-row-rejected:hover {
-                    border-left-color: transparent !important;
-                }
-
-                /* Action Buttons */
-                .action-btn {
-                    width: 32px;
-                    height: 32px;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-                .action-btn:hover {
-                    transform: scale(1.1);
-                }
-
-                /* Filter Card */
-                .filter-card {
-                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                    border: none;
-                    border-radius: 1rem;
-                }
-
-                /* Animations */
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in-up {
-                    animation: fadeInUp 0.5s ease-out;
-                }
-
-                /* Selected Subject Items */
-                .selected-subject-item {
-                    transition: all 0.2s ease;
-                }
-                .selected-subject-item:hover {
-                    background-color: #f8f9fa;
-                    transform: translateX(5px);
-                }
-
-                /* Search Results */
-                .subject-search-item {
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .subject-search-item:hover {
-                    background-color: #f8f9fa;
-                }
-
-                /* Term Colors */
-                .term-first {
-                    color: #0d6efd !important;
-                    font-weight: 600;
-                }
-                .term-second {
-                    color: #198754 !important;
-                    font-weight: 600;
-                }
-                .term-third {
-                    color: #f59e0b !important;
-                    font-weight: 600;
-                }
-                .term-bg-first {
-                    background-color: #0d6efd10;
-                    border-left: 3px solid #0d6efd;
-                }
-                .term-bg-second {
-                    background-color: #19875410;
-                    border-left: 3px solid #198754;
-                }
-                .term-bg-third {
-                    background-color: #f59e0b10;
-                    border-left: 3px solid #f59e0b;
-                }
-
-                /* Search Box */
-                .search-box .search-icon {
-                    position: absolute;
-                    right: 15px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: #6c757d;
-                    pointer-events: none;
-                }
-                .search-box {
-                    position: relative;
-                }
-
-                /* Stat Card Active State */
-                .stat-card-clickable {
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-                .stat-card-clickable.active-stat {
-                    border: 2px solid #0d6efd;
-                    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
-                }
-
-                /* ===== Pagination ===== */
-                .pagination-wrap {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-                .mock-listjs-pagination {
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                    list-style: none;
-                    margin: 0;
-                    padding: 0;
-                }
-                .mock-listjs-pagination li {
-                    display: inline-block;
-                }
-                .mock-listjs-pagination li a {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-width: 36px;
-                    height: 36px;
-                    padding: 0 8px;
-                    border-radius: 10px;
-                    color: #495057;
-                    font-weight: 600;
-                    font-size: 14px;
-                    text-decoration: none;
-                    cursor: pointer;
-                    border: 1px solid transparent;
-                    transition: all 0.2s ease;
-                }
-                .mock-listjs-pagination li a:hover {
-                    background-color: #f1f3f9;
-                    color: #0d6efd;
-                }
-                .mock-listjs-pagination li.active a {
-                    background: linear-gradient(135deg, #0d6efd, #0a58ca);
-                    color: #fff;
-                    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
-                }
-                .mock-listjs-pagination li.disabled a {
-                    opacity: 0.4;
-                    pointer-events: none;
-                }
-                .pagination-nav-btn {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 10px;
-                    border: 1px solid #e2e5ec;
-                    background: #fff;
-                    color: #495057;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 18px;
-                    line-height: 1;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .pagination-nav-btn:hover:not(:disabled) {
-                    background-color: #0d6efd;
-                    border-color: #0d6efd;
-                    color: #fff;
-                    transform: translateY(-1px);
-                }
-                .pagination-nav-btn:disabled {
-                    opacity: 0.35;
-                    cursor: not-allowed;
-                    transform: none;
-                }
-            </style>
-
-            <div id="mockSubjectVettingList">
-                <!-- Filter Row -->
-                <div class="row mb-4 animate-fade-in-up">
-                    <div class="col-12">
-                        <div class="card filter-card">
-                            <div class="card-body">
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-5">
-                                        <label class="form-label fw-semibold text-muted mb-2">
-                                            <i class="ri-calendar-line me-1"></i> Select Term
-                                        </label>
-                                        <select class="form-select form-select-lg" id="mock-term-filter-stats">
-                                            <option value="">All Terms</option>
-                                            @foreach ($terms as $term)
-                                                <option value="{{ $term->id }}">{{ $term->term }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <label class="form-label fw-semibold text-muted mb-2">
-                                            <i class="ri-calendar-event-line me-1"></i> Select Session
-                                        </label>
-                                        <select class="form-select form-select-lg" id="mock-session-filter-stats">
-                                            <option value="">All Sessions</option>
-                                            @foreach ($sessions as $session)
-                                                <option value="{{ $session->id }}">{{ $session->session }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-secondary w-100" id="mock-reset-stats-btn">
-                                            <i class="ri-refresh-line me-1"></i> Reset
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+{{-- ADD MODAL --}}
+<div class="modal fade sv-modal" id="addMockSubjectVettingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-hero-bar">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5><i class="ri-add-circle-line me-2"></i>Add Mock Subject Vetting Assignment</h5>
+            </div>
+            <form id="add-mocksubjectvetting-form" autocomplete="off">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Vetting Staff <span class="text-danger">*</span></label>
+                            <select name="userid" id="mock-userid" class="form-select" required>
+                                <option value="">— Select Staff —</option>
+                                @foreach ($staff as $member)
+                                    <option value="{{ $member->id }}">{{ $member->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Session <span class="text-danger">*</span></label>
+                            <select name="sessionid" id="mock-sessionid" class="form-select" required>
+                                <option value="">— Select Session —</option>
+                                @foreach ($sessions as $session)
+                                    <option value="{{ $session->id }}">{{ $session->session }}{{ $session->status == 'Current' ? ' (Current)' : '' }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Terms <span class="text-danger">*</span></label>
+                        <div class="term-pills" id="mock-term-pills">
+                            @foreach ($terms as $term)
+                                @php
+                                    $tClass = match(true) {
+                                        str_contains($term->term, 'First')  => 'term-pill-term-first',
+                                        str_contains($term->term, 'Second') => 'term-pill-term-second',
+                                        str_contains($term->term, 'Third')  => 'term-pill-term-third',
+                                        default => 'term-pill-term-other'
+                                    };
+                                @endphp
+                                <label class="term-pill {{ $tClass }}">
+                                    <input class="form-check-input term-checkbox" type="checkbox"
+                                           name="termid[]" value="{{ $term->id }}"
+                                           id="mock-term-{{ $term->id }}">
+                                    {{ $term->term }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Subject-Class Assignments <span class="text-danger">*</span></label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="ri-search-line"></i></span>
+                            <input type="text" id="mockSubjectSearchInput" class="form-control"
+                                   placeholder="Search by subject, class, teacher, term, or session… (min 2 characters)"
+                                   autocomplete="off">
+                            <button type="button" id="mockClearSearchBtn" class="btn btn-outline-secondary" style="display:none;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <div id="mockSearchResults" class="subject-search-list mb-3" style="display:none;"></div>
+                        <div id="mockSearchLoading" class="text-center p-3" style="display:none;">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <span class="ms-2">Searching…</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Selected (<span id="mockSelectedCount">0</span>)</h6>
+                            <button type="button" id="mockClearAllSelectedBtn" class="btn btn-sm btn-outline-danger" style="display:none;">
+                                <i class="ri-delete-bin-line me-1"></i>Clear All
+                            </button>
+                        </div>
+                        <div id="mockSelectedSubjectsContainer" class="border rounded p-2" style="min-height:80px;max-height:300px;overflow-y:auto;">
+                            <div class="text-center text-muted py-3">No subjects selected</div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-danger d-none" id="mock-alert-error-msg"></div>
                 </div>
-
-                <!-- Stats Cards -->
-                <div class="row g-4 mb-4 animate-fade-in-up" id="mockStatsCardsRow">
-                    <div class="col-xl-3 col-md-6">
-                        <div class="card stats-card stat-card-clickable" data-status="all">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="text-muted mb-1 text-uppercase fw-semibold fs-12">Total Assignments</p>
-                                        <h2 class="mb-0 fw-bold" id="mock-stat-total">0</h2>
-                                    </div>
-                                    <div class="stats-icon bg-primary bg-opacity-10 text-primary">
-                                        <i class="ri-file-list-line fs-24"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-md-6">
-                        <div class="card stats-card stat-card-clickable" data-status="pending">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="text-muted mb-1 text-uppercase fw-semibold fs-12">Pending</p>
-                                        <h2 class="mb-0 fw-bold text-danger" id="mock-stat-pending">0</h2>
-                                    </div>
-                                    <div class="stats-icon bg-danger bg-opacity-10 text-danger">
-                                        <i class="ri-timer-line fs-24"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-md-6">
-                        <div class="card stats-card stat-card-clickable" data-status="completed">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="text-muted mb-1 text-uppercase fw-semibold fs-12">Completed</p>
-                                        <h2 class="mb-0 fw-bold text-success" id="mock-stat-completed">0</h2>
-                                    </div>
-                                    <div class="stats-icon bg-success bg-opacity-10 text-success">
-                                        <i class="ri-checkbox-circle-line fs-24"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-md-6">
-                        <div class="card stats-card stat-card-clickable" data-status="rejected">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <p class="text-muted mb-1 text-uppercase fw-semibold fs-12">Rejected</p>
-                                        <h2 class="mb-0 fw-bold text-warning" id="mock-stat-rejected">0</h2>
-                                    </div>
-                                    <div class="stats-icon bg-warning bg-opacity-10 text-warning">
-                                        <i class="ri-close-circle-line fs-24"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="mock-add-btn">
+                        <i class="ri-save-line me-1"></i><span class="btn-text">Add Assignment(s)</span>
+                    </button>
                 </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-                <!-- Search & Actions -->
-                <div class="row mb-4 animate-fade-in-up">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="row g-3 align-items-center">
-                                    <div class="col-md-6">
-                                        <div class="search-box">
-                                            <label class="form-label text-muted mb-2 fw-semibold">Search Assignments</label>
-                                            <div class="position-relative">
-                                                <input type="text" class="form-control search" id="mockTableSearchInput" placeholder="Search by staff, subject, class, teacher...">
-                                                <i class="ri-search-line search-icon"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        @can('Create mock-subject-vettings')
-                                            <button type="button" class="btn btn-primary add-btn" data-bs-toggle="modal" data-bs-target="#addMockSubjectVettingModal">
-                                                <i class="ri-add-line me-1"></i> Create Assignment
-                                            </button>
-                                        @endcan
-                                    </div>
-                                </div>
-                            </div>
+{{-- EDIT MODAL --}}
+<div class="modal fade sv-modal" id="editMockModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-hero-bar">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5><i class="ri-edit-line me-2"></i>Edit Mock Subject Vetting Assignment</h5>
+            </div>
+            <form id="edit-mocksubjectvetting-form" autocomplete="off">
+                @csrf
+                <input type="hidden" name="id" id="mock-edit-id-field">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Vetting Staff <span class="text-danger">*</span></label>
+                            <select name="userid" id="mock-edit-userid" class="form-select" required>
+                                <option value="">— Select Staff —</option>
+                                @foreach ($staff as $member)
+                                    <option value="{{ $member->id }}">{{ $member->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Session <span class="text-danger">*</span></label>
+                            <select name="sessionid" id="mock-edit-sessionid" class="form-select" required>
+                                <option value="">— Select Session —</option>
+                                @foreach ($sessions as $session)
+                                    <option value="{{ $session->id }}">{{ $session->session }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
-                </div>
 
-                <!-- Table View -->
-                <div class="row animate-fade-in-up">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0" id="kt_mock_subject_vetting_table">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="w-10px pe-2">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="mockCheckAll" />
-                                                    </div>
-                                                </th>
-                                                <th>#</th>
-                                                <th>Vetting Staff</th>
-                                                <th>Subject</th>
-                                                <th>Class</th>
-                                                <th>Arm</th>
-                                                <th>Teacher</th>
-                                                <th>Term</th>
-                                                <th>Session</th>
-                                                <th>Status</th>
-                                                <th>Updated</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="list">
-                                            @php $i = 0 @endphp
-                                            @forelse ($mocksubjectvettings as $sv)
-                                                @php
-                                                    $statusClass = match ($sv->status ?? 'pending') {
-                                                        'completed' => 'badge-completed',
-                                                        'pending' => 'badge-pending',
-                                                        'rejected' => 'badge-rejected',
-                                                        default => 'badge-pending'
-                                                    };
-                                                    $rowStatusClass = match ($sv->status ?? 'pending') {
-                                                        'completed' => 'table-row-completed',
-                                                        'pending' => 'table-row-pending',
-                                                        'rejected' => 'table-row-rejected',
-                                                        default => ''
-                                                    };
-                                                    $termColorClass = match ($sv->termid ?? 0) {
-                                                        1 => 'term-first',
-                                                        2 => 'term-second',
-                                                        3 => 'term-third',
-                                                        default => ''
-                                                    };
-                                                @endphp
-                                                <tr data-id="{{ $sv->svid }}"
-                                                    data-status="{{ $sv->status ?? 'pending' }}"
-                                                    data-term="{{ $sv->termid }}"
-                                                    data-session="{{ $sv->sessionid }}"
-                                                    data-subjectclassid="{{ $sv->subjectclassid }}"
-                                                    data-vetting-userid="{{ $sv->vetting_userid }}"
-                                                    class="table-row-hover {{ $rowStatusClass }}">
-                                                    <td>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="chk_child" value="{{ $sv->svid }}" />
-                                                        </div>
-                                                    </td>
-                                                    <td class="sn fw-bold">{{ ++$i }}</td>
-                                                    <td class="vetting_username">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="flex-shrink-0">
-                                                                <div class="avatar-sm rounded-circle bg-light d-flex align-items-center justify-content-center">
-                                                                    <img src="{{ asset('storage/staff_avatars/' . ($sv->vetting_picture ?? 'unnamed.jpg')) }}"
-                                                                        alt="{{ $sv->vetting_username ?? 'Unknown' }}"
-                                                                        class="rounded-circle avatar-xs"
-                                                                        style="width:38px;height:38px;object-fit:cover;" />
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex-grow-1 ms-3">
-                                                                <h6 class="mb-0">{{ $sv->vetting_username ?? 'N/A' }}</h6>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="subjectname">{{ $sv->subjectname ?? 'N/A' }}</td>
-                                                    <td class="sclass">{{ $sv->sclass ?? 'N/A' }}</td>
-                                                    <td class="schoolarm">{{ $sv->schoolarm ?? 'N/A' }}</td>
-                                                    <td class="teachername">{{ $sv->teachername ?? 'N/A' }}</td>
-                                                    <td class="termname {{ $termColorClass }}">{{ $sv->termname ?? 'N/A' }}</td>
-                                                    <td class="sessionname">{{ $sv->sessionname ?? 'N/A' }}</td>
-                                                    <td class="status">
-                                                        <span class="badge-status {{ $statusClass }}">
-                                                            {{ ucfirst($sv->status ?? 'pending') }}
-                                                        </span>
-                                                    </td>
-                                                    <td class="datereg">{{ $sv->updated_at ? $sv->updated_at->format('d M, Y') : 'N/A' }}</td>
-                                                    <td>
-                                                        <div class="d-flex gap-2">
-                                                            @can('Update mock-subject-vettings')
-                                                                <a href="javascript:void(0);" class="action-btn btn btn-light btn-sm edit-item-btn" title="Edit">
-                                                                    <i class="ri-pencil-line"></i>
-                                                                </a>
-                                                            @endcan
-                                                            @can('Delete mock-subject-vettings')
-                                                                <a href="javascript:void(0);" class="action-btn btn btn-light btn-sm remove-item-btn text-danger" title="Delete">
-                                                                    <i class="ri-delete-bin-line"></i>
-                                                                </a>
-                                                            @endcan
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <tr class="noresult">
-                                                    <td colspan="12" class="text-center py-5">
-                                                        <i class="ri-inbox-line fs-48 text-muted"></i>
-                                                        <h5 class="mt-3">No Mock Subject Vetting Assignments Found</h5>
-                                                        <p class="text-muted">No assignments found for the selected filters.</p>
-                                                        @can('Create mock-subject-vettings')
-                                                            <button type="button" class="btn btn-primary add-btn mt-2" data-bs-toggle="modal" data-bs-target="#addMockSubjectVettingModal">
-                                                                <i class="ri-add-line me-1"></i> Create Your First Assignment
-                                                            </button>
-                                                        @endcan
-                                                    </td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="row mt-4 align-items-center" id="mock-pagination-element">
-                                    <div class="col-sm">
-                                        <div class="text-muted text-center text-sm-start">
-                                            Showing <span class="fw-semibold text-dark" id="mock-showing-records">0</span> of
-                                            <span class="fw-semibold text-dark" id="mock-total-records-footer">{{ $mocksubjectvettings->count() }}</span> results
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-auto mt-3 mt-sm-0">
-                                        <div class="pagination-wrap">
-                                            <button type="button" class="pagination-nav-btn" id="mock-page-prev" aria-label="Previous page">
-                                                <i class="ri-arrow-left-s-line"></i>
-                                            </button>
-                                            <ul class="pagination mock-listjs-pagination mb-0"></ul>
-                                            <button type="button" class="pagination-nav-btn" id="mock-page-next" aria-label="Next page">
-                                                <i class="ri-arrow-right-s-line"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Term <span class="text-danger">*</span></label>
+                        <div class="term-pills" id="mock-edit-term-pills">
+                            @foreach ($terms as $term)
+                                @php
+                                    $tClass = match(true) {
+                                        str_contains($term->term, 'First')  => 'term-pill-term-first',
+                                        str_contains($term->term, 'Second') => 'term-pill-term-second',
+                                        str_contains($term->term, 'Third')  => 'term-pill-term-third',
+                                        default => 'term-pill-term-other'
+                                    };
+                                @endphp
+                                <label class="term-pill {{ $tClass }}">
+                                    <input class="form-check-input edit-term-checkbox" type="radio"
+                                           name="termid" value="{{ $term->id }}"
+                                           id="mock-edit-term-{{ $term->id }}">
+                                    {{ $term->term }}
+                                </label>
+                            @endforeach
                         </div>
                     </div>
-                </div>
 
-                <!-- Add Modal -->
-                <div id="addMockSubjectVettingModal" class="modal fade" tabindex="-1" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header bg-primary text-white">
-                                <h5 class="modal-title"><i class="ri-add-circle-line me-2"></i>Add Mock Subject Vetting Assignment</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
-                            <form id="add-mocksubjectvetting-form" action="{{ route('mocksubjectvetting.store') }}" method="POST">
-                                @csrf
-                                <div class="modal-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Vetting Staff <span class="text-danger">*</span></label>
-                                                <select name="userid" id="mock-userid" class="form-select select2" required>
-                                                    <option value="">Select Staff</option>
-                                                    @foreach ($staff as $staff_member)
-                                                        <option value="{{ $staff_member->id }}">{{ $staff_member->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Session <span class="text-danger">*</span></label>
-                                                <select name="sessionid" id="mock-sessionid" class="form-select" required>
-                                                    <option value="">Select Session</option>
-                                                    @foreach ($sessions as $session)
-                                                        <option value="{{ $session->id }}">{{ $session->session }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Terms <span class="text-danger">*</span></label>
-                                        <div class="p-3 bg-light rounded">
-                                            @foreach ($terms as $term)
-                                                @php
-                                                    $termColor = match($term->id) {
-                                                        1 => 'text-primary',
-                                                        2 => 'text-success',
-                                                        3 => 'text-warning',
-                                                        default => ''
-                                                    };
-                                                @endphp
-                                                <div class="form-check form-check-inline me-3">
-                                                    <input class="form-check-input" type="checkbox" name="termid[]" value="{{ $term->id }}" id="mock-term-{{ $term->id }}">
-                                                    <label class="form-check-label {{ $termColor }}" for="mock-term-{{ $term->id }}">
-                                                        <strong>{{ $term->term }}</strong>
-                                                    </label>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-
-                                    <!-- AJAX Subject Search Section -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Subject-Class Assignments <span class="text-danger">*</span></label>
-
-                                        <div class="input-group mb-3">
-                                            <span class="input-group-text"><i class="ri-search-line"></i></span>
-                                            <input type="text" id="mockSubjectSearchInput" class="form-control"
-                                                   placeholder="Search by subject, class, teacher, term, or session... (min 2 characters)"
-                                                   autocomplete="off">
-                                            <button type="button" id="mockClearSearchBtn" class="btn btn-outline-secondary" style="display: none;">
-                                                <i class="ri-close-line"></i>
-                                            </button>
-                                        </div>
-
-                                        <div id="mockSearchResults" class="list-group mb-3" style="max-height: 300px; overflow-y: auto; display: none;"></div>
-                                        <div id="mockSearchLoading" class="text-center p-3" style="display: none;">
-                                            <div class="spinner-border spinner-border-sm text-primary"></div>
-                                            <span class="ms-2">Searching...</span>
-                                        </div>
-
-                                        <div class="mt-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <h6 class="mb-0">Selected Subjects (<span id="mockSelectedCount">0</span>)</h6>
-                                                <button type="button" id="mockClearAllSelectedBtn" class="btn btn-sm btn-danger" style="display: none;">
-                                                    <i class="ri-delete-bin-line me-1"></i>Clear All
-                                                </button>
-                                            </div>
-                                            <div id="mockSelectedSubjectsContainer" class="border rounded p-2" style="min-height: 100px; max-height: 300px; overflow-y: auto;">
-                                                <div class="text-center text-muted py-3">No subjects selected</div>
-                                            </div>
-                                            <input type="hidden" name="subjectclassid[]" id="mockSelectedSubjectIds">
-                                        </div>
-                                    </div>
-
-                                    <div class="alert alert-danger d-none" id="mock-alert-error-msg"></div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary" id="mock-add-btn">Add Assignment(s)</button>
-                                </div>
-                            </form>
+                    <div class="mb-3">
+                        <label class="form-label">Subject-Class Assignment <span class="text-danger">*</span></label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="ri-search-line"></i></span>
+                            <input type="text" id="mockEditSubjectSearchInput" class="form-control"
+                                   placeholder="Search by subject, class, teacher, term, or session… (min 2 characters)"
+                                   autocomplete="off">
+                            <button type="button" id="mockEditClearSearchBtn" class="btn btn-outline-secondary" style="display:none;">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <div id="mockEditSearchResults" class="subject-search-list mb-3" style="display:none;"></div>
+                        <div id="mockEditSearchLoading" class="text-center p-3" style="display:none;">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <span class="ms-2">Searching…</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Selected Subject</h6>
+                            <button type="button" id="mockEditClearSelectedBtn" class="btn btn-sm btn-outline-danger" style="display:none;">
+                                <i class="ri-delete-bin-line me-1"></i>Clear
+                            </button>
+                        </div>
+                        <div id="mockEditSelectedSubjectContainer" class="border rounded p-2" style="min-height:80px;">
+                            <div class="text-center text-muted py-3">No subject selected</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Edit Modal -->
-                <div id="editMockModal" class="modal fade" tabindex="-1" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header bg-warning text-dark">
-                                <h5 class="modal-title"><i class="ri-edit-line me-2"></i>Edit Mock Subject Vetting Assignment</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <form id="edit-mocksubjectvetting-form" action="" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="modal-body">
-                                    <input type="hidden" name="id" id="mock-edit-id-field">
-
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Vetting Staff <span class="text-danger">*</span></label>
-                                                <select name="userid" id="mock-edit-userid" class="form-select select2" required>
-                                                    <option value="">Select Staff</option>
-                                                    @foreach ($staff as $staff_member)
-                                                        <option value="{{ $staff_member->id }}">{{ $staff_member->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Session <span class="text-danger">*</span></label>
-                                                <select name="sessionid" id="mock-edit-sessionid" class="form-select" required>
-                                                    <option value="">Select Session</option>
-                                                    @foreach ($sessions as $session)
-                                                        <option value="{{ $session->id }}">{{ $session->session }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Term <span class="text-danger">*</span></label>
-                                        <div class="p-3 bg-light rounded">
-                                            @foreach ($terms as $term)
-                                                @php
-                                                    $termColor = match($term->id) {
-                                                        1 => 'text-primary',
-                                                        2 => 'text-success',
-                                                        3 => 'text-warning',
-                                                        default => ''
-                                                    };
-                                                @endphp
-                                                <div class="form-check form-check-inline me-3">
-                                                    <input class="form-check-input edit-term-checkbox" type="radio" name="termid" value="{{ $term->id }}" id="mock-edit-term-{{ $term->id }}">
-                                                    <label class="form-check-label {{ $termColor }}" for="mock-edit-term-{{ $term->id }}">
-                                                        <strong>{{ $term->term }}</strong>
-                                                    </label>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-
-                                    <!-- AJAX Subject Search Section for Edit (Single selection) -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Subject-Class Assignment <span class="text-danger">*</span></label>
-
-                                        <div class="input-group mb-3">
-                                            <span class="input-group-text"><i class="ri-search-line"></i></span>
-                                            <input type="text" id="mockEditSubjectSearchInput" class="form-control"
-                                                   placeholder="Search by subject, class, teacher, term, or session... (min 2 characters)"
-                                                   autocomplete="off">
-                                            <button type="button" id="mockEditClearSearchBtn" class="btn btn-outline-secondary" style="display: none;">
-                                                <i class="ri-close-line"></i>
-                                            </button>
-                                        </div>
-
-                                        <div id="mockEditSearchResults" class="list-group mb-3" style="max-height: 300px; overflow-y: auto; display: none;"></div>
-                                        <div id="mockEditSearchLoading" class="text-center p-3" style="display: none;">
-                                            <div class="spinner-border spinner-border-sm text-primary"></div>
-                                            <span class="ms-2">Searching...</span>
-                                        </div>
-
-                                        <div class="mt-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <h6 class="mb-0">Selected Subject</h6>
-                                                <button type="button" id="mockEditClearSelectedBtn" class="btn btn-sm btn-danger" style="display: none;">
-                                                    <i class="ri-delete-bin-line me-1"></i>Clear Selection
-                                                </button>
-                                            </div>
-                                            <div id="mockEditSelectedSubjectContainer" class="border rounded p-2" style="min-height: 80px;">
-                                                <div class="text-center text-muted py-3">No subject selected</div>
-                                            </div>
-                                            <input type="hidden" name="subjectclassid" id="mockEditSelectedSubjectId">
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                                        <select name="status" id="mock-edit-status" class="form-select" required>
-                                            <option value="pending">Pending</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="rejected">Rejected</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="alert alert-danger d-none" id="mock-edit-alert-error-msg"></div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-primary" id="mock-edit-btn">Update Assignment</button>
-                                </div>
-                            </form>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status <span class="text-danger">*</span></label>
+                        <select name="status" id="mock-edit-status" class="form-select" required>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
                     </div>
-                </div>
 
-                <!-- Delete Modal -->
-                <div id="deleteRecordModal" class="modal fade" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-body text-center p-4">
-                                <i class="ri-delete-bin-line text-danger fs-48 mb-3 d-block"></i>
-                                <h4 class="mb-2">Are you sure?</h4>
-                                <p class="text-muted mb-4">You won't be able to revert this!</p>
-                                <div class="d-flex gap-2 justify-content-center">
-                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="button" class="btn btn-danger" id="delete-record">Yes, Delete It!</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="alert alert-danger d-none" id="mock-edit-alert-error-msg"></div>
                 </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="mock-edit-btn">
+                        <i class="ri-save-line me-1"></i><span class="btn-text">Update Assignment</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- DELETE MODAL --}}
+<div class="modal fade" id="deleteRecordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+        <div class="modal-content border-0" style="border-radius:16px;overflow:hidden">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title"><i class="ri-delete-bin-line me-2"></i>Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Delete this mock vetting assignment?</p>
+                <p class="text-muted small mb-0">This will also clear the vetting status on any related mock broadsheets.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">
+                    <i class="ri-delete-bin-line me-1"></i><span class="btn-text">Delete</span>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
-
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// Escape HTML helper
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
-
-// Get term color class based on term ID
-function getTermColorClass(termId) {
+function getTermBorderClass(termId) {
     if (termId == 1) return 'term-first';
     if (termId == 2) return 'term-second';
     if (termId == 3) return 'term-third';
     return '';
 }
 
-function getTermBgClass(termId) {
-    if (termId == 1) return 'term-bg-first';
-    if (termId == 2) return 'term-bg-second';
-    if (termId == 3) return 'term-bg-third';
-    return '';
-}
+$(document).ready(function () {
+    const CSRF = $('meta[name="csrf-token"]').attr('content');
+    let deleteId = null;
 
-// Main Mock Subject Vetting Management
-let mockSelectedSubjects = new Map();
-let mockSubjectVettingList = null;
-let mockDeleteId = null;
+    const PageLoader = {
+        show(lbl) { $('#sv-loader-label').text(lbl || 'Processing…'); $('#sv-page-loader').addClass('active'); },
+        hide() { setTimeout(() => $('#sv-page-loader').removeClass('active'), 300); }
+    };
 
-// Edit modal variables
-let mockEditSelectedSubject = null;
-
-// Initialize when document is ready
-document.addEventListener('DOMContentLoaded', function() {
-    initializeMockListJS();
-    initializeMockPaginationNav();
-    initializeMockFilters();
-    initializeMockTableSearch();
-    initializeMockAddForm();
-    initializeMockEditForm();
-    initializeMockDelete();
-    initializeMockBulkDelete();
-    initializeMockSelect2();
-    updateMockStatsFromList();
-});
-
-function initializeMockListJS() {
-    try {
-        mockSubjectVettingList = new List('mockSubjectVettingList', {
-            valueNames: ['sn', 'vetting_username', 'subjectname', 'sclass', 'schoolarm', 'teachername', 'termname', 'sessionname', 'status', 'datereg'],
-            page: 10,
-            pagination: { paginationClass: 'mock-listjs-pagination' }
-        });
-        mockSubjectVettingList.on('updated', updateMockStatsFromList);
-        console.log('List.js initialized successfully');
-    } catch(e) {
-        console.error('ListJS init error:', e);
-    }
-}
-
-function initializeMockTableSearch() {
-    const searchInput = document.getElementById('mockTableSearchInput');
-    if (searchInput && mockSubjectVettingList) {
-        searchInput.addEventListener('keyup', function() {
-            mockSubjectVettingList.search(this.value);
-        });
-        console.log('Table search initialized');
-    }
-}
-
-function updateMockStatsFromList() {
-    if (!mockSubjectVettingList) return;
-    const items = mockSubjectVettingList.matchingItems;
-    let total = items.length, pending = 0, completed = 0, rejected = 0;
-    items.forEach(item => {
-        const status = (item.elm.getAttribute('data-status') || 'pending').toLowerCase();
-        if (status === 'pending') pending++;
-        else if (status === 'completed') completed++;
-        else if (status === 'rejected') rejected++;
-    });
-    document.getElementById('mock-stat-total').textContent = total;
-    document.getElementById('mock-stat-pending').textContent = pending;
-    document.getElementById('mock-stat-completed').textContent = completed;
-    document.getElementById('mock-stat-rejected').textContent = rejected;
-
-    // Compute "Showing X-Y" range based on current page
-    const pageSize = mockSubjectVettingList.page || 10;
-    const activeLi = document.querySelector('.mock-listjs-pagination li.active a');
-    const currentPage = activeLi ? (parseInt(activeLi.textContent, 10) || 1) : 1;
-    const start = total === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
-    const end = Math.min(currentPage * pageSize, total);
-
-    const showingEl = document.getElementById('mock-showing-records');
-    if (showingEl) showingEl.textContent = total === 0 ? '0' : `${start}-${end}`;
-    const totalEl = document.getElementById('mock-total-records-footer');
-    if (totalEl) totalEl.textContent = total;
-
-    updateMockPaginationNavState();
-}
-
-function initializeMockPaginationNav() {
-    const prevBtn = document.getElementById('mock-page-prev');
-    const nextBtn = document.getElementById('mock-page-next');
-    const paginationList = document.querySelector('.mock-listjs-pagination');
-    if (!prevBtn || !nextBtn || !paginationList) return;
-
-    prevBtn.addEventListener('click', () => {
-        const active = paginationList.querySelector('li.active');
-        const target = active?.previousElementSibling?.querySelector('a');
-        target?.click();
-    });
-    nextBtn.addEventListener('click', () => {
-        const active = paginationList.querySelector('li.active');
-        const target = active?.nextElementSibling?.querySelector('a');
-        target?.click();
-    });
-
-    // Re-check disabled state whenever list.js re-renders the page list
-    const observer = new MutationObserver(updateMockPaginationNavState);
-    observer.observe(paginationList, { childList: true, subtree: true, attributes: true });
-
-    updateMockPaginationNavState();
-}
-
-function updateMockPaginationNavState() {
-    const prevBtn = document.getElementById('mock-page-prev');
-    const nextBtn = document.getElementById('mock-page-next');
-    const paginationList = document.querySelector('.mock-listjs-pagination');
-    if (!prevBtn || !nextBtn || !paginationList) return;
-
-    const pages = Array.from(paginationList.querySelectorAll('li'));
-    const activeIndex = pages.findIndex(li => li.classList.contains('active'));
-
-    prevBtn.disabled = pages.length === 0 || activeIndex <= 0;
-    nextBtn.disabled = pages.length === 0 || activeIndex === -1 || activeIndex >= pages.length - 1;
-}
-
-function initializeMockFilters() {
-    const termFilter = document.getElementById('mock-term-filter-stats');
-    const sessionFilter = document.getElementById('mock-session-filter-stats');
-    const resetBtn = document.getElementById('mock-reset-stats-btn');
-
-    if (termFilter) {
-        termFilter.addEventListener('change', () => applyMockFilters());
-    }
-    if (sessionFilter) {
-        sessionFilter.addEventListener('change', () => applyMockFilters());
-    }
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            if (termFilter) termFilter.value = '';
-            if (sessionFilter) sessionFilter.value = '';
-            applyMockFilters();
-        });
+    function toast(type, title, msg) {
+        var icons = { success: 'ri-checkbox-circle-fill', error: 'ri-close-circle-fill', warning: 'ri-alert-fill', info: 'ri-information-fill' };
+        var id = 'sv-toast-' + Date.now();
+        var $el = $('<div class="sv-toast sv-toast-' + type + '" id="' + id + '">'
+            + '<span class="sv-toast-icon"><i class="' + icons[type] + '"></i></span>'
+            + '<div class="sv-toast-body"><div class="sv-toast-title">' + title + '</div>'
+            + (msg ? '<div class="sv-toast-msg">' + msg + '</div>' : '') + '</div>'
+            + '<button class="sv-toast-close" onclick="$(\'#' + id + '\').remove()">×</button></div>');
+        $('#sv-toast-stack').append($el);
+        setTimeout(() => $el.addClass('show'), 20);
+        setTimeout(() => { $el.removeClass('show'); setTimeout(() => $el.remove(), 300); }, 4000);
     }
 
-    // Stat card filters
-    document.querySelectorAll('#mockStatsCardsRow .stat-card-clickable').forEach(card => {
-        card.addEventListener('click', () => {
-            const status = card.getAttribute('data-status');
-            if (!mockSubjectVettingList) return;
+    function btnLoad($b, lbl) { $b.data('orig', $b.html()).prop('disabled', true).addClass('btn-loading'); if (lbl) $b.html('<span class="btn-text">' + lbl + '</span>'); }
+    function btnReset($b) { var o = $b.data('orig'); if (o) $b.html(o); $b.prop('disabled', false).removeClass('btn-loading'); }
+    function showErr(sel, m) { $(sel).removeClass('d-none').html('<i class="ri-error-warning-line me-1"></i>' + m); }
 
-            // Remove active class from all stat cards
-            document.querySelectorAll('#mockStatsCardsRow .stat-card-clickable').forEach(c => c.classList.remove('active-stat'));
-            card.classList.add('active-stat');
-
-            if (status === 'all') {
-                mockSubjectVettingList.filter();
-            } else {
-                mockSubjectVettingList.filter(item => {
-                    const itemStatus = (item.elm.getAttribute('data-status') || 'pending').toLowerCase();
-                    return itemStatus === status;
-                });
+    var table = $('#svTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ route("mocksubjectvetting.data") }}',
+            type: 'GET',
+            data: function (d) {
+                d.filter_term    = $('#filter-term').val();
+                d.filter_session = $('#filter-session').val();
+            },
+            error: function (xhr) {
+                console.error('DataTables error:', xhr.status, xhr.responseText);
+                toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
             }
-        });
+        },
+        columns: [
+            { data: 'checkbox', orderable: false, searchable: false },
+            { data: 'DT_RowIndex', orderable: false, searchable: false },
+            { data: 'vetting_info', orderable: false, searchable: false },
+            { data: 'subject_info', orderable: false, searchable: false },
+            { data: 'class_info', orderable: false, searchable: false },
+            { data: 'arm_info', orderable: false, searchable: false },
+            { data: 'teacher_info', orderable: false, searchable: false },
+            { data: 'term_info', orderable: false, searchable: false },
+            { data: 'session_info', orderable: false, searchable: false },
+            { data: 'status_info', orderable: false, searchable: false },
+            { data: 'formatted_date', orderable: false, searchable: false },
+            { data: 'action', orderable: false, searchable: false }
+        ],
+        dom: "<'row align-items-center mb-3'<'col-sm-6'l><'col-sm-6 text-end'f>>" +
+             "<'row'<'col-12'tr>>" +
+             "<'row align-items-center mt-3'<'col-sm-5'i><'col-sm-7 text-end'p>>",
+        language: {
+            processing: '<span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading…',
+            search: '', searchPlaceholder: 'Search assignments…',
+            lengthMenu: 'Show _MENU_ entries',
+            info: 'Showing _START_–_END_ of _TOTAL_ assignments',
+            infoEmpty: 'No assignments found', zeroRecords: 'No matching assignments',
+            emptyTable: 'No mock subject vetting assignments yet'
+        },
+        order: [[1, 'asc']],
+        pageLength: 15,
+        responsive: true,
+        drawCallback: function () {
+            bindCB();
+            $('#totalBadge').text(this.api().page.info().recordsTotal);
+        }
     });
-}
 
-function applyMockFilters() {
-    if (!mockSubjectVettingList) return;
-    const termFilter = document.getElementById('mock-term-filter-stats').value;
-    const sessionFilter = document.getElementById('mock-session-filter-stats').value;
-    if (!termFilter && !sessionFilter) {
-        mockSubjectVettingList.filter();
-    } else {
-        mockSubjectVettingList.filter(item => {
-            const rowTerm = item.elm.getAttribute('data-term') || '';
-            const rowSession = item.elm.getAttribute('data-session') || '';
-            const termOk = !termFilter || rowTerm === termFilter;
-            const sessionOk = !sessionFilter || rowSession === sessionFilter;
-            return termOk && sessionOk;
+    function loadStats() {
+        $.get('{{ route("mocksubjectvetting.stats") }}', {
+            filter_term: $('#filter-term').val(),
+            filter_session: $('#filter-session').val()
+        }, function (d) {
+            if (d.stats) {
+                $('#statTotal').text(d.stats.total);
+                $('#statPending').text(d.stats.pending);
+                $('#statCompleted').text(d.stats.completed);
+                $('#statRejected').text(d.stats.rejected);
+            }
+        }).fail(function () {
+            $('#statTotal, #statPending, #statCompleted, #statRejected').text('—');
         });
     }
-}
+    loadStats();
 
-// ========== ADD FORM AJAX SUBJECT SEARCH ==========
-// ========== ADD FORM AJAX SUBJECT SEARCH ==========
-function initializeMockAddForm() {
-    const form = document.getElementById('add-mocksubjectvetting-form');
-    if (!form) return;
+    $('#filter-term, #filter-session').on('change', function () { table.ajax.reload(); loadStats(); });
+    $('#reset-filters').on('click', function () {
+        $('#filter-term').val('');
+        $('#filter-session').val('');
+        table.ajax.reload(); loadStats();
+    });
 
-    const searchInput = document.getElementById('mockSubjectSearchInput');
-    const resultsDiv = document.getElementById('mockSearchResults');
-    const loadingDiv = document.getElementById('mockSearchLoading');
+    $('.stat-card').on('click', function () {
+        const status = $(this).data('status');
+        $('.stat-card').removeClass('active-stat');
+        $(this).addClass('active-stat');
+        if (status === 'all') {
+            table.column(9).search('').draw();
+        } else {
+            table.column(9).search(status, true, false).draw();
+        }
+    });
+
+    function bindCB() { $('.row-checkbox').off('change').on('change', updBulk); }
+    $('#selectAll').on('change', function () { $('.row-checkbox').prop('checked', this.checked); updBulk(); });
+    function updBulk() {
+        var c = $('.row-checkbox:checked').length;
+        $('#bulkBar').toggleClass('show', c > 0);
+        $('#bulkCount').text(c);
+        $('#bulkDeleteBtn').toggleClass('d-none', c === 0);
+        if (c === 0) $('#selectAll').prop('checked', false);
+    }
+
+    // =========================================================================
+    // ADD MODAL
+    // =========================================================================
+    let subjectSelectedSubjects = new Map();
+    const searchInput    = document.getElementById('mockSubjectSearchInput');
+    const resultsDiv     = document.getElementById('mockSearchResults');
+    const loadingDiv     = document.getElementById('mockSearchLoading');
     const clearSearchBtn = document.getElementById('mockClearSearchBtn');
     let searchTimeout;
 
     function getCheckedTermIds() {
-        return Array.from(document.querySelectorAll('input[name="termid[]"]:checked'))
-            .map(cb => cb.value)
-            .join(',');
+        return Array.from(document.querySelectorAll('input[name="termid[]"]:checked')).map(cb => cb.value).join(',');
     }
 
-    function runMockAddSearch(query) {
+    function runSearch(query) {
         if (query.length < 2) {
             resultsDiv.style.display = 'none';
             clearSearchBtn.style.display = 'none';
@@ -1036,717 +582,471 @@ function initializeMockAddForm() {
         loadingDiv.style.display = 'block';
         resultsDiv.style.display = 'none';
 
-        const excludeIds = Array.from(mockSelectedSubjects.keys()).join(',');
+        const excludeIds = Array.from(subjectSelectedSubjects.keys()).join(',');
         const termIds = getCheckedTermIds();
 
-        fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeIds}&term_ids=${termIds}`, {
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                'Accept': 'application/json'
-            }
+        fetch(`{{ url('api/mock-subject-classes/search') }}?q=${encodeURIComponent(query)}&exclude_ids=${excludeIds}&term_ids=${termIds}`, {
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
         })
         .then(res => res.json())
         .then(response => {
             loadingDiv.style.display = 'none';
             if (!response.success) {
-                resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
+                resultsDiv.innerHTML = `<div class="text-danger p-3">${response.message || 'Search failed'}</div>`;
                 resultsDiv.style.display = 'block';
                 return;
             }
             const data = response.data;
             if (data.length === 0) {
-                resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
+                resultsDiv.innerHTML = '<div class="text-muted p-3">No results found</div>';
                 resultsDiv.style.display = 'block';
                 return;
             }
             resultsDiv.innerHTML = data.map(item => {
-                const termColorClass = getTermColorClass(item.termid);
-                const termBgClass = getTermBgClass(item.termid);
+                const termBorder = getTermBorderClass(item.termid);
                 return `
-                    <div class="list-group-item subject-search-item ${termBgClass}" data-id="${item.id}">
+                    <div class="subject-search-item ${termBorder}" data-id="${item.id}">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="fw-bold">
-                                    ${escapeHtml(item.subjectname)}
-                                    ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
-                                </div>
+                                <div class="fw-bold">${escapeHtml(item.subjectname)} ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}</div>
                                 <div class="small text-muted mt-1">
-                                    <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
-                                    <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
-                                    <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
-                                    <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
+                                    <i class="ri-group-line me-1"></i>Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
+                                    <i class="ri-user-line me-1"></i>Teacher: ${escapeHtml(item.teachername)}<br>
+                                    <i class="ri-calendar-line me-1"></i>Session: ${escapeHtml(item.sessionname)}<br>
+                                    <i class="ri-calendar-event-line me-1"></i>Term: <strong>${escapeHtml(item.termname)}</strong>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-primary add-subject-btn">
-                                <i class="ri-add-line me-1"></i>Add
-                            </button>
+                            <button type="button" class="btn btn-sm btn-primary add-subject-btn"><i class="ri-add-line"></i></button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
             resultsDiv.style.display = 'block';
         })
-        .catch(error => {
-            console.error('Search error:', error);
+        .catch(() => {
             loadingDiv.style.display = 'none';
-            resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
+            resultsDiv.innerHTML = '<div class="text-danger p-3">Network error</div>';
             resultsDiv.style.display = 'block';
         });
     }
 
     if (searchInput) {
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('input', function () {
             const query = this.value.trim();
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => runMockAddSearch(query), 500);
+            searchTimeout = setTimeout(() => runSearch(query), 400);
         });
     }
-
-    // NEW: re-run search when checked terms change, if there's already a query typed
     document.querySelectorAll('input[name="termid[]"]').forEach(cb => {
         cb.addEventListener('change', () => {
-            const query = searchInput.value.trim();
-            if (query.length >= 2) {
-                clearTimeout(searchTimeout);
-                runMockAddSearch(query);
-            }
+            const q = searchInput.value.trim();
+            if (q.length >= 2) { clearTimeout(searchTimeout); runSearch(q); }
         });
     });
-
     if (clearSearchBtn) {
         clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            resultsDiv.style.display = 'none';
-            clearSearchBtn.style.display = 'none';
+            searchInput.value = ''; resultsDiv.style.display = 'none'; clearSearchBtn.style.display = 'none';
         });
     }
 
-    // Add subject handler
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.add-subject-btn')) {
-            const btn = e.target.closest('.add-subject-btn');
-            const item = btn.closest('.subject-search-item');
-            if (item) {
-                const id = item.dataset.id;
-                const name = item.querySelector('.fw-bold')?.innerText || '';
-                if (!mockSelectedSubjects.has(id)) {
-                    const detailsHtml = item.querySelector('.small')?.innerHTML || '';
-                    mockSelectedSubjects.set(id, { id, name, detailsHtml });
-                    updateMockSelectedDisplay();
-                    item.remove();
-                    showMockTempMessage('Subject added', 'success');
-                    if (resultsDiv.children.length === 0) {
-                        resultsDiv.style.display = 'none';
-                        searchInput.value = '';
-                        clearSearchBtn.style.display = 'none';
-                    }
-                } else {
-                    showMockTempMessage('Already selected', 'warning');
-                }
-            }
-        }
-    });
-
-    // Clear all button
-    const clearAllBtn = document.getElementById('mockClearAllSelectedBtn');
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', () => {
-            if (confirm('Clear all selected subjects?')) {
-                mockSelectedSubjects.clear();
-                updateMockSelectedDisplay();
-            }
-        });
-    }
-
-    // Form submission
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitMockAddForm();
-    });
-
-    // Reset on modal close
-    document.getElementById('addMockSubjectVettingModal')?.addEventListener('hidden.bs.modal', () => {
-        form.reset();
-        mockSelectedSubjects.clear();
-        updateMockSelectedDisplay();
-        if (searchInput) searchInput.value = '';
-        if (resultsDiv) resultsDiv.style.display = 'none';
-        const errorEl = document.getElementById('mock-alert-error-msg');
-        if (errorEl) errorEl.classList.add('d-none');
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('#mock-userid').val('').trigger('change');
-        }
-    });
-}
-function updateMockSelectedDisplay() {
-    const container = document.getElementById('mockSelectedSubjectsContainer');
-    const countSpan = document.getElementById('mockSelectedCount');
-    const hiddenInput = document.getElementById('mockSelectedSubjectIds');
-    const clearAllBtn = document.getElementById('mockClearAllSelectedBtn');
-    const count = mockSelectedSubjects.size;
-
-    if (countSpan) countSpan.textContent = count;
-    if (hiddenInput) hiddenInput.value = Array.from(mockSelectedSubjects.keys()).join(',');
-    if (clearAllBtn) clearAllBtn.style.display = count > 0 ? 'block' : 'none';
-
-    if (count === 0) {
-        if (container) container.innerHTML = '<div class="text-center text-muted py-3">No subjects selected</div>';
-        return;
-    }
-
-    let html = '';
-    for (let [id, subject] of mockSelectedSubjects) {
-        html += `
-            <div class="selected-subject-item d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded">
-                <div>
-                    <strong>${escapeHtml(subject.name)}</strong>
-                    <div class="small">${subject.detailsHtml || ''}</div>
-                </div>
-                <button type="button" class="btn btn-sm btn-link text-danger remove-subject-btn" data-id="${id}">
-                    <i class="ri-close-line"></i>
-                </button>
-            </div>
-        `;
-    }
-    if (container) container.innerHTML = html;
-
-    document.querySelectorAll('.remove-subject-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
-            mockSelectedSubjects.delete(id);
-            updateMockSelectedDisplay();
-            showMockTempMessage('Subject removed', 'info');
-        });
-    });
-}
-
-function submitMockAddForm() {
-    const form = document.getElementById('add-mocksubjectvetting-form');
-    const errorEl = document.getElementById('mock-alert-error-msg');
-    const submitBtn = document.getElementById('mock-add-btn');
-
-    const formData = new FormData(form);
-    const selectedIds = Array.from(mockSelectedSubjects.keys());
-
-    if (!formData.get('userid')) {
-        showMockError(errorEl, 'Please select a vetting staff member.');
-        return;
-    }
-    if (!formData.get('sessionid')) {
-        showMockError(errorEl, 'Please select a session.');
-        return;
-    }
-    const terms = formData.getAll('termid[]');
-    if (terms.length === 0) {
-        showMockError(errorEl, 'Please select at least one term.');
-        return;
-    }
-    if (selectedIds.length === 0) {
-        showMockError(errorEl, 'Please select at least one subject-class assignment.');
-        return;
-    }
-
-    formData.delete('subjectclassid[]');
-    selectedIds.forEach(id => {
-        formData.append('subjectclassid[]', id);
-    });
-
-    if (errorEl) errorEl.classList.add('d-none');
-    if (submitBtn) submitBtn.disabled = true;
-
-    const actionUrl = form.getAttribute('action');
-
-    fetch(actionUrl, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-            'Accept': 'application/json'
-        },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addMockSubjectVettingModal'));
-            if (modal) modal.hide();
-            showMockToast(data.message || 'Assignment(s) added successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            let msg = data.message || 'An error occurred';
-            if (data.errors) {
-                msg = Object.values(data.errors).flat().join('<br>');
-            }
-            showMockError(errorEl, msg);
-        }
-    })
-    .catch(error => {
-        console.error('Submit error:', error);
-        showMockError(errorEl, 'Network error. Please try again.');
-    })
-    .finally(() => {
-        if (submitBtn) submitBtn.disabled = false;
-    });
-}
-
-// ========== EDIT FORM WITH AJAX SUBJECT SEARCH ==========
-function initializeMockEditForm() {
-    document.querySelector('#kt_mock_subject_vetting_table tbody')?.addEventListener('click', function(e) {
-        const btn = e.target.closest('.edit-item-btn');
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.add-subject-btn');
         if (!btn) return;
-        const row = btn.closest('tr');
-        if (row) populateMockEditModal(row);
+        const item = btn.closest('.subject-search-item');
+        if (!item) return;
+        const id = item.dataset.id;
+        const name = item.querySelector('.fw-bold')?.innerText || '';
+        if (subjectSelectedSubjects.has(id)) {
+            toast('warning', 'Already selected', '');
+            return;
+        }
+        const detailsHtml = item.querySelector('.small')?.innerHTML || '';
+        subjectSelectedSubjects.set(id, { id, name, detailsHtml });
+        updateSelectedDisplay();
+        item.remove();
+        if (resultsDiv.children.length === 0) {
+            resultsDiv.style.display = 'none'; searchInput.value = ''; clearSearchBtn.style.display = 'none';
+        }
     });
 
-    const form = document.getElementById('edit-mocksubjectvetting-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitMockEditForm();
+    function updateSelectedDisplay() {
+        const container = document.getElementById('mockSelectedSubjectsContainer');
+        const countSpan = document.getElementById('mockSelectedCount');
+        const clearAllBtn = document.getElementById('mockClearAllSelectedBtn');
+        const count = subjectSelectedSubjects.size;
+        countSpan.textContent = count;
+        clearAllBtn.style.display = count > 0 ? 'block' : 'none';
+
+        if (count === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">No subjects selected</div>';
+            return;
+        }
+        let html = '';
+        for (let [id, s] of subjectSelectedSubjects) {
+            html += `
+                <div class="selected-subject-item d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <strong>${escapeHtml(s.name)}</strong>
+                        <div class="small text-muted">${s.detailsHtml || ''}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-danger remove-subject-btn" data-id="${id}">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>`;
+        }
+        container.innerHTML = html;
+        container.querySelectorAll('.remove-subject-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                subjectSelectedSubjects.delete(btn.dataset.id);
+                updateSelectedDisplay();
+            });
         });
     }
 
-    // Initialize edit modal search
-    initializeMockEditSubjectSearch();
-}
+    document.getElementById('mockClearAllSelectedBtn')?.addEventListener('click', () => {
+        if (confirm('Clear all selected subjects?')) {
+            subjectSelectedSubjects.clear();
+            updateSelectedDisplay();
+        }
+    });
 
-function initializeMockEditSubjectSearch() {
-    const searchInput = document.getElementById('mockEditSubjectSearchInput');
-    const resultsDiv = document.getElementById('mockEditSearchResults');
-    const loadingDiv = document.getElementById('mockEditSearchLoading');
-    const clearSearchBtn = document.getElementById('mockEditClearSearchBtn');
-    let searchTimeout;
+    $('#createBtn').on('click', function () {
+        document.getElementById('add-mocksubjectvetting-form').reset();
+        subjectSelectedSubjects.clear();
+        updateSelectedDisplay();
+        $('#mockSubjectSearchInput').val('');
+        $('#mockSearchResults').hide();
+        $('#mock-alert-error-msg').addClass('d-none').html('');
+        new bootstrap.Modal(document.getElementById('addMockSubjectVettingModal')).show();
+    });
 
-    if (!searchInput) return;
+    document.getElementById('addMockSubjectVettingModal')?.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('add-mocksubjectvetting-form').reset();
+        subjectSelectedSubjects.clear();
+        updateSelectedDisplay();
+        $('#mockSubjectSearchInput').val('');
+        $('#mockSearchResults').hide();
+        $('#mock-alert-error-msg').addClass('d-none').html('');
+    });
+
+    $('#add-mocksubjectvetting-form').on('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const errorEl = document.getElementById('mock-alert-error-msg');
+        const $btn = $('#mock-add-btn');
+
+        if (!formData.get('userid'))         { showErr(errorEl, 'Please select a vetting staff member.'); return; }
+        if (!formData.get('sessionid'))      { showErr(errorEl, 'Please select a session.'); return; }
+        if (formData.getAll('termid[]').length === 0) { showErr(errorEl, 'Please select at least one term.'); return; }
+        if (subjectSelectedSubjects.size === 0)       { showErr(errorEl, 'Please select at least one subject-class.'); return; }
+
+        formData.delete('subjectclassid[]');
+        Array.from(subjectSelectedSubjects.keys()).forEach(id => formData.append('subjectclassid[]', id));
+
+        $(errorEl).addClass('d-none').html('');
+        btnLoad($btn, 'Adding…');
+
+        $.ajax({
+            url: '{{ route("mocksubjectvetting.store") }}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            success: function (res) {
+                if (res.success) {
+                    $('#addMockSubjectVettingModal').modal('hide');
+                    toast('success', 'Added!', res.message);
+                    table.ajax.reload(); loadStats();
+                } else {
+                    btnReset($btn);
+                    showErr(errorEl, res.message || (res.errors && Object.values(res.errors).flat()[0]) || 'Failed.');
+                }
+            },
+            error: function (xhr) {
+                btnReset($btn);
+                const j = xhr.responseJSON;
+                const m = (j && j.message) || (j && j.errors && Object.values(j.errors).flat().join(', ')) || 'An error occurred.';
+                showErr(errorEl, m);
+            }
+        });
+    });
+
+    // =========================================================================
+    // EDIT MODAL
+    // =========================================================================
+    let editSelectedSubject = null;
+    const editSearchInput = document.getElementById('mockEditSubjectSearchInput');
+    const editResultsDiv  = document.getElementById('mockEditSearchResults');
+    const editLoadingDiv  = document.getElementById('mockEditSearchLoading');
+    const editClearSearchBtn = document.getElementById('mockEditClearSearchBtn');
+    let editSearchTimeout;
 
     function getSelectedEditTermId() {
         const checked = document.querySelector('input[name="termid"]:checked');
         return checked ? checked.value : '';
     }
 
-    function runMockEditSearch(query) {
+    function runEditSearch(query) {
         if (query.length < 2) {
-            resultsDiv.style.display = 'none';
-            clearSearchBtn.style.display = 'none';
+            editResultsDiv.style.display = 'none';
+            editClearSearchBtn.style.display = 'none';
             return;
         }
-        clearSearchBtn.style.display = 'block';
-        loadingDiv.style.display = 'block';
-        resultsDiv.style.display = 'none';
+        editClearSearchBtn.style.display = 'block';
+        editLoadingDiv.style.display = 'block';
+        editResultsDiv.style.display = 'none';
 
-        const excludeId = mockEditSelectedSubject ? mockEditSelectedSubject.id : '';
+        const excludeId = editSelectedSubject ? editSelectedSubject.id : '';
         const termId = getSelectedEditTermId();
 
-        fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeId}&term_ids=${termId}`, {
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                'Accept': 'application/json'
-            }
+        fetch(`{{ url('api/mock-subject-classes/search') }}?q=${encodeURIComponent(query)}&exclude_ids=${excludeId}&term_ids=${termId}`, {
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
         })
         .then(res => res.json())
         .then(response => {
-            loadingDiv.style.display = 'none';
+            editLoadingDiv.style.display = 'none';
             if (!response.success) {
-                resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
-                resultsDiv.style.display = 'block';
+                editResultsDiv.innerHTML = `<div class="text-danger p-3">${response.message || 'Search failed'}</div>`;
+                editResultsDiv.style.display = 'block';
                 return;
             }
             const data = response.data;
             if (data.length === 0) {
-                resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
-                resultsDiv.style.display = 'block';
+                editResultsDiv.innerHTML = '<div class="text-muted p-3">No results found</div>';
+                editResultsDiv.style.display = 'block';
                 return;
             }
-            resultsDiv.innerHTML = data.map(item => {
-                const termColorClass = getTermColorClass(item.termid);
-                const termBgClass = getTermBgClass(item.termid);
+            editResultsDiv.innerHTML = data.map(item => {
+                const termBorder = getTermBorderClass(item.termid);
                 return `
-                    <div class="list-group-item edit-subject-search-item ${termBgClass}" data-id="${item.id}"
-                         data-name="${escapeHtml(item.subjectname)}"
-                         data-details='${JSON.stringify(item)}'>
+                    <div class="subject-search-item ${termBorder}" data-id="${item.id}" data-details='${JSON.stringify(item).replace(/'/g, "&apos;")}'>
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <div class="fw-bold">
-                                    ${escapeHtml(item.subjectname)}
-                                    ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
-                                </div>
+                                <div class="fw-bold">${escapeHtml(item.subjectname)} ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}</div>
                                 <div class="small text-muted mt-1">
-                                    <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
-                                    <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
-                                    <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
-                                    <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
+                                    <i class="ri-group-line me-1"></i>Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
+                                    <i class="ri-user-line me-1"></i>Teacher: ${escapeHtml(item.teachername)}<br>
+                                    <i class="ri-calendar-line me-1"></i>Session: ${escapeHtml(item.sessionname)}<br>
+                                    <i class="ri-calendar-event-line me-1"></i>Term: <strong>${escapeHtml(item.termname)}</strong>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-primary edit-select-subject-btn">
-                                <i class="ri-check-line me-1"></i>Select
-                            </button>
+                            <button type="button" class="btn btn-sm btn-primary edit-select-subject-btn"><i class="ri-check-line"></i></button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
-            resultsDiv.style.display = 'block';
+            editResultsDiv.style.display = 'block';
         })
-        .catch(error => {
-            console.error('Search error:', error);
-            loadingDiv.style.display = 'none';
-            resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
-            resultsDiv.style.display = 'block';
+        .catch(() => {
+            editLoadingDiv.style.display = 'none';
+            editResultsDiv.innerHTML = '<div class="text-danger p-3">Network error</div>';
+            editResultsDiv.style.display = 'block';
         });
     }
 
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => runMockEditSearch(query), 500);
-    });
-
-    // NEW: re-run search when the selected term radio changes, if there's already a query typed
+    if (editSearchInput) {
+        editSearchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+            clearTimeout(editSearchTimeout);
+            editSearchTimeout = setTimeout(() => runEditSearch(query), 400);
+        });
+    }
     document.querySelectorAll('.edit-term-checkbox').forEach(radio => {
         radio.addEventListener('change', () => {
-            const query = searchInput.value.trim();
-            if (query.length >= 2) {
-                clearTimeout(searchTimeout);
-                runMockEditSearch(query);
-            }
+            const q = editSearchInput.value.trim();
+            if (q.length >= 2) { clearTimeout(editSearchTimeout); runEditSearch(q); }
         });
     });
-
-    if (clearSearchBtn) {
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            resultsDiv.style.display = 'none';
-            clearSearchBtn.style.display = 'none';
+    if (editClearSearchBtn) {
+        editClearSearchBtn.addEventListener('click', () => {
+            editSearchInput.value = ''; editResultsDiv.style.display = 'none'; editClearSearchBtn.style.display = 'none';
         });
     }
 
-    // Handle subject selection in edit modal
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.edit-select-subject-btn')) {
-            const btn = e.target.closest('.edit-select-subject-btn');
-            const item = btn.closest('.edit-subject-search-item');
-            if (item) {
-                const id = item.dataset.id;
-                const name = item.dataset.name;
-                const details = JSON.parse(item.dataset.details);
-                mockEditSelectedSubject = { id, name, details };
-                updateMockEditSelectedDisplay();
-                resultsDiv.style.display = 'none';
-                searchInput.value = '';
-                clearSearchBtn.style.display = 'none';
-                showMockTempMessage('Subject selected', 'success');
-            }
-        }
-    });
-
-    // Clear selection button
-    const clearSelectedBtn = document.getElementById('mockEditClearSelectedBtn');
-    if (clearSelectedBtn) {
-        clearSelectedBtn.addEventListener('click', () => {
-            mockEditSelectedSubject = null;
-            updateMockEditSelectedDisplay();
-            showMockTempMessage('Selection cleared', 'info');
-        });
-    }
-}
-function updateMockEditSelectedDisplay() {
-    const container = document.getElementById('mockEditSelectedSubjectContainer');
-    const hiddenInput = document.getElementById('mockEditSelectedSubjectId');
-    const clearBtn = document.getElementById('mockEditClearSelectedBtn');
-
-    if (!mockEditSelectedSubject) {
-        if (container) container.innerHTML = '<div class="text-center text-muted py-3">No subject selected</div>';
-        if (hiddenInput) hiddenInput.value = '';
-        if (clearBtn) clearBtn.style.display = 'none';
-        return;
-    }
-
-    const termColorClass = getTermColorClass(mockEditSelectedSubject.details.termid);
-    const termBgClass = getTermBgClass(mockEditSelectedSubject.details.termid);
-
-    if (hiddenInput) hiddenInput.value = mockEditSelectedSubject.id;
-    if (clearBtn) clearBtn.style.display = 'block';
-
-    const html = `
-        <div class="selected-subject-item p-2 bg-light rounded ${termBgClass}">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>${escapeHtml(mockEditSelectedSubject.name)}</strong>
-                    <div class="small text-muted mt-1">
-                        <i class="ri-group-line me-1"></i> Class: ${escapeHtml(mockEditSelectedSubject.details.sclass)} ${mockEditSelectedSubject.details.schoolarm ? `(${escapeHtml(mockEditSelectedSubject.details.schoolarm)})` : ''}<br>
-                        <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(mockEditSelectedSubject.details.teachername)}<br>
-                        <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(mockEditSelectedSubject.details.sessionname)}<br>
-                        <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(mockEditSelectedSubject.details.termname)}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    if (container) container.innerHTML = html;
-}
-
-function populateMockEditModal(row) {
-    const id = row.getAttribute('data-id');
-    const vettingUserId = row.getAttribute('data-vetting-userid') || '';
-    const termid = row.getAttribute('data-term') || '';
-    const sessionid = row.getAttribute('data-session') || '';
-    const subjectclassid = row.getAttribute('data-subjectclassid') || '';
-    const status = row.getAttribute('data-status') || 'pending';
-    const subjectname = row.querySelector('.subjectname')?.innerText || '';
-    const sclass = row.querySelector('.sclass')?.innerText || '';
-    const schoolarm = row.querySelector('.schoolarm')?.innerText || '';
-    const teachername = row.querySelector('.teachername')?.innerText || '';
-    const termname = row.querySelector('.termname')?.innerText || '';
-    const sessionname = row.querySelector('.sessionname')?.innerText || '';
-
-    document.getElementById('mock-edit-id-field').value = id;
-    document.getElementById('mock-edit-userid').value = vettingUserId;
-    document.getElementById('mock-edit-sessionid').value = sessionid;
-    document.getElementById('mock-edit-status').value = status;
-
-    // Set term radio
-    const termRadio = document.querySelector(`input[name="termid"][value="${termid}"]`);
-    if (termRadio) termRadio.checked = true;
-
-    // Set selected subject for edit
-    mockEditSelectedSubject = {
-        id: subjectclassid,
-        name: subjectname,
-        details: {
-            subjectname: subjectname,
-            sclass: sclass,
-            schoolarm: schoolarm,
-            teachername: teachername,
-            termname: termname,
-            termid: termid,
-            sessionname: sessionname
-        }
-    };
-    updateMockEditSelectedDisplay();
-
-    // Set form action
-    const form = document.getElementById('edit-mocksubjectvetting-form');
-    form.action = `/mocksubjectvetting/${id}`;
-
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#mock-edit-userid').trigger('change');
-    }
-
-    const modal = new bootstrap.Modal(document.getElementById('editMockModal'));
-    modal.show();
-}
-
-function submitMockEditForm() {
-    const id = document.getElementById('mock-edit-id-field').value;
-    const errorEl = document.getElementById('mock-edit-alert-error-msg');
-    const submitBtn = document.getElementById('mock-edit-btn');
-    const form = document.getElementById('edit-mocksubjectvetting-form');
-    const formData = new FormData(form);
-
-    if (!formData.get('userid')) {
-        showMockError(errorEl, 'Please select a vetting staff member.');
-        return;
-    }
-    if (!formData.get('sessionid')) {
-        showMockError(errorEl, 'Please select a session.');
-        return;
-    }
-    if (!formData.get('termid')) {
-        showMockError(errorEl, 'Please select a term.');
-        return;
-    }
-    if (!mockEditSelectedSubject) {
-        showMockError(errorEl, 'Please select a subject-class assignment.');
-        return;
-    }
-
-    // Ensure subjectclassid is set
-    formData.set('subjectclassid', mockEditSelectedSubject.id);
-
-    if (errorEl) errorEl.classList.add('d-none');
-    if (submitBtn) submitBtn.disabled = true;
-
-    fetch(`/mocksubjectvetting/${id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-            'Accept': 'application/json',
-            'X-HTTP-Method-Override': 'PUT'
-        },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editMockModal'));
-            if (modal) modal.hide();
-            showMockToast('Assignment updated successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            let msg = data.message || 'Update failed';
-            if (data.errors) msg = Object.values(data.errors).flat().join('<br>');
-            if (errorEl) {
-                errorEl.innerHTML = msg;
-                errorEl.classList.remove('d-none');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Update error:', error);
-        if (errorEl) {
-            errorEl.innerHTML = 'Network error. Please try again.';
-            errorEl.classList.remove('d-none');
-        }
-    })
-    .finally(() => {
-        if (submitBtn) submitBtn.disabled = false;
-    });
-}
-
-// Reset edit modal on close
-document.getElementById('editMockModal')?.addEventListener('hidden.bs.modal', () => {
-    mockEditSelectedSubject = null;
-    updateMockEditSelectedDisplay();
-    const searchInput = document.getElementById('mockEditSubjectSearchInput');
-    const resultsDiv = document.getElementById('mockEditSearchResults');
-    const errorEl = document.getElementById('mock-edit-alert-error-msg');
-    if (searchInput) searchInput.value = '';
-    if (resultsDiv) resultsDiv.style.display = 'none';
-    if (errorEl) errorEl.classList.add('d-none');
-});
-
-// ========== DELETE ==========
-function initializeMockDelete() {
-    document.querySelector('#kt_mock_subject_vetting_table tbody')?.addEventListener('click', function(e) {
-        const btn = e.target.closest('.remove-item-btn');
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.edit-select-subject-btn');
         if (!btn) return;
-        const row = btn.closest('tr');
-        if (row) {
-            mockDeleteId = row.getAttribute('data-id');
-            const modal = new bootstrap.Modal(document.getElementById('deleteRecordModal'));
-            modal.show();
+        const item = btn.closest('.subject-search-item');
+        if (!item) return;
+        const details = JSON.parse(item.dataset.details.replace(/&apos;/g, "'"));
+        editSelectedSubject = { id: details.id, name: details.subjectname, details: details };
+        updateEditSelectedDisplay();
+        editResultsDiv.style.display = 'none';
+        editSearchInput.value = '';
+        editClearSearchBtn.style.display = 'none';
+    });
+
+    function updateEditSelectedDisplay() {
+        const container = document.getElementById('mockEditSelectedSubjectContainer');
+        const clearBtn = document.getElementById('mockEditClearSelectedBtn');
+        if (!editSelectedSubject) {
+            container.innerHTML = '<div class="text-center text-muted py-3">No subject selected</div>';
+            clearBtn.style.display = 'none';
+            return;
         }
-    });
-
-    document.getElementById('delete-record')?.addEventListener('click', function() {
-        if (!mockDeleteId) return;
-        this.disabled = true;
-
-        fetch(`/mocksubjectvetting/${mockDeleteId}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRecordModal'));
-            if (modal) modal.hide();
-            if (data.success) {
-                showMockToast('Assignment deleted successfully!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showMockToast(data.message || 'Delete failed', 'danger');
-            }
-        })
-        .catch(error => {
-            console.error('Delete error:', error);
-            showMockToast('Network error', 'danger');
-        })
-        .finally(() => { this.disabled = false; mockDeleteId = null; });
-    });
-}
-
-// ========== BULK DELETE ==========
-function initializeMockBulkDelete() {
-    const checkAll = document.getElementById('mockCheckAll');
-    if (checkAll) {
-        checkAll.addEventListener('change', function() {
-            document.querySelectorAll('input[name="chk_child"]').forEach(cb => cb.checked = this.checked);
-            toggleMockRemoveBtn();
-        });
+        clearBtn.style.display = 'block';
+        container.innerHTML = `
+            <div class="selected-subject-item">
+                <strong>${escapeHtml(editSelectedSubject.name)}</strong>
+                <div class="small text-muted mt-1">
+                    <i class="ri-group-line me-1"></i>Class: ${escapeHtml(editSelectedSubject.details.sclass)} ${editSelectedSubject.details.schoolarm ? `(${escapeHtml(editSelectedSubject.details.schoolarm)})` : ''}<br>
+                    <i class="ri-user-line me-1"></i>Teacher: ${escapeHtml(editSelectedSubject.details.teachername)}<br>
+                    <i class="ri-calendar-line me-1"></i>Session: ${escapeHtml(editSelectedSubject.details.sessionname)}<br>
+                    <i class="ri-calendar-event-line me-1"></i>Term: <strong>${escapeHtml(editSelectedSubject.details.termname)}</strong>
+                </div>
+            </div>`;
     }
-    document.querySelector('#kt_mock_subject_vetting_table tbody')?.addEventListener('change', function(e) {
-        if (e.target.name === 'chk_child') toggleMockRemoveBtn();
+
+    document.getElementById('mockEditClearSelectedBtn')?.addEventListener('click', () => {
+        editSelectedSubject = null;
+        updateEditSelectedDisplay();
     });
-}
 
-function toggleMockRemoveBtn() {
-    const anyChecked = document.querySelectorAll('input[name="chk_child"]:checked').length > 0;
-    const removeBtn = document.getElementById('remove-actions');
-    if (removeBtn) removeBtn.classList.toggle('d-none', !anyChecked);
-}
+    $(document).on('click', '.edit-sv-btn', function () {
+        const $b = $(this);
+        $('#mock-edit-id-field').val($b.data('id'));
+        $('#mock-edit-userid').val($b.data('vetting-userid'));
+        $('#mock-edit-sessionid').val($b.data('sessionid'));
+        $('#mock-edit-status').val($b.data('status'));
 
-window.deleteMultiple = function() {
-    const ids = Array.from(document.querySelectorAll('input[name="chk_child"]:checked')).map(cb => cb.value);
-    if (!ids.length) return;
-    if (!confirm(`Delete ${ids.length} record(s)?`)) return;
+        document.querySelectorAll('.edit-term-checkbox').forEach(r => r.checked = false);
+        const termRadio = document.querySelector(`.edit-term-checkbox[value="${$b.data('termid')}"]`);
+        if (termRadio) termRadio.checked = true;
 
-    fetch('/mocksubjectvetting/bulk-delete', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ ids })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showMockToast(`${ids.length} record(s) deleted.`, 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showMockToast(data.message || 'Delete failed', 'danger');
-        }
-    })
-    .catch(error => {
-        console.error('Bulk delete error:', error);
-        showMockToast('Network error', 'danger');
+        editSelectedSubject = {
+            id: $b.data('subjectclassid'),
+            name: $b.data('subjectname'),
+            details: {
+                id: $b.data('subjectclassid'),
+                subjectname: $b.data('subjectname'),
+                sclass: $b.data('sclass'),
+                schoolarm: $b.data('arm'),
+                teachername: $b.data('teachername'),
+                termname: $b.data('termname'),
+                termid: $b.data('termid'),
+                sessionname: $b.data('sessionname'),
+            }
+        };
+        updateEditSelectedDisplay();
+
+        $('#mock-edit-alert-error-msg').addClass('d-none').html('');
+        btnReset($('#mock-edit-btn'));
+        new bootstrap.Modal(document.getElementById('editMockModal')).show();
     });
-};
 
-// ========== HELPER FUNCTIONS ==========
-function showMockError(el, message) {
-    if (!el) return;
-    el.innerHTML = message;
-    el.classList.remove('d-none');
-    setTimeout(() => el.classList.add('d-none'), 5000);
-}
+    document.getElementById('editMockModal')?.addEventListener('hidden.bs.modal', () => {
+        editSelectedSubject = null;
+        updateEditSelectedDisplay();
+        editSearchInput.value = '';
+        editResultsDiv.style.display = 'none';
+        $('#mock-edit-alert-error-msg').addClass('d-none').html('');
+    });
 
-function showMockToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    toast.style.zIndex = 9999;
-    toast.style.minWidth = '280px';
-    toast.style.maxWidth = '400px';
-    toast.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
+    $('#edit-mocksubjectvetting-form').on('submit', function (e) {
+        e.preventDefault();
+        const id = $('#mock-edit-id-field').val();
+        const formData = new FormData(this);
+        const errorEl = document.getElementById('mock-edit-alert-error-msg');
+        const $btn = $('#mock-edit-btn');
 
-function showMockTempMessage(message, type = 'info') {
-    const div = document.createElement('div');
-    div.className = `alert alert-${type} alert-dismissible fade show position-fixed bottom-0 end-0 m-3`;
-    div.style.zIndex = 9999;
-    div.style.minWidth = '250px';
-    div.innerHTML = message;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 2000);
-}
+        if (!formData.get('userid'))    { showErr(errorEl, 'Please select a vetting staff member.'); return; }
+        if (!formData.get('sessionid')) { showErr(errorEl, 'Please select a session.'); return; }
+        if (!formData.get('termid'))    { showErr(errorEl, 'Please select a term.'); return; }
+        if (!editSelectedSubject)       { showErr(errorEl, 'Please select a subject-class.'); return; }
 
-function initializeMockSelect2() {
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#mock-userid').select2({
-            dropdownParent: $('#addMockSubjectVettingModal'),
-            placeholder: 'Select Staff',
-            width: '100%'
+        formData.set('subjectclassid', editSelectedSubject.id);
+        $(errorEl).addClass('d-none').html('');
+        btnLoad($btn, 'Updating…');
+
+        $.ajax({
+            url: '{{ url("mocksubjectvetting") }}/' + id,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF, 'X-HTTP-Method-Override': 'PUT' },
+            success: function (res) {
+                if (res.success) {
+                    $('#editMockModal').modal('hide');
+                    toast('success', 'Updated!', res.message);
+                    table.ajax.reload(); loadStats();
+                } else {
+                    btnReset($btn);
+                    showErr(errorEl, res.message || (res.errors && Object.values(res.errors).flat()[0]) || 'Failed.');
+                }
+            },
+            error: function (xhr) {
+                btnReset($btn);
+                const j = xhr.responseJSON;
+                const m = (j && j.message) || (j && j.errors && Object.values(j.errors).flat().join(', ')) || 'An error occurred.';
+                showErr(errorEl, m);
+            }
         });
-        $('#mock-edit-userid').select2({
-            dropdownParent: $('#editMockModal'),
-            placeholder: 'Select Staff',
-            width: '100%'
+    });
+
+    // =========================================================================
+    // DELETE
+    // =========================================================================
+    $(document).on('click', '.delete-sv-btn', function () {
+        deleteId = $(this).data('id');
+        btnReset($('#confirm-delete-btn'));
+        new bootstrap.Modal(document.getElementById('deleteRecordModal')).show();
+    });
+
+    $('#confirm-delete-btn').on('click', function () {
+        if (!deleteId) return;
+        const $b = $(this); btnLoad($b, 'Deleting…');
+        $.ajax({
+            url: '{{ url("mocksubjectvetting") }}/' + deleteId,
+            type: 'POST',
+            data: { _method: 'DELETE', _token: CSRF },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            success: function (res) {
+                $('#deleteRecordModal').modal('hide');
+                if (res.success) { toast('success', 'Deleted!', res.message); table.ajax.reload(); loadStats(); }
+                else { toast('error', 'Cannot Delete', res.message); }
+            },
+            error: function (xhr) {
+                $('#deleteRecordModal').modal('hide');
+                toast('error', 'Error', (xhr.responseJSON && xhr.responseJSON.message) || 'Failed.');
+            },
+            complete: function () { btnReset($b); deleteId = null; }
         });
+    });
+
+    function doBulk() {
+        const ids = $('.row-checkbox:checked').map(function () { return this.value; }).get();
+        if (!ids.length) { toast('warning', 'No Selection', 'Select at least one record.'); return; }
+        Swal.fire({
+            title: 'Delete ' + ids.length + ' record(s)?',
+            html: 'Related mock broadsheets will have their vetting fields cleared.',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#dc2626', confirmButtonText: 'Yes, delete!',
+            cancelButtonText: 'Cancel', reverseButtons: true, showLoaderOnConfirm: true,
+            preConfirm: function () {
+                return new Promise(function (resolve, reject) {
+                    PageLoader.show('Deleting…');
+                    $.ajax({
+                        url: '{{ route("mocksubjectvetting.bulkDelete") }}',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ ids: ids, _token: CSRF }),
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        success: function (res) { PageLoader.hide(); if (res.success) resolve(res); else reject(res.message); },
+                        error: function (xhr) { PageLoader.hide(); reject((xhr.responseJSON && xhr.responseJSON.message) || 'Error.'); }
+                    });
+                });
+            }
+        }).then(function (r) {
+            if (r.isConfirmed && r.value) {
+                toast('success', 'Deleted!', r.value.message);
+                table.ajax.reload(); loadStats();
+                $('#selectAll').prop('checked', false); updBulk();
+            }
+        }).catch(function (err) { toast('error', 'Failed', typeof err === 'string' ? err : 'Could not delete.'); });
     }
-}
+    $('#bulkDeleteBtn, #bulkDeleteBtn2').on('click', doBulk);
+
+    bindCB();
+});
 </script>
 @endsection

@@ -8,7 +8,14 @@ class MockSubjectVetting extends Model
 {
     protected $table = 'mock_subject_vettings';
     protected $primaryKey = 'id';
-    protected $fillable = ['userid', 'subjectclassId', 'termid', 'sessionid', 'status'];
+
+    protected $fillable = [
+        'userid',
+        'subjectclassid',
+        'termid',
+        'sessionid',
+        'status',
+    ];
 
     public function user()
     {
