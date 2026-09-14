@@ -878,10 +878,14 @@ Route::group(['middleware' => ['auth']], function () {
     });
     Route::resource('compulsorysubjectclass', CompulsorySubjectClassController::class);
 
+
     // ===================================================================
     // PRINCIPAL'S COMMENT
     // ===================================================================
+    Route::get('principalscomment/data',  [PrincipalsCommentController::class, 'data'])->name('principalscomment.data');
+    Route::get('principalscomment/stats', [PrincipalsCommentController::class, 'stats'])->name('principalscomment.stats');
     Route::resource('principalscomment', PrincipalsCommentController::class);
+
     Route::prefix('myprincipalscomment')->name('myprincipalscomment.')->group(function () {
         Route::get('/', [MyPrincipalsCommentController::class, 'index'])->name('index');
         Route::get('/broadsheet/{schoolclassid}/{sessionid}/{termid}', [MyPrincipalsCommentController::class, 'classBroadsheet'])->name('classbroadsheet');
