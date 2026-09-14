@@ -47,19 +47,27 @@ class SubjectController extends Controller
             return DataTables::of($subjects)
                 ->addIndexColumn()
 
-                // ── Search handlers for aliased columns ────────────────────
-                ->filterColumn('subject', function ($query, $keyword) {
-                    $query->where('subject.subject', 'LIKE', "%{$keyword}%");
-                })
-                ->filterColumn('subject_code', function ($query, $keyword) {
-                    $query->where('subject.subject_code', 'LIKE', "%{$keyword}%");
-                })
-                ->filterColumn('remark', function ($query, $keyword) {
-                    $query->where('subject.remark', 'LIKE', "%{$keyword}%");
-                })
-                ->filterColumn('formatted_date', function ($query, $keyword) {
-                    $query->whereRaw("DATE(subject.updated_at) LIKE ?", ["%{$keyword}%"]);
-                })
+                // ── Global search override ──────────────────────────────────
+                // The rendered columns (subject_info, code_info, remark_info,
+                // formatted_date) are computed/HTML columns, not real SQL
+                // columns — Yajra can't filter on them directly, and the
+                // filterColumn() names below never matched what the client
+                // actually sends for a global search. This closure fully
+                // replaces the global search box behavior so it runs against
+                // the real columns instead. Because this modifies the query
+                // before pagination, it searches the whole dataset, not just
+                // the rows on the current page.
+                ->filter(function ($query) use ($request) {
+                    $search = $request->input('search.value');
+                    if (!empty($search)) {
+                        $query->where(function ($q) use ($search) {
+                            $q->where('subject.subject', 'LIKE', "%{$search}%")
+                              ->orWhere('subject.subject_code', 'LIKE', "%{$search}%")
+                              ->orWhere('subject.remark', 'LIKE', "%{$search}%")
+                              ->orWhereRaw('DATE(subject.updated_at) LIKE ?', ["%{$search}%"]);
+                        });
+                    }
+                }, true)
 
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
