@@ -23,7 +23,7 @@ class SchoolClassController extends Controller
     }
 
     // =========================================================================
-    // INDEX
+    // INDEX — passes $arms and $classcategories as Collections
     // =========================================================================
 
     public function index(Request $request)
@@ -34,7 +34,11 @@ class SchoolClassController extends Controller
             $arms            = Schoolarm::orderBy('arm')->get();
             $classcategories = Classcategory::orderBy('category')->get();
 
-            return view('schoolclass.index', compact('arms', 'classcategories', 'pagetitle'));
+            return view('schoolclass.index', [
+                'pagetitle'       => $pagetitle,
+                'arms'            => $arms,
+                'classcategories' => $classcategories,
+            ]);
 
         } catch (\Exception $e) {
             Log::error('SchoolClass index error', ['error' => $e->getMessage()]);
@@ -43,7 +47,7 @@ class SchoolClassController extends Controller
     }
 
     // =========================================================================
-    // DATATABLE — returns ONE category per row (Project 1 FK model)
+    // DATATABLE
     // =========================================================================
 
     public function data(Request $request)
@@ -167,7 +171,7 @@ class SchoolClassController extends Controller
             $class = Schoolclass::findOrFail($id);
             return response()->json([
                 'success' => true,
-                'data' => [
+                'data'    => [
                     'id'              => $class->id,
                     'schoolclass'     => $class->schoolclass,
                     'arm_id'          => $class->arm,
@@ -387,7 +391,7 @@ class SchoolClassController extends Controller
     }
 
     // =========================================================================
-    // DESTROY (single)
+    // DESTROY
     // =========================================================================
 
     public function destroy($id)
@@ -410,10 +414,7 @@ class SchoolClassController extends Controller
             $class->delete();
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'School class deleted successfully!',
-            ], 200);
+            return response()->json(['success' => true, 'message' => 'School class deleted successfully!'], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -482,7 +483,7 @@ class SchoolClassController extends Controller
     }
 
     // =========================================================================
-    // LEGACY ALIASES (in case old route names still point here)
+    // LEGACY ALIASES
     // =========================================================================
 
     public function deleteschoolclass(Request $request)

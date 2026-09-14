@@ -19,17 +19,22 @@ class Schoolclass extends Model
         'description',
     ];
 
+    protected $casts = [
+        'arm'             => 'integer',
+        'classcategoryid' => 'integer',
+    ];
+
     // =========================================================================
     // RELATIONSHIPS
     // =========================================================================
 
-    /** Legacy FK (single) — used everywhere in Project 1 */
+    /** Single category via the FK (canonical for Project 1). */
     public function classcategory()
     {
         return $this->belongsTo(Classcategory::class, 'classcategoryid', 'id');
     }
 
-    /** Pivot-based (plural) — used by new P2-style code */
+    /** Pivot-based plural, kept for compatibility with any P2-style code. */
     public function classcategories()
     {
         return $this->belongsToMany(
@@ -57,15 +62,17 @@ class Schoolclass extends Model
     }
 
     // =========================================================================
-    // PROMOTION PASS AVERAGE
+    // PROMOTION PASS AVERAGE (pivot-backed)
     // =========================================================================
 
     public function getPromotionPassAverageAttribute()
     {
         if (!\Schema::hasTable('schoolclass_classcategory')) return null;
+
         $pivot = DB::table('schoolclass_classcategory')
             ->where('schoolclass_id', $this->id)
             ->first();
+
         return $pivot ? $pivot->promotion_pass_average : null;
     }
 
@@ -82,21 +89,21 @@ class Schoolclass extends Model
                 ->where('schoolclass_id', $this->id)
                 ->update([
                     'promotion_pass_average' => $value,
-                    'updated_at' => now(),
+                    'updated_at'             => now(),
                 ]);
         } elseif (!empty($this->classcategoryid)) {
             DB::table('schoolclass_classcategory')->insert([
-                'schoolclass_id' => $this->id,
-                'classcategory_id' => $this->classcategoryid,
+                'schoolclass_id'         => $this->id,
+                'classcategory_id'       => $this->classcategoryid,
                 'promotion_pass_average' => $value,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at'             => now(),
+                'updated_at'             => now(),
             ]);
         }
     }
 
     // =========================================================================
-    // CURRENT STUDENTS
+    // CURRENT STUDENTS (only if student_current_term exists)
     // =========================================================================
 
     public function studentCurrentTerms()

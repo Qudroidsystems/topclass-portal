@@ -157,15 +157,18 @@
                             <label for="create-select-all-arms-cb" class="mb-0">Select All Arms</label>
                         </div>
                         <div class="checkbox-scroll" id="create-arm-list">
-                            @foreach ($arms as $arm)
+                            @forelse ((array) ($arms ?? []) as $arm)
                                 <div class="form-check">
                                     <input class="form-check-input create-arm-cb" type="checkbox"
-                                           value="{{ $arm->id }}" id="create-arm-{{ $arm->id }}">
-                                    <label class="form-check-label" for="create-arm-{{ $arm->id }}">
-                                        {{ $arm->arm }}
+                                           value="{{ data_get($arm, 'id') }}"
+                                           id="create-arm-{{ data_get($arm, 'id') }}">
+                                    <label class="form-check-label" for="create-arm-{{ data_get($arm, 'id') }}">
+                                        {{ data_get($arm, 'arm') }}
                                     </label>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div class="text-muted small p-2">No arms configured.</div>
+                            @endforelse
                         </div>
                         <small class="text-muted mt-1 d-block"><span id="create-arm-count">0</span> arm(s) selected</small>
                     </div>
@@ -173,17 +176,19 @@
                     <div class="mb-3">
                         <label class="form-label">Select Category <span class="text-danger">*</span></label>
                         <div class="inline-check-group" id="create-category-radios">
-                            @foreach ($classcategories as $category)
+                            @forelse ((array) ($classcategories ?? []) as $category)
                                 <div class="form-check">
                                     <input class="form-check-input create-category-rb" type="radio"
                                            name="create_classcategoryid"
-                                           id="create-category-{{ $category->id }}"
-                                           value="{{ $category->id }}">
-                                    <label class="form-check-label" for="create-category-{{ $category->id }}">
-                                        {{ $category->category }}
+                                           id="create-category-{{ data_get($category, 'id') }}"
+                                           value="{{ data_get($category, 'id') }}">
+                                    <label class="form-check-label" for="create-category-{{ data_get($category, 'id') }}">
+                                        {{ data_get($category, 'category') }}
                                     </label>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div class="text-muted small p-2">No categories configured.</div>
+                            @endforelse
                         </div>
                     </div>
 
@@ -220,33 +225,37 @@
                     <div class="mb-3">
                         <label class="form-label">Select Arm <span class="text-danger">*</span></label>
                         <div class="inline-check-group" id="edit-arm-radios">
-                            @foreach ($arms as $arm)
+                            @forelse ((array) ($arms ?? []) as $arm)
                                 <div class="form-check">
                                     <input class="form-check-input edit-arm-rb" type="radio"
-                                           name="edit_arm_id" id="edit-arm-{{ $arm->id }}"
-                                           value="{{ $arm->id }}">
-                                    <label class="form-check-label" for="edit-arm-{{ $arm->id }}">
-                                        {{ $arm->arm }}
+                                           name="edit_arm_id" id="edit-arm-{{ data_get($arm, 'id') }}"
+                                           value="{{ data_get($arm, 'id') }}">
+                                    <label class="form-check-label" for="edit-arm-{{ data_get($arm, 'id') }}">
+                                        {{ data_get($arm, 'arm') }}
                                     </label>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div class="text-muted small p-2">No arms configured.</div>
+                            @endforelse
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Select Category <span class="text-danger">*</span></label>
                         <div class="inline-check-group" id="edit-category-radios">
-                            @foreach ($classcategories as $category)
+                            @forelse ((array) ($classcategories ?? []) as $category)
                                 <div class="form-check">
                                     <input class="form-check-input edit-category-rb" type="radio"
                                            name="edit_classcategoryid"
-                                           id="edit-category-{{ $category->id }}"
-                                           value="{{ $category->id }}">
-                                    <label class="form-check-label" for="edit-category-{{ $category->id }}">
-                                        {{ $category->category }}
+                                           id="edit-category-{{ data_get($category, 'id') }}"
+                                           value="{{ data_get($category, 'id') }}">
+                                    <label class="form-check-label" for="edit-category-{{ data_get($category, 'id') }}">
+                                        {{ data_get($category, 'category') }}
                                     </label>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div class="text-muted small p-2">No categories configured.</div>
+                            @endforelse
                         </div>
                     </div>
 
