@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\SchoolInformation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,24 +14,26 @@ class SchoolInformationController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:View schoolinformation|Create schoolinformation|Update schoolinformation|Delete schoolinformation', ['only' => ['index', 'show']]);
+        $this->middleware('permission:View schoolinformation|Create schoolinformation|Update schoolinformation|Delete schoolinformation', ['only' => ['index', 'show', 'editJson']]);
         $this->middleware('permission:Create schoolinformation', ['only' => ['create', 'store']]);
         $this->middleware('permission:Update schoolinformation', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:Delete schoolinformation', ['only' => ['destroy']]);
+        $this->middleware('permission:Delete schoolinformation', ['only' => ['destroy', 'bulkDestroy']]);
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // INDEX
+    // ────────────────────────────────────────────────────────────────────────
 
     public function index(Request $request): View
     {
-        $pagetitle = "School Information Management";
+        $pagetitle = 'School Information Management';
+
         $data = SchoolInformation::latest()->paginate(10);
+
         $status_counts = [
-            'Active' => SchoolInformation::where('is_active', true)->count(),
+            'Active'   => SchoolInformation::where('is_active', true)->count(),
             'Inactive' => SchoolInformation::where('is_active', false)->count(),
         ];
-
-        if (config('app.debug')) {
-            \Log::info('School information loaded:', ['count' => $data->count()]);
-        }
 
         return view('schoolinformation.index', compact('data', 'pagetitle', 'status_counts'))
             ->with('i', ($request->input('page', 1) - 1) * 10);
@@ -40,89 +41,92 @@ class SchoolInformationController extends Controller
 
     public function create(): View
     {
-        $title = "Create School Information";
+        $title = 'Create School Information';
         return view('schoolinformation.create', compact('title'));
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // STORE
+    // ────────────────────────────────────────────────────────────────────────
+
     public function store(Request $request): JsonResponse
     {
-        \Log::debug("Creating school information", $request->all());
-
-        if (!auth()->user()->hasPermissionTo('Create schoolinformation')) {
-            \Log::warning("User ID " . auth()->user()->id . " attempted to create school information without 'Create schoolinformation' permission");
-            return response()->json([
-                'success' => false,
-                'message' => 'User does not have the right permissions',
-            ], 403);
-        }
+        Log::debug('SchoolInformation@store called', [
+            'has_files'    => array_keys($request->allFiles()),
+            'content_type' => $request->header('Content-Type'),
+        ]);
 
         try {
             $validated = $request->validate([
-                'school_name' => 'required|string|max:255',
-                'school_address' => 'required|string|max:500',
-                'school_phone' => 'required|string|max:20',
-                'school_email' => 'required|email:rfc,dns|unique:school_information,school_email',
-                'school_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-                'app_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-                'school_motto' => 'nullable|string|max:255',
-                'school_website' => 'nullable|url|max:255',
+                'school_name'               => 'required|string|max:255',
+                'school_address'            => 'required|string|max:500',
+                'school_phones'             => 'required|array|min:1',
+                'school_phones.*'           => 'required|string|max:20',
+                'school_email'              => 'required|email:rfc,dns|unique:school_information,school_email',
+                'school_logo'               => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'app_logo'                  => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'school_stamp'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'school_motto'              => 'nullable|string|max:255',
+                'school_website'            => 'nullable|url|max:255',
                 'no_of_times_school_opened' => 'required|integer|min:0',
-                'date_school_opened' => 'nullable|date',
-                'date_next_term_begins' => 'nullable|date',
-                'is_active' => 'boolean',
+                'date_school_opened'        => 'nullable|date',
+                'date_school_closed'        => 'nullable|date|after_or_equal:date_school_opened',
+                'date_next_term_begins'     => 'nullable|date',
+                'is_active'                 => 'sometimes|boolean',
             ], [
-                'no_of_times_school_opened.integer' => 'The number of times school opened must be a valid integer.',
-                'date_school_opened.date' => 'The date school opened must be a valid date.',
-                'date_next_term_begins.date' => 'The date next term begins must be a valid date.',
+                'school_phones.required'   => 'At least one phone number is required.',
+                'school_phones.*.required' => 'Each phone number must not be empty.',
+                'date_school_closed.after_or_equal' => 'School closed date must be on or after the opened date.',
             ]);
 
-            if ($request->hasFile('school_logo')) {
-                $path = $request->file('school_logo')->store('school_logos', 'public');
-                $validated['school_logo'] = $path;
+            $validated['school_logo']  = $this->uploadFile($request, 'school_logo',  'school_logos');
+            $validated['app_logo']     = $this->uploadFile($request, 'app_logo',     'app_logos');
+            $validated['school_stamp'] = $this->uploadFile($request, 'school_stamp', 'school_stamps');
+
+            // If school_phone (singular) column is NOT NULL, backfill it with the first phone
+            if (SchemaHasColumn($table = 'school_information', $col = 'school_phone')) {
+                $validated['school_phone'] = $validated['school_phones'][0] ?? null;
             }
 
-            if ($request->hasFile('app_logo')) {
-                $path = $request->file('app_logo')->store('app_logos', 'public');
-                $validated['app_logo'] = $path;
-            }
-
-            if ($validated['is_active']) {
+            $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
+            if ($isActive) {
                 SchoolInformation::where('is_active', true)->update(['is_active' => false]);
             }
+            $validated['is_active'] = $isActive;
 
             $school = SchoolInformation::create($validated);
 
-            \Log::debug("School information created successfully: ID {$school->id}");
+            Log::info("School created: ID {$school->id} — {$school->school_name}");
+
             return response()->json([
                 'success' => true,
-                'message' => 'School information created successfully',
-                'school' => [
-                    'id' => $school->id,
-                    'school_name' => $school->school_name,
-                    'school_email' => $school->school_email,
-                    'is_active' => $school->is_active,
-                ],
+                'message' => 'School information created successfully.',
+                'school'  => $this->schoolSummary($school),
             ], 201);
+
         } catch (ValidationException $e) {
-            \Log::error("Validation error creating school information: " . json_encode($e->errors()));
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
+                'message' => 'Validation failed.',
+                'errors'  => $e->errors(),
             ], 422);
-        } catch (\Exception $e) {
-            \Log::error("Create school information error: {$e->getMessage()}\nStack trace: {$e->getTraceAsString()}");
+        } catch (\Throwable $e) {
+            Log::error("School store error: {$e->getMessage()}", ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create school information: ' . $e->getMessage(),
+                'message' => 'Failed to create school: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // SHOW / EDIT / EDIT-JSON
+    // ────────────────────────────────────────────────────────────────────────
+
     public function show($id): View
     {
-        $pagetitle = "School Information Overview";
-        $school = SchoolInformation::findOrFail($id);
+        $pagetitle = 'School Information Overview';
+        $school    = SchoolInformation::findOrFail($id);
         return view('schoolinformation.show', compact('school', 'pagetitle'));
     }
 
@@ -132,155 +136,218 @@ class SchoolInformationController extends Controller
         return view('schoolinformation.edit', compact('school'));
     }
 
-    public function update(Request $request, $id)
-{
-    // Check if this is a POST request with _update flag or PUT request
-    $isUpdate = $request->has('_update') || $request->method() === 'PUT';
-
-    if (!$isUpdate) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Invalid request method for update'
-        ], 405);
-    }
-
-    \Log::debug("Updating school information ID: {$id}", $request->all());
-
-    try {
-        $validated = $request->validate([
-            'school_name' => 'required|string|max:255',
-            'school_address' => 'required|string|max:500',
-            'school_phone' => 'required|string|max:20',
-            'school_email' => 'required|email|unique:school_information,school_email,' . $id,
-            'school_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'app_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'school_motto' => 'nullable|string|max:255',
-            'school_website' => 'nullable|url|max:255',
-            'no_of_times_school_opened' => 'required|integer|min:0',
-            'date_school_opened' => 'nullable|date',
-            'date_next_term_begins' => 'nullable|date',
-            'is_active' => 'boolean',
-        ], [
-            'no_of_times_school_opened.integer' => 'The number of times school opened must be a valid integer.',
-            'date_school_opened.date' => 'The date school opened must be a valid date.',
-            'date_next_term_begins.date' => 'The date next term begins must be a valid date.',
-        ]);
-
-        $school = SchoolInformation::findOrFail($id);
-
-        if ($request->hasFile('school_logo')) {
-            if ($school->school_logo && Storage::disk('public')->exists($school->school_logo)) {
-                Storage::disk('public')->delete($school->school_logo);
-            }
-            $path = $request->file('school_logo')->store('school_logos', 'public');
-            $validated['school_logo'] = $path;
-        } else {
-            $validated['school_logo'] = $school->school_logo;
-        }
-
-        if ($request->hasFile('app_logo')) {
-            if ($school->app_logo && Storage::disk('public')->exists($school->app_logo)) {
-                Storage::disk('public')->delete($school->app_logo);
-            }
-            $path = $request->file('app_logo')->store('app_logos', 'public');
-            $validated['app_logo'] = $path;
-        } else {
-            $validated['app_logo'] = $school->app_logo;
-        }
-
-        if ($validated['is_active']) {
-            SchoolInformation::where('is_active', true)->where('id', '!=', $id)->update(['is_active' => false]);
-        }
-
-        $school->update($validated);
-
-        \Log::debug("School information ID: {$id} updated successfully");
-
-        return response()->json([
-            'success' => true,
-            'message' => 'School information updated successfully',
-            'school' => [
-                'id' => $school->id,
-                'school_name' => $school->school_name,
-                'school_email' => $school->school_email,
-                'is_active' => $school->is_active,
-            ],
-        ], 200);
-    } catch (ValidationException $e) {
-        \Log::error("Validation error updating school information ID {$id}: " . json_encode($e->errors()));
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation failed',
-            'errors' => $e->errors(),
-        ], 422);
-    } catch (\Exception $e) {
-        \Log::error("Update school information error for ID {$id}: {$e->getMessage()}\nStack trace: {$e->getTraceAsString()}");
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to update school information: ' . $e->getMessage(),
-        ], 500);
-    }
-}
-
-    public function destroy($id): JsonResponse
-    {
-        \Log::debug("Attempting to delete school information ID: {$id}");
-        try {
-            $school = SchoolInformation::findOrFail($id);
-
-            if ($school->school_logo && Storage::disk('public')->exists($school->school_logo)) {
-                Storage::disk('public')->delete($school->school_logo);
-            }
-
-            if ($school->app_logo && Storage::disk('public')->exists($school->app_logo)) {
-                Storage::disk('public')->delete($school->app_logo);
-            }
-
-            $school->delete();
-
-            \Log::debug("School information ID: {$id} deleted successfully");
-            return response()->json([
-                'success' => true,
-                'message' => 'School information deleted successfully',
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error("Delete school information error for ID {$id}: {$e->getMessage()}\nStack trace: {$e->getTraceAsString()}");
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete school information: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
     public function editJson($id): JsonResponse
     {
         try {
             $school = SchoolInformation::findOrFail($id);
 
+            $phones = $school->school_phones;
+            if (is_string($phones)) {
+                $phones = json_decode($phones, true) ?? [];
+            }
+            if (!is_array($phones)) {
+                $phones = $school->school_phone ? [$school->school_phone] : [];
+            }
+
             return response()->json([
                 'success' => true,
-                'school' => [
-                    'id' => $school->id,
-                    'school_name' => $school->school_name,
-                    'school_address' => $school->school_address,
-                    'school_phone' => $school->school_phone,
-                    'school_email' => $school->school_email,
-                    'school_motto' => $school->school_motto,
-                    'school_website' => $school->school_website,
+                'school'  => [
+                    'id'                        => $school->id,
+                    'school_name'               => $school->school_name,
+                    'school_address'            => $school->school_address,
+                    'school_phones'             => $phones,
+                    'school_email'              => $school->school_email,
+                    'school_motto'              => $school->school_motto,
+                    'school_website'            => $school->school_website,
                     'no_of_times_school_opened' => $school->no_of_times_school_opened,
-                    'date_school_opened' => $school->date_school_opened,
-                    'date_next_term_begins' => $school->date_next_term_begins,
-                    'is_active' => $school->is_active,
-                    'logo_url' => $school->getLogoUrlAttribute(),
-                    'app_logo_url' => $school->getAppLogoUrlAttribute(),
+                    'date_school_opened'        => $school->date_school_opened ? $school->date_school_opened->format('Y-m-d') : null,
+                    'date_school_closed'        => $school->date_school_closed ? $school->date_school_closed->format('Y-m-d') : null,
+                    'date_next_term_begins'     => $school->date_next_term_begins ? $school->date_next_term_begins->format('Y-m-d') : null,
+                    'is_active'                 => (bool) $school->is_active,
+                    'logo_url'                  => $school->getLogoUrlAttribute(),
+                    'app_logo_url'              => $school->getAppLogoUrlAttribute(),
+                    'stamp_url'                 => $school->getStampUrlAttribute(),
                 ],
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error("Edit JSON error for ID {$id}: {$e->getMessage()}");
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("editJson error for ID {$id}: {$e->getMessage()}");
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load school data',
+                'message' => 'Failed to load school data: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // UPDATE
+    // ────────────────────────────────────────────────────────────────────────
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        Log::debug("SchoolInformation@update ID={$id}", [
+            'has_files'    => array_keys($request->allFiles()),
+            'content_type' => $request->header('Content-Type'),
+            '_method'      => $request->input('_method'),
+        ]);
+
+        try {
+            $school = SchoolInformation::findOrFail($id);
+
+            $validated = $request->validate([
+                'school_name'               => 'required|string|max:255',
+                'school_address'            => 'required|string|max:500',
+                'school_phones'             => 'required|array|min:1',
+                'school_phones.*'           => 'required|string|max:20',
+                'school_email'              => "required|email|unique:school_information,school_email,{$id}",
+                'school_logo'               => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'app_logo'                  => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'school_stamp'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'school_motto'              => 'nullable|string|max:255',
+                'school_website'            => 'nullable|url|max:255',
+                'no_of_times_school_opened' => 'required|integer|min:0',
+                'date_school_opened'        => 'nullable|date',
+                'date_school_closed'        => 'nullable|date|after_or_equal:date_school_opened',
+                'date_next_term_begins'     => 'nullable|date',
+                'is_active'                 => 'sometimes|boolean',
+            ], [
+                'date_school_closed.after_or_equal' => 'School closed date must be on or after the opened date.',
+            ]);
+
+            $validated['school_logo']  = $this->replaceFile($request, 'school_logo',  'school_logos',  $school->school_logo);
+            $validated['app_logo']     = $this->replaceFile($request, 'app_logo',     'app_logos',     $school->app_logo);
+            $validated['school_stamp'] = $this->replaceFile($request, 'school_stamp', 'school_stamps', $school->school_stamp);
+
+            if (SchemaHasColumn('school_information', 'school_phone')) {
+                $validated['school_phone'] = $validated['school_phones'][0] ?? null;
+            }
+
+            $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
+            if ($isActive && !$school->is_active) {
+                SchoolInformation::where('is_active', true)
+                    ->where('id', '!=', $id)
+                    ->update(['is_active' => false]);
+            }
+            $validated['is_active'] = $isActive;
+
+            $school->update($validated);
+
+            Log::info("School updated: ID {$id}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'School information updated successfully.',
+                'school'  => $this->schoolSummary($school->fresh()),
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error("School update error ID={$id}: {$e->getMessage()}", ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update school: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // DESTROY / BULK
+    // ────────────────────────────────────────────────────────────────────────
+
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $school = SchoolInformation::findOrFail($id);
+
+            $this->deleteStoredFile($school->school_logo);
+            $this->deleteStoredFile($school->app_logo);
+            $this->deleteStoredFile($school->school_stamp);
+
+            $school->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'School information deleted successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("School destroy error ID={$id}: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete school: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        try {
+            $ids = $request->input('ids', []);
+            if (empty($ids)) {
+                return response()->json(['success' => false, 'message' => 'No schools selected for deletion.'], 400);
+            }
+
+            $deleted = 0;
+            SchoolInformation::whereIn('id', $ids)->each(function ($school) use (&$deleted) {
+                $this->deleteStoredFile($school->school_logo);
+                $this->deleteStoredFile($school->app_logo);
+                $this->deleteStoredFile($school->school_stamp);
+                $school->delete();
+                $deleted++;
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$deleted} school(s) deleted successfully.",
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Bulk delete error: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete schools: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // PRIVATE HELPERS
+    // ────────────────────────────────────────────────────────────────────────
+
+    private function uploadFile(Request $request, string $field, string $directory): ?string
+    {
+        if ($request->hasFile($field) && $request->file($field)->isValid()) {
+            return $request->file($field)->store($directory, 'public');
+        }
+        return null;
+    }
+
+    private function replaceFile(Request $request, string $field, string $directory, ?string $existing): ?string
+    {
+        if ($request->hasFile($field) && $request->file($field)->isValid()) {
+            $this->deleteStoredFile($existing);
+            return $request->file($field)->store($directory, 'public');
+        }
+        return $existing;
+    }
+
+    private function deleteStoredFile(?string $path): void
+    {
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function schoolSummary(SchoolInformation $school): array
+    {
+        return [
+            'id'           => $school->id,
+            'school_name'  => $school->school_name,
+            'school_email' => $school->school_email,
+            'is_active'    => $school->is_active,
+            'logo_url'     => $school->getLogoUrlAttribute(),
+        ];
     }
 }
