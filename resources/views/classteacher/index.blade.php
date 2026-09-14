@@ -654,11 +654,18 @@
 <script>
 $(document).ready(function () {
 
-    const CSRF = $('meta[name="csrf-token"]').attr('content');
+    const CSRF            = $('meta[name="csrf-token"]').attr('content');
+    const ASSIGNMENTS_URL = '{{ url("classteacher/assignments") }}';
+    const AVATAR_DEFAULT  = '{{ asset("storage/staff_avatars/unnamed.jpg") }}';
+
+    if (!CSRF) {
+        console.error('[classteacher] CSRF meta tag missing — POST requests will fail with 419.');
+    }
+
     let deleteId = null;
 
     // =========================================================================
-    // LOADING HELPERS  (identical pattern to subjectteacher blade)
+    // LOADING HELPERS
     // =========================================================================
 
     const PageLoader = {
@@ -691,8 +698,7 @@ $(document).ready(function () {
     function hideModalLoader(id) { $('#' + id + '-modal-loader').removeClass('active'); }
 
     function btnLoad($btn, label) {
-        $btn.data('original-html', $btn.html())
-            .prop('disabled', true).addClass('btn-loading');
+        $btn.data('original-html', $btn.html()).prop('disabled', true).addClass('btn-loading');
         if (label) $btn.html('<span class="btn-text">' + label + '</span>');
     }
     function btnReset($btn) {
@@ -709,7 +715,7 @@ $(document).ready(function () {
             warning: 'ri-alert-fill',
             info:    'ri-information-fill'
         };
-        var id  = 'ct-toast-' + Date.now();
+        var id  = 'ct-toast-' + Date.now() + Math.random().toString(36).slice(2);
         var $el = $([
             '<div class="ct-toast ct-toast-' + type + '" id="' + id + '">',
             '  <span class="ct-toast-icon"><i class="' + (icons[type] || icons.info) + '"></i></span>',
@@ -717,31 +723,30 @@ $(document).ready(function () {
             '    <div class="ct-toast-title">' + title + '</div>',
             msg ? '    <div class="ct-toast-msg">' + msg + '</div>' : '',
             '  </div>',
-            '  <button class="ct-toast-close" onclick="$(\'#' + id + '\').remove()">×</button>',
+            '  <button class="ct-toast-close" type="button">×</button>',
             '</div>'
         ].join(''));
+        $el.find('.ct-toast-close').on('click', function () { $el.remove(); });
         $('#ct-toast-stack').append($el);
-        setTimeout(function() { $el.addClass('show'); }, 20);
+        setTimeout(function () { $el.addClass('show'); }, 20);
         if (duration > 0) {
-            setTimeout(function() {
+            setTimeout(function () {
                 $el.removeClass('show');
-                setTimeout(function() { $el.remove(); }, 350);
+                setTimeout(function () { $el.remove(); }, 350);
             }, duration);
         }
     }
 
     function showError(selector, msg) {
-        $(selector).removeClass('d-none')
-            .html('<i class="ri-error-warning-line me-1"></i>' + msg);
+        $(selector).removeClass('d-none').html('<i class="ri-error-warning-line me-1"></i>' + msg);
+    }
+    function clearError(selector) {
+        $(selector).addClass('d-none').html('');
     }
 
     // =========================================================================
-    // DATATABLE  (server-side, renders avatar with initials fallback)
+    // DATATABLE
     // =========================================================================
-
-    // Avatar base URL — used inside DataTables render callback
-    var AVATAR_BASE = '{{ asset("storage/staff_avatars/") }}';
-    var AVATAR_DEFAULT = '{{ asset("storage/staff_avatars/unnamed.jpg") }}';
 
     var table = $('#classTeachersTable').DataTable({
         processing: true,
@@ -749,33 +754,24 @@ $(document).ready(function () {
         ajax: {
             url: '{{ route("classteacher.data") }}',
             type: 'GET',
-            error: function(xhr) {
+            error: function (xhr) {
                 console.error('DataTables AJAX error:', xhr.status, xhr.responseText);
                 toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
             }
         },
         columns: [
-            // Checkbox
-            {
-                data: 'id', orderable: false, searchable: false,
-                render: function(data) {
-                    return '<input type="checkbox" class="form-check-input row-checkbox" value="' + data + '">';
-                }
+            { data: 'id', orderable: false, searchable: false,
+              render: function (data) {
+                  return '<input type="checkbox" class="form-check-input row-checkbox" value="' + data + '">';
+              }
             },
-            // Row index
             { data: 'DT_RowIndex', orderable: false, searchable: false },
-            // Teacher — rendered with proper avatar / initials fallback
-            { data: 'teacher_info', orderable: false },
-            // Class badge
-            { data: 'class_info', orderable: false },
-            // Term badge
-            { data: 'term', orderable: false },
-            // Session badge
-            { data: 'session', orderable: false },
-            // Date
-            { data: 'formatted_date', orderable: false },
-            // Actions
-            { data: 'action', orderable: false, searchable: false },
+            { data: 'teacher_info', orderable: false, searchable: false },
+            { data: 'class_info',   orderable: false, searchable: false },
+            { data: 'term',         orderable: false, searchable: false },
+            { data: 'session',      orderable: false, searchable: false },
+            { data: 'formatted_date', orderable: true, searchable: false },
+            { data: 'action',       orderable: false, searchable: false },
         ],
         dom: "<'row align-items-center mb-3'<'col-sm-6'l><'col-sm-6 text-end'f>>" +
              "<'row'<'col-12'tr>>" +
@@ -793,7 +789,7 @@ $(document).ready(function () {
         order: [[1, 'asc']],
         pageLength: 15,
         responsive: true,
-        drawCallback: function() {
+        drawCallback: function () {
             bindCheckboxes();
             $('#totalBadge').text(this.api().page.info().recordsTotal);
         },
@@ -804,14 +800,14 @@ $(document).ready(function () {
     // =========================================================================
 
     function loadStats() {
-        $.get('{{ route("classteacher.stats") }}', function(data) {
-            if (data.stats) {
+        $.get('{{ route("classteacher.stats") }}', function (data) {
+            if (data && data.stats) {
                 $('#statTotal').text(data.stats.total);
                 $('#statTeachers').text(data.stats.unique_teachers);
                 $('#statClasses').text(data.stats.unique_classes);
                 $('#statActive').text(data.stats.active_sessions);
             }
-        }).fail(function() {
+        }).fail(function () {
             $('#statTotal, #statTeachers, #statClasses, #statActive').text('—');
         });
     }
@@ -819,23 +815,17 @@ $(document).ready(function () {
 
     // =========================================================================
     // IMAGE PREVIEW MODAL
-    // The controller's `data()` method renders <img> tags with data-* attrs.
-    // We delegate here to handle both real avatars and initials placeholders.
     // =========================================================================
 
-    $(document).on('click', '.ct-avatar-trigger', function() {
-        var img  = $(this).data('image');      // full asset URL or empty
+    $(document).on('click', '.ct-avatar-trigger', function () {
+        var img  = $(this).data('image');
         var name = $(this).data('staffname') || 'Unknown';
-        var has  = $(this).data('has-image');  // 'true' / 'false'
+        var has  = $(this).data('has-image');
 
-        if (has === 'true' && img) {
-            $('#preview-image').attr('src', img).show();
-        } else {
-            // Show default unnamed placeholder
-            $('#preview-image').attr('src', AVATAR_DEFAULT).show();
-        }
+        var showImg = ((has === true || has === 'true') && img) ? img : AVATAR_DEFAULT;
+        $('#preview-image').attr('src', showImg);
         $('#preview-staffname').text(name);
-        $('#imageViewModal').modal('show');
+        new bootstrap.Modal(document.getElementById('imageViewModal')).show();
     });
 
     // =========================================================================
@@ -845,7 +835,7 @@ $(document).ready(function () {
     function bindCheckboxes() {
         $('.row-checkbox').off('change').on('change', updateBulkBar);
     }
-    $('#selectAll').on('change', function() {
+    $('#selectAll').off('change').on('change', function () {
         $('.row-checkbox').prop('checked', this.checked);
         updateBulkBar();
     });
@@ -861,26 +851,32 @@ $(document).ready(function () {
     // SELECT-ALL CLASSES
     // =========================================================================
 
-    $('#create-select-all-classes').on('change', function() {
-        $('.create-class-cb').prop('checked', this.checked);
-        updateCreateCount();
-    });
-
-    $('#edit-select-all-classes').on('change', function() {
-        $('.edit-class-cb').prop('checked', this.checked);
-    });
-
     function updateCreateCount() {
         $('#create-class-count').text($('.create-class-cb:checked').length);
     }
 
-    $('#create-class-list').on('change', '.create-class-cb', function() {
+    $('#create-select-all-classes').off('change').on('change', function () {
+        $('.create-class-cb').prop('checked', this.checked);
         updateCreateCount();
         updateCreateBtn();
     });
 
+    $('#edit-select-all-classes').off('change').on('change', function () {
+        $('.edit-class-cb').prop('checked', this.checked);
+        updateEditBtn();
+    });
+
+    $('#create-class-list').off('change', '.create-class-cb').on('change', '.create-class-cb', function () {
+        updateCreateCount();
+        updateCreateBtn();
+    });
+
+    $('#edit-class-list').off('change', '.edit-class-cb').on('change', '.edit-class-cb', function () {
+        updateEditBtn();
+    });
+
     // =========================================================================
-    // CREATE MODAL — guard button
+    // BUTTON STATE
     // =========================================================================
 
     function updateCreateBtn() {
@@ -891,26 +887,64 @@ $(document).ready(function () {
         $('#create-save-btn').prop('disabled', !ok);
     }
 
-    $('#create-staffid').on('change', updateCreateBtn);
-    $('#createModal').on('change', '.create-term-rb, .create-session-rb', updateCreateBtn);
+    function updateEditBtn() {
+        var ok = $('#edit-staffid').val() !== '' &&
+                 $('.edit-class-cb:checked').length > 0 &&
+                 $('.edit-term-rb:checked').length > 0 &&
+                 $('.edit-session-rb:checked').length > 0;
+        $('#edit-update-btn').prop('disabled', !ok);
+    }
 
-    // ── Open CREATE ───────────────────────────────────────────
-    $('#createAssignmentBtn').on('click', function() {
+    $('#create-staffid').off('change').on('change', updateCreateBtn);
+    $('#edit-staffid').off('change').on('change', updateEditBtn);
+
+    $('#createModal').off('change', '.create-term-rb, .create-session-rb')
+        .on('change', '.create-term-rb, .create-session-rb', updateCreateBtn);
+
+    $('#editModal').off('change', '.edit-term-rb, .edit-session-rb')
+        .on('change', '.edit-term-rb, .edit-session-rb', updateEditBtn);
+
+    // =========================================================================
+    // OPEN CREATE MODAL
+    // =========================================================================
+
+    $('#createAssignmentBtn').off('click').on('click', function () {
         $('#create-staffid').val('');
         $('.create-class-cb, #create-select-all-classes').prop('checked', false);
         $('.create-term-rb, .create-session-rb').prop('checked', false);
         $('#create-class-count').text(0);
         $('#create-save-btn').prop('disabled', true);
-        $('#create-error-msg').addClass('d-none').html('');
+        clearError('#create-error-msg');
         hideModalLoader('create');
+        btnReset($('#create-save-btn'));
         new bootstrap.Modal(document.getElementById('createModal')).show();
     });
 
     // =========================================================================
-    // EDIT MODAL
+    // EDIT MODAL — pre-load class assignments
     // =========================================================================
 
-    $(document).on('click', '.edit-assignment', function() {
+    function reloadEditClasses(staffid, termid, sessionid) {
+        $('.edit-class-cb, #edit-select-all-classes').prop('checked', false);
+
+        if (!staffid || !termid || !sessionid) {
+            updateEditBtn();
+            return;
+        }
+
+        $.get(ASSIGNMENTS_URL + '/' + staffid + '/' + termid + '/' + sessionid, function (res) {
+            if (res && res.success && Array.isArray(res.classIds)) {
+                res.classIds.forEach(function (classId) {
+                    $('#edit-cls-' + classId).prop('checked', true);
+                });
+            }
+            updateEditBtn();
+        }).fail(function () {
+            updateEditBtn();
+        });
+    }
+
+    $(document).off('click', '.edit-assignment').on('click', '.edit-assignment', function () {
         var id        = $(this).data('id');
         var staffid   = $(this).data('staffid');
         var termid    = $(this).data('termid');
@@ -924,82 +958,82 @@ $(document).ready(function () {
         $('#edit-term-' + termid).prop('checked', true);
         $('#edit-session-' + sessionid).prop('checked', true);
 
-        $('#edit-error-msg').addClass('d-none').html('');
+        clearError('#edit-error-msg');
         hideModalLoader('edit');
         btnReset($('#edit-update-btn'));
 
-        // Load existing class assignments for this teacher / term / session
-        $.get('{{ url("classteacher/assignments") }}/' + staffid + '/' + termid + '/' + sessionid,
-            function(res) {
-                if (res.success && res.classIds) {
-                    $.each(res.classIds, function(i, classId) {
-                        $('#edit-cls-' + classId).prop('checked', true);
-                    });
-                }
-            }
-        );
+        reloadEditClasses(staffid, termid, sessionid);
 
         new bootstrap.Modal(document.getElementById('editModal')).show();
     });
+
+    // Re-fetch class list whenever the (teacher, term, session) tuple changes in edit modal
+    $(document).off('change', '#edit-staffid, .edit-term-rb, .edit-session-rb')
+        .on('change', '#edit-staffid, .edit-term-rb, .edit-session-rb', function () {
+            reloadEditClasses(
+                $('#edit-staffid').val(),
+                $('.edit-term-rb:checked').val(),
+                $('.edit-session-rb:checked').val()
+            );
+        });
 
     // =========================================================================
     // SUBMIT: CREATE
     // =========================================================================
 
-    $('#createForm').on('submit', function(e) {
+    $('#createForm').off('submit').on('submit', function (e) {
         e.preventDefault();
 
         var staffid   = $('#create-staffid').val();
-        var classids  = $('.create-class-cb:checked').map(function() { return this.value; }).get();
+        var classids  = $('.create-class-cb:checked').map(function () { return this.value; }).get();
         var termid    = $('.create-term-rb:checked').val();
         var sessionid = $('.create-session-rb:checked').val();
 
-        if (!staffid)       { showError('#create-error-msg', 'Please select a teacher.');         return; }
-        if (!classids.length){ showError('#create-error-msg', 'Please select at least one class.'); return; }
-        if (!termid)        { showError('#create-error-msg', 'Please select a term.');             return; }
-        if (!sessionid)     { showError('#create-error-msg', 'Please select a session.');          return; }
+        if (!staffid)        { showError('#create-error-msg', 'Please select a teacher.');          return; }
+        if (!classids.length){ showError('#create-error-msg', 'Please select at least one class.');  return; }
+        if (!termid)         { showError('#create-error-msg', 'Please select a term.');              return; }
+        if (!sessionid)      { showError('#create-error-msg', 'Please select a session.');           return; }
 
         btnLoad($('#create-save-btn'), 'Saving…');
         showModalLoader('create', 'Saving assignment(s)…');
-        $('#create-error-msg').addClass('d-none').html('');
+        clearError('#create-error-msg');
 
         $.ajax({
-            url:  '{{ route("classteacher.store") }}',
+            url: '{{ route("classteacher.store") }}',
             type: 'POST',
             data: {
-                staffid:        staffid,
+                staffid:           staffid,
                 'schoolclassid[]': classids,
-                termid:         termid,
-                sessionid:      sessionid,
-                _token:         CSRF,
+                termid:            termid,
+                sessionid:         sessionid,
+                _token:            CSRF,
             },
             traditional: true,
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
 
-            success: function(res) {
-                if (res.success) {
+            success: function (res) {
+                hideModalLoader('create');
+                btnReset($('#create-save-btn'));
+                if (res && res.success) {
                     $('#createModal').modal('hide');
                     toast('success', 'Saved!', res.message);
-                    table.ajax.reload();
+                    table.ajax.reload(function () { updateBulkBar(); }, false);
                     loadStats();
                 } else {
-                    hideModalLoader('create');
-                    btnReset($('#create-save-btn'));
                     updateCreateBtn();
-                    showError('#create-error-msg', res.message || 'Could not save assignment.');
+                    showError('#create-error-msg', (res && res.message) || 'Could not save assignment.');
                 }
             },
 
-            error: function(xhr) {
+            error: function (xhr) {
                 hideModalLoader('create');
                 btnReset($('#create-save-btn'));
                 updateCreateBtn();
                 var json = xhr.responseJSON;
-                var msg = (json && json.message) ||
-                          (json && json.errors && Object.values(json.errors).flat().join(', ')) ||
-                          'An error occurred.';
+                var msg = (json && json.message)
+                       || (json && json.errors && Object.values(json.errors).flat().join(', '))
+                       || 'An error occurred.';
                 showError('#create-error-msg', msg);
-                toast('error', 'Failed', msg);
             },
         });
     });
@@ -1008,26 +1042,26 @@ $(document).ready(function () {
     // SUBMIT: EDIT
     // =========================================================================
 
-    $('#editForm').on('submit', function(e) {
+    $('#editForm').off('submit').on('submit', function (e) {
         e.preventDefault();
 
         var id        = $('#edit-assignment-id').val();
         var staffid   = $('#edit-staffid').val();
-        var classids  = $('.edit-class-cb:checked').map(function() { return this.value; }).get();
+        var classids  = $('.edit-class-cb:checked').map(function () { return this.value; }).get();
         var termid    = $('.edit-term-rb:checked').val();
         var sessionid = $('.edit-session-rb:checked').val();
 
-        if (!staffid)        { showError('#edit-error-msg', 'Please select a teacher.');         return; }
-        if (!classids.length){ showError('#edit-error-msg', 'Please select at least one class.'); return; }
-        if (!termid)         { showError('#edit-error-msg', 'Please select a term.');             return; }
-        if (!sessionid)      { showError('#edit-error-msg', 'Please select a session.');          return; }
+        if (!staffid)        { showError('#edit-error-msg', 'Please select a teacher.');          return; }
+        if (!classids.length){ showError('#edit-error-msg', 'Please select at least one class.');  return; }
+        if (!termid)         { showError('#edit-error-msg', 'Please select a term.');              return; }
+        if (!sessionid)      { showError('#edit-error-msg', 'Please select a session.');           return; }
 
         btnLoad($('#edit-update-btn'), 'Updating…');
         showModalLoader('edit', 'Saving changes…');
-        $('#edit-error-msg').addClass('d-none').html('');
+        clearError('#edit-error-msg');
 
         $.ajax({
-            url:  '{{ url("classteacher") }}/' + id,
+            url: '{{ url("classteacher") }}/' + id,
             type: 'POST',
             data: {
                 staffid:           staffid,
@@ -1040,28 +1074,29 @@ $(document).ready(function () {
             traditional: true,
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
 
-            success: function(res) {
-                if (res.success) {
+            success: function (res) {
+                hideModalLoader('edit');
+                btnReset($('#edit-update-btn'));
+                if (res && res.success) {
                     $('#editModal').modal('hide');
                     toast('success', 'Updated!', res.message);
-                    table.ajax.reload();
+                    table.ajax.reload(function () { updateBulkBar(); }, false);
                     loadStats();
                 } else {
-                    hideModalLoader('edit');
-                    btnReset($('#edit-update-btn'));
-                    showError('#edit-error-msg', res.message || 'Could not update assignment.');
+                    updateEditBtn();
+                    showError('#edit-error-msg', (res && res.message) || 'Could not update assignment.');
                 }
             },
 
-            error: function(xhr) {
+            error: function (xhr) {
                 hideModalLoader('edit');
                 btnReset($('#edit-update-btn'));
+                updateEditBtn();
                 var json = xhr.responseJSON;
-                var msg = (json && json.message) ||
-                          (json && json.errors && Object.values(json.errors).flat().join(', ')) ||
-                          'An error occurred.';
+                var msg = (json && json.message)
+                       || (json && json.errors && Object.values(json.errors).flat().join(', '))
+                       || 'An error occurred.';
                 showError('#edit-error-msg', msg);
-                toast('error', 'Failed', msg);
             },
         });
     });
@@ -1070,45 +1105,52 @@ $(document).ready(function () {
     // DELETE: SINGLE
     // =========================================================================
 
-    $(document).on('click', '.delete-assignment', function() {
+    $(document).off('click', '.delete-assignment').on('click', '.delete-assignment', function () {
         deleteId = $(this).data('id');
         $('#delete-item-title').text($(this).data('title') || 'this assignment');
         btnReset($('#confirm-delete-btn'));
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     });
 
-    $('#confirm-delete-btn').on('click', function() {
+    $('#confirm-delete-btn').off('click').on('click', function () {
         if (!deleteId) return;
         var $btn = $(this);
         btnLoad($btn, 'Deleting…');
 
         $.ajax({
-            url:  '{{ url("classteacher") }}/' + deleteId,
+            url: '{{ url("classteacher") }}/' + deleteId,
             type: 'POST',
             data: { _method: 'DELETE', _token: CSRF },
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
 
-            success: function(res) {
+            success: function (res) {
                 $('#deleteModal').modal('hide');
-                if (res.success) {
+                if (res && res.success) {
                     toast('success', 'Deleted!', res.message);
-                    table.ajax.reload();
+                    table.ajax.reload(function () { updateBulkBar(); }, false);
                     loadStats();
                 } else {
-                    toast('error', 'Cannot Delete', res.message);
-                    Swal.fire({ icon:'error', title:'Cannot Delete',
-                        text: res.message, confirmButtonColor:'#2563eb' });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot Delete',
+                        text: (res && res.message) || 'Failed to delete.',
+                        confirmButtonColor: '#2563eb',
+                    });
                 }
             },
 
-            error: function(xhr) {
+            error: function (xhr) {
                 $('#deleteModal').modal('hide');
                 var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Failed to delete.';
-                toast('error', 'Error', msg);
-                Swal.fire('Error!', msg, 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: msg,
+                    confirmButtonColor: '#2563eb',
+                });
             },
 
-            complete: function() {
+            complete: function () {
                 btnReset($btn);
                 deleteId = null;
             },
@@ -1120,43 +1162,44 @@ $(document).ready(function () {
     // =========================================================================
 
     function doBulkDelete() {
-        var ids = $('.row-checkbox:checked').map(function() { return this.value; }).get();
+        var ids = $('.row-checkbox:checked').map(function () { return this.value; }).get();
         if (!ids.length) return;
 
         Swal.fire({
             title: 'Delete ' + ids.length + ' assignment(s)?',
             text:  'This will permanently remove the selected class teacher assignments.',
             icon:  'warning',
-            showCancelButton:    true,
-            confirmButtonColor:  '#dc2626',
-            confirmButtonText:   'Yes, delete all',
-            cancelButtonText:    'Cancel',
-        }).then(function(result) {
+            showCancelButton:   true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText:  'Yes, delete all',
+            cancelButtonText:   'Cancel',
+        }).then(function (result) {
             if (!result.isConfirmed) return;
 
             PageLoader.show('Deleting assignments…');
 
             $.ajax({
-                url:  '{{ route("classteacher.bulk-destroy") }}',
+                url: '{{ route("classteacher.bulk-destroy") }}',
                 type: 'POST',
                 data: { ids: ids, _token: CSRF },
                 traditional: true,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
 
-                success: function(res) {
+                success: function (res) {
                     PageLoader.hide();
-                    if (res.success) {
+                    if (res && res.success) {
                         toast('success', 'Deleted!', res.message);
-                        table.ajax.reload();
+                        table.ajax.reload(function () {
+                            $('#selectAll').prop('checked', false);
+                            updateBulkBar();
+                        }, false);
                         loadStats();
-                        $('#selectAll').prop('checked', false);
-                        updateBulkBar();
                     } else {
-                        toast('error', 'Failed', res.message || 'Could not delete assignments.');
+                        toast('error', 'Failed', (res && res.message) || 'Could not delete assignments.');
                     }
                 },
 
-                error: function() {
+                error: function () {
                     PageLoader.hide();
                     toast('error', 'Error', 'Failed to delete selected assignments.');
                 },
@@ -1164,8 +1207,9 @@ $(document).ready(function () {
         });
     }
 
-    $('#bulkDeleteBtn, #bulkDeleteBtn2').on('click', doBulkDelete);
+    $('#bulkDeleteBtn, #bulkDeleteBtn2').off('click').on('click', doBulkDelete);
 
+    // Initial bind for any rows already present
     bindCheckboxes();
 });
 </script>
