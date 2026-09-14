@@ -23,7 +23,7 @@ class SchoolClassController extends Controller
     }
 
     // =========================================================================
-    // INDEX — passes $arms and $classcategories as Collections
+    // INDEX
     // =========================================================================
 
     public function index(Request $request)
@@ -31,6 +31,9 @@ class SchoolClassController extends Controller
         $pagetitle = "School Class Management";
 
         try {
+            // Fetch as collections. These MUST be non-empty for the create modal
+            // to render arms and categories. If they come back empty, the issue
+            // is in the database, not the blade.
             $arms            = Schoolarm::orderBy('arm')->get();
             $classcategories = Classcategory::orderBy('category')->get();
 

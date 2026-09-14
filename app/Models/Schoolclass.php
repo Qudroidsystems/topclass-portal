@@ -24,17 +24,15 @@ class Schoolclass extends Model
         'classcategoryid' => 'integer',
     ];
 
-    // =========================================================================
-    // RELATIONSHIPS
-    // =========================================================================
+    // ── Relationships ────────────────────────────────────────────────────────
 
-    /** Single category via the FK (canonical for Project 1). */
+    /** Single category via the FK (Project 1 canonical). */
     public function classcategory()
     {
         return $this->belongsTo(Classcategory::class, 'classcategoryid', 'id');
     }
 
-    /** Pivot-based plural, kept for compatibility with any P2-style code. */
+    /** Pivot-based plural (kept for compatibility). */
     public function classcategories()
     {
         return $this->belongsToMany(
@@ -61,9 +59,7 @@ class Schoolclass extends Model
         return $this->hasMany(Subjectclass::class, 'schoolclassid', 'id');
     }
 
-    // =========================================================================
-    // PROMOTION PASS AVERAGE (pivot-backed)
-    // =========================================================================
+    // ── Pivot-backed accessors ───────────────────────────────────────────────
 
     public function getPromotionPassAverageAttribute()
     {
@@ -102,9 +98,7 @@ class Schoolclass extends Model
         }
     }
 
-    // =========================================================================
-    // CURRENT STUDENTS (only if student_current_term exists)
-    // =========================================================================
+    // ── Current students (only if student_current_term exists) ───────────────
 
     public function studentCurrentTerms()
     {
