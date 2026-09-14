@@ -2,171 +2,272 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use App\Models\Subject;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Yajra\DataTables\Facades\DataTables;
 
 class SubjectController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:View subjects|Create subjects|Update subjects|Delete subjects', ['only' => ['index', 'store']]);
-        $this->middleware('permission:Create subjects', ['only' => ['create', 'store']]);
-        $this->middleware('permission:Update subjects', ['only' => ['edit', 'update', 'updatesubject']]);
-        $this->middleware('permission:Delete subjects', ['only' => ['destroy', 'deletesubject']]);
+        $this->middleware('permission:View subjects|Create subjects|Update subjects|Delete subjects', ['only' => ['index', 'data', 'stats']]);
+        $this->middleware('permission:Create subjects', ['only' => ['store']]);
+        $this->middleware('permission:Update subjects', ['only' => ['update', 'updatesubject']]);
+        $this->middleware('permission:Delete subjects', ['only' => ['destroy', 'deletesubject', 'deleteMultiple']]);
     }
 
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+    // =========================================================================
+    // INDEX
+    // =========================================================================
+
     public function index(Request $request)
     {
         $pagetitle = "Subject Management";
-        $subjects = Subject::paginate(100); // Paginate with 10 items per page
 
-        if ($request->ajax()) {
+        try {
+            return view('subject.index')->with('pagetitle', $pagetitle);
+        } catch (\Exception $e) {
+            Log::error('Subject Index Error', ['error' => $e->getMessage()]);
+            return back()->with('danger', 'Error loading subjects: ' . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // DATATABLE
+    // =========================================================================
+
+    public function data(Request $request)
+    {
+        try {
+            $subjects = Subject::select('subject.*');
+
+            return DataTables::of($subjects)
+                ->addIndexColumn()
+
+                ->addColumn('checkbox', function ($row) {
+                    return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
+                })
+
+                ->addColumn('subject_info', function ($row) {
+                    return '<div>'
+                        . '<span class="fw-semibold text-dark">' . e($this->cleanUtf8String($row->subject ?? '')) . '</span>'
+                        . '<small class="text-muted d-block">ID: ' . $row->id . '</small>'
+                        . '</div>';
+                })
+
+                ->addColumn('code_info', function ($row) {
+                    return '<span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-3 py-2" style="border-radius:6px;font-size:12px;">'
+                        . e($row->subject_code ?? 'N/A')
+                        . '</span>';
+                })
+
+                ->addColumn('remark_info', function ($row) {
+                    return '<span class="sub-badge sub-badge-remark">'
+                        . e($this->cleanUtf8String($row->remark ?? 'N/A'))
+                        . '</span>';
+                })
+
+                ->addColumn('usage_count', function ($row) {
+                    $count = DB::table('subjectteacher')->where('subjectid', $row->id)->count();
+                    if ($count > 0) {
+                        return '<span class="badge bg-info text-white">' . $count . ' Assignment(s)</span>';
+                    }
+                    return '<span class="text-muted">—</span>';
+                })
+
+                ->addColumn('formatted_date', function ($row) {
+                    if (!$row->updated_at) return '<span class="text-muted small">—</span>';
+                    return '<small class="text-muted">'
+                        . \Carbon\Carbon::parse($row->updated_at)->format('d M Y')
+                        . '</small>';
+                })
+
+                ->addColumn('action', function ($row) {
+                    $buttons = '<div class="d-flex gap-1">';
+
+                    if (auth()->user() && auth()->user()->can('Update subjects')) {
+                        $buttons .= sprintf(
+                            '<button class="btn btn-sm btn-outline-secondary edit-subject-btn" title="Edit" '
+                            . 'data-id="%s" data-subject="%s" data-code="%s" data-remark="%s">'
+                            . '<i class="ph-pencil"></i></button>',
+                            $row->id,
+                            e($this->cleanUtf8String($row->subject ?? '')),
+                            e($row->subject_code ?? ''),
+                            e($this->cleanUtf8String($row->remark ?? ''))
+                        );
+                    }
+
+                    if (auth()->user() && auth()->user()->can('Delete subjects')) {
+                        $buttons .= sprintf(
+                            '<button class="btn btn-sm btn-outline-danger delete-subject-btn" title="Delete" '
+                            . 'data-id="%s" data-subject="%s"><i class="ph-trash"></i></button>',
+                            $row->id,
+                            e($this->cleanUtf8String($row->subject ?? 'Unknown Subject'))
+                        );
+                    }
+
+                    return $buttons . '</div>';
+                })
+
+                ->rawColumns(['checkbox', 'subject_info', 'code_info', 'remark_info', 'usage_count', 'formatted_date', 'action'])
+                ->make(true);
+
+        } catch (\Exception $e) {
+            Log::error('Subject DataTable error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // STATS
+    // =========================================================================
+
+    public function stats()
+    {
+        try {
+            $totalSubjects        = Subject::count();
+            $subjectsWithTeachers = DB::table('subjectteacher')->distinct('subjectid')->count('subjectid');
+            $recentlyUpdated      = Subject::where('updated_at', '>=', now()->subDays(30))->count();
+
             return response()->json([
-                'html' => view('subject.partials.table', compact('subjects'))->render(),
-                'pagination' => view('subject.partials.pagination', compact('subjects'))->render(),
-                'count' => $subjects->count(),
-                'total' => $subjects->total(),
+                'stats' => [
+                    'total'            => $totalSubjects,
+                    'with_teachers'    => $subjectsWithTeachers,
+                    'recently_updated' => $recentlyUpdated,
+                    'showing'          => $totalSubjects,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Subject stats error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'stats' => ['total' => 0, 'with_teachers' => 0, 'recently_updated' => 0, 'showing' => 0],
             ]);
         }
-
-        return view('subject.index', compact('subjects', 'pagetitle'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        return view('subject.create');
-    }
+    // =========================================================================
+    // STORE
+    // =========================================================================
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'subject' => 'required|unique:subject,subject',
+            'subject'      => 'required|unique:subject,subject',
             'subject_code' => 'required|min:3|unique:subject,subject_code',
-            'remark' => 'required',
+            'remark'       => 'required',
         ], [
-            'subject.required' => 'Please enter a subject name!',
-            'subject.unique' => 'This subject name is already taken!',
+            'subject.required'      => 'Please enter a subject name!',
+            'subject.unique'        => 'This subject name is already taken!',
             'subject_code.required' => 'Please enter a subject code!',
-            'subject_code.min' => 'Subject code must be at least 4 characters!',
-            'subject_code.unique' => 'This subject code is already taken!',
-            'remark.required' => 'Please enter a remark!',
+            'subject_code.min'      => 'Subject code must be at least 3 characters!',
+            'subject_code.unique'   => 'This subject code is already taken!',
+            'remark.required'       => 'Please enter a remark!',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $subject = Subject::create([
-            'subject' => $request->input('subject'),
-            'subject_code' => $request->input('subject_code'),
-            'remark' => $request->input('remark'),
-        ]);
+        try {
+            $subject = Subject::create([
+                'subject'      => $request->input('subject'),
+                'subject_code' => $request->input('subject_code'),
+                'remark'       => $request->input('remark'),
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Subject added successfully.',
-            'data' => $subject
-        ], 201);
-    }
+            Log::info('Subject Created', $subject->toArray());
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        $subject = Subject::find($id);
-        if (!$subject) {
-            return redirect()->route('subject.index')->with('danger', 'Subject not found.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Subject added successfully.',
+                'data'    => $subject,
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating subject', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create subject: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return view('subject.edit')->with('subject', $subject);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
+
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'subject' => 'required|unique:subject,subject,' . $id,
+            'subject'      => 'required|unique:subject,subject,' . $id,
             'subject_code' => 'required|min:3|unique:subject,subject_code,' . $id,
-            'remark' => 'required',
+            'remark'       => 'required',
         ], [
-            'subject.required' => 'Please enter a subject name!',
-            'subject.unique' => 'This subject name is already taken!',
+            'subject.required'      => 'Please enter a subject name!',
+            'subject.unique'        => 'This subject name is already taken!',
             'subject_code.required' => 'Please enter a subject code!',
-            'subject_code.min' => 'Subject code must be at least 4 characters!',
-            'subject_code.unique' => 'This subject code is already taken!',
-            'remark.required' => 'Please enter a remark!',
+            'subject_code.min'      => 'Subject code must be at least 3 characters!',
+            'subject_code.unique'   => 'This subject code is already taken!',
+            'remark.required'       => 'Please enter a remark!',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $subject = Subject::find($id);
-        if (!$subject) {
+        try {
+            $subject = Subject::find($id);
+            if (!$subject) {
+                return response()->json(['success' => false, 'message' => 'Subject not found.'], 404);
+            }
+
+            $subject->update([
+                'subject'      => $request->input('subject'),
+                'subject_code' => $request->input('subject_code'),
+                'remark'       => $request->input('remark'),
+            ]);
+
+            Log::info('Subject Updated', $subject->toArray());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subject updated successfully.',
+                'data'    => $subject,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating subject', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Subject not found.'
-            ], 404);
+                'message' => 'Failed to update subject: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $subject->update([
-            'subject' => $request->input('subject'),
-            'subject_code' => $request->input('subject_code'),
-            'remark' => $request->input('remark'),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Subject updated successfully.',
-            'data' => $subject
-        ], 200);
     }
 
-    /**
-     * Legacy update method for non-AJAX requests.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+    // =========================================================================
+    // LEGACY UPDATE
+    // =========================================================================
+
     public function updatesubject(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'subject' => 'required|unique:subject,subject,' . $request->id,
-            'subject_code' => 'required|min:4|unique:subject,subject_code,' . $request->id,
-            'remark' => 'required',
+            'subject'      => 'required|unique:subject,subject,' . $request->id,
+            'subject_code' => 'required|min:3|unique:subject,subject_code,' . $request->id,
+            'remark'       => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -179,59 +280,151 @@ class SubjectController extends Controller
         }
 
         $subject->update([
-            'subject' => $request->input('subject'),
+            'subject'      => $request->input('subject'),
             'subject_code' => $request->input('subject_code'),
-            'remark' => $request->input('remark'),
+            'remark'       => $request->input('remark'),
         ]);
 
         return redirect()->back()->with('success', 'Subject updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
+    // =========================================================================
+    // DESTROY (single)
+    // =========================================================================
+
     public function destroy($id)
     {
-        $subject = Subject::find($id);
-        if (!$subject) {
+        try {
+            $subject = Subject::find($id);
+            if (!$subject) {
+                return response()->json(['success' => false, 'message' => 'Subject not found.'], 404);
+            }
+
+            $inUse = DB::table('subjectteacher')->where('subjectid', $id)->exists();
+            if ($inUse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subject is being used by one or more subject teachers and cannot be deleted.',
+                ], 422);
+            }
+
+            $subject->delete();
+            Log::info('Subject Deleted', ['id' => $id]);
+
+            return response()->json(['success' => true, 'message' => 'Subject deleted successfully.'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting subject', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Subject not found.'
-            ], 404);
+                'message' => 'Failed to delete subject: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $subject->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Subject deleted successfully.'
-        ], 200);
     }
 
-    /**
-     * Handle AJAX delete request for subject.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+    // =========================================================================
+    // DELETE (AJAX)
+    // =========================================================================
+
     public function deletesubject(Request $request)
     {
-        $subject = Subject::find($request->subjectid);
-        if (!$subject) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Subject not found.'
-            ], 404);
+        $validator = Validator::make($request->all(), [
+            'subjectid' => 'required|exists:subject,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
 
-        $subject->delete();
+        try {
+            $inUse = DB::table('subjectteacher')->where('subjectid', $request->subjectid)->exists();
+            if ($inUse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subject is being used by one or more subject teachers and cannot be deleted.',
+                ], 422);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Subject has been removed.'
-        ], 200);
+            Subject::find($request->subjectid)->delete();
+            Log::info('Subject Deleted via AJAX', ['id' => $request->subjectid]);
+
+            return response()->json(['success' => true, 'message' => 'Subject has been removed.'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting subject via AJAX', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete subject: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // =========================================================================
+    // BULK DESTROY
+    // =========================================================================
+
+    public function deleteMultiple(Request $request)
+    {
+        try {
+            $ids = $request->input('ids');
+            if (is_string($ids)) {
+                $decoded = json_decode($ids, true);
+                $ids = is_array($decoded) ? $decoded : array_map('trim', explode(',', $ids));
+            }
+            if (!is_array($ids)) $ids = [];
+            $ids = array_values(array_filter($ids));
+
+            if (empty($ids)) {
+                return response()->json(['success' => false, 'message' => 'No subjects selected.'], 400);
+            }
+
+            $existingIds = Subject::whereIn('id', $ids)->pluck('id')->toArray();
+            $invalidIds  = array_diff($ids, $existingIds);
+            if (!empty($invalidIds)) {
+                return response()->json(['success' => false, 'message' => 'Some selected subjects do not exist.'], 400);
+            }
+
+            $inUse = DB::table('subjectteacher')->whereIn('subjectid', $ids)->exists();
+            if ($inUse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some subjects are being used by subject teachers and cannot be deleted.',
+                ], 422);
+            }
+
+            DB::beginTransaction();
+            $deleted = Subject::whereIn('id', $ids)->delete();
+            DB::commit();
+
+            Log::info('Subject bulk delete', ['total' => count($ids), 'deleted' => $deleted]);
+
+            return response()->json([
+                'success'       => true,
+                'message'       => $deleted . ' subject(s) deleted successfully.',
+                'deleted_count' => $deleted,
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk delete failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting subjects: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // =========================================================================
+    // HELPER
+    // =========================================================================
+
+    private function cleanUtf8String($string)
+    {
+        if (empty($string)) return '';
+        $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $string);
     }
 }
