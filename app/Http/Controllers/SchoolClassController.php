@@ -190,121 +190,137 @@ class SchoolClassController extends Controller
     // STORE
     // =========================================================================
 
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'schoolclass'     => 'required|string|max:255',
-            'arm_id'          => 'required|array|min:1',
-            'arm_id.*'        => 'exists:schoolarm,id',
-            'classcategoryid' => 'required',
-        ], [
-            'schoolclass.required'     => 'Please enter a school class name.',
-            'arm_id.required'          => 'Please select at least one arm.',
-            'arm_id.*.exists'          => 'One or more selected arms do not exist.',
-            'classcategoryid.required' => 'Please select a category.',
-        ]);
+public function store(Request $request)
+{
+    // Normalise arm_id to array no matter how it was sent
+    $armIds = $request->input('arm_id');
+    if (is_string($armIds)) {
+        // Could be JSON array string or comma-separated
+        $decoded = json_decode($armIds, true);
+        $armIds = is_array($decoded) ? $decoded : array_map('trim', explode(',', $armIds));
+    }
+    if (!is_array($armIds)) {
+        $armIds = $armIds !== null ? [$armIds] : [];
+    }
+    $armIds = array_values(array_filter($armIds));
 
-        $categoryIds = $request->input('classcategoryid');
-        if (!is_array($categoryIds)) {
-            $categoryIds = [$categoryIds];
-        }
-        $categoryIds = array_values(array_filter($categoryIds));
+    // Normalise classcategoryid to array
+    $categoryIds = $request->input('classcategoryid');
+    if (is_string($categoryIds)) {
+        $decoded = json_decode($categoryIds, true);
+        $categoryIds = is_array($decoded) ? $decoded : array_map('trim', explode(',', $categoryIds));
+    }
+    if (!is_array($categoryIds)) {
+        $categoryIds = $categoryIds !== null ? [$categoryIds] : [];
+    }
+    $categoryIds = array_values(array_filter($categoryIds));
 
-        $existingCats = Classcategory::whereIn('id', $categoryIds)->pluck('id')->toArray();
-        if (count($existingCats) !== count($categoryIds)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'One or more selected categories do not exist.',
-            ], 422);
-        }
+    $validator = Validator::make([
+        'schoolclass'     => $request->input('schoolclass'),
+        'arm_id'          => $armIds,
+        'classcategoryid' => $categoryIds,
+    ], [
+        'schoolclass'     => 'required|string|max:255',
+        'arm_id'          => 'required|array|min:1',
+        'arm_id.*'        => 'exists:schoolarm,id',
+        'classcategoryid' => 'required|array|min:1',
+        'classcategoryid.*' => 'exists:classcategories,id',
+    ], [
+        'schoolclass.required'     => 'Please enter a school class name.',
+        'arm_id.required'          => 'Please select at least one arm.',
+        'arm_id.*.exists'          => 'One or more selected arms do not exist.',
+        'classcategoryid.required' => 'Please select a category.',
+        'classcategoryid.*.exists' => 'One or more selected categories do not exist.',
+    ]);
 
-        $validator->after(function ($validator) use ($request, $categoryIds) {
-            foreach ($request->arm_id as $armId) {
-                foreach ($categoryIds as $catId) {
-                    $exists = Schoolclass::where('schoolclass', $request->schoolclass)
-                        ->where('arm', $armId)
-                        ->where('classcategoryid', $catId)
-                        ->exists();
-                    if ($exists) {
-                        $arm = Schoolarm::find($armId);
-                        $cat = Classcategory::find($catId);
-                        $validator->errors()->add(
-                            'schoolclass',
-                            "The class '{$request->schoolclass}', arm '"
-                            . ($arm->arm ?? '?') . "', category '"
-                            . ($cat->category ?? '?') . "' already exists."
-                        );
-                    }
-                }
-            }
-        });
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => $validator->errors()->first(),
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
-        DB::beginTransaction();
-        try {
-            $created    = [];
-            $pivotReady = Schema::hasTable('schoolclass_classcategory');
-
-            foreach ($request->arm_id as $armId) {
-                foreach ($categoryIds as $catId) {
-                    $class = new Schoolclass();
-                    $class->schoolclass     = $request->schoolclass;
-                    $class->arm             = $armId;
-                    $class->classcategoryid = $catId;
-                    $class->description     = $request->description ?? null;
-                    $class->save();
-
-                    if ($pivotReady) {
-                        DB::table('schoolclass_classcategory')->updateOrInsert(
-                            [
-                                'schoolclass_id'   => $class->id,
-                                'classcategory_id' => $catId,
-                            ],
-                            [
-                                'promotion_pass_average' => null,
-                                'created_at'             => now(),
-                                'updated_at'             => now(),
-                            ]
-                        );
-                    }
-
+    // Duplicate check per arm×category
+    $validator->after(function ($validator) use ($request, $armIds, $categoryIds) {
+        foreach ($armIds as $armId) {
+            foreach ($categoryIds as $catId) {
+                $exists = Schoolclass::where('schoolclass', $request->input('schoolclass'))
+                    ->where('arm', $armId)
+                    ->where('classcategoryid', $catId)
+                    ->exists();
+                if ($exists) {
                     $arm = Schoolarm::find($armId);
                     $cat = Classcategory::find($catId);
-
-                    $created[] = [
-                        'id'                 => $class->id,
-                        'schoolclass'        => $class->schoolclass,
-                        'arm_id'             => $class->arm,
-                        'arm_name'           => $arm->arm ?? 'Unknown',
-                        'classcategoryid'    => $class->classcategoryid,
-                        'classcategory_name' => $cat->category ?? 'Unknown',
-                    ];
+                    $validator->errors()->add(
+                        'schoolclass',
+                        "The class '{$request->input('schoolclass')}', arm '"
+                        . ($arm->arm ?? '?') . "', category '"
+                        . ($cat->category ?? '?') . "' already exists."
+                    );
                 }
             }
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => count($created) . ' school class(es) added successfully!',
-                'data'    => $created,
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('SchoolClass store error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error storing school class: ' . $e->getMessage(),
-            ], 500);
         }
+    });
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+        ], 422);
     }
+
+    DB::beginTransaction();
+    try {
+        $created    = [];
+        $pivotReady = Schema::hasTable('schoolclass_classcategory');
+
+        foreach ($armIds as $armId) {
+            foreach ($categoryIds as $catId) {
+                $class = new Schoolclass();
+                $class->schoolclass     = $request->input('schoolclass');
+                $class->arm             = $armId;
+                $class->classcategoryid = $catId;
+                $class->description     = $request->input('description') ?? null;
+                $class->save();
+
+                if ($pivotReady) {
+                    DB::table('schoolclass_classcategory')->updateOrInsert(
+                        [
+                            'schoolclass_id'   => $class->id,
+                            'classcategory_id' => $catId,
+                        ],
+                        [
+                            'promotion_pass_average' => null,
+                            'created_at'             => now(),
+                            'updated_at'             => now(),
+                        ]
+                    );
+                }
+
+                $arm = Schoolarm::find($armId);
+                $cat = Classcategory::find($catId);
+
+                $created[] = [
+                    'id'                 => $class->id,
+                    'schoolclass'        => $class->schoolclass,
+                    'arm_id'             => $class->arm,
+                    'arm_name'           => $arm->arm ?? 'Unknown',
+                    'classcategoryid'    => $class->classcategoryid,
+                    'classcategory_name' => $cat->category ?? 'Unknown',
+                ];
+            }
+        }
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => count($created) . ' school class(es) added successfully!',
+            'data'    => $created,
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('SchoolClass store error', ['error' => $e->getMessage()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Error storing school class: ' . $e->getMessage(),
+        ], 500);
+    }
+}
 
     // =========================================================================
     // UPDATE
