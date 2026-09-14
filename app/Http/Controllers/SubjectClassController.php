@@ -23,7 +23,7 @@ class SubjectClassController extends Controller
     {
         $this->middleware('permission:View subject-class|Create subject-class|Update subject-class|Delete subject-class', ['only' => ['index', 'data', 'stats']]);
         $this->middleware('permission:Create subject-class', ['only' => ['store']]);
-        $this->middleware('permission:Update subject-class', ['only' => ['update', 'changeTeacher']]);
+        $this->middleware('permission:Update subject-class', ['only' => ['update']]);
         $this->middleware('permission:Delete subject-class', ['only' => ['destroy', 'deletesubjectclass', 'deleteMultiple']]);
     }
 
@@ -36,10 +36,20 @@ class SubjectClassController extends Controller
         $pagetitle = "Subject Class Management";
 
         try {
+            // ── School classes with the ARM NAME (not the FK id) ────────────
             $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-                ->get(['schoolclass.id as id', 'schoolclass.schoolclass as schoolclass', 'schoolarm.arm as arm'])
+                ->get([
+                    'schoolclass.id as id',
+                    'schoolclass.schoolclass as schoolclass',
+                    'schoolarm.arm as arm_name',
+                ])
+                ->map(function ($c) {
+                    $c->label = trim($c->schoolclass . ($c->arm_name ? ' (' . $c->arm_name . ')' : ''));
+                    return $c;
+                })
                 ->sortBy('schoolclass');
 
+            // ── Subject teachers list for the add modal ─────────────────────
             $subjectteacher = SubjectTeacher::leftJoin('subject', 'subject.id', '=', 'subjectteacher.subjectid')
                 ->leftJoin('users', 'users.id', '=', 'subjectteacher.staffid')
                 ->leftJoin('schoolterm', 'schoolterm.id', '=', 'subjectteacher.termid')
@@ -59,6 +69,7 @@ class SubjectClassController extends Controller
                 ])
                 ->sortBy('subject');
 
+            // ── Staff list for the edit modal dropdown ──────────────────────
             $allStaff = User::whereHas('roles', function ($q) {
                 $q->where('name', '!=', 'Student');
             })->orderBy('name')->get(['users.id', 'users.name']);
@@ -141,15 +152,6 @@ class SubjectClassController extends Controller
                 ->addColumn('teacher_info', function ($row) {
                     $name    = $this->cleanUtf8String($row->teachername ?? 'Unknown');
                     $initial = mb_strtoupper(mb_substr($name, 0, 1, 'UTF-8'), 'UTF-8');
-                    $defaultUrl = asset('storage/staff_avatars/unnamed.jpg');
-
-                    $avatarUrl = $defaultUrl;
-                    if (!empty($row->picture)) {
-                        if (\Storage::exists('public/staff_avatars/' . $row->picture)) {
-                            $avatarUrl = asset('storage/staff_avatars/' . $row->picture);
-                        }
-                    }
-
                     return '<div class="d-flex align-items-center gap-2">'
                         . '<div class="avatar-initials">' . e($initial) . '</div>'
                         . '<span class="fw-semibold text-dark">' . e($name) . '</span>'
@@ -277,13 +279,13 @@ class SubjectClassController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'schoolclassid'        => 'required|exists:schoolclass,id',
-            'subjectteacherid'     => 'required|array|min:1',
-            'subjectteacherid.*'   => 'exists:subjectteacher,id',
+            'schoolclassid'      => 'required|exists:schoolclass,id',
+            'subjectteacherid'   => 'required|array|min:1',
+            'subjectteacherid.*' => 'exists:subjectteacher,id',
         ], [
-            'schoolclassid.required'        => 'Please select a class.',
-            'subjectteacherid.required'     => 'Please select at least one subject teacher.',
-            'subjectteacherid.*.exists'     => 'One or more selected subject teachers do not exist.',
+            'schoolclassid.required'    => 'Please select a class.',
+            'subjectteacherid.required' => 'Please select at least one subject teacher.',
+            'subjectteacherid.*.exists' => 'One or more selected subject teachers do not exist.',
         ]);
 
         if ($validator->fails()) {
@@ -296,10 +298,10 @@ class SubjectClassController extends Controller
 
         DB::beginTransaction();
         try {
-            $schoolClassId      = $request->input('schoolclassid');
-            $subjectTeacherIds  = $request->input('subjectteacherid', []);
-            $createdRecords     = [];
-            $subjectTeachers    = SubjectTeacher::whereIn('id', $subjectTeacherIds)->get();
+            $schoolClassId     = $request->input('schoolclassid');
+            $subjectTeacherIds = $request->input('subjectteacherid', []);
+            $createdRecords    = [];
+            $subjectTeachers   = SubjectTeacher::whereIn('id', $subjectTeacherIds)->get();
 
             foreach ($subjectTeacherIds as $subjectTeacherId) {
                 $subjectTeacher = $subjectTeachers->firstWhere('id', $subjectTeacherId);
@@ -359,14 +361,12 @@ class SubjectClassController extends Controller
 
         DB::beginTransaction();
         try {
-            $newStaffId  = $request->input('new_staffid');
+            $newStaffId   = $request->input('new_staffid');
             $subjectclass = Subjectclass::find($id);
             if (!$subjectclass) {
                 return response()->json(['success' => false, 'message' => 'Subject Class not found.'], 404);
             }
 
-            // Find or create a SubjectTeacher row for (new_staff, current subject, current term, current session)
-            // We inherit term/session from the existing subjectteacher row.
             $currentST = SubjectTeacher::find($subjectclass->subjectteacherid);
             if (!$currentST) {
                 return response()->json(['success' => false, 'message' => 'Linked Subject Teacher row is missing.'], 422);
@@ -378,20 +378,13 @@ class SubjectClassController extends Controller
                     'subjectid' => $currentST->subjectid,
                     'termid'    => $currentST->termid,
                     'sessionid' => $currentST->sessionid,
-                ],
-                [
-                    'staffid'   => $newStaffId,
-                    'subjectid' => $currentST->subjectid,
-                    'termid'    => $currentST->termid,
-                    'sessionid' => $currentST->sessionid,
                 ]
             );
 
-            // Repoint subjectclass to the new subjectteacher
             $subjectclass->subjectteacherid = $newST->id;
             $subjectclass->save();
 
-            // Cascade: update broadsheets / registrations for this subject class
+            // Cascade to related records
             Broadsheets::where('subjectclass_id', $subjectclass->id)->update(['staff_id' => $newStaffId]);
             BroadsheetsMock::where('subjectclass_id', $subjectclass->id)->update(['staff_id' => $newStaffId]);
             SubjectRegistrationStatus::where('subjectclassid', $subjectclass->id)->update(['staffid' => $newStaffId]);
@@ -460,7 +453,6 @@ class SubjectClassController extends Controller
                 return response()->json(['success' => false, 'message' => 'Subject Class not found.'], 404);
             }
 
-            // If students have registered, refuse deletion
             $registered = SubjectRegistrationStatus::where('subjectclassid', $id)->count();
             if ($registered > 0) {
                 return response()->json([
@@ -469,7 +461,6 @@ class SubjectClassController extends Controller
                 ], 422);
             }
 
-            // If any broadsheet rows exist, refuse (scores already entered)
             $scoreRows = Broadsheets::where('subjectclass_id', $id)->count();
             if ($scoreRows > 0) {
                 return response()->json([
@@ -478,10 +469,9 @@ class SubjectClassController extends Controller
                 ], 422);
             }
 
-            // Safe to delete the subject class itself
             $subjectclass->delete();
-
             DB::commit();
+
             return response()->json(['success' => true, 'message' => 'Subject Class deleted successfully.'], 200);
 
         } catch (\Exception $e) {
@@ -515,7 +505,6 @@ class SubjectClassController extends Controller
                 return response()->json(['success' => false, 'message' => 'No assignments selected.'], 400);
             }
 
-            // Refuse if any of the selected have registrations or scores
             $blockedReg = SubjectRegistrationStatus::whereIn('subjectclassid', $ids)->count();
             if ($blockedReg > 0) {
                 return response()->json([
