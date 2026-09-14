@@ -87,6 +87,26 @@ class SubjectTeacherController extends Controller
             return DataTables::of($query)
                 ->addIndexColumn()
 
+                // ── Search handlers for aliased columns ────────────────────
+                ->filterColumn('staffname', function ($query, $keyword) {
+                    $query->where('users.name', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('subjectname', function ($query, $keyword) {
+                    $query->where('subject.subject', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('subjectcode', function ($query, $keyword) {
+                    $query->where('subject.subject_code', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('termname', function ($query, $keyword) {
+                    $query->where('schoolterm.term', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('sessionname', function ($query, $keyword) {
+                    $query->where('schoolsession.session', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('formatted_date', function ($query, $keyword) {
+                    $query->whereRaw("DATE(subjectteacher.updated_at) LIKE ?", ["%{$keyword}%"]);
+                })
+
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
                 })
@@ -249,8 +269,6 @@ class SubjectTeacherController extends Controller
 
     public function store(Request $request)
     {
-        Log::info('Store SubjectTeacher Request', $request->all());
-
         $validator = Validator::make($request->all(), [
             'staffid'      => 'required|exists:users,id',
             'subjectids'   => 'required|array|min:1',
@@ -258,13 +276,6 @@ class SubjectTeacherController extends Controller
             'termid'       => 'required|array|min:1',
             'termid.*'     => 'exists:schoolterm,id',
             'sessionid'    => 'required|exists:schoolsession,id',
-        ], [
-            'staffid.required'    => 'Please select a teacher.',
-            'subjectids.required' => 'Please select at least one subject.',
-            'subjectids.min'      => 'Please select at least one subject.',
-            'termid.required'     => 'Please select at least one term.',
-            'termid.min'          => 'Please select at least one term.',
-            'sessionid.required'  => 'Please select a session.',
         ]);
 
         if ($validator->fails()) {
@@ -333,8 +344,6 @@ class SubjectTeacherController extends Controller
 
     public function update(Request $request, $id)
     {
-        Log::info('Update SubjectTeacher Request', ['id' => $id, 'data' => $request->all()]);
-
         $validator = Validator::make($request->all(), [
             'staffid'      => 'required|exists:users,id',
             'subjectids'   => 'required|array|min:1',
@@ -364,13 +373,11 @@ class SubjectTeacherController extends Controller
                 return response()->json(['success' => false, 'message' => 'Subject teacher record not found.'], 404);
             }
 
-            // Delete existing rows for this teacher+subject+session
             SubjectTeacher::where('staffid', $current->staffid)
                 ->where('subjectid', $current->subjectid)
                 ->where('sessionid', $current->sessionid)
                 ->delete();
 
-            // Conflict check for other teachers
             $conflict = SubjectTeacher::where('staffid', $staffid)
                 ->whereIn('subjectid', $subjectids)
                 ->whereIn('termid', $termids)
@@ -417,7 +424,7 @@ class SubjectTeacherController extends Controller
     }
 
     // =========================================================================
-    // LEGACY UPDATE (non-AJAX)
+    // LEGACY UPDATE
     // =========================================================================
 
     public function updatesubjectteacher(Request $request)
@@ -500,7 +507,7 @@ class SubjectTeacherController extends Controller
     }
 
     // =========================================================================
-    // DELETE — AJAX
+    // DELETE (AJAX)
     // =========================================================================
 
     public function deletesubjectteacher(Request $request)
@@ -634,7 +641,7 @@ class SubjectTeacherController extends Controller
     }
 
     // =========================================================================
-    // UPDATE RELATED RECORDS (broadsheets, registrations)
+    // UPDATE RELATED RECORDS
     // =========================================================================
 
     private function updateRelatedRecords($staffid, $subjectTeacherId)

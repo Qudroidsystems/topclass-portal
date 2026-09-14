@@ -47,6 +47,20 @@ class SubjectController extends Controller
             return DataTables::of($subjects)
                 ->addIndexColumn()
 
+                // ── Search handlers for aliased columns ────────────────────
+                ->filterColumn('subject', function ($query, $keyword) {
+                    $query->where('subject.subject', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('subject_code', function ($query, $keyword) {
+                    $query->where('subject.subject_code', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('remark', function ($query, $keyword) {
+                    $query->where('subject.remark', 'LIKE', "%{$keyword}%");
+                })
+                ->filterColumn('formatted_date', function ($query, $keyword) {
+                    $query->whereRaw("DATE(subject.updated_at) LIKE ?", ["%{$keyword}%"]);
+                })
+
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
                 })
@@ -241,8 +255,6 @@ class SubjectController extends Controller
                 'remark'       => $request->input('remark'),
             ]);
 
-            Log::info('Subject Updated', $subject->toArray());
-
             return response()->json([
                 'success' => true,
                 'message' => 'Subject updated successfully.',
@@ -289,7 +301,7 @@ class SubjectController extends Controller
     }
 
     // =========================================================================
-    // DESTROY (single)
+    // DESTROY
     // =========================================================================
 
     public function destroy($id)
@@ -309,7 +321,6 @@ class SubjectController extends Controller
             }
 
             $subject->delete();
-            Log::info('Subject Deleted', ['id' => $id]);
 
             return response()->json(['success' => true, 'message' => 'Subject deleted successfully.'], 200);
 
@@ -346,7 +357,6 @@ class SubjectController extends Controller
             }
 
             Subject::find($request->subjectid)->delete();
-            Log::info('Subject Deleted via AJAX', ['id' => $request->subjectid]);
 
             return response()->json(['success' => true, 'message' => 'Subject has been removed.'], 200);
 
@@ -396,8 +406,6 @@ class SubjectController extends Controller
             $deleted = Subject::whereIn('id', $ids)->delete();
             DB::commit();
 
-            Log::info('Subject bulk delete', ['total' => count($ids), 'deleted' => $deleted]);
-
             return response()->json([
                 'success'       => true,
                 'message'       => $deleted . ' subject(s) deleted successfully.',
@@ -406,10 +414,7 @@ class SubjectController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Bulk delete failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            Log::error('Bulk delete failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting subjects: ' . $e->getMessage(),
