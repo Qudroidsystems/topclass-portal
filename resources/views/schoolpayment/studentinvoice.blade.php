@@ -1,764 +1,1113 @@
+{{-- resources/views/schoolpayment/studentinvoice.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <style>
-    :root {
-        --tb-primary: #009ef7;
-        --tb-secondary: #3b82f6;
-        --tb-success: #50cd89;
-        --tb-light: #f5f8fa;
-        --tb-success-subtle: rgba(80, 205, 137, 0.1);
+:root {
+    --tb-primary: #0d6efd;
+    --tb-secondary: #6c757d;
+    --tb-success: #198754;
+    --tb-danger: #dc3545;
+    --tb-warning: #ffc107;
+    --tb-info: #0dcaf0;
+    --tb-light: #f8f9fa;
+    --tb-dark: #212529;
+    --tb-border: #dee2e6;
+    --tb-success-subtle: rgba(25,135,84,0.1);
+    --tb-primary-subtle: rgba(13,110,253,0.1);
+}
+
+/* Professional Invoice Styles */
+.invoice-wrapper {
+    background: #f0f2f5;
+    padding: 30px 0;
+    min-height: 100vh;
+    padding-top: 100px;
+}
+
+/* Action Buttons - Fixed visibility */
+.action-buttons {
+    position: sticky;
+    top: 85px;
+    z-index: 999;
+    background: rgba(240, 242, 245, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    border: 1px solid rgba(255,255,255,0.6);
+}
+
+.action-buttons .btn {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.action-buttons .btn-light {
+    background: #fff;
+    border-color: #dee2e6;
+}
+
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    border: none;
+}
+
+.action-buttons .btn-success {
+    background: linear-gradient(135deg, #198754, #157347);
+    border: none;
+}
+
+.invoice-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    overflow: hidden;
+    background: #fff;
+    transition: all 0.3s ease;
+    margin-top: 0;
+}
+
+.invoice-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0d6efd 100%);
+    padding: 30px 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+.invoice-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+}
+
+.invoice-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 250px;
+    height: 250px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+}
+
+.invoice-logo {
+    position: relative;
+    z-index: 1;
+}
+
+.invoice-logo img {
+    height: 50px;
+    filter: brightness(0) invert(1);
+}
+
+.invoice-title {
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.invoice-subtitle {
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.invoice-body {
+    padding: 40px;
+}
+
+/* Student Profile Section */
+.student-profile-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.student-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    background: #fff;
+}
+
+.avatar-placeholder-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    border: 4px solid #fff;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.student-info-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.student-info-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.student-info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e3a5f;
+    margin-bottom: 0;
+}
+
+/* Meta Info Grid */
+.meta-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.meta-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 15px 20px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.meta-card:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 5px 15px rgba(13,110,253,0.1);
+}
+
+.meta-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.meta-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 0;
+}
+
+.meta-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.meta-badge-success {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.meta-badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Invoice Table */
+.invoice-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 30px;
+}
+
+.invoice-table thead th {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 15px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+}
+
+.invoice-table thead th:first-child {
+    border-radius: 10px 0 0 10px;
+}
+
+.invoice-table thead th:last-child {
+    border-radius: 0 10px 10px 0;
+}
+
+.invoice-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.invoice-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.invoice-table tbody td {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.invoice-table tfoot tr {
+    background: #f8f9fa;
+}
+
+.invoice-table tfoot td {
+    padding: 15px;
+    font-weight: 600;
+    border-top: 2px solid #dee2e6;
+}
+
+/* Payment Method Badges */
+.payment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.payment-badge-transfer {
+    background: #e7f1ff;
+    color: #084298;
+}
+
+.payment-badge-pos {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.payment-badge-deposit {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.payment-badge-cheque {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+/* Totals Panel */
+.totals-panel {
+    background: #f8f9fa;
+    border-radius: 16px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.totals-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.totals-row:last-child {
+    border-bottom: none;
+}
+
+.totals-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.totals-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.totals-grand {
+    background: linear-gradient(135deg, #1e3a5f, #0d6efd);
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-top: 15px;
+}
+
+.totals-grand .totals-label,
+.totals-grand .totals-value {
+    color: #fff;
+}
+
+/* Footer Section */
+.invoice-footer {
+    background: #f8f9fa;
+    padding: 25px 40px;
+    text-align: center;
+    border-top: 1px solid #e9ecef;
+}
+
+.invoice-footer p {
+    margin: 0;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.invoice-signature {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed #dee2e6;
+}
+
+.signature-line {
+    display: inline-block;
+    width: 200px;
+    border-bottom: 2px solid #1e3a5f;
+    margin-top: 30px;
+}
+
+/* ============================================
+   PRINT STYLES - Complete Fix
+   ============================================ */
+@media print {
+    /* Hide ALL site headers, navigation, and sidebars */
+    header, 
+    nav, 
+    .main-header, 
+    .navbar, 
+    #header, 
+    .site-header,
+    .topbar,
+    .sidebar,
+    .main-sidebar,
+    .app-header,
+    .app-sidebar,
+    .nav-header,
+    .header-nav,
+    .navigation,
+    .menu,
+    .page-header,
+    .breadcrumb,
+    .footer,
+    .site-footer,
+    .app-footer {
+        display: none !important;
     }
 
-    .card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        max-width: 100%;
+    /* Hide action buttons and print-only elements */
+    .action-buttons,
+    .d-print-none,
+    .no-print {
+        display: none !important;
     }
 
-    .invoice-effect-top {
-        z-index: 0;
+    /* Reset body and main content */
+    body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    .card-body {
-        z-index: 1;
-        position: relative;
-        padding: 1.5rem;
+    .invoice-wrapper {
+        background: #fff !important;
+        padding: 20px !important;
+        padding-top: 20px !important;
+        min-height: auto !important;
+        margin: 0 !important;
+    }
+
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .row {
+        margin: 0 !important;
+    }
+
+    .col-xxl-10,
+    .col-xl-11 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .invoice-card {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: 1px solid #dee2e6 !important;
+        margin: 0 !important;
+    }
+
+    .invoice-header {
+        background: #1e3a5f !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 20px !important;
+    }
+
+    .invoice-body {
+        padding: 20px !important;
+    }
+
+    .student-profile-section {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .meta-card,
+    .student-profile-section,
+    .totals-panel,
+    .invoice-footer {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .invoice-table thead th {
+        background: #1e3a5f !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #fff !important;
+    }
+
+    .totals-grand {
+        background: #1e3a5f !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .payment-badge {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .meta-badge {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Page break control */
+    .invoice-card {
+        page-break-inside: avoid;
+    }
+
+    .invoice-table tbody tr {
+        page-break-inside: avoid;
+    }
+}
+
+/* ============================================
+   RESPONSIVE STYLES
+   ============================================ */
+@media (max-width: 992px) {
+    .invoice-wrapper {
+        padding-top: 80px;
+    }
+
+    .action-buttons {
+        top: 70px;
+        padding: 10px 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .invoice-wrapper {
+        padding: 15px 0;
+        padding-top: 70px;
+    }
+
+    .action-buttons {
+        top: 60px;
+        padding: 10px 12px;
+        gap: 6px;
+        justify-content: center !important;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .action-buttons .btn {
+        font-size: 11px;
+        padding: 5px 10px;
+        flex: 1 1 auto;
+        min-width: 80px;
+        justify-content: center;
+    }
+
+    .action-buttons .btn i {
+        margin-right: 4px !important;
+        font-size: 12px;
+    }
+
+    .invoice-header {
+        padding: 20px;
+    }
+
+    .invoice-body {
+        padding: 15px;
+    }
+
+    .meta-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .student-profile-section .row {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .student-profile-section .col-auto {
+        margin-bottom: 15px;
+    }
+
+    .student-avatar-large,
+    .avatar-placeholder-large {
+        width: 70px;
+        height: 70px;
+        font-size: 26px;
+    }
+
+    .invoice-table {
+        font-size: 11px;
+    }
+
+    .invoice-table thead th,
+    .invoice-table tbody td {
+        padding: 8px 6px;
+    }
+
+    .invoice-table thead th {
+        font-size: 10px;
+    }
+
+    .invoice-footer {
+        padding: 15px 20px;
+    }
+
+    .totals-panel {
+        padding: 15px;
+    }
+
+    .totals-row {
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    .totals-value {
         font-size: 14px;
-        font-weight: 700; /* Bolder text */
-        color: #000000; /* Black text */
     }
 
-    .card-logo {
-        height: 28px;
+    .student-info-card {
+        padding: 10px 15px;
     }
 
-    .fs-md {
-        font-size: 1.25rem !important;
-        font-weight: 800; /* Bolder headings */
-        color: #000000; /* Black text */
+    .meta-card {
+        padding: 10px 15px;
     }
 
-    .fs-xxs {
-        font-size: 0.75rem !important;
-        font-weight: 700; /* Bolder small text */
-        color: #000000; /* Black text */
+    .meta-value {
+        font-size: 16px;
     }
 
-    .table-borderless th, .table-borderless td {
-        border: none;
-        padding: 0.75rem 1rem;
-        vertical-align: middle;
-        font-size: 14px;
-        font-weight: 700; /* Bolder table text */
-        color: #000000; /* Black text */
+    .invoice-title {
+        font-size: 20px;
     }
 
-    .table-nowrap th, .table-nowrap td {
-        white-space: nowrap;
+    .invoice-subtitle {
+        font-size: 12px;
     }
 
-    .table-light {
-        background-color: var(--tb-light);
+    .signature-line {
+        width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .invoice-wrapper {
+        padding-top: 60px;
+        padding-left: 8px;
+        padding-right: 8px;
     }
 
-    .border-top-dashed {
-        border-top: 1px dashed #dee2e6 !important;
+    .action-buttons {
+        top: 55px;
+        padding: 8px 10px;
+        gap: 4px;
+        flex-wrap: wrap;
     }
 
-    .alert-danger {
-        background-color: rgba(241, 65, 108, 0.1);
-        border-color: #f1416c;
-        color: #f1416c;
-        padding: 0.75rem;
-        font-weight: 700; /* Bolder alert text */
+    .action-buttons .btn {
+        font-size: 10px;
+        padding: 4px 8px;
+        min-width: 60px;
     }
 
-    .invoice-signature img {
-        height: 30px;
+    .action-buttons .btn i {
+        font-size: 10px;
+        margin-right: 3px !important;
     }
 
-    .hstack {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.5rem;
+    .meta-info-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
     }
 
-    .d-print-none {
-        display: flex !important;
+    .invoice-table {
+        font-size: 9px;
     }
 
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    .invoice-table thead th,
+    .invoice-table tbody td {
+        padding: 5px 4px;
     }
 
-    table {
-        width: 100%;
-        table-layout: auto;
+    .invoice-table thead th {
+        font-size: 8px;
+        padding: 6px 4px;
     }
 
-    .student-avatar {
-        width: 50px;
-        height: 50px;
-        object-fit: cover;
+    .payment-badge {
+        font-size: 8px;
+        padding: 3px 6px;
     }
 
-    .address-wrap {
-        overflow-wrap: break-word;
-        word-break: break-word;
-        hyphens: auto;
-        max-width: 200px;
-        display: inline-block;
-        font-weight: 700; /* Bolder address text */
-        color: #000000; /* Black text */
+    .payment-badge i {
+        font-size: 8px !important;
     }
 
-    .text-muted {
-        color: #000000 !important; /* Override grey to black */
-        font-weight: 700; /* Bolder text */
+    .meta-value {
+        font-size: 13px;
     }
 
-    /* Enhanced Print Styles for Invoice */
-    @media print {
-        html, body {
-            background-color: #fff;
-            margin: 0;
-            padding: 0;
-            width: 210mm;
-            height: 297mm;
-            font-size: 14px;
-            line-height: 1.4;
-            font-weight: 700; /* Bolder base text */
-            color: #000000; /* Black text */
-        }
-
-        .main-content, .page-content, .container-fluid {
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-        }
-
-        .card {
-            box-shadow: none;
-            max-width: 100%;
-            width: 100%;
-            border-radius: 0;
-            margin: 0;
-            padding: 0;
-            page-break-inside: avoid;
-        }
-
-        .card-body {
-            padding: 0.5cm !important;
-            font-size: 13px;
-            font-weight: 700; /* Bolder card body text */
-            color: #000000; /* Black text */
-        }
-
-        .d-print-none, .alert {
-            display: none !important;
-        }
-
-        .invoice-effect-top {
-            display: none !important;
-        }
-
-        .d-flex {
-            margin-bottom: 8px !important;
-        }
-
-        .card-logo {
-            height: 20px !important;
-        }
-
-        .mt-5.pt-4 {
-            margin-top: 15px !important;
-            padding-top: 10px !important;
-        }
-
-        .row.g-3 {
-            margin-bottom: 8px !important;
-            gap: 5px !important;
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            align-items: flex-start !important;
-            justify-content: space-between !important;
-        }
-
-        .row.g-3 > .col-lg,
-        .row.g-3 > .col-6 {
-            padding: 0 3px !important;
-            margin-bottom: 0 !important;
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-            max-width: none !important;
-            width: auto !important;
-            flex-basis: auto !important;
-            display: inline-block !important;
-            vertical-align: top !important;
-        }
-
-        .row.g-3 > .col-lg:nth-child(1),
-        .row.g-3 > .col-6:nth-child(1) {
-            flex: 0 0 18% !important;
-        }
-
-        .row.g-3 > .col-lg:nth-child(2),
-        .row.g-3 > .col-6:nth-child(2) {
-            flex: 0 0 18% !important;
-        }
-
-        .row.g-3 > .col-lg:nth-child(3),
-        .row.g-3 > .col-6:nth-child(3) {
-            flex: 0 0 18% !important;
-        }
-
-        .row.g-3 > .col-lg:nth-child(4),
-        .row.g-3 > .col-6:nth-child(4) {
-            flex: 0 0 22% !important;
-        }
-
-        .row.g-3 > .col-lg:nth-child(5),
-        .row.g-3 > .col-6:nth-child(5) {
-            flex: 0 0 24% !important;
-        }
-
-        .mt-4.pt-2 {
-            margin-top: 12px !important;
-            padding-top: 8px !important;
-        }
-
-        h6 {
-            font-size: 12px !important;
-            margin-bottom: 3px !important;
-            line-height: 1.3;
-            white-space: nowrap !important;
-            font-weight: 800; /* Bolder headings */
-            color: #000000; /* Black text */
-        }
-
-        h5.fs-md {
-            font-size: 13px !important;
-            margin-bottom: 3px !important;
-            line-height: 1.3;
-            white-space: nowrap !important;
-            font-weight: 800; /* Bolder headings */
-            color: #000000; /* Black text */
-        }
-
-        p {
-            margin-bottom: 4px !important;
-            font-size: 11px !important;
-            line-height: 1.3;
-            font-weight: 700; /* Bolder paragraphs */
-            color: #000000; /* Black text */
-        }
-
-        .text-uppercase {
-            font-size: 10px !important;
-            letter-spacing: 0.6px;
-            white-space: nowrap !important;
-            font-weight: 700; /* Bolder uppercase text */
-            color: #000000; /* Black text */
-        }
-
-        .table-responsive {
-            overflow: visible !important;
-            margin-top: 12px !important;
-        }
-
-        table {
-            table-layout: fixed;
-            font-size: 11px !important;
-            margin-bottom: 10px !important;
-            font-weight: 700; /* Bolder table text */
-            color: #000000; /* Black text */
-        }
-
-        .table-borderless th, .table-borderless td {
-            padding: 4px 5px !important;
-            vertical-align: middle;
-            border: none !important;
-            font-weight: 700; /* Bolder table cells */
-            color: #000000; /* Black text */
-        }
-
-        thead th {
-            font-size: 10px !important;
-            font-weight: 800; /* Bolder table headers */
-            background-color: #f8f9fa !important;
-            padding: 5px 4px !important;
-            color: #000000; /* Black text */
-        }
-
-        tbody td {
-            font-size: 10px !important;
-            line-height: 1.2;
-            font-weight: 700; /* Bolder table body text */
-            color: #000000; /* Black text */
-        }
-
-        .table th:nth-child(1), .table td:nth-child(1) { width: 6%; }
-        .table th:nth-child(2), .table td:nth-child(2) { width: 25%; }
-        .table th:nth-child(3), .table td:nth-child(3) { width: 12%; }
-        .table th:nth-child(4), .table td:nth-child(4) { width: 12%; }
-        .table th:nth-child(5), .table td:nth-child(5) { width: 12%; }
-        .table th:nth-child(6), .table td:nth-child(6) { width: 12%; }
-        .table th:nth-child(7), .table td:nth-child(7) { width: 13%; }
-        .table th:nth-child(8), .table td:nth-child(8) { width: 8%; }
-
-        .badge {
-            font-size: 9px !important;
-            padding: 3px 5px !important;
-            font-weight: 700; /* Bolder badges */
-        }
-
-        .border-top-dashed {
-            margin-top: 8px !important;
-            padding-top: 8px !important;
-        }
-
-        #products-list-total table {
-            width: 280px !important;
-            font-size: 10px !important;
-            font-weight: 700; /* Bolder total table */
-            color: #000000; /* Black text */
-        }
-
-        #products-list-total td, #products-list-total th {
-            padding: 3px 5px !important;
-            font-size: 10px !important;
-            font-weight: 700; /* Bolder total table cells */
-            color: #000000; /* Black text */
-        }
-
-        .student-avatar {
-            width: 25px !important;
-            height: 25px !important;
-            margin-bottom: 3px !important;
-        }
-
-        .address-wrap {
-            max-width: 120px !important;
-            font-size: 10px !important;
-            line-height: 1.2;
-            font-weight: 700; /* Bolder address text */
-            color: #000000; /* Black text */
-        }
-
-        .invoice-signature {
-            margin-top: 10px !important;
-        }
-
-        .invoice-signature img {
-            height: 18px !important;
-        }
-
-        .invoice-signature h6 {
-            font-size: 10px !important;
-            margin-top: 6px !important;
-            font-weight: 800; /* Bolder signature text */
-            color: #000000; /* Black text */
-        }
-
-        .mb-4.pb-2 {
-            margin-bottom: 10px !important;
-            padding-bottom: 6px !important;
-            font-size: 11px !important;
-            font-weight: 700; /* Bolder thank you message */
-            color: #000000; /* Black text */
-        }
-
-        @page {
-            size: A4;
-            margin: 0.3cm 0.5cm 0.3cm 0.5cm;
-        }
-
-        .card-body {
-            max-height: 26cm;
-            overflow: hidden;
-        }
-
-        .mt-4 {
-            margin-top: 10px !important;
-        }
-
-        .pt-2 {
-            padding-top: 5px !important;
-        }
-
-        .pt-4 {
-            padding-top: 8px !important;
-        }
-
-        .card::before {
-            content: "Invoice";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 10px !important;
-            color: #000000; /* Black text */
-            padding: 2px 0;
-            background: white;
-            z-index: 1000;
-            font-weight: 800; /* Bolder header */
-        }
-
-        .card::after {
-            content: "© 2025 School Invoice";
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 9px !important;
-            color: #000000; /* Black text */
-            padding: 2px 0;
-            background: white;
-            z-index: 1000;
-            font-weight: 700; /* Bolder footer */
-        }
-
-        .text-center.text-muted {
-            font-size: 10px !important;
-            font-weight: 700; /* Bolder no-bills message */
-            color: #000000 !important; /* Black text */
-        }
-
-        .table, .border-top-dashed, .invoice-signature {
-            page-break-inside: avoid;
-        }
-
-        .row {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            margin-right: 0 !important;
-            margin-left: 0 !important;
-        }
-
-        .col-lg, .col-6, .col-sm-6, .col-md-6 {
-            position: relative !important;
-            width: auto !important;
-            padding-right: 5px !important;
-            padding-left: 5px !important;
-            flex-shrink: 0 !important;
-        }
+    .meta-label {
+        font-size: 9px;
     }
+
+    .invoice-title {
+        font-size: 16px;
+    }
+
+    .invoice-body {
+        padding: 10px;
+    }
+
+    .student-info-value {
+        font-size: 12px;
+    }
+
+    .student-info-label {
+        font-size: 9px;
+    }
+
+    .totals-label {
+        font-size: 11px;
+    }
+
+    .totals-value {
+        font-size: 12px;
+    }
+
+    .totals-grand {
+        padding: 10px 15px;
+    }
+
+    .student-profile-section {
+        padding: 15px;
+    }
+}
 </style>
 
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            @if ($errors->any())
-                <div class="alert alert-danger">
-                    <strong>Error!</strong> There were some problems with your input.<br>
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+<div class="invoice-wrapper">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xxl-10 col-xl-11">
 
-            @if (session('status') || session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') ?: session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                {{-- Action Buttons --}}
+                <div class="action-buttons d-flex gap-2 justify-content-end mb-3">
+                    <a href="{{ route('schoolpayment.termsessionpayments', [
+                        'studentId' => $studentId,
+                        'termid' => $termid,
+                        'sessionid' => $sessionid,
+                    ]) }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Back
+                    </a>
+                    <button type="button" id="print-button" class="btn btn-primary btn-sm">
+                        <i class="fas fa-print me-1"></i> Print Invoice
+                    </button>
+                    <a href="{{ url()->current() }}?download_pdf=1" class="btn btn-success btn-sm">
+                        <i class="fas fa-download me-1"></i> Download PDF
+                    </a>
                 </div>
-            @endif
 
-            <div class="row justify-content-center">
-                <div class="col-xxl-9 col-lg-10 col-md-12">
-                    <div class="hstack gap-2 justify-content-end d-print-none mb-4">
-                        <a href="{{ route('schoolpayment.termsessionpayments', ['studentId' => $studentId, 'termid' => $termId, 'sessionid' => $sessionId]) }}" class="btn btn-light"><i class="fas fa-arrow-left me-1"></i> Back</a>
-                        <a href="javascript:window.print()" class="btn btn-success"><i class="ri-printer-line align-bottom me-1"></i> Print</a>
-                        {{-- <button type="button" id="download-button" class="btn btn-primary"><i class="ri-download-2-line align-bottom me-1"></i> Download</button> --}}
-                    </div>
-                    <div class="card overflow-hidden" id="invoice">
-                        <div class="invoice-effect-top position-absolute start-0">
-                            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764 182" width="764" height="182">
-                                <g>
-                                    <g>
-                                        <path style="fill: var(--tb-light);" d="m-6.6 177.4c17.5 0.1 35.1 0 52.8-0.4 286.8-6.6 537.6-77.8 700.3-184.6h-753.1z" />
-                                    </g>
-                                    <g>
-                                        <path style="fill: var(--tb-secondary);" d="m-6.6 132.8c43.5 2.1 87.9 2.7 132.9 1.7 246.9-5.6 467.1-59.2 627.4-142.1h-760.3z" />
-                                    </g>
-                                    <g style="opacity: .5">
-                                        <path style="fill: var(--tb-primary);" d="m-6.6 87.2c73.2 7.4 149.3 10.6 227.3 8.8 206.2-4.7 393.8-42.8 543.5-103.6h-770.8z" />
-                                    </g>
-                                </g>
-                            </svg>
-                        </div>
-                        <div class="card-body z-1 position-relative">
-                            <div class="d-flex">
-                                <div class="flex-grow-1">
-                                    <img src="{{ $schoolInfo->logo_url }}" class="card-logo" alt="{{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }}" height="28">
-                                </div>
-                                <div class="flex-shrink-0 mt-sm-0 mt-3">
-                                    <h6><span class="text-muted fw-normal">Invoice No:</span> <span id="legal-register-no">{{ $invoiceNumber }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Email:</span> <span id="email">{{ $schoolInfo->school_email ?? 'info@topclassschool.edu' }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Website:</span> <span id="website">{{ $schoolInfo->school_website ? '<a href="' . $schoolInfo->school_website . '" target="_blank">' . $schoolInfo->school_website . '</a>' : 'N/A' }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Address:</span> <span id="address" class="address-wrap">{!! Str::replace(',', ',<br>', $schoolInfo->school_address ?? 'Your School Address Here') !!}</span></h6>
-                                    <h6 class="mb-0"><span class="text-muted fw-normal">Contact No: </span><span id="contact-no">{{ $schoolInfo->school_phone ?? 'Your Phone Number' }}</span></h6>
-                                </div>
-                            </div>
-                            <div class="mt-5 pt-4">
-                                <div class="row g-3">
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Invoice No</p>
-                                        <h5 class="fs-md mb-0">#<span id="invoice-no">{{ $invoiceNumber }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Date</p>
-                                        <h5 class="fs-md mb-0"><span id="invoice-date">{{ \Carbon\Carbon::now()->format('d F, Y') }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Due Date</p>
-                                        <h5 class="fs-md mb-0"><span id="invoice-due-date">{{ \Carbon\Carbon::now()->addDays(7)->format('d F, Y') }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Payment Status</p>
-                                        <span class="badge bg-success-subtle text-success fs-xs" id="payment-status">
-                                            {{ $totalOutstanding == 0 ? 'Paid' : 'Pending' }}
-                                        </span>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Total Amount</p>
-                                        <h5 class="fs-md mb-0">₦<span id="total-amount">{{ number_format($totalBillAmount, 2, '.', ',') }}</span></h5>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-2">
-                                <div class="row g-3">
-                                    @if ($studentdata->isNotEmpty())
-                                        @foreach ($studentdata as $s)
-                                        <div class="col-6">
-                                            <p class="text-muted text-uppercase">Student Details</p>
-                                            @if ($s->avatar)
-                                                <img src="{{ Storage::url('images/studentavatar/' . $s->avatar) }}" alt="{{ $s->firstname }} {{ $s->lastname }}" class="rounded-circle mb-2 student-avatar">
-                                            @endif
-                                            <h6 class="fs-md">{{ $s->firstname }} {{ $s->lastname }}</h6>
-                                            <p class="text-muted mb-1">ID: {{ $s->admissionNo }}</p>
-                                            <p class="text-muted mb-1">Class: {{ $s->schoolclass }} {{ $s->arm }}</p>
-                                            <p class="text-muted mb-0">Term: {{ $schoolterm }} | Session: {{ $schoolsession }}</p>
-                                        </div>
-                                        <div class="col-6">
-                                            <p class="text-muted text-uppercase">Billing Address</p>
-                                            <h6 class="fs-md">{{ $s->firstname }} {{ $s->lastname }}</h6>
-                                            <p class="text-muted mb-1 address-wrap">{!! Str::replace(',', ',<br>', $s->homeaddress ?? ($s->homeadd ?? 'N/A')) !!}</p>
-                                            <p class="text-muted mb-0">Phone: {{ $s->phone ?? 'N/A' }}</p>
-                                        </div>
-                                        @endforeach
+                {{-- Invoice Card --}}
+                <div class="invoice-card" id="invoice">
+
+                    {{-- Header --}}
+                    <div class="invoice-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="invoice-logo">
+                                    @if($schoolInfo && $schoolInfo->logo_url)
+                                        <img src="{{ $schoolInfo->logo_url }}" alt="School Logo">
                                     @else
-                                        <div class="col-12">
-                                            <p class="text-muted text-center">No student data available.</p>
-                                        </div>
+                                        <h2 class="invoice-title">{{ $schoolInfo->school_name ?? 'SCHOOL NAME' }}</h2>
                                     @endif
                                 </div>
+                                <p class="invoice-subtitle mt-2">Official Fee Invoice</p>
                             </div>
-                            <div class="table-responsive mt-4">
-                                <table class="table table-borderless text-center table-nowrap align-middle mb-0">
-                                    <thead>
-                                        <tr class="table-light">
-                                            <th scope="col" style="width: 50px;">#</th>
-                                            <th scope="col">Bill Details</th>
-                                            <th scope="col">Bill Amount</th>
-                                            <th scope="col">Previous Paid</th>
-                                            <th scope="col">Paid Today</th>
-                                            <th scope="col">Total Paid</th>
-                                            <th scope="col">Payment Method</th>
-                                            <th scope="col" class="text-end">Outstanding</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="products-list">
-                                        @if ($studentpaymentbill->isEmpty())
-                                            <tr>
-                                                <td colspan="8" class="text-center text-muted">No bills available.</td>
-                                            </tr>
-                                        @else
-                                            @php $counter = 1; @endphp
-                                            @foreach ($studentpaymentbill as $sp)
-                                            <tr>
-                                                <th scope="row">{{ $counter++ }}</th>
-                                                <td class="text-start">
-                                                    <span class="fw-medium">{{ $sp->title }}</span>
-                                                    <p class="text-muted mb-0">{{ $sp->description }}</p>
-                                                </td>
-                                                <td>₦ {{ number_format($sp->amount, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->previousPaid, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->todayPaid, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->amountPaid, 2, '.', ',') }}</td>
-                                                <td>
-                                                    @if ($sp->paymentMethod == 'Bank Transfer')
-                                                        <span class="badge bg-primary-subtle text-primary">{{ $sp->paymentMethod }}</span>
-                                                    @elseif ($sp->paymentMethod == 'School POS' || $sp->paymentMethod == 'Cash')
-                                                        <span class="badge bg-success-subtle text-success">{{ $sp->paymentMethod }}</span>
-                                                    @elseif ($sp->paymentMethod == 'N/A')
-                                                        <span class="badge bg-secondary-subtle text-secondary">{{ $sp->paymentMethod }}</span>
-                                                    @else
-                                                        <span class="badge bg-info-subtle text-info">{{ $sp->paymentMethod }}</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-end">₦ {{ number_format($sp->balance, 2, '.', ',') }}</td>
-                                            </tr>
-                                            @endforeach
-                                        @endif
-                                    </tbody>
-                                </table>
+                            <div class="col-md-6 text-md-end">
+                                <h1 class="invoice-title">INVOICE</h1>
+                                <p class="invoice-subtitle">#{{ $invoiceNumber }}</p>
                             </div>
-                            <div class="border-top border-top-dashed mt-2" id="products-list-total">
-                                <table class="table table-borderless table-nowrap align-middle mb-0 ms-auto" style="width:280px">
-                                    <tbody>
-                                        <tr>
-                                            <td>Total Bill Amount</td>
-                                            <td class="text-end">₦ {{ number_format($totalBillAmount, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Previous Paid</td>
-                                            <td class="text-end">₦ {{ number_format($totalPreviousPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Paid Today</td>
-                                            <td class="text-end">₦ {{ number_format($totalTodayPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Amount Paid</td>
-                                            <td class="text-end">₦ {{ number_format($totalPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr class="border-top border-top-dashed fs-15">
-                                            <th scope="row">Total Outstanding</th>
-                                            <td class="text-end">₦ {{ number_format($totalOutstanding, 2, '.', ',') }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            @if ($studentpaymentbill->isNotEmpty())
-                                <div class="mt-3">
-                                    <h6 class="text-muted text-uppercase fw-semibold mb-3">Latest Payment Details:</h6>
-                                    @php $lastPayment = $studentpaymentbill->first(); @endphp
-                                    <p class="text-muted mb-1">Payment Method: <span class="fw-medium" id="payment-method">{{ $lastPayment->paymentMethod }}</span></p>
-                                    <p class="text-muted mb-1">Received By: <span class="fw-medium" id="card-holder-name">{{ $lastPayment->recievedBy ?? 'School Administration' }}</span></p>
-                                    <p class="text-muted mb-0">Total Bill Amount: <span class="fw-medium">₦</span><span id="card-total-amount">{{ number_format($totalBillAmount, 2, '.', ',') }}</span></p>
-                                </div>
-                            @endif
-                            <div>
-                                <p class="mb-4 pb-2"><b>Thank you for your continued partnership with {{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }}!</b> We appreciate your commitment to your child's education.</p>
-                                <div class="invoice-signature text-center">
-                                    <img src="{{ asset('assets/images/invoice-signature.svg') }}" alt="Authorized Sign" id="sign-img" height="30">
-                                    <h6 class="mb-0 mt-3">Authorized Sign</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="invoice-effect-top position-absolute end-0" style="transform: rotate(180deg); bottom: -40px;">
-                            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764 182" width="764" height="182">
-                                <g>
-                                    <g>
-                                        <path style="fill: var(--tb-light);" d="m-6.6 177.4c17.5 0.1 35.1 0 52.8-0.4 286.8-6.6 537.6-77.8 700.3-184.6h-753.1z" />
-                                    </g>
-                                    <g>
-                                        <path style="fill: var(--tb-secondary);" d="m-6.6 132.8c43.5 2.1 87.9 2.7 132.9 1.7 246.9-5.6 467.1-59.2 627.4-142.1h-760.3z" />
-                                    </g>
-                                    <g style="opacity: .5">
-                                        <path style="fill: var(--tb-primary);" d="m-6.3 87.51c73.2 7.41 149.6 45.1 227.6 43.4 206.1 4.6 393.7-42.8 543.4-103.6h-770.45z" />
-                                    </g>
-                                </g>
-                            </svg>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const originalTitle = document.title;
-                    const studentName = @json($studentdata->isNotEmpty() ? $studentdata->first()->firstname . ' ' . $studentdata->first()->lastname : 'Student');
-                    const invoiceNumber = @json($invoiceNumber ?? 'INV-000');
-                    const cleanStudentName = studentName.replace(/[^a-zA-Z0-9\S]/g, '').trim().replace(/\s+/g, '_');
-                    const cleanInvoiceNumber = invoiceNumber.replace(/[^a-zA-Z0-9-]/g, '');
+                    {{-- Body --}}
+                    <div class="invoice-body">
 
-                    function handlePrint() {
-                        const customFilename = `${cleanStudentName}_${cleanInvoiceNumber}`;
-                        document.title = customFilename;
-                        const printButton = document.getElementById('print-button');
-                        const printLink = document.querySelector('a[href="javascript:window.print()"]');
-                        const activeButton = printButton || printLink;
-
-                        if (activeButton) {
-                            const originalText = activeButton.innerHTML;
-                            activeButton.innerHTML = '<i class="ri-printer-line align-bottom me-1"></i> Printing...';
-                            if (activeButton.disabled !== undefined) {
-                                activeButton.disabled = true;
+                        {{-- Student Profile Section --}}
+                        @php
+                            $student = $studentdata->first() ?? null;
+                            $avatarUrl = null;
+                            if($student && $student->avatar && $student->avatar != 'unnamed.jpg' && $student->avatar != '') {
+                                $avatarUrl = asset('storage/images/student_avatars/' . $student->avatar);
                             }
-                            setTimeout(() => {
-                                window.print();
-                                setTimeout(() => {
-                                    document.title = originalTitle;
-                                    activeButton.innerHTML = originalText;
-                                    if (activeButton.disabled !== undefined) {
-                                        activeButton.disabled = false;
-                                    }
-                                }, 1000);
-                            }, 100);
-                        } else {
-                            window.print();
-                            setTimeout(() => {
-                                document.title = originalTitle;
-                            }, 1000);
-                        }
-                    }
+                            $initials = '';
+                            if($student) {
+                                $firstName = $student->firstname ?? '';
+                                $lastName = $student->lastname ?? '';
+                                $initials = strtoupper(substr($firstName, 0, 1)) . strtoupper(substr($lastName, 0, 1));
+                                if(empty($initials)) $initials = 'ST';
+                            }
+                        @endphp
 
-                    const printButton = document.getElementById('print-button');
-                    if (printButton) {
-                        printButton.addEventListener('click', handlePrint);
-                    }
+                        <div class="student-profile-section">
+                            <div class="row align-items-center">
+                                <div class="col-auto text-center">
+                                    @if($avatarUrl)
+                                        <img src="{{ $avatarUrl }}"
+                                             alt="{{ $student->firstname ?? '' }} {{ $student->lastname ?? '' }}"
+                                             class="student-avatar-large"
+                                             onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="avatar-placeholder-large" style="display: none;">{{ $initials }}</div>
+                                    @else
+                                        <div class="avatar-placeholder-large">{{ $initials }}</div>
+                                    @endif
+                                </div>
+                                <div class="col">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="student-info-card">
+                                                <div class="student-info-label">Student Name</div>
+                                                <div class="student-info-value">{{ $student->lastname ?? '' }} {{ $student->firstname ?? '' }}</div>
+                                            </div>
+                                            <div class="student-info-card">
+                                                <div class="student-info-label">Admission Number</div>
+                                                <div class="student-info-value">{{ $student->admissionNo ?? 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="student-info-card">
+                                                <div class="student-info-label">Class & Arm</div>
+                                                <div class="student-info-value">{{ $student->schoolclass ?? '' }} {{ $student->arm ?? '' }}</div>
+                                            </div>
+                                            <div class="student-info-card">
+                                                <div class="student-info-label">Academic Session</div>
+                                                <div class="student-info-value">{{ $schoolterm ?? 'N/A' }} Term, {{ $schoolsession ?? 'N/A' }} Session</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    const printLink = document.querySelector('a[href="javascript:window.print()"]');
-                    if (printLink) {
-                        printLink.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            handlePrint();
-                        });
-                    }
+                        {{-- Meta Information Grid --}}
+                        <div class="meta-info-grid">
+                            <div class="meta-card">
+                                <div class="meta-label">Invoice Date</div>
+                                <div class="meta-value">{{ \Carbon\Carbon::now()->format('d F, Y') }}</div>
+                            </div>
+                            <div class="meta-card">
+                                <div class="meta-label">Due Date</div>
+                                <div class="meta-value">{{ \Carbon\Carbon::now()->addDays(7)->format('d F, Y') }}</div>
+                            </div>
+                            <div class="meta-card">
+                                <div class="meta-label">Payment Status</div>
+                                <div class="meta-value">
+                                    <span class="meta-badge {{ $totalOutstanding == 0 ? 'meta-badge-success' : 'meta-badge-warning' }}">
+                                        {{ $totalOutstanding == 0 ? 'FULLY PAID' : 'PARTIALLY PAID' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="meta-card">
+                                <div class="meta-label">Total Bill Amount</div>
+                                <div class="meta-value">₦{{ number_format($totalBillAmount, 2) }}</div>
+                            </div>
+                        </div>
 
-                    const downloadButton = document.getElementById('download-button');
-                    if (downloadButton) {
-                        downloadButton.addEventListener('click', function() {
-                            this.disabled = true;
-                            this.innerHTML = '<i class="ri-download-line align-bottom me-1"></i> Downloading...';
-                            const customFilename = `${cleanStudentName}_${cleanInvoiceNumber}`;
-                            document.title = customFilename;
-                            const currentUrl = new URL(window.location.href);
-                            currentUrl.searchParams.set('download_pdf', '1');
-                            currentUrl.searchParams.set('filename', customFilename);
-                            window.location.assign(currentUrl.toString());
-                            setTimeout(() => {
-                                document.title = originalTitle;
-                                this.disabled = false;
-                                this.innerHTML = '<i class="ri-download-2-line align-bottom me-1"></i> Download';
-                            }, 2000);
-                        });
-                    }
+                        {{-- Invoice Table --}}
+                        <div class="table-responsive">
+                            <table class="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th width="30%">Bill Description</th>
+                                        <th width="10%" class="text-end">Amount (₦)</th>
+                                        <th width="10%" class="text-end">Previous Paid (₦)</th>
+                                        <th width="10%" class="text-end">Today's Payment (₦)</th>
+                                        <th width="10%" class="text-end">Total Paid (₦)</th>
+                                        <th width="15%">Payment Method</th>
+                                        <th width="10%" class="text-end">Balance (₦)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php $counter = 1; @endphp
+                                    @forelse($studentpaymentbill as $sp)
+                                    <tr>
+                                        <td class="text-center">{{ $counter++ }}</td>
+                                        <td>
+                                            <strong>{{ $sp->title }}</strong>
+                                            @if($sp->description)
+                                                <br><small class="text-muted">{{ $sp->description }}</small>
+                                            @endif
+                                            @if(isset($sp->total_savings) && $sp->total_savings > 0)
+                                                <br><small class="text-success">
+                                                    <i class="fas fa-gift me-1"></i>Savings: ₦{{ number_format($sp->total_savings, 2) }}
+                                                </small>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">₦{{ number_format($sp->amount, 2) }}</td>
+                                        <td class="text-end">₦{{ number_format($sp->previousPaid, 2) }}</td>
+                                        <td class="text-end text-success">₦{{ number_format($sp->todayPaid, 2) }}</td>
+                                        <td class="text-end">₦{{ number_format($sp->amountPaid, 2) }}</td>
+                                        <td class="text-center">
+                                            @php $method = $sp->paymentMethod ?? 'N/A'; @endphp
+                                            <span class="payment-badge
+                                                @if($method === 'Bank Transfer') payment-badge-transfer
+                                                @elseif(in_array($method, ['School POS','Cash'])) payment-badge-pos
+                                                @elseif($method === 'Bank Deposit') payment-badge-deposit
+                                                @elseif($method === 'Cheque') payment-badge-cheque
+                                                @else payment-badge-deposit
+                                                @endif">
+                                                <i class="fas
+                                                    @if($method === 'Bank Transfer') fa-university
+                                                    @elseif(in_array($method, ['School POS','Cash'])) fa-credit-card
+                                                    @elseif($method === 'Bank Deposit') fa-money-bill
+                                                    @elseif($method === 'Cheque') fa-file-invoice
+                                                    @else fa-receipt
+                                                    @endif me-1"></i>
+                                                {{ $method }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end fw-bold {{ $sp->balance > 0 ? 'text-danger' : 'text-success' }}">
+                                            ₦{{ number_format($sp->balance, 2) }}
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="8" class="text-center py-5">
+                                            <i class="fas fa-receipt fa-3x text-muted mb-3 d-block"></i>
+                                            <p class="text-muted mb-0">No payment records found for this student.</p>
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
 
-                    window.addEventListener('beforeprint', function() {
-                        const customFilename = `${cleanStudentName}_${cleanInvoiceNumber}`;
-                        document.title = customFilename;
-                    });
+                        {{-- Totals Section --}}
+                        <div class="totals-panel">
+                            <div class="totals-row">
+                                <span class="totals-label">Subtotal (Bill Amount)</span>
+                                <span class="totals-value">₦{{ number_format($totalBillAmount, 2) }}</span>
+                            </div>
+                            @if(isset($totalSavings) && $totalSavings > 0)
+                            <div class="totals-row">
+                                <span class="totals-label text-success">Total Savings Applied</span>
+                                <span class="totals-value text-success">-₦{{ number_format($totalSavings, 2) }}</span>
+                            </div>
+                            @endif
+                            <div class="totals-row">
+                                <span class="totals-label">Total Previous Payments</span>
+                                <span class="totals-value">₦{{ number_format($totalPreviousPaid, 2) }}</span>
+                            </div>
+                            <div class="totals-row">
+                                <span class="totals-label text-success">Today's Payment</span>
+                                <span class="totals-value text-success">₦{{ number_format($totalTodayPaid, 2) }}</span>
+                            </div>
+                            <div class="totals-row">
+                                <span class="totals-label">Total Amount Paid</span>
+                                <span class="totals-value">₦{{ number_format($totalPaid, 2) }}</span>
+                            </div>
+                            <div class="totals-grand">
+                                <div class="totals-row" style="border-bottom: none;">
+                                    <span class="totals-label fw-bold">OUTSTANDING BALANCE</span>
+                                    <span class="totals-value fw-bold">₦{{ number_format($totalOutstanding, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
 
-                    window.addEventListener('afterprint', function() {
-                        setTimeout(() => {
-                            document.title = originalTitle;
-                        }, 500);
-                    });
-                });
-            </script>
+                        {{-- Payment Details --}}
+                        @if($studentpaymentbill->isNotEmpty())
+                        @php $lastPayment = $studentpaymentbill->first(); @endphp
+                        <div class="mt-4">
+                            <h6 class="text-muted text-uppercase fw-semibold mb-3" style="font-size: 11px; letter-spacing: 0.5px;">
+                                <i class="fas fa-info-circle me-1"></i> Latest Payment Information
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="student-info-card">
+                                        <div class="student-info-label">Payment Method</div>
+                                        <div class="student-info-value">{{ $lastPayment->paymentMethod ?? 'N/A' }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="student-info-card">
+                                        <div class="student-info-label">Received By</div>
+                                        <div class="student-info-value">{{ $lastPayment->receivedBy ?? $lastPayment->recievedBy ?? 'School Administration' }}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="student-info-card">
+                                        <div class="student-info-label">Payment Date</div>
+                                        <div class="student-info-value">{{ $lastPayment->paymentDate ? \Carbon\Carbon::parse($lastPayment->paymentDate)->format('d F, Y') : date('d F, Y') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
+                    </div>{{-- /.invoice-body --}}
+
+                    {{-- Footer --}}
+                    <div class="invoice-footer">
+                        <div class="row">
+                            <div class="col-md-6 text-md-start">
+                                <p class="mb-2">
+                                    <i class="fas fa-gavel me-1"></i>
+                                    This is a computer-generated invoice and requires no signature.
+                                </p>
+                                <p class="mb-0">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    {{ $schoolInfo->school_email ?? 'info@school.edu' }} |
+                                    <i class="fas fa-phone me-1"></i>
+                                    {{ $schoolInfo->school_phone ?? 'N/A' }}
+                                </p>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <div class="invoice-signature">
+                                    <div class="signature-line"></div>
+                                    <p class="mt-2 mb-0 fw-semibold">Authorized Signatory</p>
+                                    <p class="small text-muted mt-1">
+                                        {{ $schoolInfo->school_name ?? 'School Name' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 text-center">
+                            <p class="small text-muted mb-0">
+                                <i class="fas fa-heart text-danger me-1"></i>
+                                Thank you for your partnership in education
+                            </p>
+                        </div>
+                    </div>
+
+                </div>{{-- /.invoice-card --}}
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const originalTitle = document.title;
+    const studentName = @json($studentdata->isNotEmpty() ? $studentdata->first()->firstname . '_' . $studentdata->first()->lastname : 'Student');
+    const invoiceNumber = @json($invoiceNumber ?? 'INV-000');
+    const cleanName = studentName.replace(/\s+/g, '_');
+    const cleanInvoice = invoiceNumber.replace(/[^a-zA-Z0-9\-]/g, '');
+    const customFilename = cleanName + '_' + cleanInvoice;
+
+    const printBtn = document.getElementById('print-button');
+    let alreadyConfirmed = false;
+
+    // Fires once per page load: marks the pending payments for this
+    // student/class/term/session as finalized (delete_status 1 -> 0),
+    // same effect as the Download PDF flow. Non-blocking: if this fails,
+    // printing still proceeds, and Download PDF remains the fallback way
+    // to finalize.
+    function confirmInvoiceOnServer() {
+        if (alreadyConfirmed) return Promise.resolve();
+        alreadyConfirmed = true;
+
+        return fetch(`{{ route('schoolpayment.confirmInvoice', [
+                'studentId'     => $studentId,
+                'schoolclassid' => $schoolclassid ?? '',
+                'termid'        => $termid,
+                'sessionid'     => $sessionid,
+            ]) }}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        }).catch(function (err) {
+            console.error('confirmInvoice failed:', err);
+        });
+    }
+
+    function handlePrint() {
+        document.title = customFilename;
+        confirmInvoiceOnServer().finally(function () {
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => { document.title = originalTitle; }, 1000);
+            }, 100);
+        });
+    }
+
+    printBtn?.addEventListener('click', handlePrint);
+
+    window.addEventListener('beforeprint', () => { document.title = customFilename; });
+    window.addEventListener('afterprint', () => { setTimeout(() => { document.title = originalTitle; }, 500); });
+});
+</script>
 @endsection

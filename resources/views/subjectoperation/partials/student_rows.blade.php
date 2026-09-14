@@ -14,7 +14,7 @@ $i = isset($students) && $students instanceof \Illuminate\Pagination\LengthAware
         <td class="name" data-name="{{ $sc->firstname }} {{ $sc->lastname }}">
             <div class="d-flex align-items-center">
                 <div class="me-3">
-                    <img src="{{ $sc->picture ? asset('storage/images/student_avatars/' . basename($sc->picture)) : asset('storage/images/student_avatars/unnamed.jpg') }}"
+                    <img src="{{ $sc->picture ? asset('storage/student_avatars/' . basename($sc->picture)) : asset('storage/student_avatars/unnamed.jpg') }}"
                          alt="{{ ($sc->lastname ?? '') . ' ' . ($sc->firstname ?? '') . ' ' . ($sc->othername ?? '') }}"
                          class="rounded-circle avatar-sm"
                          data-bs-toggle="modal"

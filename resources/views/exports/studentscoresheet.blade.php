@@ -1,168 +1,84 @@
-<style>
-@charset "UTF-8";
-
-@media print {
-    body {
-        margin: 0;
-        width: 940px;
-    }
-
-    .print-body {
-        background-color: white;
-    }
-
-    @page {
-        size: 940px;
-        margin: 0;
-    }
-
-    nav {
-        display: none;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: 'Times New Roman', Times, serif;
-    }
-
-    th, td {
-        border: 1px solid black;
-        padding: 5px;
-        text-align: center;
-        font-size: 12px;
-    }
-
-    th {
-        font-weight: bold;
-        background-color: #f0f0f0;
-    }
-
-    p.school-name1 {
-        font-size: 40px;
-        font-weight: 500;
-        text-align: center;
-    }
-
-    p.school-name2 {
-        font-size: 30px;
-        font-weight: bold;
-        text-align: center;
-    }
-
-    .result-details {
-        font-size: 16px;
-        font-weight: lighter;
-        font-style: italic;
-    }
-
-    .fraction {
-        display: inline-flex;
-        flex-direction: column;
-        align-items: center;
-        font-size: 10px;
-    }
-
-    .fraction .numerator {
-        border-bottom: 2px solid black;
-        padding: 0 5px;
-    }
-
-    .fraction .denominator {
-        padding-top: 5px;
-    }
-}
-</style>
-
 <table>
-    <!-- School Information Header -->
+    {{-- ── Row 1: School name ── --}}
     <tr>
-        <td colspan="15">{{ $school->school_name ?? 'School Name Not Set' }}</td>
+        <td colspan="{{ 3 + $assessments->count() + 6 }}">{{ $school->school_name ?? 'School Name' }}</td>
     </tr>
+    {{-- ── Row 2: Address ── --}}
     <tr>
-        <td colspan="15">{{ $school->school_address ?? 'Address Not Set' }}</td>
+        <td colspan="{{ 3 + $assessments->count() + 6 }}">{{ $school->school_address ?? '' }}</td>
     </tr>
+    {{-- ── Row 3: Contact / motto ── --}}
     <tr>
-        <td colspan="15">
-            @if($school->school_phone || $school->school_email || $school->school_motto)
-                {{ $school->school_phone ? 'Phone: ' . $school->school_phone : '' }}
-                {{ $school->school_email ? ($school->school_phone ? ' | ' : '') . 'Email: ' . $school->school_email : '' }}
-                {{ $school->school_motto ? ($school->school_phone || $school->school_email ? ' | ' : '') . 'Motto: ' . $school->school_motto : '' }}
-            @else
-                Contact Information Not Set
-            @endif
+        <td colspan="{{ 3 + $assessments->count() + 6 }}">
+            {{ $school->school_phone ? 'Phone: ' . $school->school_phone : '' }}
+            {{ $school->school_email ? ' | Email: ' . $school->school_email : '' }}
+            {{ $school->school_motto ? ' | Motto: ' . $school->school_motto : '' }}
         </td>
     </tr>
+    {{-- ── Row 4: Subject / Class / Term / Session ── --}}
     <tr>
-        <td colspan="15">
+        <td colspan="{{ 3 + $assessments->count() + 6 }}">
             @if($broadsheets->isNotEmpty())
                 Subject: {{ $broadsheets->first()->subject ?? '-' }} |
                 Class: {{ $broadsheets->first()->schoolclass ?? '-' }} {{ $broadsheets->first()->arm ?? '' }} |
                 Term: {{ $broadsheets->first()->term ?? '-' }} |
-                Session: {{ $broadsheets->first()->session ?? '-' }}
-            @else
-                No Scores Available
+                Session: {{ $broadsheets->first()->session ?? '-' }} |
+                Teacher: {{ $broadsheets->first()->staffname ?? '-' }}
             @endif
         </td>
     </tr>
-    <tr><td colspan="15"></td></tr> <!-- Empty row for spacing -->
+    {{-- ── Row 5: Empty spacer ── --}}
+    <tr><td colspan="{{ 3 + $assessments->count() + 6 }}"></td></tr>
 
-    <!-- Scoresheet Table -->
-    @if($broadsheets->isNotEmpty())
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Admission No.</th>
-                <th>Name</th>
-                <th>CA1</th>
-                <th>CA2</th>
-                <th>CA3</th>
-                <th>
-                    <div>CA Avg</div>
-                    <div>(CA1 + CA2 + CA3)/3</div>
-                </th>
-                <th>Exam</th>
-                <th>
-                    <div>Total</div>
-                    <div>(CA Avg + Exam)/2</div>
-                </th>
-                <th>BF</th>
-                <th>
-                    <div>Cum</div>
-                    <div>(BF + Total)/2</div>
-                </th>
-                <th>Grade</th>
-                <th>Class Avg.</th>
-                <th>Position</th>
-                <th>Remark</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($broadsheets as $index => $broadsheet)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $broadsheet->admissionno ?? '-' }}</td>
-                    <td>
-                        @if($broadsheet->lname || $broadsheet->fname || $broadsheet->mname)
-                            <span class="fw-bold">{{ $broadsheet->lname ?? '' }}</span> {{ $broadsheet->fname ?? '' }} {{ $broadsheet->mname ?? '' }}
-                        @else
-                            -
-                        @endif
-                    </td>
-                    <td>{{ number_format($broadsheet->ca1 ?? 0, 1) }}</td>
-                    <td>{{ number_format($broadsheet->ca2 ?? 0, 1) }}</td>
-                    <td>{{ number_format($broadsheet->ca3 ?? 0, 1) }}</td>
-                    <td>{{ number_format(($broadsheet->ca1 + $broadsheet->ca2 + $broadsheet->ca3) / 3, 1) }}</td>
-                    <td>{{ number_format($broadsheet->exam ?? 0, 1) }}</td>
-                    <td>{{ number_format($broadsheet->total ?? 0, 1) }}</td>
-                    <td>{{ number_format($broadsheet->bf ?? 0, 2) }}</td>
-                    <td>{{ number_format($broadsheet->cum ?? 0, 2) }}</td>
-                    <td>{{ $broadsheet->grade ?? '-' }}</td>
-                    <td>{{ number_format($broadsheet->avg ?? 0, 1) }}</td>
-                    <td>{{ $broadsheet->position ?? '-' }}</td>
-                    <td>{{ $broadsheet->remark ?? '-' }}</td>
-                </tr>
+    {{-- ── Row 6: Table headers ── --}}
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Admission No</th>
+            <th>Student Name</th>
+            @foreach($assessments as $assessment)
+                <th>{{ $assessment->name }} ({{ $assessment->max_score }})</th>
             @endforeach
-        </tbody>
-    @endif
+            <th>Total ({{ $assessments->sum('max_score') }})</th>
+            <th>BF</th>
+            <th>Cum</th>
+            <th>Grade</th>
+            <th>Position</th>
+            <th>Remark</th>
+        </tr>
+    </thead>
+
+    {{-- ── Data rows ── --}}
+    <tbody>
+        @forelse($broadsheets as $index => $broadsheet)
+            @php
+                $rowTotal = 0;
+                foreach ($assessments as $a) {
+                    $scoreObj  = $broadsheet->assessmentScores->where('assessment_id', $a->id)->first();
+                    $rowTotal += $scoreObj ? (float)$scoreObj->score : 0;
+                }
+            @endphp
+            <tr>
+                <td>{{ $index + 1 }}</td>
+                <td>{{ $broadsheet->admissionno ?? '-' }}</td>
+                <td>{{ trim(($broadsheet->lname ?? '') . ' ' . ($broadsheet->fname ?? '') . ' ' . ($broadsheet->mname ?? '')) }}</td>
+                @foreach($assessments as $assessment)
+                    @php
+                        $so = $broadsheet->assessmentScores->where('assessment_id', $assessment->id)->first();
+                    @endphp
+                    <td>{{ $so ? number_format($so->score, 1) : '0.0' }}</td>
+                @endforeach
+                <td>{{ number_format($rowTotal, 1) }}</td>
+                <td>{{ number_format($broadsheet->bf ?? 0, 2) }}</td>
+                <td>{{ number_format($broadsheet->cum ?? 0, 2) }}</td>
+                <td>{{ $broadsheet->grade ?? '-' }}</td>
+                <td>{{ $broadsheet->position ?? '-' }}</td>
+                <td>{{ $broadsheet->remark ?? '-' }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="{{ 3 + $assessments->count() + 6 }}">No scores available.</td>
+            </tr>
+        @endforelse
+    </tbody>
 </table>

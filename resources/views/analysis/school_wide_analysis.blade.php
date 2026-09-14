@@ -123,14 +123,14 @@
     <div class="summary-section">
         <div class="section-title">OVERALL PAYMENT SUMMARY</div>
         <div class="summary-stats">
-            {{-- <div class="stat-box">
+            <div class="stat-box">
                 <div>Total Students</div>
                 <div style="font-size: 14px; font-weight: bold;">{{ $schoolTotals['totalStudents'] }}</div>
-            </div> --}}
-            {{-- <div class="stat-box">
+            </div>
+            <div class="stat-box">
                 <div>Total Expected</div>
                 <div style="font-size: 14px; font-weight: bold;">{{ number_format($schoolTotals['totalBilled'], 2) }}</div>
-            </div> --}}
+            </div>
             <div class="stat-box">
                 <div>Total Collected</div>
                 <div style="font-size: 14px; font-weight: bold;">{{ number_format($schoolTotals['totalPaid'], 2) }}</div>

@@ -216,6 +216,79 @@
                     border: 2px solid #0d6efd;
                     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
                 }
+
+                /* ===== Pagination ===== */
+                .pagination-wrap {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .mock-listjs-pagination {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+                .mock-listjs-pagination li {
+                    display: inline-block;
+                }
+                .mock-listjs-pagination li a {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 36px;
+                    height: 36px;
+                    padding: 0 8px;
+                    border-radius: 10px;
+                    color: #495057;
+                    font-weight: 600;
+                    font-size: 14px;
+                    text-decoration: none;
+                    cursor: pointer;
+                    border: 1px solid transparent;
+                    transition: all 0.2s ease;
+                }
+                .mock-listjs-pagination li a:hover {
+                    background-color: #f1f3f9;
+                    color: #0d6efd;
+                }
+                .mock-listjs-pagination li.active a {
+                    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+                    color: #fff;
+                    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
+                }
+                .mock-listjs-pagination li.disabled a {
+                    opacity: 0.4;
+                    pointer-events: none;
+                }
+                .pagination-nav-btn {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 10px;
+                    border: 1px solid #e2e5ec;
+                    background: #fff;
+                    color: #495057;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    line-height: 1;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .pagination-nav-btn:hover:not(:disabled) {
+                    background-color: #0d6efd;
+                    border-color: #0d6efd;
+                    color: #fff;
+                    transform: translateY(-1px);
+                }
+                .pagination-nav-btn:disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                    transform: none;
+                }
             </style>
 
             <div id="mockSubjectVettingList">
@@ -411,7 +484,7 @@
                                                         <div class="form-check">
                                                             <input class="form-check-input" type="checkbox" name="chk_child" value="{{ $sv->svid }}" />
                                                         </div>
-                                                    </div>
+                                                    </td>
                                                     <td class="sn fw-bold">{{ ++$i }}</td>
                                                     <td class="vetting_username">
                                                         <div class="d-flex align-items-center">
@@ -476,12 +549,19 @@
                                 <div class="row mt-4 align-items-center" id="mock-pagination-element">
                                     <div class="col-sm">
                                         <div class="text-muted text-center text-sm-start">
-                                            Showing <span id="mock-showing-records">0</span> of <span id="mock-total-records-footer">{{ $mocksubjectvettings->count() }}</span> Results
+                                            Showing <span class="fw-semibold text-dark" id="mock-showing-records">0</span> of
+                                            <span class="fw-semibold text-dark" id="mock-total-records-footer">{{ $mocksubjectvettings->count() }}</span> results
                                         </div>
                                     </div>
                                     <div class="col-sm-auto mt-3 mt-sm-0">
                                         <div class="pagination-wrap">
+                                            <button type="button" class="pagination-nav-btn" id="mock-page-prev" aria-label="Previous page">
+                                                <i class="ri-arrow-left-s-line"></i>
+                                            </button>
                                             <ul class="pagination mock-listjs-pagination mb-0"></ul>
+                                            <button type="button" class="pagination-nav-btn" id="mock-page-next" aria-label="Next page">
+                                                <i class="ri-arrow-right-s-line"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -768,6 +848,7 @@ let mockEditSelectedSubject = null;
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', function() {
     initializeMockListJS();
+    initializeMockPaginationNav();
     initializeMockFilters();
     initializeMockTableSearch();
     initializeMockAddForm();
@@ -816,10 +897,57 @@ function updateMockStatsFromList() {
     document.getElementById('mock-stat-pending').textContent = pending;
     document.getElementById('mock-stat-completed').textContent = completed;
     document.getElementById('mock-stat-rejected').textContent = rejected;
+
+    // Compute "Showing X-Y" range based on current page
+    const pageSize = mockSubjectVettingList.page || 10;
+    const activeLi = document.querySelector('.mock-listjs-pagination li.active a');
+    const currentPage = activeLi ? (parseInt(activeLi.textContent, 10) || 1) : 1;
+    const start = total === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    const end = Math.min(currentPage * pageSize, total);
+
     const showingEl = document.getElementById('mock-showing-records');
-    if (showingEl) showingEl.textContent = Math.min(total, 10);
+    if (showingEl) showingEl.textContent = total === 0 ? '0' : `${start}-${end}`;
     const totalEl = document.getElementById('mock-total-records-footer');
     if (totalEl) totalEl.textContent = total;
+
+    updateMockPaginationNavState();
+}
+
+function initializeMockPaginationNav() {
+    const prevBtn = document.getElementById('mock-page-prev');
+    const nextBtn = document.getElementById('mock-page-next');
+    const paginationList = document.querySelector('.mock-listjs-pagination');
+    if (!prevBtn || !nextBtn || !paginationList) return;
+
+    prevBtn.addEventListener('click', () => {
+        const active = paginationList.querySelector('li.active');
+        const target = active?.previousElementSibling?.querySelector('a');
+        target?.click();
+    });
+    nextBtn.addEventListener('click', () => {
+        const active = paginationList.querySelector('li.active');
+        const target = active?.nextElementSibling?.querySelector('a');
+        target?.click();
+    });
+
+    // Re-check disabled state whenever list.js re-renders the page list
+    const observer = new MutationObserver(updateMockPaginationNavState);
+    observer.observe(paginationList, { childList: true, subtree: true, attributes: true });
+
+    updateMockPaginationNavState();
+}
+
+function updateMockPaginationNavState() {
+    const prevBtn = document.getElementById('mock-page-prev');
+    const nextBtn = document.getElementById('mock-page-next');
+    const paginationList = document.querySelector('.mock-listjs-pagination');
+    if (!prevBtn || !nextBtn || !paginationList) return;
+
+    const pages = Array.from(paginationList.querySelectorAll('li'));
+    const activeIndex = pages.findIndex(li => li.classList.contains('active'));
+
+    prevBtn.disabled = pages.length === 0 || activeIndex <= 0;
+    nextBtn.disabled = pages.length === 0 || activeIndex === -1 || activeIndex >= pages.length - 1;
 }
 
 function initializeMockFilters() {
@@ -881,6 +1009,7 @@ function applyMockFilters() {
 }
 
 // ========== ADD FORM AJAX SUBJECT SEARCH ==========
+// ========== ADD FORM AJAX SUBJECT SEARCH ==========
 function initializeMockAddForm() {
     const form = document.getElementById('add-mocksubjectvetting-form');
     if (!form) return;
@@ -891,77 +1020,98 @@ function initializeMockAddForm() {
     const clearSearchBtn = document.getElementById('mockClearSearchBtn');
     let searchTimeout;
 
+    function getCheckedTermIds() {
+        return Array.from(document.querySelectorAll('input[name="termid[]"]:checked'))
+            .map(cb => cb.value)
+            .join(',');
+    }
+
+    function runMockAddSearch(query) {
+        if (query.length < 2) {
+            resultsDiv.style.display = 'none';
+            clearSearchBtn.style.display = 'none';
+            return;
+        }
+        clearSearchBtn.style.display = 'block';
+        loadingDiv.style.display = 'block';
+        resultsDiv.style.display = 'none';
+
+        const excludeIds = Array.from(mockSelectedSubjects.keys()).join(',');
+        const termIds = getCheckedTermIds();
+
+        fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeIds}&term_ids=${termIds}`, {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(response => {
+            loadingDiv.style.display = 'none';
+            if (!response.success) {
+                resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            const data = response.data;
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            resultsDiv.innerHTML = data.map(item => {
+                const termColorClass = getTermColorClass(item.termid);
+                const termBgClass = getTermBgClass(item.termid);
+                return `
+                    <div class="list-group-item subject-search-item ${termBgClass}" data-id="${item.id}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">
+                                    ${escapeHtml(item.subjectname)}
+                                    ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
+                                    <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
+                                    <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
+                                    <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary add-subject-btn">
+                                <i class="ri-add-line me-1"></i>Add
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            resultsDiv.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            loadingDiv.style.display = 'none';
+            resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
+            resultsDiv.style.display = 'block';
+        });
+    }
+
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             const query = this.value.trim();
             clearTimeout(searchTimeout);
-            if (query.length < 2) {
-                resultsDiv.style.display = 'none';
-                clearSearchBtn.style.display = 'none';
-                return;
-            }
-            clearSearchBtn.style.display = 'block';
-            loadingDiv.style.display = 'block';
-            resultsDiv.style.display = 'none';
-
-            searchTimeout = setTimeout(() => {
-                const excludeIds = Array.from(mockSelectedSubjects.keys()).join(',');
-                fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeIds}`, {
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(res => res.json())
-                .then(response => {
-                    loadingDiv.style.display = 'none';
-                    if (!response.success) {
-                        resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
-                        resultsDiv.style.display = 'block';
-                        return;
-                    }
-                    const data = response.data;
-                    if (data.length === 0) {
-                        resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
-                        resultsDiv.style.display = 'block';
-                        return;
-                    }
-                    resultsDiv.innerHTML = data.map(item => {
-                        const termColorClass = getTermColorClass(item.termid);
-                        const termBgClass = getTermBgClass(item.termid);
-                        return `
-                            <div class="list-group-item subject-search-item ${termBgClass}" data-id="${item.id}">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <div class="fw-bold">
-                                            ${escapeHtml(item.subjectname)}
-                                            ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
-                                        </div>
-                                        <div class="small text-muted mt-1">
-                                            <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
-                                            <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
-                                            <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
-                                            <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-primary add-subject-btn">
-                                        <i class="ri-add-line me-1"></i>Add
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    resultsDiv.style.display = 'block';
-                })
-                .catch(error => {
-                    console.error('Search error:', error);
-                    loadingDiv.style.display = 'none';
-                    resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
-                    resultsDiv.style.display = 'block';
-                });
-            }, 500);
+            searchTimeout = setTimeout(() => runMockAddSearch(query), 500);
         });
     }
+
+    // NEW: re-run search when checked terms change, if there's already a query typed
+    document.querySelectorAll('input[name="termid[]"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const query = searchInput.value.trim();
+            if (query.length >= 2) {
+                clearTimeout(searchTimeout);
+                runMockAddSearch(query);
+            }
+        });
+    });
 
     if (clearSearchBtn) {
         clearSearchBtn.addEventListener('click', () => {
@@ -1028,7 +1178,6 @@ function initializeMockAddForm() {
         }
     });
 }
-
 function updateMockSelectedDisplay() {
     const container = document.getElementById('mockSelectedSubjectsContainer');
     const countSpan = document.getElementById('mockSelectedCount');
@@ -1169,9 +1318,12 @@ function initializeMockEditSubjectSearch() {
 
     if (!searchInput) return;
 
-    searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        clearTimeout(searchTimeout);
+    function getSelectedEditTermId() {
+        const checked = document.querySelector('input[name="termid"]:checked');
+        return checked ? checked.value : '';
+    }
+
+    function runMockEditSearch(query) {
         if (query.length < 2) {
             resultsDiv.style.display = 'none';
             clearSearchBtn.style.display = 'none';
@@ -1181,64 +1333,81 @@ function initializeMockEditSubjectSearch() {
         loadingDiv.style.display = 'block';
         resultsDiv.style.display = 'none';
 
-        searchTimeout = setTimeout(() => {
-            const excludeId = mockEditSelectedSubject ? mockEditSelectedSubject.id : '';
-            fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeId}`, {
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
-                    'Accept': 'application/json'
-                }
-            })
-            .then(res => res.json())
-            .then(response => {
-                loadingDiv.style.display = 'none';
-                if (!response.success) {
-                    resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
-                    resultsDiv.style.display = 'block';
-                    return;
-                }
-                const data = response.data;
-                if (data.length === 0) {
-                    resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
-                    resultsDiv.style.display = 'block';
-                    return;
-                }
-                resultsDiv.innerHTML = data.map(item => {
-                    const termColorClass = getTermColorClass(item.termid);
-                    const termBgClass = getTermBgClass(item.termid);
-                    return `
-                        <div class="list-group-item edit-subject-search-item ${termBgClass}" data-id="${item.id}"
-                             data-name="${escapeHtml(item.subjectname)}"
-                             data-details='${JSON.stringify(item)}'>
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <div class="fw-bold">
-                                        ${escapeHtml(item.subjectname)}
-                                        ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
-                                    </div>
-                                    <div class="small text-muted mt-1">
-                                        <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
-                                        <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
-                                        <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
-                                        <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
-                                    </div>
+        const excludeId = mockEditSelectedSubject ? mockEditSelectedSubject.id : '';
+        const termId = getSelectedEditTermId();
+
+        fetch(`/api/mock-subject-classes/search?q=${encodeURIComponent(query)}&exclude_ids=${excludeId}&term_ids=${termId}`, {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(response => {
+            loadingDiv.style.display = 'none';
+            if (!response.success) {
+                resultsDiv.innerHTML = `<div class="list-group-item text-danger">${response.message || 'Search failed'}</div>`;
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            const data = response.data;
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            resultsDiv.innerHTML = data.map(item => {
+                const termColorClass = getTermColorClass(item.termid);
+                const termBgClass = getTermBgClass(item.termid);
+                return `
+                    <div class="list-group-item edit-subject-search-item ${termBgClass}" data-id="${item.id}"
+                         data-name="${escapeHtml(item.subjectname)}"
+                         data-details='${JSON.stringify(item)}'>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">
+                                    ${escapeHtml(item.subjectname)}
+                                    ${item.subjectcode ? `<span class="text-muted">(${escapeHtml(item.subjectcode)})</span>` : ''}
                                 </div>
-                                <button type="button" class="btn btn-sm btn-primary edit-select-subject-btn">
-                                    <i class="ri-check-line me-1"></i>Select
-                                </button>
+                                <div class="small text-muted mt-1">
+                                    <i class="ri-group-line me-1"></i> Class: ${escapeHtml(item.sclass)} ${item.schoolarm ? `(${escapeHtml(item.schoolarm)})` : ''}<br>
+                                    <i class="ri-user-line me-1"></i> Teacher: ${escapeHtml(item.teachername)}<br>
+                                    <i class="ri-calendar-line me-1"></i> Session: ${escapeHtml(item.sessionname)}<br>
+                                    <i class="ri-calendar-event-line me-1"></i> Term: <span class="${termColorClass} fw-bold">${escapeHtml(item.termname)}</span>
+                                </div>
                             </div>
+                            <button type="button" class="btn btn-sm btn-primary edit-select-subject-btn">
+                                <i class="ri-check-line me-1"></i>Select
+                            </button>
                         </div>
-                    `;
-                }).join('');
-                resultsDiv.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Search error:', error);
-                loadingDiv.style.display = 'none';
-                resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
-                resultsDiv.style.display = 'block';
-            });
-        }, 500);
+                    </div>
+                `;
+            }).join('');
+            resultsDiv.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            loadingDiv.style.display = 'none';
+            resultsDiv.innerHTML = '<div class="list-group-item text-danger">Network error</div>';
+            resultsDiv.style.display = 'block';
+        });
+    }
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => runMockEditSearch(query), 500);
+    });
+
+    // NEW: re-run search when the selected term radio changes, if there's already a query typed
+    document.querySelectorAll('.edit-term-checkbox').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const query = searchInput.value.trim();
+            if (query.length >= 2) {
+                clearTimeout(searchTimeout);
+                runMockEditSearch(query);
+            }
+        });
     });
 
     if (clearSearchBtn) {
@@ -1278,7 +1447,6 @@ function initializeMockEditSubjectSearch() {
         });
     }
 }
-
 function updateMockEditSelectedDisplay() {
     const container = document.getElementById('mockEditSelectedSubjectContainer');
     const hiddenInput = document.getElementById('mockEditSelectedSubjectId');

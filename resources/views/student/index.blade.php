@@ -374,401 +374,6 @@ use Spatie\Permission\Models\Role;
                     border-color: #3b82f6;
                 }
 
-                /* ====== BULK STATUS MODAL STYLES ====== */
-                .student-term-card {
-                    transition: all 0.3s ease;
-                    border: 1px solid #e9ecef;
-                    overflow: hidden;
-                }
-
-                .student-term-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
-                    border-color: #4361ee;
-                }
-
-                .student-term-card .card-body {
-                    position: relative;
-                    padding: 1.5rem 1rem 1rem;
-                }
-
-                .avatar-xl {
-                    width: 80px;
-                    height: 80px;
-                }
-
-                .avatar-title {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 100%;
-                    height: 100%;
-                }
-
-                .bg-soft-primary {
-                    background-color: rgba(67, 97, 238, 0.1);
-                    color: #4361ee;
-                }
-
-                .bg-soft-success {
-                    background-color: rgba(40, 167, 69, 0.1);
-                    color: #28a745;
-                }
-
-                .bg-soft-warning {
-                    background-color: rgba(255, 193, 7, 0.1);
-                    color: #ffc107;
-                }
-
-                .bg-soft-danger {
-                    background-color: rgba(220, 53, 69, 0.1);
-                    color: #dc3545;
-                }
-
-                /* Toggle buttons styling */
-                .toggle-activity, .toggle-type {
-                    padding: 0.2rem 0.4rem;
-                    font-size: 0.7rem;
-                }
-
-                .toggle-activity:hover, .toggle-type:hover {
-                    transform: scale(1.1);
-                }
-
-                /* Checkbox styling for cards */
-                .term-student-checkbox {
-                    width: 1.2rem;
-                    height: 1.2rem;
-                    cursor: pointer;
-                }
-
-                /* Bulk action toolbar */
-                .bulk-action-toolbar {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 1rem;
-                    border-radius: 12px;
-                    margin-bottom: 1rem;
-                }
-
-                /* Animation for updates */
-                @keyframes pulse-green {
-                    0% { background-color: rgba(40, 167, 69, 0); }
-                    50% { background-color: rgba(40, 167, 69, 0.2); }
-                    100% { background-color: rgba(40, 167, 69, 0); }
-                }
-
-                .status-updated {
-                    animation: pulse-green 1s ease;
-                }
-
-                /* ====== ENHANCED TABLE ACTION BUTTONS ====== */
-                .btn-soft-info {
-                    color: #0dcaf0;
-                    background-color: rgba(13, 202, 240, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-info:hover {
-                    color: #fff;
-                    background-color: #0dcaf0;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(13, 202, 240, 0.2);
-                }
-
-                .btn-soft-warning {
-                    color: #ffc107;
-                    background-color: rgba(255, 193, 7, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-warning:hover {
-                    color: #fff;
-                    background-color: #ffc107;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
-                }
-
-                .btn-soft-danger {
-                    color: #dc3545;
-                    background-color: rgba(220, 53, 69, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-danger:hover {
-                    color: #fff;
-                    background-color: #dc3545;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
-                }
-
-                .btn-soft-secondary {
-                    color: #6c757d;
-                    background-color: rgba(108, 117, 125, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-secondary:hover {
-                    color: #fff;
-                    background-color: #6c757d;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.2);
-                }
-
-                .btn-soft-success {
-                    color: #198754;
-                    background-color: rgba(25, 135, 84, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-success:hover {
-                    color: #fff;
-                    background-color: #198754;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2);
-                }
-
-                .btn-soft-primary {
-                    color: #0d6efd;
-                    background-color: rgba(13, 110, 253, 0.1);
-                    border-color: transparent;
-                    transition: all 0.2s ease;
-                }
-
-                .btn-soft-primary:hover {
-                    color: #fff;
-                    background-color: #0d6efd;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
-                }
-
-                /* Button groups */
-                .btn-group .btn {
-                    padding: 0.4rem 0.8rem;
-                    font-size: 0.875rem;
-                }
-
-                .btn-group .btn:first-child {
-                    border-top-left-radius: 8px;
-                    border-bottom-left-radius: 8px;
-                }
-
-                .btn-group .btn:last-child {
-                    border-top-right-radius: 8px;
-                    border-bottom-right-radius: 8px;
-                }
-
-                /* Dropdown menu styling */
-                .dropdown-menu {
-                    border: none;
-                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-                    border-radius: 12px;
-                    padding: 8px;
-                    animation: fadeInDown 0.2s ease;
-                }
-
-                .dropdown-item {
-                    border-radius: 8px;
-                    padding: 8px 16px;
-                    font-size: 0.875rem;
-                    transition: all 0.2s ease;
-                }
-
-                .dropdown-item:hover {
-                    background-color: #f8f9fa;
-                    transform: translateX(4px);
-                }
-
-                .dropdown-item i {
-                    width: 20px;
-                    text-align: center;
-                }
-
-                .dropdown-divider {
-                    margin: 8px 0;
-                    opacity: 0.1;
-                }
-
-                /* Table row enhancements */
-                .data-table tbody tr {
-                    transition: all 0.25s ease;
-                }
-
-                .data-table tbody tr:hover {
-                    background-color: #f8f9fa;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-                }
-
-                .data-table tbody td {
-                    padding: 16px 12px;
-                    vertical-align: middle;
-                }
-
-                /* Badge enhancements */
-                .badge {
-                    font-weight: 500;
-                    letter-spacing: 0.3px;
-                }
-
-                .badge.bg-gradient {
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                }
-
-                /* Animations */
-                @keyframes fadeInDown {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes pulse {
-                    0% {
-                        box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
-                    }
-                    70% {
-                        box-shadow: 0 0 0 6px rgba(67, 97, 238, 0);
-                    }
-                    100% {
-                        box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
-                    }
-                }
-
-                /* Active status indicator */
-                .position-absolute.bg-success,
-                .position-absolute.bg-secondary {
-                    animation: pulse 2s infinite;
-                    box-shadow: 0 0 0 rgba(67, 97, 238, 0.4);
-                    border: 2px solid white;
-                }
-
-                /* Responsive adjustments */
-                @media (max-width: 768px) {
-                    .btn-group .btn {
-                        padding: 0.3rem 0.6rem;
-                    }
-
-                    .data-table tbody td {
-                        padding: 12px 8px;
-                    }
-                }
-
-                /* Color utilities */
-                .text-pink {
-                    color: #f72585;
-                }
-
-                .bg-pink {
-                    background-color: #f72585;
-                }
-
-                /* Avatar enhancements */
-                .avatar-circle {
-                    position: relative;
-                    display: inline-block;
-                }
-
-                .avatar-initials {
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                    transition: all 0.3s ease;
-                }
-
-                tr:hover .avatar-initials {
-                    transform: scale(1.05);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                }
-
-                /* Quick action buttons */
-                .quick-actions {
-                    display: flex;
-                    gap: 4px;
-                }
-
-                /* Status indicators */
-                .status-dot {
-                    display: inline-block;
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 50%;
-                    margin-right: 6px;
-                }
-
-                .status-dot.active {
-                    background-color: #10b981;
-                    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-                }
-
-                .status-dot.inactive {
-                    background-color: #6c757d;
-                    box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.2);
-                }
-
-                /* Table action container */
-                .table-actions-container {
-                    display: flex;
-                    gap: 8px;
-                    justify-content: flex-end;
-                }
-
-                /* Student info in table */
-                .student-info-wrapper {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-
-                .student-details {
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .student-name {
-                    font-weight: 600;
-                    color: #1e293b;
-                    margin-bottom: 4px;
-                }
-
-                .student-meta {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-
-                .admission-badge {
-                    background-color: #f1f5f9;
-                    color: #475569;
-                    padding: 2px 8px;
-                    border-radius: 20px;
-                    font-size: 11px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-
-                /* Compact status badges */
-                .compact-badge {
-                    padding: 4px 8px;
-                    border-radius: 20px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-
                 /* ====== TABLE STYLES ====== */
                 .data-table-container {
                     background: white;
@@ -1504,11 +1109,6 @@ use Spatie\Permission\Models\Role;
                                         <i class="fas fa-trash me-2"></i>Delete Selected
                                     </a>
                                 </li>
-                                <li>
-                                    <a class="dropdown-item text-primary" href="javascript:void(0);" id="updateCurrentTermBtn">
-                                        <i class="fas fa-calendar-alt me-2"></i>Update Current Term
-                                    </a>
-                                </li>
                             </ul>
                         </div>
                         @endcan
@@ -1520,6 +1120,11 @@ use Spatie\Permission\Models\Role;
                         </button>
                         @endcan
 
+                        <!-- Class & Term Operations -->
+                        <a href="{{ route('student.class-operations') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-tasks me-2"></i>Class &amp; Term Operations
+                        </a>
+
                         <!-- Export Button -->
                         <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#printStudentReportModal">
                             <i class="fas fa-file-export me-2"></i>Export
@@ -1527,10 +1132,10 @@ use Spatie\Permission\Models\Role;
                     </div>
                 </div>
 
-                <!-- Filter Bar - WITH NEW ACTION BUTTONS -->
+                <!-- Filter Bar -->
                 <div class="filter-bar">
                     <div class="row g-3">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <div class="search-box">
                                 <i class="fas fa-search search-icon"></i>
                                 <input type="text" class="form-control" id="search-input"
@@ -1540,7 +1145,7 @@ use Spatie\Permission\Models\Role;
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <select class="form-control" id="schoolclass-filter">
                                 <option value="all">All Classes</option>
                                 @foreach ($schoolclasses as $class)
@@ -1577,16 +1182,6 @@ use Spatie\Permission\Models\Role;
                             <button type="button" class="btn btn-outline-secondary w-100" id="resetFiltersBtn">
                                 <i class="fas fa-redo-alt"></i>
                             </button>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-warning w-100" id="bulkStatusBtn" data-bs-toggle="tooltip" title="Update student status (Active/Inactive or Old/New)">
-                                    <i class="fas fa-sync-alt me-2"></i>Status
-                                </button>
-                                <button type="button" class="btn btn-info w-100" id="manageTermBtn" data-bs-toggle="tooltip" title="Manage term registrations">
-                                    <i class="fas fa-calendar-alt me-2"></i>Term
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1669,82 +1264,6 @@ use Spatie\Permission\Models\Role;
                             </li>
                         </ul>
                     </nav>
-                </div>
-            </div>
-        </div>
-
-        <!-- Update Current Term Modal -->
-        <div id="updateCurrentTermModal" class="modal fade" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header modal-header-gradient">
-                        <h5 class="modal-title">
-                            <i class="fas fa-calendar-alt me-2"></i>Register/Update Term
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <form id="updateCurrentTermForm">
-                            @csrf
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Registering/updating term for <span id="selectedStudentsCount">0</span> selected student(s).
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Class</label>
-                                <select class="form-control" name="schoolclassId" required>
-                                    <option value="">Select Class</option>
-                                    @foreach ($schoolclasses as $class)
-                                        <option value="{{ $class->id }}">{{ $class->class_display }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Term</label>
-                                <select class="form-control" name="termId" required>
-                                    <option value="">Select Term</option>
-                                    @foreach ($schoolterms as $term)
-                                        <option value="{{ $term->id }}">{{ $term->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Session</label>
-                                <select class="form-control" name="sessionId" required>
-                                    <option value="">Select Session</option>
-                                    @foreach ($schoolsessions as $session)
-                                        <option value="{{ $session->id }}">{{ $session->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="is_current" id="is_current" value="1" checked>
-                                    <label class="form-check-label" for="is_current">
-                                        Mark as current term for student(s)
-                                    </label>
-                                </div>
-                                <small class="text-muted">If checked, this will be marked as the current term. Previous current term will be unmarked.</small>
-                            </div>
-
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>Note:</strong> Students can have multiple terms registered in the same session.
-                                If a term already exists for a student in this session, it will be updated.
-                                Otherwise, a new term registration will be created.
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary-gradient" id="confirmUpdateCurrentTerm">
-                            <i class="fas fa-save me-2"></i>Register/Update Term
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1832,9 +1351,16 @@ use Spatie\Permission\Models\Role;
                                             'local'          => 'LGA',
                                             'religion'       => 'Religion',
                                             'blood_group'    => 'Blood Group',
+                                            'genotype'       => 'Genotype',
                                             'father_name'    => "Father's Name",
                                             'mother_name'    => "Mother's Name",
                                             'guardian_phone' => 'Guardian Phone',
+                                            'guardian_name'                => 'Guardian Name',
+                                            'guardian_relationship'        => 'Guardian Relationship',
+                                            'whatsapp_number'              => 'Parent/Guardian WhatsApp',
+                                            'emergency_contact_name'       => 'Emergency Contact Name',
+                                            'emergency_contact_phone'      => 'Emergency Contact Phone',
+                                            'allergies_medical_conditions' => 'Allergies / Medical Conditions',
                                             'term'           => 'Term',
                                             'session'        => 'Session',
                                         ];
@@ -2290,6 +1816,64 @@ use Spatie\Permission\Models\Role;
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="clubid" class="form-label">Club</label>
+                                                        <select id="clubid" name="clubid" class="form-control">
+                                                            <option value="">Select Club (optional)</option>
+                                                            @foreach ($clubs as $club)
+                                                                <option value="{{ $club->id }}">{{ $club->club }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="sportid" class="form-label">Sport</label>
+                                                        <select id="sportid" name="sportid" class="form-control">
+                                                            <option value="">Select Sport (optional)</option>
+                                                            @foreach ($sports as $sport)
+                                                                <option value="{{ $sport->id }}">{{ $sport->sport }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="genotype" class="form-label">Genotype</label>
+                                                        <select id="genotype" name="genotype" class="form-control">
+                                                            <option value="">Select Genotype</option>
+                                                            <option value="AA">AA</option>
+                                                            <option value="AS">AS</option>
+                                                            <option value="SS">SS</option>
+                                                            <option value="AC">AC</option>
+                                                            <option value="SC">SC</option>
+                                                            <option value="CC">CC</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="emergency_contact_name" class="form-label">Emergency Contact Name</label>
+                                                        <input type="text" id="emergency_contact_name" name="emergency_contact_name" class="form-control" placeholder="Name of emergency contact">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="emergency_contact_phone" class="form-label">Emergency Contact Phone</label>
+                                                        <input type="text" id="emergency_contact_phone" name="emergency_contact_phone" class="form-control" placeholder="+234 xxx xxx xxxx">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="allergies_medical_conditions" class="form-label">Allergies / Medical Conditions</label>
+                                                <textarea id="allergies_medical_conditions" name="allergies_medical_conditions" class="form-control" rows="2" placeholder="e.g. Peanut allergy, Asthma — leave blank if none"></textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2337,6 +1921,30 @@ use Spatie\Permission\Models\Role;
                                             <div class="mb-3">
                                                 <label for="parent_address" class="form-label">Parent's Address</label>
                                                 <textarea id="parent_address" name="parent_address" class="form-control" rows="2" placeholder="Parent's address"></textarea>
+                                            </div>
+                                            <hr>
+                                            <p class="text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>Guardian Details (where applicable)</p>
+                                            <div class="mb-3">
+                                                <label for="guardian_name" class="form-label">Guardian Name</label>
+                                                <input type="text" id="guardian_name" name="guardian_name" class="form-control" placeholder="Guardian's full name">
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="guardian_relationship" class="form-label">Relationship to Student</label>
+                                                        <input type="text" id="guardian_relationship" name="guardian_relationship" class="form-control" placeholder="e.g. Uncle, Aunt, Sponsor">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="guardian_phone" class="form-label">Guardian Phone</label>
+                                                        <input type="text" id="guardian_phone" name="guardian_phone" class="form-control" placeholder="+234 xxx xxx xxxx">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="whatsapp_number" class="form-label">Parent/Guardian WhatsApp Number</label>
+                                                <input type="text" id="whatsapp_number" name="whatsapp_number" class="form-control" placeholder="+234 xxx xxx xxxx">
                                             </div>
                                         </div>
                                     </div>
@@ -2390,7 +1998,6 @@ use Spatie\Permission\Models\Role;
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    {{-- <form class="tablelist-form" id="editStudentForm" enctype="multipart/form-data" autocomplete="off" method="POST" action="{{ route('student.update', ':id') }}"> --}}
                         <form class="tablelist-form" id="editStudentForm" enctype="multipart/form-data" autocomplete="off" method="POST"
                                         action="{{ route('student.update', ':id') }}"
                                         data-base-action="{{ route('student.update', ':id') }}">
@@ -2737,6 +2344,64 @@ use Spatie\Permission\Models\Role;
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="editClubid" class="form-label">Club</label>
+                                                    <select id="editClubid" name="clubid" class="form-control">
+                                                        <option value="">Select Club (optional)</option>
+                                                        @foreach ($clubs as $club)
+                                                            <option value="{{ $club->id }}">{{ $club->club }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="editSportid" class="form-label">Sport</label>
+                                                    <select id="editSportid" name="sportid" class="form-control">
+                                                        <option value="">Select Sport (optional)</option>
+                                                        @foreach ($sports as $sport)
+                                                            <option value="{{ $sport->id }}">{{ $sport->sport }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="editGenotype" class="form-label">Genotype</label>
+                                                    <select id="editGenotype" name="genotype" class="form-control">
+                                                        <option value="">Select Genotype</option>
+                                                        <option value="AA">AA</option>
+                                                        <option value="AS">AS</option>
+                                                        <option value="SS">SS</option>
+                                                        <option value="AC">AC</option>
+                                                        <option value="SC">SC</option>
+                                                        <option value="CC">CC</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="editEmergencyContactName" class="form-label">Emergency Contact Name</label>
+                                                    <input type="text" id="editEmergencyContactName" name="emergency_contact_name" class="form-control" placeholder="Name of emergency contact">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="editEmergencyContactPhone" class="form-label">Emergency Contact Phone</label>
+                                                    <input type="text" id="editEmergencyContactPhone" name="emergency_contact_phone" class="form-control" placeholder="+234 xxx xxx xxxx">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editAllergiesMedical" class="form-label">Allergies / Medical Conditions</label>
+                                            <textarea id="editAllergiesMedical" name="allergies_medical_conditions" class="form-control" rows="2" placeholder="e.g. Peanut allergy, Asthma — leave blank if none"></textarea>
+                                        </div>
                                     </div>
                                 </div>
                                     <!-- Section D: Parent/Guardian Details -->
@@ -2782,6 +2447,30 @@ use Spatie\Permission\Models\Role;
                                             <div class="mb-3">
                                                 <label for="editParentAddress" class="form-label">Parent's Address</label>
                                                 <textarea id="editParentAddress" name="parent_address" class="form-control" rows="2" placeholder="Parent's address"></textarea>
+                                            </div>
+                                            <hr>
+                                            <p class="text-muted small mb-2"><i class="fas fa-user-shield me-1"></i>Guardian Details (where applicable)</p>
+                                            <div class="mb-3">
+                                                <label for="editGuardianName" class="form-label">Guardian Name</label>
+                                                <input type="text" id="editGuardianName" name="guardian_name" class="form-control" placeholder="Guardian's full name">
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="editGuardianRelationship" class="form-label">Relationship to Student</label>
+                                                        <input type="text" id="editGuardianRelationship" name="guardian_relationship" class="form-control" placeholder="e.g. Uncle, Aunt, Sponsor">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="editGuardianPhone" class="form-label">Guardian Phone</label>
+                                                        <input type="text" id="editGuardianPhone" name="guardian_phone" class="form-control" placeholder="+234 xxx xxx xxxx">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editWhatsappNumber" class="form-label">Parent/Guardian WhatsApp Number</label>
+                                                <input type="text" id="editWhatsappNumber" name="whatsapp_number" class="form-control" placeholder="+234 xxx xxx xxxx">
                                             </div>
                                         </div>
                                     </div>
@@ -3056,6 +2745,14 @@ use Spatie\Permission\Models\Role;
                                                         <th>School House:</th>
                                                         <td id="viewSchoolHouse">-</td>
                                                     </tr>
+                                                    <tr>
+                                                        <th>Club:</th>
+                                                        <td id="viewClub">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Sport:</th>
+                                                        <td id="viewSport">-</td>
+                                                    </tr>
                                                 </table>
                                             </div>
                                         </div>
@@ -3280,6 +2977,15 @@ use Spatie\Permission\Models\Role;
                                                                 <th>Parent's Address:</th>
                                                                 <td id="viewParentAddress">-</td>
                                                             </tr>
+                                                            <tr>
+                                                                <th>Parent/Guardian WhatsApp:</th>
+                                                                <td>
+                                                                    <span id="viewParentWhatsapp">-</span>
+                                                                    <a href="javascript:void(0)" onclick="openWhatsapp('viewParentWhatsapp')" class="ms-2 text-success" title="Open WhatsApp">
+                                                                        <i class="fab fa-whatsapp"></i>
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
                                                         </table>
                                                     </div>
                                                 </div>
@@ -3308,16 +3014,21 @@ use Spatie\Permission\Models\Role;
                                                         <td id="viewGenotype">-</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Allergies:</th>
-                                                        <td id="viewAllergies">-</td>
+                                                        <th>Allergies / Medical Conditions:</th>
+                                                        <td id="viewAllergiesMedical">-</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Medical Conditions:</th>
-                                                        <td id="viewMedicalConditions">-</td>
+                                                        <th>Emergency Contact Name:</th>
+                                                        <td id="viewEmergencyContactName">-</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Disabilities:</th>
-                                                        <td id="viewDisabilities">-</td>
+                                                        <th>Emergency Contact Phone:</th>
+                                                        <td>
+                                                            <span id="viewEmergencyContactPhone">-</span>
+                                                            <a href="javascript:void(0)" onclick="callNumber('viewEmergencyContactPhone')" class="ms-2 text-success" title="Call">
+                                                                <i class="fas fa-phone-alt"></i>
+                                                            </a>
+                                                        </td>
                                                     </tr>
                                                     <tr>
                                                         <th>NIN Number:</th>
@@ -3418,7 +3129,13 @@ use Spatie\Permission\Models\Role;
 
 <script>
 // ============================================================================
-// STUDENT MANAGEMENT SYSTEM - COMPLETE FIXED VERSION WITH NEW FEATURES
+// STUDENT MANAGEMENT SYSTEM — DIRECTORY (find / view / edit / delete ONE student)
+//
+// Class-level and roster-level operations (bulk status changes, assigning a
+// current term, term registration management) live on their own page now:
+// see resources/views/student/class-operations.blade.php and
+// StudentClassOperationsController — split out to keep this file focused on
+// a single concern: the student directory.
 // ============================================================================
 
 (function() {
@@ -3468,10 +3185,7 @@ use Spatie\Permission\Models\Role;
             students: new Map(),
             stats: null,
             classes: null
-        },
-        bulkStatusFilters: null,
-        termFilters: null,
-        bulkStatusData: null
+        }
     };
 
     // ============================================================================
@@ -3708,6 +3422,39 @@ use Spatie\Permission\Models\Role;
             axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
             axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
             return true;
+        },
+
+        // ── Extract a human-readable message from an axios error ──
+        extractErrorMessage: function(error, fallback = 'Something went wrong.') {
+            if (!error) return fallback;
+
+            // Timeout / network error
+            if (error.code === 'ECONNABORTED') return 'Request timed out. Please try again.';
+            if (!error.response) return error.message || 'Network error — check your connection.';
+
+            const { status, data } = error.response;
+
+            // Laravel validation errors: { message, errors: { field: [msgs] } }
+            if (data && typeof data === 'object') {
+                if (data.message) return data.message;
+                if (data.errors) {
+                    const firstField = Object.keys(data.errors)[0];
+                    if (firstField && Array.isArray(data.errors[firstField])) {
+                        return data.errors[firstField][0];
+                    }
+                }
+            }
+
+            // HTML response (login page redirect, error page, etc.)
+            if (typeof data === 'string' && data.trim().startsWith('<')) {
+                if (status === 419) return 'Session expired. Please refresh the page and log in again.';
+                if (status === 401 || status === 403) return 'You are not authorized. Please log in again.';
+                if (status === 500) return 'Server error (500). Check storage/logs/laravel.log for details.';
+                if (status === 404) return 'Endpoint not found (404). The route may have been renamed.';
+                return `Server returned HTML (status ${status}). You may have been logged out.`;
+            }
+
+            return fallback;
         }
     };
 
@@ -3758,13 +3505,38 @@ use Spatie\Permission\Models\Role;
 
                 const response = await axios.get(`/students/optimized?${params.toString()}`);
 
-                if (response.data.success) {
-                    return response.data.data;
-                } else {
-                    throw new Error(response.data.message || 'Failed to fetch students');
+                // ── Defensive response validation ──
+                if (!response.data || typeof response.data !== 'object') {
+                    throw new Error('Server returned an unexpected response (not JSON).');
                 }
+
+                if (!response.data.success) {
+                    throw new Error(response.data.message || 'Server reported success=false.');
+                }
+
+                // The JS expects `data.data` to be a Laravel paginator object
+                const payload = response.data.data;
+                if (!payload || typeof payload !== 'object') {
+                    throw new Error('Server response is missing the "data" payload.');
+                }
+
+                if (!Array.isArray(payload.data)) {
+                    throw new Error('Server response "data.data" is not an array. Check the controller\'s return shape.');
+                }
+
+                return payload;
             } catch (error) {
                 Utils.log('API Error - getStudents', error, 'error');
+
+                // Log the raw server response for diagnosis
+                if (error.response) {
+                    Utils.log('  → HTTP status:', error.response.status, 'error');
+                    Utils.log('  → Response body:', error.response.data, 'error');
+                    Utils.log('  → Request URL:', error.config?.url, 'error');
+                }
+
+                // Attach a friendly message for the caller
+                error.userMessage = Utils.extractErrorMessage(error, 'Failed to load students.');
                 throw error;
             }
         },
@@ -3784,6 +3556,7 @@ use Spatie\Permission\Models\Role;
                 }
             } catch (error) {
                 Utils.log('API Error - getStudent', error, 'error');
+                error.userMessage = Utils.extractErrorMessage(error, 'Failed to fetch student.');
                 throw error;
             }
         },
@@ -3797,6 +3570,7 @@ use Spatie\Permission\Models\Role;
                 return response.data;
             } catch (error) {
                 Utils.log('API Error - deleteStudent', error, 'error');
+                error.userMessage = Utils.extractErrorMessage(error, 'Failed to delete student.');
                 throw error;
             }
         },
@@ -3810,6 +3584,7 @@ use Spatie\Permission\Models\Role;
                 return response.data;
             } catch (error) {
                 Utils.log('API Error - deleteMultipleStudents', error, 'error');
+                error.userMessage = Utils.extractErrorMessage(error, 'Failed to delete students.');
                 throw error;
             }
         },
@@ -3840,19 +3615,6 @@ use Spatie\Permission\Models\Role;
             }
         },
 
-        async updateBulkCurrentTerm(data) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const response = await axios.post('/student-current-term/bulk-update', data);
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - updateBulkCurrentTerm', error, 'error');
-                throw error;
-            }
-        },
-
         async generateReport(params) {
             if (!Utils.ensureAxios()) {
                 throw new Error('Axios not available');
@@ -3868,83 +3630,6 @@ use Spatie\Permission\Models\Role;
                 return response;
             } catch (error) {
                 Utils.log('API Error - generateReport', error, 'error');
-                throw error;
-            }
-        },
-
-        // ===== NEW API METHODS =====
-        async getStudentsByClassAndSession(classId, sessionId, termId = null) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const params = {
-                    class_id: classId,
-                    session_id: sessionId
-                };
-                if (termId) {
-                    params.term_id = termId;
-                }
-                const response = await axios.get('/students/by-class-session', { params });
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - getStudentsByClassAndSession', error, 'error');
-                throw error;
-            }
-        },
-
-        async bulkUpdateStatus(data) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const response = await axios.post('/students/bulk-update-status', data);
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - bulkUpdateStatus', error, 'error');
-                throw error;
-            }
-        },
-
-        async getStudentsInTerm(params) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const response = await axios.get('/students-in-term', { params });
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - getStudentsInTerm', error, 'error');
-                throw error;
-            }
-        },
-
-        async removeStudentFromTerm(registrationId) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const response = await axios.post('/students/remove-from-term', {
-                    registration_id: registrationId
-                });
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - removeStudentFromTerm', error, 'error');
-                throw error;
-            }
-        },
-
-        async bulkRemoveFromTerm(registrationIds) {
-            if (!Utils.ensureAxios()) {
-                throw new Error('Axios not available');
-            }
-            try {
-                const response = await axios.post('/students/bulk-remove-from-term', {
-                    registration_ids: registrationIds
-                });
-                return response.data;
-            } catch (error) {
-                Utils.log('API Error - bulkRemoveFromTerm', error, 'error');
                 throw error;
             }
         }
@@ -4491,6 +4176,20 @@ use Spatie\Permission\Models\Role;
                 bloodGroupSelect.value = student.blood_group;
             }
 
+            const genotypeSelect = document.getElementById('editGenotype');
+            if (genotypeSelect && student.genotype) {
+                genotypeSelect.value = student.genotype;
+            }
+
+            const emergencyContactNameInput = document.getElementById('editEmergencyContactName');
+            if (emergencyContactNameInput) emergencyContactNameInput.value = student.emergency_contact_name || '';
+
+            const emergencyContactPhoneInput = document.getElementById('editEmergencyContactPhone');
+            if (emergencyContactPhoneInput) emergencyContactPhoneInput.value = student.emergency_contact_phone || '';
+
+            const allergiesMedicalInput = document.getElementById('editAllergiesMedical');
+            if (allergiesMedicalInput) allergiesMedicalInput.value = student.allergies_medical_conditions || '';
+
             const houseSelect = document.getElementById('editSchoolHouse');
             if (houseSelect) {
                 let houseValue = student.schoolhouseid || student.schoolhouse || student.school_house || null;
@@ -4503,6 +4202,12 @@ use Spatie\Permission\Models\Role;
                     }
                 }
             }
+
+            const clubSelect = document.getElementById('editClubid');
+            if (clubSelect) clubSelect.value = student.clubid || '';
+
+            const sportSelect = document.getElementById('editSportid');
+            if (sportSelect) sportSelect.value = student.sportid || '';
 
             // State and LGA
             if (student.state) {
@@ -4548,6 +4253,18 @@ use Spatie\Permission\Models\Role;
             const parentAddressInput = document.getElementById('editParentAddress');
             if (parentAddressInput) parentAddressInput.value = student.parent_address || '';
 
+            const guardianNameInput = document.getElementById('editGuardianName');
+            if (guardianNameInput) guardianNameInput.value = student.guardian_name || '';
+
+            const guardianRelationshipInput = document.getElementById('editGuardianRelationship');
+            if (guardianRelationshipInput) guardianRelationshipInput.value = student.guardian_relationship || '';
+
+            const guardianPhoneInput = document.getElementById('editGuardianPhone');
+            if (guardianPhoneInput) guardianPhoneInput.value = student.guardian_phone || '';
+
+            const whatsappNumberInput = document.getElementById('editWhatsappNumber');
+            if (whatsappNumberInput) whatsappNumberInput.value = student.whatsapp_number || '';
+
             // ===== PREVIOUS SCHOOL =====
             const lastSchoolInput = document.getElementById('editLastSchool');
             if (lastSchoolInput) lastSchoolInput.value = student.last_school || '';
@@ -4568,15 +4285,6 @@ use Spatie\Permission\Models\Role;
                 }
             }
 
-            // Update form action URL
-            // const form = document.getElementById('editStudentForm');
-            // if (form && student.id) {
-            //     form.action = form.action.replace(':id', student.id);
-            // }
-
-
-
-
             // Update form action URL — always rebuild from the stored base pattern
             // so that opening the modal a second time doesn't use a stale URL
             const form = document.getElementById('editStudentForm');
@@ -4590,8 +4298,6 @@ use Spatie\Permission\Models\Role;
                                             .replace(/\/\d+\/([^\/]+)$/, '/' + student.id + '/$1');
                 }
             }
-
-
 
             Utils.log('Edit form populated successfully');
         }
@@ -4666,6 +4372,8 @@ use Spatie\Permission\Models\Role;
 
             this.safeSetText('viewStudentStatus', student.student_status || '-');
             this.safeSetText('viewSchoolHouse', student.school_house || '-');
+            this.safeSetText('viewClub', student.club_name || 'Not Assigned');
+            this.safeSetText('viewSport', student.sport_name || 'Not Assigned');
             this.safeSetText('viewAdmittedDate', Utils.formatDate(student.admission_date, 'short'));
 
             // Student Status Indicator
@@ -4738,6 +4446,16 @@ use Spatie\Permission\Models\Role;
             // Additional Information
             this.safeSetText('viewNIN', student.nin_number || '-');
             this.safeSetText('viewMotherTongue', student.mother_tongue || '-');
+            this.safeSetText('viewGenotype', student.genotype || 'Not Specified');
+            this.safeSetText('viewAllergiesMedical', student.allergies_medical_conditions || 'None reported');
+            this.safeSetText('viewEmergencyContactName', student.emergency_contact_name || '-');
+            this.safeSetText('viewEmergencyContactPhone', student.emergency_contact_phone || '-');
+
+            // Guardian & WhatsApp
+            this.safeSetText('viewGuardianName', student.guardian_name || '-');
+            this.safeSetText('viewGuardianRelation', student.guardian_relationship || '-');
+            this.safeSetText('viewGuardianPhone', student.guardian_phone || '-');
+            this.safeSetText('viewParentWhatsapp', student.whatsapp_number || '-');
 
             // Fetch term info
             this.fetchStudentTermInfo(student.id);
@@ -5380,7 +5098,12 @@ use Spatie\Permission\Models\Role;
 
             } catch (error) {
                 Utils.log('Error fetching students', error, 'error');
-                Utils.showError('Failed to load students. Please try again.');
+
+                // Surface the real reason from the server (or a friendly fallback)
+                const message = error.userMessage
+                    || Utils.extractErrorMessage(error, 'Failed to load students. Please try again.');
+
+                Utils.showError(message, 'Failed to Load Students');
 
             } finally {
                 Utils.hideLoading();
@@ -5415,7 +5138,7 @@ use Spatie\Permission\Models\Role;
             } catch (error) {
                 Utils.hideLoading();
                 Utils.log('Error viewing student', error, 'error');
-                Utils.showError('Failed to load student data.');
+                Utils.showError(error.userMessage || 'Failed to load student data.');
             }
         },
 
@@ -5446,7 +5169,7 @@ use Spatie\Permission\Models\Role;
             } catch (error) {
                 Utils.hideLoading();
                 Utils.log('Error editing student', error, 'error');
-                Utils.showError('Failed to load student for editing: ' + (error.message || 'Unknown error'));
+                Utils.showError(error.userMessage || 'Failed to load student for editing: ' + (error.message || 'Unknown error'));
             }
         },
 
@@ -5465,7 +5188,7 @@ use Spatie\Permission\Models\Role;
                     Utils.showSuccess('Student has been deleted.');
                 } catch (error) {
                     Utils.log('Error deleting student', error, 'error');
-                    Utils.showError('Failed to delete student.');
+                    Utils.showError(error.userMessage || 'Failed to delete student.');
                 }
             }
         },
@@ -5493,900 +5216,8 @@ use Spatie\Permission\Models\Role;
                     SelectionManager.clearAllSelections();
                 } catch (error) {
                     Utils.log('Error deleting multiple students', error, 'error');
-                    Utils.showError('Failed to delete selected students.');
+                    Utils.showError(error.userMessage || 'Failed to delete selected students.');
                 }
-            }
-        }
-    };
-
-    // ============================================================================
-    // CURRENT TERM MANAGER
-    // ============================================================================
-    const CurrentTermManager = {
-        showUpdateCurrentTermModal: function(studentId = null) {
-            let selectedIds = [];
-
-            if (studentId) {
-                selectedIds = [studentId];
-            } else {
-                selectedIds = SelectionManager.getSelectedStudentIds();
-            }
-
-            if (selectedIds.length === 0) {
-                Utils.showError('Please select at least one student.', 'No Selection');
-                return;
-            }
-
-            const form = document.getElementById('updateCurrentTermForm');
-            if (form) {
-                form.reset();
-            }
-
-            const selectedCountEl = document.getElementById('selectedStudentsCount');
-            if (selectedCountEl) {
-                selectedCountEl.textContent = selectedIds.length;
-            }
-
-            const modal = new bootstrap.Modal(document.getElementById('updateCurrentTermModal'));
-            modal.show();
-        },
-
-        async updateCurrentTerm() {
-            const selectedIds = SelectionManager.getSelectedStudentIds();
-            const form = document.getElementById('updateCurrentTermForm');
-            if (!form) return;
-
-            const classId = form.querySelector('[name="schoolclassId"]')?.value;
-            const termId = form.querySelector('[name="termId"]')?.value;
-            const sessionId = form.querySelector('[name="sessionId"]')?.value;
-
-            if (!classId || !termId || !sessionId) {
-                Utils.showError('Please select class, term, and session.', 'Missing Fields');
-                return;
-            }
-
-            try {
-                Swal.fire({
-                    title: 'Updating...',
-                    text: 'Please wait while updating current term.',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
-
-                const data = {
-                    student_ids: selectedIds,
-                    schoolclassId: classId,
-                    termId: termId,
-                    sessionId: sessionId,
-                    is_current: true
-                };
-
-                const response = await ApiService.updateBulkCurrentTerm(data);
-
-                const modal = bootstrap.Modal.getInstance(document.getElementById('updateCurrentTermModal'));
-                if (modal) modal.hide();
-
-                Swal.close();
-                Utils.showSuccess(response.message || `Current term updated for ${selectedIds.length} student(s).`);
-                await StudentManager.fetchStudents();
-
-            } catch (error) {
-                Swal.close();
-                Utils.log('Error updating current term', error, 'error');
-                let errorMessage = 'Failed to update current term.';
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                Utils.showError(errorMessage);
-            }
-        }
-    };
-
-    // ============================================================================
-    // BULK STATUS UPDATE FEATURE
-    // ============================================================================
-    const BulkStatusManager = {
-        showUpdateStatusModal: function() {
-            const classId = document.getElementById('schoolclass-filter').value;
-            const sessionId = document.getElementById('session-filter').value;
-
-            if (classId === 'all' || sessionId === 'all') {
-                Utils.showError('Please select both a class and a session to use this feature.', 'Selection Required');
-                return;
-            }
-
-            // Store current filters for later use
-            AppState.bulkStatusFilters = {
-                class_id: classId,
-                session_id: sessionId
-            };
-
-            // Show loading
-            Swal.fire({
-                title: 'Loading Students',
-                html: 'Fetching students in this class and session...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            // Fetch students
-            ApiService.getStudentsByClassAndSession(classId, sessionId)
-            .then(response => {
-                Swal.close();
-
-                if (response.success) {
-                    AppState.bulkStatusData = response;
-                    this.renderStatusUpdateModal(response.students, response.stats);
-                } else {
-                    Utils.showError('Failed to load students: ' + (response.message || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                Swal.close();
-                Utils.showError('Error loading students: ' + (error.response?.data?.message || error.message));
-            });
-        },
-
-        renderStatusUpdateModal: function(students, stats) {
-            // Remove existing modal if any
-            const existingModal = document.getElementById('bulkStatusUpdateModal');
-            if (existingModal) existingModal.remove();
-
-            const modalHtml = `
-                <div class="modal fade" id="bulkStatusUpdateModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header modal-header-gradient">
-                                <h5 class="modal-title">
-                                    <i class="fas fa-sync-alt me-2"></i>
-                                    Bulk Update Student Status
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4">
-                                <!-- Summary Cards -->
-                                <div class="row mb-4">
-                                    <div class="col-md-3">
-                                        <div class="card bg-primary text-white">
-                                            <div class="card-body">
-                                                <h6 class="card-title">Total Students</h6>
-                                                <h2 class="mb-0">${stats.total}</h2>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-success text-white">
-                                            <div class="card-body">
-                                                <h6 class="card-title">Active</h6>
-                                                <h2 class="mb-0">${stats.active}</h2>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-secondary text-white">
-                                            <div class="card-body">
-                                                <h6 class="card-title">Inactive</h6>
-                                                <h2 class="mb-0">${stats.inactive}</h2>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card bg-warning text-dark">
-                                            <div class="card-body">
-                                                <h6 class="card-title">New Students</h6>
-                                                <h2 class="mb-0">${stats.new_students}</h2>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Bulk Action Toolbar -->
-                                <div class="card mb-4">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="selectAllStatusStudents">
-                                                    <label class="form-check-label fw-semibold" for="selectAllStatusStudents">
-                                                        Select All Students
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-8">
-                                                <div class="d-flex gap-2 justify-content-end">
-                                                    <div class="btn-group me-2">
-                                                        <button class="btn btn-outline-success dropdown-toggle" type="button"
-                                                                data-bs-toggle="dropdown" aria-expanded="false">
-                                                            <i class="fas fa-user-check me-1"></i>Set Activity Status
-                                                        </button>
-                                                        <ul class="dropdown-menu">
-                                                            <li><a class="dropdown-item" href="#" onclick="BulkStatusManager.bulkUpdateStatus('activity_status', 'Active')">
-                                                                <i class="fas fa-check-circle text-success me-2"></i>Active
-                                                            </a></li>
-                                                            <li><a class="dropdown-item" href="#" onclick="BulkStatusManager.bulkUpdateStatus('activity_status', 'Inactive')">
-                                                                <i class="fas fa-pause-circle text-secondary me-2"></i>Inactive
-                                                            </a></li>
-                                                        </ul>
-                                                    </div>
-                                                    <div class="btn-group">
-                                                        <button class="btn btn-outline-warning dropdown-toggle" type="button"
-                                                                data-bs-toggle="dropdown" aria-expanded="false">
-                                                            <i class="fas fa-user-tag me-1"></i>Set Student Type
-                                                        </button>
-                                                        <ul class="dropdown-menu">
-                                                            <li><a class="dropdown-item" href="#" onclick="BulkStatusManager.bulkUpdateStatus('student_type', 'old')">
-                                                                <i class="fas fa-history text-secondary me-2"></i>Old Student
-                                                            </a></li>
-                                                            <li><a class="dropdown-item" href="#" onclick="BulkStatusManager.bulkUpdateStatus('student_type', 'new')">
-                                                                <i class="fas fa-star text-warning me-2"></i>New Student
-                                                            </a></li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Students Table -->
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th width="50">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input student-status-checkbox" type="checkbox" id="selectAllCheckbox">
-                                                    </div>
-                                                </th>
-                                                <th>Student</th>
-                                                <th>Admission No</th>
-                                                <th>Class</th>
-                                                <th>Current Status</th>
-                                                <th>Student Type</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="statusUpdateTableBody">
-                                            ${this.renderStudentRows(students)}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="fas fa-times me-1"></i>Close
-                                </button>
-                                <button type="button" class="btn btn-primary" onclick="BulkStatusManager.refreshData()">
-                                    <i class="fas fa-sync-alt me-1"></i>Refresh
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Add to DOM
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-            // Initialize checkboxes
-            this.initializeCheckboxes();
-
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('bulkStatusUpdateModal'));
-            modal.show();
-        },
-
-        renderStudentRows: function(students) {
-            if (!students || students.length === 0) {
-                return '<tr><td colspan="7" class="text-center py-4">No students found</td></tr>';
-            }
-
-            return students.map(student => {
-                // Ensure student.id is valid and is a number
-                const studentId = student.id ? parseInt(student.id) : null;
-
-                // Skip if no valid ID
-                if (!studentId) {
-                    console.warn('Student has no valid ID:', student);
-                    return '';
-                }
-
-                // Safely handle potentially null/undefined values
-                const firstName = student.firstname || '';
-                const lastName = student.lastname || '';
-                const otherName = student.othername || '';
-                const admissionNo = student.admissionNo || 'N/A';
-                const schoolClass = student.schoolclass || '';
-                const arm = student.arm || '';
-
-                const activityBadge = student.student_status === 'Active'
-                    ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>'
-                    : '<span class="badge bg-secondary"><i class="fas fa-pause-circle me-1"></i>Inactive</span>';
-
-                const typeBadge = student.statusId == 2
-                    ? '<span class="badge bg-warning text-dark"><i class="fas fa-star me-1"></i>New</span>'
-                    : '<span class="badge bg-secondary"><i class="fas fa-history me-1"></i>Old</span>';
-
-                return `
-                    <tr data-student-id="${studentId}">
-                        <td>
-                            <div class="form-check">
-                                <input class="form-check-input student-status-checkbox" type="checkbox"
-                                       value="${studentId}" data-student-id="${studentId}">
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-sm me-2">
-                                    <span class="avatar-title rounded-circle bg-primary text-white">
-                                        ${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}
-                                    </span>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">${Utils.escapeHtml(lastName)} ${Utils.escapeHtml(firstName)}</h6>
-                                    <small class="text-muted">${Utils.escapeHtml(otherName)}</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="fw-semibold">${Utils.escapeHtml(admissionNo)}</span></td>
-                        <td>${Utils.escapeHtml(schoolClass)} ${Utils.escapeHtml(arm)}</td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                ${activityBadge}
-                                <button class="btn btn-sm btn-outline-success toggle-activity"
-                                        data-student-id="${studentId}"
-                                        data-current="${student.student_status || 'Inactive'}"
-                                        onclick="BulkStatusManager.toggleIndividualStatus(this, 'activity')">
-                                    <i class="fas fa-exchange-alt"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                ${typeBadge}
-                                <button class="btn btn-sm btn-outline-warning toggle-type"
-                                        data-student-id="${studentId}"
-                                        data-current="${student.statusId || 1}"
-                                        onclick="BulkStatusManager.toggleIndividualStatus(this, 'type')">
-                                    <i class="fas fa-exchange-alt"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-info view-student-btn"
-                                    data-student-id="${studentId}"
-                                    onclick="StudentManager.viewStudent(${studentId})">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        },
-
-        initializeCheckboxes: function() {
-            const selectAll = document.getElementById('selectAllCheckbox');
-            if (selectAll) {
-                selectAll.removeEventListener('change', this.handleSelectAll);
-                selectAll.addEventListener('change', (e) => this.handleSelectAll(e));
-            }
-
-            const selectAllStatus = document.getElementById('selectAllStatusStudents');
-            if (selectAllStatus) {
-                selectAllStatus.removeEventListener('change', this.handleSelectAll);
-                selectAllStatus.addEventListener('change', (e) => this.handleSelectAll(e));
-            }
-
-            // Individual checkbox change
-            document.querySelectorAll('.student-status-checkbox').forEach(cb => {
-                cb.removeEventListener('change', () => this.updateSelectedCount());
-                cb.addEventListener('change', () => this.updateSelectedCount());
-            });
-        },
-
-        handleSelectAll: function(e) {
-            const isChecked = e.target.checked;
-            // Only select checkboxes with valid numeric values
-            const checkboxes = document.querySelectorAll('.student-status-checkbox');
-
-            checkboxes.forEach(checkbox => {
-                const value = checkbox.value;
-                // Only check if it has a valid numeric value
-                if (value && value !== 'on' && !isNaN(parseInt(value))) {
-                    checkbox.checked = isChecked;
-                }
-            });
-
-            this.updateSelectedCount();
-        },
-
-        updateSelectedCount: function() {
-            const selected = document.querySelectorAll('.student-status-checkbox:checked').length;
-            const selectAll = document.getElementById('selectAllCheckbox');
-            const selectAllStatus = document.getElementById('selectAllStatusStudents');
-            const total = document.querySelectorAll('.student-status-checkbox:not([disabled])').length;
-
-            if (selectAll) {
-                selectAll.checked = selected === total && total > 0;
-                selectAll.indeterminate = selected > 0 && selected < total;
-            }
-
-            if (selectAllStatus) {
-                selectAllStatus.checked = selected === total && total > 0;
-                selectAllStatus.indeterminate = selected > 0 && selected < total;
-            }
-
-            // Update the bulk actions button text if needed
-            const bulkActionsDropdown = document.getElementById('bulkActionsDropdown');
-            if (bulkActionsDropdown) {
-                if (selected > 0) {
-                    bulkActionsDropdown.innerHTML = `<i class="fas fa-cog me-2"></i>Actions (${selected})`;
-                } else {
-                    bulkActionsDropdown.innerHTML = `<i class="fas fa-cog me-2"></i>Actions`;
-                }
-            }
-        },
-
-        getSelectedStudentIds: function() {
-            const checkedBoxes = document.querySelectorAll('.student-status-checkbox:checked');
-            const ids = [];
-
-            checkedBoxes.forEach(cb => {
-                const value = cb.value;
-                // Only include valid numeric IDs (not "on" or empty)
-                if (value && value !== 'on' && !isNaN(parseInt(value))) {
-                    ids.push(parseInt(value));
-                } else {
-                    console.warn('Invalid checkbox value:', value, cb);
-                }
-            });
-
-            return ids;
-        },
-
-        async toggleIndividualStatus(button, type) {
-            const studentId = button.dataset.studentId;
-            const current = button.dataset.current;
-
-            let newValue, updateType;
-
-            if (type === 'activity') {
-                updateType = 'activity_status';
-                newValue = current === 'Active' ? 'Inactive' : 'Active';
-            } else {
-                updateType = 'student_type';
-                newValue = current == 1 ? 'new' : 'old';
-            }
-
-            try {
-                const result = await Swal.fire({
-                    title: 'Confirm Update',
-                    text: `Change status to ${newValue === 'new' ? 'New Student' : newValue === 'old' ? 'Old Student' : newValue}?`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, update',
-                    cancelButtonText: 'Cancel'
-                });
-
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Updating...',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
-
-                    const response = await ApiService.bulkUpdateStatus({
-                        student_ids: [studentId],
-                        update_type: updateType,
-                        value: newValue
-                    });
-
-                    Swal.close();
-
-                    if (response.success) {
-                        Utils.showSuccess('Status updated successfully');
-                        this.refreshData();
-                    }
-                }
-            } catch (error) {
-                Swal.close();
-                Utils.showError('Failed to update status');
-            }
-        },
-
-        async bulkUpdateStatus(updateType, value) {
-            const selectedIds = this.getSelectedStudentIds();
-
-            if (selectedIds.length === 0) {
-                Utils.showError('Please select at least one student', 'No Selection');
-                return;
-            }
-
-            let displayValue = value;
-            if (updateType === 'student_type') {
-                displayValue = value === 'old' ? 'Old Student' : 'New Student';
-            }
-
-            // Show the correct count in the confirmation dialog
-            const confirmed = await Utils.showConfirm(
-                'Confirm Bulk Update',
-                `Update ${selectedIds.length} student(s) to "${displayValue}"?`,
-                'Yes, update'
-            );
-
-            if (confirmed) {
-                try {
-                    Swal.fire({
-                        title: 'Updating...',
-                        html: `Updating ${selectedIds.length} student(s)`,
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
-
-                    const response = await ApiService.bulkUpdateStatus({
-                        student_ids: selectedIds,
-                        update_type: updateType,
-                        value: value
-                    });
-
-                    Swal.close();
-
-                    if (response.success) {
-                        Utils.showSuccess(response.message);
-                        this.refreshData();
-                    }
-                } catch (error) {
-                    Swal.close();
-                    console.error('Bulk update error:', error);
-                    Utils.showError('Failed to update students: ' + (error.response?.data?.message || error.message));
-                }
-            }
-        },
-
-        async refreshData() {
-            if (!AppState.bulkStatusFilters) return;
-
-            Swal.fire({
-                title: 'Refreshing',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const response = await ApiService.getStudentsByClassAndSession(
-                    AppState.bulkStatusFilters.class_id,
-                    AppState.bulkStatusFilters.session_id
-                );
-
-                if (response.success) {
-                    const tbody = document.getElementById('statusUpdateTableBody');
-                    if (tbody) {
-                        tbody.innerHTML = this.renderStudentRows(response.students);
-                        this.initializeCheckboxes();
-                    }
-
-                    // Update stats
-                    const stats = response.stats;
-                    const cards = document.querySelectorAll('#bulkStatusUpdateModal .card .h2');
-                    if (cards.length >= 4) {
-                        cards[0].textContent = stats.total;
-                        cards[1].textContent = stats.active;
-                        cards[2].textContent = stats.inactive;
-                        cards[3].textContent = stats.new_students;
-                    }
-                }
-
-                Swal.close();
-            } catch (error) {
-                Swal.close();
-                Utils.showError('Failed to refresh data');
-            }
-        }
-    };
-
-    // ============================================================================
-    // TERM REGISTRATION MANAGEMENT FEATURE
-    // ============================================================================
-    const TermRegistrationManager = {
-        showTermStudentsModal: function() {
-            const termId = document.getElementById('term-filter')?.value;
-            const sessionId = document.getElementById('session-filter').value;
-
-            if (!termId || termId === 'all' || !sessionId || sessionId === 'all') {
-                Utils.showError('Please select both a term and a session to use this feature.', 'Selection Required');
-                return;
-            }
-
-            AppState.termFilters = {
-                term_id: termId,
-                session_id: sessionId,
-                class_id: document.getElementById('schoolclass-filter').value !== 'all'
-                    ? document.getElementById('schoolclass-filter').value
-                    : null
-            };
-
-            Swal.fire({
-                title: 'Loading Registered Students',
-                html: 'Fetching term registration data...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            ApiService.getStudentsInTerm(AppState.termFilters)
-            .then(response => {
-                Swal.close();
-
-                if (response.success) {
-                    this.renderTermStudentsModal(response.students, response.total);
-                } else {
-                    Utils.showError('Failed to load students: ' + response.message);
-                }
-            })
-            .catch(error => {
-                Swal.close();
-                Utils.showError('Error loading students: ' + (error.response?.data?.message || error.message));
-            });
-        },
-
-        renderTermStudentsModal: function(students, total) {
-            // Remove existing modal if any
-            const existingModal = document.getElementById('termStudentsModal');
-            if (existingModal) existingModal.remove();
-
-            const termName = students.length > 0 ? students[0]?.term : 'Selected';
-            const sessionName = students.length > 0 ? students[0]?.session : 'Selected';
-
-            const modalHtml = `
-                <div class="modal fade" id="termStudentsModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header modal-header-gradient">
-                                <h5 class="modal-title">
-                                    <i class="fas fa-calendar-alt me-2"></i>
-                                    Term Registration Management
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4">
-                                <!-- Header Info -->
-                                <div class="alert alert-info d-flex align-items-center mb-4">
-                                    <i class="fas fa-info-circle fa-2x me-3"></i>
-                                    <div>
-                                        <strong>${termName} Term - ${sessionName} Session</strong>
-                                        <br>
-                                        <span>Total Registered Students: <strong>${total}</strong></span>
-                                        ${students.length > 0 && students[0]?.class ? `<br><span>Class: <strong>${students[0]?.class} ${students[0]?.arm || ''}</strong></span>` : ''}
-                                    </div>
-                                </div>
-
-                                <!-- Bulk Actions -->
-                                <div class="card mb-4">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="selectAllTermStudents">
-                                                    <label class="form-check-label fw-semibold" for="selectAllTermStudents">
-                                                        Select All Students
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-8">
-                                                <div class="d-flex gap-2 justify-content-end">
-                                                    <button class="btn btn-danger" onclick="TermRegistrationManager.bulkRemoveFromTerm()">
-                                                        <i class="fas fa-user-minus me-2"></i>
-                                                        Remove Selected from Term
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Students Grid/Table -->
-                                <div class="row" id="termStudentsContainer">
-                                    ${this.renderStudentCards(students)}
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="fas fa-times me-1"></i>Close
-                                </button>
-                                <button type="button" class="btn btn-primary" onclick="TermRegistrationManager.refreshData()">
-                                    <i class="fas fa-sync-alt me-1"></i>Refresh
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-            this.initializeTermCheckboxes();
-
-            const modal = new bootstrap.Modal(document.getElementById('termStudentsModal'));
-            modal.show();
-        },
-
-        renderStudentCards: function(students) {
-            if (!students || students.length === 0) {
-                return '<div class="col-12"><div class="alert alert-warning text-center">No students registered for this term</div></div>';
-            }
-
-            return students.map(student => {
-                const initials = (student.firstname?.charAt(0) || '') + (student.lastname?.charAt(0) || '');
-                const currentBadge = student.is_current
-                    ? '<span class="badge bg-success position-absolute top-0 end-0 m-2">Current</span>'
-                    : '';
-
-                return `
-                    <div class="col-md-4 col-lg-3 mb-3">
-                        <div class="card h-100 shadow-sm student-term-card" data-registration-id="${student.registration_id}">
-                            <div class="card-body">
-                                <div class="position-relative">
-                                    ${currentBadge}
-                                    <div class="form-check position-absolute top-0 start-0 m-2">
-                                        <input class="form-check-input term-student-checkbox" type="checkbox"
-                                               value="${student.registration_id}" data-student-id="${student.student_id}">
-                                    </div>
-                                    <div class="text-center mb-3">
-                                        <div class="avatar-xl mx-auto mb-2">
-                                            <div class="avatar-title bg-soft-primary text-primary rounded-circle" style="width: 80px; height: 80px; line-height: 80px; font-size: 32px;">
-                                                ${initials || 'ST'}
-                                            </div>
-                                        </div>
-                                        <h6 class="mb-1 fw-semibold">${Utils.escapeHtml(student.fullname || '')}</h6>
-                                        <p class="text-muted small mb-2">${Utils.escapeHtml(student.admissionNo || '')}</p>
-                                    </div>
-                                    <div class="d-flex flex-column gap-1 mb-3">
-                                        <div><i class="fas fa-school text-muted me-2"></i>${Utils.escapeHtml(student.class || '')} ${Utils.escapeHtml(student.arm || '')}</div>
-                                        <div><i class="fas fa-venus-mars text-muted me-2"></i>${Utils.escapeHtml(student.gender || '')}</div>
-                                        <div><i class="fas fa-calendar text-muted me-2"></i>Reg: ${student.registered_at || ''}</div>
-                                    </div>
-                                    <button class="btn btn-outline-danger btn-sm w-100"
-                                            onclick="TermRegistrationManager.removeSingleStudent(${student.registration_id}, '${Utils.escapeHtml(student.fullname)}')">
-                                        <i class="fas fa-user-minus me-1"></i>Remove from Term
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        },
-
-        initializeTermCheckboxes: function() {
-            const selectAll = document.getElementById('selectAllTermStudents');
-            if (selectAll) {
-                selectAll.removeEventListener('change', this.handleSelectAll);
-                selectAll.addEventListener('change', (e) => this.handleSelectAll(e));
-            }
-        },
-
-        handleSelectAll: function(e) {
-            document.querySelectorAll('.term-student-checkbox').forEach(cb => {
-                cb.checked = e.target.checked;
-            });
-        },
-
-        getSelectedRegistrationIds: function() {
-            return Array.from(document.querySelectorAll('.term-student-checkbox:checked'))
-                .map(cb => cb.value);
-        },
-
-        async removeSingleStudent(registrationId, studentName) {
-            const confirmed = await Utils.showConfirm(
-                'Confirm Removal',
-                `Remove ${studentName} from this term registration?`,
-                'Yes, remove'
-            );
-
-            if (confirmed) {
-                try {
-                    Swal.fire({
-                        title: 'Removing...',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
-
-                    const response = await ApiService.removeStudentFromTerm(registrationId);
-
-                    Swal.close();
-
-                    if (response.success) {
-                        Utils.showSuccess(response.message);
-
-                        // Remove card from UI
-                        const card = document.querySelector(`.student-term-card[data-registration-id="${registrationId}"]`);
-                        if (card) {
-                            const cardCol = card.closest('.col-md-4');
-                            if (cardCol) {
-                                cardCol.remove();
-
-                                // Update total count
-                                const remaining = document.querySelectorAll('.student-term-card').length;
-                                const totalEl = document.querySelector('#termStudentsModal .alert-info strong:last-child');
-                                if (totalEl) {
-                                    totalEl.textContent = remaining;
-                                }
-
-                                if (remaining === 0) {
-                                    document.getElementById('termStudentsContainer').innerHTML =
-                                        '<div class="col-12"><div class="alert alert-warning text-center">No students registered for this term</div></div>';
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    Swal.close();
-                    Utils.showError('Failed to remove student');
-                }
-            }
-        },
-
-        async bulkRemoveFromTerm() {
-            const selectedIds = this.getSelectedRegistrationIds();
-
-            if (selectedIds.length === 0) {
-                Utils.showError('Please select at least one student to remove.', 'No Selection');
-                return;
-            }
-
-            const confirmed = await Utils.showConfirm(
-                'Confirm Bulk Removal',
-                `Remove ${selectedIds.length} student(s) from this term registration?`,
-                'Yes, remove all'
-            );
-
-            if (confirmed) {
-                try {
-                    Swal.fire({
-                        title: 'Removing...',
-                        html: `Removing ${selectedIds.length} student(s)`,
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
-
-                    const response = await ApiService.bulkRemoveFromTerm(selectedIds);
-
-                    Swal.close();
-
-                    if (response.success) {
-                        Utils.showSuccess(response.message);
-                        this.refreshData();
-                    }
-                } catch (error) {
-                    Swal.close();
-                    Utils.showError('Failed to remove students');
-                }
-            }
-        },
-
-        async refreshData() {
-            if (!AppState.termFilters) return;
-
-            Swal.fire({
-                title: 'Refreshing',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const response = await ApiService.getStudentsInTerm(AppState.termFilters);
-
-                if (response.success) {
-                    document.getElementById('termStudentsContainer').innerHTML =
-                        this.renderStudentCards(response.students);
-                    this.initializeTermCheckboxes();
-                }
-
-                Swal.close();
-            } catch (error) {
-                Swal.close();
-                Utils.showError('Failed to refresh data');
             }
         }
     };
@@ -6747,19 +5578,6 @@ use Spatie\Permission\Models\Role;
                 });
             }
 
-            const updateTermBtn = document.getElementById('updateCurrentTermBtn');
-            if (updateTermBtn) {
-                updateTermBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    CurrentTermManager.showUpdateCurrentTermModal();
-                });
-            }
-
-            const confirmUpdateBtn = document.getElementById('confirmUpdateCurrentTerm');
-            if (confirmUpdateBtn) {
-                confirmUpdateBtn.addEventListener('click', () => CurrentTermManager.updateCurrentTerm());
-            }
-
             const generateReportBtn = document.getElementById('generateReportBtn');
             if (generateReportBtn) {
                 generateReportBtn.addEventListener('click', (e) => {
@@ -6776,23 +5594,6 @@ use Spatie\Permission\Models\Role;
             const cardViewBtn = document.getElementById('cardViewBtn');
             if (cardViewBtn) {
                 cardViewBtn.addEventListener('click', () => RenderManager.toggleView('card'));
-            }
-
-            // NEW BUTTONS
-            const bulkStatusBtn = document.getElementById('bulkStatusBtn');
-            if (bulkStatusBtn) {
-                bulkStatusBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    BulkStatusManager.showUpdateStatusModal();
-                });
-            }
-
-            const manageTermBtn = document.getElementById('manageTermBtn');
-            if (manageTermBtn) {
-                manageTermBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    TermRegistrationManager.showTermStudentsModal();
-                });
             }
         }
     };
@@ -6839,10 +5640,12 @@ use Spatie\Permission\Models\Role;
                     if (avatarImg) {
                         avatarImg.src = 'https://via.placeholder.com/120x120/667eea/ffffff?text=Photo';
                     }
+                } else {
+                    Utils.showError(response.data.message || 'Failed to save student.');
                 }
             } catch (error) {
                 Swal.close();
-                Utils.showError('Failed to save student.');
+                Utils.showError(Utils.extractErrorMessage(error, 'Failed to save student.'));
             }
         },
 
@@ -6879,10 +5682,12 @@ use Spatie\Permission\Models\Role;
                     if (modal) modal.hide();
                     await StudentManager.fetchStudents();
                     Utils.showSuccess(response.data.message || 'Student updated successfully.');
+                } else {
+                    Utils.showError(response.data.message || 'Failed to update student.');
                 }
             } catch (error) {
                 Swal.close();
-                Utils.showError('Failed to update student.');
+                Utils.showError(Utils.extractErrorMessage(error, 'Failed to update student.'));
             }
         }
     };
@@ -6920,8 +5725,6 @@ use Spatie\Permission\Models\Role;
         StudentManager.fetchStudents();
 
         // Expose managers to window for onclick handlers
-        window.BulkStatusManager = BulkStatusManager;
-        window.TermRegistrationManager = TermRegistrationManager;
         window.StudentManager = StudentManager;
 
         Utils.log('Student Management System initialized successfully');
@@ -6959,8 +5762,6 @@ use Spatie\Permission\Models\Role;
         if (ageInput) ageInput.value = age;
     };
     window.generateReport = () => ReportManager.generateReport();
-    window.showUpdateCurrentTermModal = (id) => CurrentTermManager.showUpdateCurrentTermModal(id);
-    window.updateCurrentTerm = () => CurrentTermManager.updateCurrentTerm();
     window.getSelectedStudentIds = () => SelectionManager.getSelectedStudentIds();
     window.refreshTermHistory = () => {
         if (ViewModalManager.currentStudentId) {
@@ -6983,6 +5784,13 @@ use Spatie\Permission\Models\Role;
         const email = document.getElementById(emailElementId)?.textContent;
         if (email && email !== '-') {
             window.location.href = `mailto:${email}`;
+        }
+    };
+    window.openWhatsapp = function(elementId) {
+        const raw = document.getElementById(elementId)?.textContent;
+        if (raw && raw !== '-') {
+            const digitsOnly = raw.replace(/[^0-9+]/g, '');
+            window.open(`https://wa.me/${digitsOnly.replace(/^\+/, '')}`, '_blank');
         }
     };
     window.editStudentFromView = function() {

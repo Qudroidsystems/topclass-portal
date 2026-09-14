@@ -1,517 +1,264 @@
-@extends('layouts.master')
-
-@section('content')
+{{-- resources/views/schoolpayment/studentinvoicepdf.blade.php --}}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
 <style>
-    :root {
-        --tb-primary: #009ef7;
-        --tb-secondary: #3b82f6;
-        --tb-success: #50cd89;
-        --tb-light: #f5f8fa;
-        --tb-success-subtle: rgba(80, 205, 137, 0.1);
-    }
+    body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color:#1f2937; margin:0; padding:20px; }
+    * { box-sizing: border-box; }
 
-    .card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        max-width: 100%;
-    }
+    .header-table { width:100%; border-collapse:collapse; margin-bottom: 14px; }
+    .header-table td { vertical-align: top; padding:0; }
+    .logo-img { max-height: 55px; max-width: 180px; }
+    .school-name { font-size:18px; font-weight:bold; color:#1e3a5f; }
+    .school-meta { font-size:9px; color:#6b7280; margin-top:4px; line-height:1.6; }
+    .doc-title { font-size:22px; font-weight:bold; color:#1e3a5f; text-align:right; letter-spacing:1px; }
+    .doc-sub { font-size:11px; color:#6b7280; text-align:right; margin-top:2px; }
+    .doc-sub-invoice { font-size:13px; color:#0d6efd; text-align:right; margin-top:2px; font-weight:bold; }
 
-    .invoice-effect-top {
-        z-index: 0;
-    }
+    .divider { border-bottom:2px solid #1e3a5f; margin: 8px 0 16px; }
 
-    .card-body {
-        z-index: 1;
-        position: relative;
-        padding: 1.5rem;
-    }
+    .info-table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+    .info-table td { padding:8px 10px; font-size:11px; border:1px solid #e5e7eb; vertical-align: top; }
+    .info-label { color:#6b7280; font-size:9px; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:3px; }
+    .info-value { font-weight:bold; color:#1e3a5f; }
 
-    .card-logo {
-        height: 28px;
-        margin-bottom: 1rem; /* Space below logo in vertical layout */
-    }
+    .meta-table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    .meta-table td { width:25%; padding:8px 10px; border:1px solid #e5e7eb; }
+    .meta-label { color:#6b7280; font-size:9px; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:3px; }
+    .meta-value { font-weight:bold; color:#1e3a5f; font-size:13px; }
+    .badge-paid { color:#16a34a; }
+    .badge-pending { color:#d97706; }
 
-    .fs-md {
-        font-size: 1.125rem !important;
-    }
+    table.items { width:100%; border-collapse:collapse; margin-top:6px; }
+    table.items th { background:#1e3a5f; color:#fff; padding:8px; font-size:9px; text-transform:uppercase; text-align:left; letter-spacing:0.3px; }
+    table.items td { padding:7px 8px; border-bottom:1px solid #e5e7eb; font-size:10px; vertical-align: top; }
+    .text-right { text-align:right; }
+    .text-center { text-align:center; }
+    .muted { color:#6b7280; }
+    .savings-note { color:#16a34a; font-size:9px; }
+    .status-paid { color:#16a34a; font-weight:bold; }
+    .status-pending { color:#d97706; font-weight:bold; }
+    .text-success { color:#16a34a; }
+    .text-danger { color:#dc2626; }
 
-    .fs-xxs {
-        font-size: 0.625rem !important;
-    }
+    .totals-table { width:45%; margin-left:55%; margin-top:14px; border-collapse:collapse; }
+    .totals-table td { padding:6px 8px; font-size:11px; }
+    .totals-table .label { color:#4b5563; }
+    .totals-table .value { text-align:right; font-weight:bold; color:#1e3a5f; }
+    .totals-table .savings-row .label,
+    .totals-table .savings-row .value { color:#16a34a; }
+    .grand-row td { border-top:2px solid #1e3a5f; font-size:14px; padding-top:10px; }
+    .grand-row .value { color:#1e3a5f; }
 
-    .table-borderless th, .table-borderless td {
-        border: none;
-        padding: 0.5rem 0.75rem;
-        vertical-align: middle;
-    }
+    .payment-info { margin-top:24px; }
+    .payment-info-title { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; margin-bottom:8px; }
 
-    .table-nowrap th, .table-nowrap td {
-        white-space: nowrap;
-    }
+    .footer-note { margin-top:36px; font-size:9px; color:#9ca3af; text-align:center; border-top:1px solid #e5e7eb; padding-top:10px; }
+    .footer-note p { margin:3px 0; }
 
-    .table-light {
-        background-color: var(--tb-light);
-    }
-
-    .border-top-dashed {
-        border-top: 1px dashed #dee2e6 !important;
-    }
-
-    .alert-danger {
-        background-color: rgba(241, 65, 108, 0.1);
-        border-color: #f1416c;
-        color: #f1416c;
-        padding: 0.75rem;
-    }
-
-    .invoice-signature img {
-        height: 30px;
-    }
-
-    .hstack {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .d-print-none {
-        display: flex !important;
-    }
-
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    table {
-        width: 100%;
-        table-layout: auto;
-    }
-
-    .student-avatar {
-        width: 50px;
-        height: 50px;
-        object-fit: cover;
-    }
-
-    .address-wrap {
-        overflow-wrap: break-word;
-        word-break: break-word;
-        hyphens: auto;
-        max-width: 180px; /* Adjusted for vertical layout */
-        display: inline-block; /* Ensures max-width is respected */
-    }
-
-    .school-details {
-        margin-bottom: 1rem; /* Space below details in vertical layout */
-    }
-
-    .school-details h6 {
-        margin-bottom: 0.5rem; /* Spacing between detail items */
-    }
-
-    @media print {
-        html, body {
-            background-color: #fff;
-            margin: 0;
-            padding: 0;
-            width: 210mm;
-            height: 297mm;
-        }
-
-        .main-content, .page-content, .container-fluid {
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-        }
-
-        .card {
-            box-shadow: none;
-            max-width: 100%;
-            width: 100%;
-            border-radius: 0;
-            margin: 0;
-            padding: 0;
-        }
-
-        .card-body {
-            padding: 0.5cm;
-        }
-
-        .d-print-none, .alert {
-            display: none !important;
-        }
-
-        .invoice-effect-top {
-            display: none;
-        }
-
-        .card::before {
-            content: "{{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }} Invoice";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 10px;
-            color: #212529;
-        }
-
-        .card::after {
-            content: "© {{ date('Y') }} {{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }}";
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 8px;
-            color: #7E8299;
-        }
-
-        .table-responsive {
-            overflow: visible;
-        }
-
-        table {
-            table-layout: fixed;
-            font-size: 0.75rem;
-        }
-
-        .fs-md {
-            font-size: 0.9rem !important;
-        }
-
-        .fs-xxs {
-            font-size: 0.5rem !important;
-        }
-
-        .table-borderless th, .table-borderless td {
-            padding: 0.3rem 0.5rem;
-        }
-
-        .row.g-3 {
-            margin-bottom: 0.5rem;
-        }
-
-        .col-lg, .col-6 {
-            padding: 0 0.25rem;
-        }
-
-        h6, p {
-            margin-bottom: 0.2rem;
-            font-size: 0.8rem;
-        }
-
-        .invoice-signature img {
-            height: 20px;
-        }
-
-        .student-avatar {
-            width: 30px;
-            height: 30px;
-        }
-
-        .address-wrap {
-            max-width: 120px; /* Adjusted for print */
-        }
-
-        .card-logo {
-            height: 20px; /* Slightly smaller for print */
-            margin-bottom: 0.5cm;
-        }
-
-        .school-details {
-            margin-bottom: 0.5cm;
-        }
-
-        .school-details h6 {
-            margin-bottom: 0.3rem;
-        }
-
-        @page {
-            size: A4;
-            margin: 0.5cm;
-        }
-    }
-
-    @media (max-width: 767.98px) {
-        .card-body {
-            padding: 1rem;
-        }
-
-        .hstack {
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .col-6 {
-            width: 100%;
-            margin-bottom: 1rem;
-        }
-
-        .table-nowrap th, .table-nowrap td {
-            white-space: normal;
-        }
-
-        table {
-            font-size: 0.875rem;
-        }
-
-        .address-wrap {
-            max-width: 100%; /* Full width on small screens */
-        }
-
-        .card-logo {
-            margin-bottom: 0.75rem;
-        }
-
-        .school-details {
-            margin-bottom: 0.75rem;
-        }
-    }
+    .signature-row { width:100%; margin-top:40px; }
+    .signature-line { border-top:1px solid #1e3a5f; width:180px; margin-top:35px; }
+    .signature-text { font-weight:bold; margin-top:6px; }
+    .signature-sub { font-size:9px; color:#6b7280; }
+    
+    .naira { font-family: 'DejaVu Sans', sans-serif; }
+    
+    .stamp-container { display:inline-block; margin-bottom:10px; }
+    .stamp-container img { max-height:70px; max-width:120px; }
 </style>
+</head>
+<body>
 
-<div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            @if ($errors->any())
-                <div class="alert alert-danger">
-                    <strong>Error!</strong> There were some problems with your input.<br>
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
+    <table class="header-table">
+        <tr>
+            <td style="width:55%;">
+                @if($schoolInfo && $schoolInfo->logo_base64)
+                    <img src="{{ $schoolInfo->logo_base64 }}" class="logo-img" alt="School Logo">
+                @else
+                    <div class="school-name">{{ $schoolInfo->school_name ?? 'SCHOOL NAME' }}</div>
+                @endif
+                <div class="school-meta">
+                    {{ $schoolInfo->school_address ?? '' }}<br>
+                    {{ $schoolInfo->school_email ?? '' }}
+                    @if($schoolInfo && $schoolInfo->formatted_phones)
+                        &nbsp;|&nbsp;{{ $schoolInfo->formatted_phones }}
+                    @endif
                 </div>
-            @endif
+            </td>
+            <td style="width:45%;">
+                <div class="doc-title">INVOICE</div>
+                <div class="doc-sub-invoice">#{{ $invoiceNumber }}</div>
+                <div class="doc-sub">{{ \Carbon\Carbon::now()->format('d F, Y') }}</div>
+            </td>
+        </tr>
+    </table>
+    <div class="divider"></div>
 
-            @if (session('status') || session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') ?: session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    @php $student = $studentdata->first() ?? null; @endphp
+    <table class="info-table">
+        <tr>
+            <td style="width:25%;">
+                <div class="info-label">Student Name</div>
+                <div class="info-value">{{ $studentFullName ?? trim(($student->firstname ?? '').' '.($student->lastname ?? '')) }}</div>
+            </td>
+            <td style="width:25%;">
+                <div class="info-label">Admission No</div>
+                <div class="info-value">{{ $student->admissionNo ?? 'N/A' }}</div>
+            </td>
+            <td style="width:25%;">
+                <div class="info-label">Class &amp; Arm</div>
+                <div class="info-value">{{ $student->schoolclass ?? '' }} {{ $student->arm ?? '' }}</div>
+            </td>
+            <td style="width:25%;">
+                <div class="info-label">Term / Session</div>
+                <div class="info-value">{{ $schoolterm ?? 'N/A' }} &middot; {{ $schoolsession ?? 'N/A' }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="meta-table">
+        <tr>
+            <td>
+                <div class="meta-label">Invoice Date</div>
+                <div class="meta-value">{{ \Carbon\Carbon::now()->format('d F, Y') }}</div>
+            </td>
+            <td>
+                <div class="meta-label">Due Date</div>
+                <div class="meta-value">{{ \Carbon\Carbon::now()->addDays(7)->format('d F, Y') }}</div>
+            </td>
+            <td>
+                <div class="meta-label">Payment Status</div>
+                <div class="meta-value {{ $totalOutstanding == 0 ? 'badge-paid' : 'badge-pending' }}">
+                    {{ $totalOutstanding == 0 ? 'FULLY PAID' : 'PARTIALLY PAID' }}
                 </div>
-            @endif
+            </td>
+            <td>
+                <div class="meta-label">Total Bill Amount</div>
+                <div class="meta-value"><span class="naira">&#8358;</span>{{ number_format($totalBillAmount, 2) }}</div>
+            </td>
+        </tr>
+    </table>
 
-            <div class="row justify-content-center">
-                <div class="col-xxl-9 col-lg-10 col-md-12">
-                    <div class="hstack gap-2 justify-content-end d-print-none mb-4">
-                        <a href="{{ route('schoolpayment.termsessionpayments', ['studentId' => $studentId, 'termid' => $termId, 'sessionid' => $sessionId]) }}" class="btn btn-light"><i class="fas fa-arrow-left me-1"></i> Back</a>
-                        <a href="javascript:window.print()" class="btn btn-success"><i class="ri-printer-line align-bottom me-1"></i> Print</a>
-                        <button type="button" id="download-button" class="btn btn-primary"><i class="ri-download-2-line align-bottom me-1"></i> Download</button>
-                    </div>
-                    <div class="card overflow-hidden" id="invoice">
-                        <div class="invoice-effect-top position-absolute start-0">
-                            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764 182" width="764" height="182">
-                                <g>
-                                    <g>
-                                        <path style="fill: var(--tb-light);" d="m-6.6 177.4c17.5 0.1 35.1 0 52.8-0.4 286.8-6.6 537.6-77.8 700.3-184.6h-753.1z" />
-                                    </g>
-                                    <g>
-                                        <path style="fill: var(--tb-secondary);" d="m-6.6 132.8c43.5 2.1 87.9 2.7 132.9 1.7 246.9-5.6 467.1-59.2 627.4-142.1h-760.3z" />
-                                    </g>
-                                    <g style="opacity: .5">
-                                        <path style="fill: var(--tb-primary);" d="m-6.6 87.2c73.2 7.4 149.3 10.6 227.3 8.8 206.2-4.7 393.8-42.8 543.5-103.6h-770.8z" />
-                                    </g>
-                                </g>
-                            </svg>
-                        </div>
-                        <div class="card-body z-1 position-relative">
-                            <div class="school-header">
-                                <img src="{{ $schoolInfo->logo_url }}" class="card-logo" alt="{{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }}" height="28">
-                                <div class="school-details">
-                                    <h6><span class="text-muted fw-normal">Invoice No:</span> <span id="legal-register-no">{{ $invoiceNumber }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Email:</span> <span id="email">{{ $schoolInfo->school_email ?? 'info@topclassschool.edu' }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Website:</span> <span id="website">{{ $schoolInfo->school_website ? '<a href="' . $schoolInfo->school_website . '" target="_blank">' . $schoolInfo->school_website . '</a>' : 'N/A' }}</span></h6>
-                                    <h6><span class="text-muted fw-normal">Address:</span> <span id="address" class="address-wrap">{!! Str::replace(',', ',<br>', $schoolInfo->school_address ?? 'Your School Address Here') !!}</span></h6>
-                                    <h6 class="mb-0"><span class="text-muted fw-normal">Contact No: </span><span id="contact-no">{{ $schoolInfo->school_phone ?? 'Your Phone Number' }}</span></h6>
-                                </div>
-                            </div>
-                            <div class="mt-5 pt-4">
-                                <div class="row g-3">
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Invoice No</p>
-                                        <h5 class="fs-md mb-0">#<span id="invoice-no">{{ $invoiceNumber }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Date</p>
-                                        <h5 class="fs-md mb-0"><span id="invoice-date">{{ \Carbon\Carbon::now()->format('d F, Y') }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Due Date</p>
-                                        <h5 class="fs-md mb-0"><span id="invoice-due-date">{{ \Carbon\Carbon::now()->addDays(7)->format('d F, Y') }}</span></h5>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Payment Status</p>
-                                        <span class="badge bg-success-subtle text-success fs-xs" id="payment-status">
-                                            {{ $totalOutstanding == 0 ? 'Paid' : 'Pending' }}
-                                        </span>
-                                    </div>
-                                    <div class="col-lg col-6">
-                                        <p class="text-muted mb-2 text-uppercase">Total Amount</p>
-                                        <h5 class="fs-md mb-0">₦<span id="total-amount">{{ number_format($totalBillAmount, 2, '.', ',') }}</span></h5>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-2">
-                                <div class="row g-3">
-                                    @if ($studentdata->isNotEmpty())
-                                        @foreach ($studentdata as $s)
-                                        <div class="col-6">
-                                            <p class="text-muted text-uppercase">Student Details</p>
-                                            @if ($s->avatar)
-                                                <img src="{{ Storage::url('images/studentavatar/' . $s->avatar) }}" alt="{{ $s->firstname }} {{ $s->lastname }}" class="rounded-circle mb-2 student-avatar">
-                                            @endif
-                                            <h6 class="fs-md">{{ $s->firstname }} {{ $s->lastname }}</h6>
-                                            <p class="text-muted mb-1">ID: {{ $s->admissionNo }}</p>
-                                            <p class="text-muted mb-1">Class: {{ $s->schoolclass }} {{ $s->arm }}</p>
-                                            <p class="text-muted mb-0">Term: {{ $schoolterm }} | Session: {{ $schoolsession }}</p>
-                                        </div>
-                                        <div class="col-6">
-                                            <p class="text-muted text-uppercase">Billing Address</p>
-                                            <h6 class="fs-md">{{ $s->firstname }} {{ $s->lastname }}</h6>
-                                            <p class="text-muted mb-1 address-wrap">{!! Str::replace(',', ',<br>', $s->homeaddress ?? ($s->homeadd ?? 'N/A')) !!}</p>
-                                            <p class="text-muted mb-0">Phone: {{ $s->phone ?? ($schoolInfo->school_phone ?? 'Your Phone Number') }}</p>
-                                        </div>
-                                        @endforeach
-                                    @else
-                                        <div class="col-12">
-                                            <p class="text-muted text-center">No student data available.</p>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="table-responsive mt-4">
-                                <table class="table table-borderless text-center table-nowrap align-middle mb-0">
-                                    <thead>
-                                        <tr class="table-light">
-                                            <th scope="col" style="width: 50px;">#</th>
-                                            <th scope="col">Bill Details</th>
-                                            <th scope="col">Bill Amount</th>
-                                            <th scope="col">Previous Paid</th>
-                                            <th scope="col">Paid Today</th>
-                                            <th scope="col">Total Paid</th>
-                                            <th scope="col">Payment Method</th>
-                                            <th scope="col" class="text-end">Outstanding</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="products-list">
-                                        @if ($studentpaymentbill->isEmpty())
-                                            <tr>
-                                                <td colspan="8" class="text-center text-muted">No bills available.</td>
-                                            </tr>
-                                        @else
-                                            @php $counter = 1; @endphp
-                                            @foreach ($studentpaymentbill as $sp)
-                                            <tr>
-                                                <th scope="row">{{ $counter++ }}</th>
-                                                <td class="text-start">
-                                                    <span class="fw-medium">{{ $sp->title }}</span>
-                                                    <p class="text-muted mb-0">{{ $sp->description }}</p>
-                                                </td>
-                                                <td>₦ {{ number_format($sp->amount, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->previousPaid, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->todayPaid, 2, '.', ',') }}</td>
-                                                <td>₦ {{ number_format($sp->amountPaid, 2, '.', ',') }}</td>
-                                                <td>
-                                                    @if ($sp->paymentMethod == 'Bank Transfer')
-                                                        <span class="badge bg-primary-subtle text-primary">{{ $sp->paymentMethod }}</span>
-                                                    @elseif ($sp->paymentMethod == 'School POS' || $sp->paymentMethod == 'Cash')
-                                                        <span class="badge bg-success-subtle text-success">{{ $sp->paymentMethod }}</span>
-                                                    @elseif ($sp->paymentMethod == 'N/A')
-                                                        <span class="badge bg-secondary-subtle text-secondary">{{ $sp->paymentMethod }}</span>
-                                                    @else
-                                                        <span class="badge bg-info-subtle text-info">{{ $sp->paymentMethod }}</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-end">₦ {{ number_format($sp->balance, 2, '.', ',') }}</td>
-                                            </tr>
-                                            @endforeach
-                                        @endif
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="border-top border-top-dashed mt-2" id="products-list-total">
-                                <table class="table table-borderless table-nowrap align-middle mb-0 ms-auto" style="width:300px">
-                                    <tbody>
-                                        <tr>
-                                            <td>Total Bill Amount</td>
-                                            <td class="text-end">₦ {{ number_format($totalBillAmount, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Previous Paid</td>
-                                            <td class="text-end">₦ {{ number_format($totalPreviousPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Paid Today</td>
-                                            <td class="text-end">₦ {{ number_format($totalTodayPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Total Amount Paid</td>
-                                            <td class="text-end">₦ {{ number_format($totalPaid, 2, '.', ',') }}</td>
-                                        </tr>
-                                        <tr class="border-top border-top-dashed fs-15">
-                                            <th scope="row">Total Outstanding</th>
-                                            <td class="text-end">₦ {{ number_format($totalOutstanding, 2, '.', ',') }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            @if ($studentpaymentbill->isNotEmpty())
-                                <div class="mt-3">
-                                    <h6 class="text-muted text-uppercase fw-semibold mb-3">Latest Payment Details:</h6>
-                                    @php $lastPayment = $studentpaymentbill->first(); @endphp
-                                    <p class="text-muted mb-1">Payment Method: <span class="fw-medium" id="payment-method">{{ $lastPayment->paymentMethod }}</span></p>
-                                    <p class="text-muted mb-1">Received By: <span class="fw-medium" id="card-holder-name">{{ $lastPayment->recievedBy ?? 'School Administration' }}</span></p>
-                                    <p class="text-muted mb-0">Total Bill Amount: <span class="fw-medium">₦</span><span id="card-total-amount">{{ number_format($totalBillAmount, 2, '.', ',') }}</span></p>
-                                </div>
-                            @endif
-                            <div>
-                                <p class="mb-4 pb-2"><b>Thank you for your continued partnership with {{ $schoolInfo->school_name ?? 'TOPCLASS COLLEGE' }}!</b> We appreciate your commitment to your child's education.</p>
-                                <div class="invoice-signature text-center">
-                                    <img src="{{ asset('assets/images/invoice-signature.svg') }}" alt="Authorized Sign" id="sign-img" height="30">
-                                    <h6 class="mb-0 mt-3">Authorized Sign</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="invoice-effect-top position-absolute end-0" style="transform: rotate(180deg); bottom: -40px;">
-                            <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764 182" width="764" height="182">
-                                <g>
-                                    <g>
-                                        <path style="fill: var(--tb-light);" d="m-6.6 177.4c17.5 0.1 35.1 0 52.8-0.4 286.8-6.6 537.6-77.8 700.3-184.6h-753.1z" />
-                                    </g>
-                                    <g>
-                                        <path style="fill: var(--tb-secondary);" d="m-6.6 132.8c43.5 2.1 87.9 2.7 132.9 1.7 246.9-5.6 467.1-59.2 627.4-142.1h-760.3z" />
-                                    </g>
-                                    <g style="opacity: .5">
-                                        <path style="fill: var(--tb-primary);" d="m-6.3 87.51c73.2 7.41 149.6 45.1 227.6 43.4 206.1 4.6 393.7-42.8 543.4-103.6h-770.45z" />
-                                    </g>
-                                </g>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width:4%;">#</th>
+                <th style="width:26%;">Bill Description</th>
+                <th class="text-right" style="width:11%;">Amount</th>
+                <th class="text-right" style="width:11%;">Previous Paid</th>
+                <th class="text-right" style="width:11%;">Today's Payment</th>
+                <th class="text-right" style="width:11%;">Total Paid</th>
+                <th style="width:14%;">Method</th>
+                <th class="text-right" style="width:12%;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $counter = 1; @endphp
+            @forelse($studentpaymentbill as $sp)
+            <tr>
+                <td class="text-center">{{ $counter++ }}</td>
+                <td>
+                    <strong>{{ $sp->title }}</strong>
+                    @if($sp->description)
+                        <br><span class="muted">{{ $sp->description }}</span>
+                    @endif
+                    @if(isset($sp->total_savings) && $sp->total_savings > 0)
+                        <br><span class="savings-note">&#10003; Savings: <span class="naira">&#8358;</span>{{ number_format($sp->total_savings, 2) }}</span>
+                    @endif
+                </td>
+                <td class="text-right"><span class="naira">&#8358;</span>{{ number_format($sp->amount, 2) }}</td>
+                <td class="text-right"><span class="naira">&#8358;</span>{{ number_format($sp->previousPaid, 2) }}</td>
+                <td class="text-right text-success"><span class="naira">&#8358;</span>{{ number_format($sp->todayPaid, 2) }}</td>
+                <td class="text-right"><span class="naira">&#8358;</span>{{ number_format($sp->amountPaid, 2) }}</td>
+                <td>{{ $sp->paymentMethod ?? 'N/A' }}</td>
+                <td class="text-right {{ $sp->balance > 0 ? 'text-danger' : 'text-success' }}">
+                    <span class="naira">&#8358;</span>{{ number_format($sp->balance, 2) }}
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="8" class="text-center" style="padding:20px;color:#9ca3af;">
+                    No payment records found for this student.
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
 
-            {{-- <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const downloadButton = document.getElementById('download-button');
-                    if (downloadButton) {
-                        downloadButton.addEventListener('click', function() {
-                            this.disabled = true;
-                            this.innerHTML = '<i class="ri-download-line align-bottom me-1"></i> Downloading...';
-                            window.location.assign('{{ url()->current() }}?download_pdf=1');
-                            setTimeout(() => {
-                                this.disabled = false;
-                                this.innerHTML = '<i class="ri-download-2-line align-bottom me-1"></i> Download';
-                            }, 2000);
-                        });
-                    }
-                });
-            </script> --}}
-        </div>
+    <table class="totals-table">
+        <tr>
+            <td class="label">Subtotal (Bill Amount)</td>
+            <td class="value"><span class="naira">&#8358;</span>{{ number_format($totalBillAmount, 2) }}</td>
+        </tr>
+        @if(isset($totalSavings) && $totalSavings > 0)
+        <tr class="savings-row">
+            <td class="label">Total Savings Applied</td>
+            <td class="value">-<span class="naira">&#8358;</span>{{ number_format($totalSavings, 2) }}</td>
+        </tr>
+        @endif
+        <tr>
+            <td class="label">Total Previous Payments</td>
+            <td class="value"><span class="naira">&#8358;</span>{{ number_format($totalPreviousPaid, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Today's Payment</td>
+            <td class="value text-success"><span class="naira">&#8358;</span>{{ number_format($totalTodayPaid, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Total Amount Paid</td>
+            <td class="value"><span class="naira">&#8358;</span>{{ number_format($totalPaid, 2) }}</td>
+        </tr>
+        <tr class="grand-row">
+            <td class="label"><strong>Outstanding Balance</strong></td>
+            <td class="value"><strong><span class="naira">&#8358;</span>{{ number_format($totalOutstanding, 2) }}</strong></td>
+        </tr>
+    </table>
+
+    @if($studentpaymentbill->isNotEmpty())
+    @php $lastPayment = $studentpaymentbill->first(); @endphp
+    <div class="payment-info">
+        <div class="payment-info-title">Latest Payment Information</div>
+        <table class="info-table">
+            <tr>
+                <td style="width:33%;">
+                    <div class="info-label">Payment Method</div>
+                    <div class="info-value">{{ $lastPayment->paymentMethod ?? 'N/A' }}</div>
+                </td>
+                <td style="width:33%;">
+                    <div class="info-label">Received By</div>
+                    <div class="info-value">{{ $lastPayment->receivedBy ?? 'School Administration' }}</div>
+                </td>
+                <td style="width:34%;">
+                    <div class="info-label">Payment Date</div>
+                    <div class="info-value">{{ $lastPayment->paymentDate ? \Carbon\Carbon::parse($lastPayment->paymentDate)->format('d F, Y') : date('d F, Y') }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
-</div>
-@endsection
+    @endif
+
+    <table class="signature-row">
+        <tr>
+            <td style="width:60%;"></td>
+            <td style="width:40%;text-align:right;">
+                @if($schoolInfo && $schoolInfo->stamp_base64)
+                    <div class="stamp-container">
+                        <img src="{{ $schoolInfo->stamp_base64 }}" alt="School Stamp">
+                    </div>
+                @endif
+                <div class="signature-line" style="margin-left:auto;"></div>
+                <div class="signature-text">Authorized Signatory</div>
+                <div class="signature-sub">{{ $schoolInfo->school_name ?? 'School Name' }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        <p>This is a computer-generated invoice and requires no signature.</p>
+        <p>Generated on {{ \Carbon\Carbon::now()->format('d F, Y \a\t H:i') }}</p>
+        <p>Invoice #{{ $invoiceNumber }}</p>
+    </div>
+
+</body>
+</html>

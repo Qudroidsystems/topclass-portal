@@ -91,7 +91,7 @@
 
 
                     <div class="btn-group">
-    <a href="{{ route('school.wide.payment.analysis', ['termid_id' => 1, 'session_id' => 2, 'action' => 'view']) }}" 
+    <a href="{{ route('school.wide.payment.analysis', ['termid_id' => 3, 'session_id' => 1, 'action' => 'view']) }}" 
        class="btn btn-primary" target="_blank">
         <i class="fas fa-eye"></i> View School-Wide Analysis
     </a>

@@ -132,47 +132,23 @@
                                                     <td class="termname" data-termid="{{ $sv->termid }}">{{ $sv->termname }}</td>
                                                     <td class="sessionname" data-sessionid="{{ $sv->sessionid }}">{{ $sv->sessionname }}</td>
                                                     <td class="status">{{ $sv->status }}</td>
-                                                   <td>
+                                                    <td>
                                                         <ul class="d-flex gap-2 list-unstyled mb-0">
                                                             @can('View my-subject-vettings')
-                                                                @php
-                                                                    $hasAllParams = $sv->schoolclassid && $sv->subjectclassid && $sv->staffid && $sv->termid && $sv->sessionid;
-                                                                @endphp
-                                                                
-                                                                @if($hasAllParams)
-                                                                    <li>
-                                                                        <a href="{{ route('mysubjectvettings.classbroadsheet', [
-                                                                            'schoolclassid' => $sv->schoolclassid,
-                                                                            'subjectclassid' => $sv->subjectclassid,
-                                                                            'staffid' => $sv->staffid,
-                                                                            'termid' => $sv->termid,
-                                                                            'sessionid' => $sv->sessionid
-                                                                        ]) }}" 
-                                                                        title="Broadsheet for {{ $sv->sclass }} {{ $sv->schoolarm }}" 
-                                                                        class="btn btn-subtle-success btn-icon">
-                                                                            <i class="ph-eye"></i>
-                                                                        </a>
-                                                                    </li>
-                                                                @else
-                                                                    <li>
-                                                                        <span class="btn btn-subtle-secondary btn-icon disabled" 
-                                                                            title="Incomplete data for broadsheet">
-                                                                            <i class="ph-eye-slash"></i>
-                                                                        </span>
-                                                                    </li>
-                                                                @endif
+                                                                <li>
+                                                                    <a href="{{ route('mysubjectvettings.classbroadsheet', [$sv->schoolclassid,$sv->subjectclassid,$sv->staffid,$sv->termid, $sv->sessionid]) }}" title="Broadsheet for {{ $sv->sclass }} {{ $sv->schoolarm }}" class="btn btn-subtle-success btn-icon"><i class="ph-eye"></i></a>
+                                                                </li>
+                                                                {{-- <li>
+                                                                    <a href="{{ route('classbroadsheetmock', [$sv->schoolclassid, $sv->termid, $sv->sessionid]) }}" title="Mock Broadsheet for {{ $sv->sclass }} {{ $sv->schoolarm }}" class="btn btn-subtle-info btn-icon"><i class="ph-eye"></i></a>
+                                                                </li> --}}
                                                             @endcan
-                                                            
                                                             @can('Update my-subject-vettings')
                                                                 <li>
-                                                                    <a href="javascript:void(0);" 
-                                                                    class="btn btn-subtle-secondary btn-icon btn-sm edit-item-btn">
-                                                                        <i class="ph-pencil"></i>
-                                                                    </a>
+                                                                    <a href="javascript:void(0);" class="btn btn-subtle-secondary btn-icon btn-sm edit-item-btn"><i class="ph-pencil"></i></a>
                                                                 </li>
                                                             @endcan
                                                         </ul>
-                                                    </td>                                                                                             
+                                                    </td>
                                                 </tr>
                                             @empty
                                                 <tr class="noresult">

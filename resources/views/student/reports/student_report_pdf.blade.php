@@ -204,10 +204,10 @@
             word-wrap: break-word;
         }
 
-        /* Student Photo Styles - FIXED */
+        /* Student Photo Styles */
         .student-photo {
-            width: 35px;
-            height: 35px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             object-fit: cover;
             border: 1px solid #dee2e6;
@@ -217,8 +217,8 @@
         }
 
         .photo-placeholder {
-            width: 35px;
-            height: 35px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -226,7 +226,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 10px;
             margin: 0 auto;
         }
 
@@ -335,10 +335,10 @@
             <div class="logo-container">
                 @if(!empty($school_logo_base64))
                     <!-- Use base64 for PDF -->
-                    <img src="{{ $school_logo_base64 }}" alt="School Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                    <img src="{{ $school_logo_base64 }}" alt="School Logo">
                 @elseif($school_info->getLogoUrlAttribute())
                     <!-- Use regular URL if base64 conversion failed -->
-                    <img src="{{ $school_info->getLogoUrlAttribute() }}" alt="School Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                    <img src="{{ $school_info->getLogoUrlAttribute() }}" alt="School Logo">
                 @else
                     <!-- Fallback placeholder -->
                     <div style="width: 100%; height: 100%; background-color: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px;">
@@ -423,6 +423,9 @@
                     @php
                         // Determine column width class based on column type
                         $widthClass = 'col-' . str_replace('_', '-', $col);
+                        if (!in_array($col, ['photo', 'admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'dateofbirth', 'age', 'class', 'status', 'admission_date', 'phone_number', 'state', 'local', 'religion', 'blood_group', 'father_name', 'mother_name', 'guardian_phone', 'term', 'session'])) {
+                            $widthClass = 'col-' . substr($col, 0, 10);
+                        }
                     @endphp
 
                     @if($col == 'photo')
@@ -479,21 +482,19 @@
                 @foreach($columns as $col)
                     @php
                         $widthClass = 'col-' . str_replace('_', '-', $col);
+                        if (!in_array($col, ['photo', 'admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'dateofbirth', 'age', 'class', 'status', 'admission_date', 'phone_number', 'state', 'local', 'religion', 'blood_group', 'father_name', 'mother_name', 'guardian_phone', 'term', 'session'])) {
+                            $widthClass = 'col-' . substr($col, 0, 10);
+                        }
                     @endphp
 
                     @if($col == 'photo')
                     <td class="text-center {{ $widthClass }}">
-                        @if(isset($student->picture_base64) && $student->picture_base64)
-                            <img src="{{ $student->picture_base64 }}" class="student-photo" alt="Student Photo" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">
-                        @elseif($student->has_photo ?? false)
-                            @php
-                                $imageUrl = asset('storage/images/student_avatars/' . $student->picture);
-                            @endphp
-                            <img src="{{ $imageUrl }}" class="student-photo" alt="Student Photo" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;"
-                                 onerror="this.style.display='none'; this.parentElement.innerHTML = this.parentElement.innerHTML + '<div class=\'photo-placeholder\' style=\'width:35px;height:35px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;font-weight:bold;font-size:12px;border-radius:50%;\'>{{ $student->photo_initials ?? '?' }}</div>';">
+                        @if($student->picture_base64)
+                            <img src="{{ $student->picture_base64 }}" class="student-photo" alt="Student Photo">
                         @else
-                            <div class="photo-placeholder" style="width:35px;height:35px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;font-weight:bold;font-size:12px;border-radius:50%;margin:0 auto;">
-                                {{ $student->photo_initials ?? '?' }}
+                            <!-- Show initials as fallback -->
+                            <div class="photo-placeholder">
+                                {{ $student->photo_initials ?: '?' }}
                             </div>
                         @endif
                     </td>

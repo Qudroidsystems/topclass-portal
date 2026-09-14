@@ -15,7 +15,7 @@
 
 
 <!-- User list init js (load after list.js and dependencies) -->
-<script src="{{ asset('theme/layouts/assets/js/pages/arm-list.init.js') }}"></script>
+{{-- <script src="{{ asset('theme/layouts/assets/js/pages/arm-list.init.js') }}"></script> --}}
 <!-- App js -->
 <script src="{{ asset('theme/layouts/assets/js/app.js') }}"></script>
 

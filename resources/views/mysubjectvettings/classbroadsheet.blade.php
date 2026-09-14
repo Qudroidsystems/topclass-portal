@@ -10,13 +10,13 @@
     .sort.cursor-pointer:hover { background-color: #f5f5f5; }
     .bg-success-subtle { background-color: #d4edda !important; }
     .bg-danger-subtle { background-color: #f8d7da !important; }
-    .bg-warning-subtle { background-color: #fff3cd !important; } /* Orange background for null vettedstatus */
+    .bg-warning-subtle { background-color: #fff3cd !important; }
     input[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
     .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.4s; border-radius: 34px; }
     .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: 0.4s; border-radius: 50%; }
-    input:checked + .slider { background-color: #28a745; } /* Green when checked */
+    input:checked + .slider { background-color: #28a745; }
     input:checked + .slider:before { transform: translateX(26px); }
 
     /* Mobile-friendly table */
@@ -28,7 +28,7 @@
             display: block;
         }
         .table thead {
-            display: none; /* Hide header on mobile */
+            display: none;
         }
         .table tbody, .table tr, .table td {
             display: block;
@@ -65,11 +65,24 @@
             width: 60%;
             display: inline-block;
         }
-        /* Ensure avatar is smaller on mobile */
         .avatar-sm {
             width: 24px;
             height: 24px;
         }
+    }
+
+    /* Assessment column styling */
+    .assessment-column {
+        min-width: 100px;
+        text-align: center;
+    }
+    .assessment-header {
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    .total-column, .cum-column, .grade-column {
+        font-weight: bold;
+        background-color: #f8f9fa;
     }
 </style>
 
@@ -165,10 +178,16 @@
                                                             <th>SN</th>
                                                             <th>Admission No</th>
                                                             <th>Name</th>
-                                                            <th>CA1</th>
-                                                            <th>CA2</th>
-                                                            <th>CA3</th>
-                                                            <th>Exam</th>
+                                                            @foreach($assessments as $assessment)
+                                                                <th class="assessment-header" title="Max: {{ $assessment->max_score }}">
+                                                                    {{ $assessment->name }}<br>
+                                                                    <small>({{ $assessment->max_score }})</small>
+                                                                </th>
+                                                            @endforeach
+                                                            <th>Total</th>
+                                                            <th>BF</th>
+                                                            <th>Cum</th>
+                                                            <th>Grade</th>
                                                             <th>Vetted Status</th>
                                                         </tr>
                                                     </thead>
@@ -188,17 +207,28 @@
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td data-label="CA1">
-                                                                    <input type="text" class="form-control text-center" value="{{ $broadsheet->ca1 ? number_format($broadsheet->ca1, 1) : '0.0' }}" readonly>
+
+                                                                @foreach($assessments as $assessment)
+                                                                    @php
+                                                                        $scoreObj = $broadsheet->assessmentScores->where('assessment_id', $assessment->id)->first();
+                                                                        $score = $scoreObj ? $scoreObj->score : 0;
+                                                                    @endphp
+                                                                    <td data-label="{{ $assessment->name }}" class="assessment-column">
+                                                                        <input type="text" class="form-control text-center" value="{{ number_format($score, 1) }}" readonly>
+                                                                    </td>
+                                                                @endforeach
+
+                                                                <td data-label="Total" class="total-column">
+                                                                    <input type="text" class="form-control text-center fw-bold" value="{{ number_format($broadsheet->total, 1) }}" readonly>
                                                                 </td>
-                                                                <td data-label="CA2">
-                                                                    <input type="text" class="form-control text-center" value="{{ $broadsheet->ca2 ? number_format($broadsheet->ca2, 1) : '0.0' }}" readonly>
+                                                                <td data-label="BF" class="total-column">
+                                                                    <input type="text" class="form-control text-center" value="{{ number_format($broadsheet->bf, 1) }}" readonly>
                                                                 </td>
-                                                                <td data-label="CA3">
-                                                                    <input type="text" class="form-control text-center" value="{{ $broadsheet->ca3 ? number_format($broadsheet->ca3, 1) : '0.0' }}" readonly>
+                                                                <td data-label="Cum" class="cum-column">
+                                                                    <input type="text" class="form-control text-center fw-bold" value="{{ number_format($broadsheet->cum, 1) }}" readonly>
                                                                 </td>
-                                                                <td data-label="Exam">
-                                                                    <input type="text" class="form-control text-center" value="{{ $broadsheet->exam ? number_format($broadsheet->exam, 1) : '0.0' }}" readonly>
+                                                                <td data-label="Grade" class="grade-column">
+                                                                    <input type="text" class="form-control text-center fw-bold" value="{{ $broadsheet->grade }}" readonly>
                                                                 </td>
                                                                 <td data-label="Vetted Status">
                                                                     <label class="toggle-switch">
@@ -209,7 +239,7 @@
                                                             </tr>
                                                         @empty
                                                             <tr>
-                                                                <td colspan="8" class="text-center">No scores available.</td>
+                                                                <td colspan="{{ 8 + $assessments->count() }}" class="text-center">No scores available.</td>
                                                             </tr>
                                                         @endforelse
                                                     </tbody>
@@ -235,19 +265,45 @@
     </div>
 </div>
 
+<!-- Image View Modal -->
+<div class="modal fade" id="imageViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Student Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="modalStudentImage" class="img-fluid" style="max-height: 400px;">
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Search functionality
-            const searchInput = document.querySelector('.search');
-            const tableRows = document.querySelectorAll('#studentListTable tbody tr');
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Image modal functionality
+        const studentImages = document.querySelectorAll('.student-image');
+        const modalImage = document.getElementById('modalStudentImage');
 
+        studentImages.forEach(img => {
+            img.addEventListener('click', function () {
+                const imageUrl = this.getAttribute('data-image');
+                modalImage.src = imageUrl;
+            });
+        });
+
+        // Search functionality
+        const searchInput = document.querySelector('.search');
+        const tableRows = document.querySelectorAll('#studentListTable tbody tr');
+
+        if (searchInput) {
             searchInput.addEventListener('input', function () {
                 const searchQuery = this.value.trim().toLowerCase();
 
                 tableRows.forEach(row => {
-                    const admissionNo = row.querySelector('.admissionno').textContent.toLowerCase();
-                    const name = row.querySelector('.name').textContent.toLowerCase();
+                    const admissionNo = row.querySelector('.admissionno')?.textContent.toLowerCase() || '';
+                    const name = row.querySelector('.name')?.textContent.toLowerCase() || '';
 
                     if (searchQuery === '') {
                         row.style.display = '';
@@ -258,58 +314,59 @@
                     }
                 });
             });
+        }
 
-            // Vetted status toggle functionality
-            const toggles = document.querySelectorAll('.vetted-status-toggle');
-            toggles.forEach(toggle => {
-                toggle.addEventListener('change', function () {
-                    const broadsheetId = this.getAttribute('data-broadsheet-id');
-                    const vettedStatus = this.checked ? 1 : 0;
-                    const row = this.closest('tr');
+        // Vetted status toggle functionality
+        const toggles = document.querySelectorAll('.vetted-status-toggle');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', function () {
+                const broadsheetId = this.getAttribute('data-broadsheet-id');
+                const vettedStatus = this.checked ? 1 : 0;
+                const row = this.closest('tr');
 
-                    // Update row background color
-                    row.classList.remove('bg-success-subtle', 'bg-danger-subtle', 'bg-warning-subtle');
-                    if (vettedStatus === 1) {
-                        row.classList.add('bg-success-subtle');
+                // Update row background color
+                row.classList.remove('bg-success-subtle', 'bg-danger-subtle', 'bg-warning-subtle');
+                if (vettedStatus === 1) {
+                    row.classList.add('bg-success-subtle');
+                } else {
+                    row.classList.add('bg-danger-subtle');
+                }
+
+                // Send AJAX request to update vettedstatus
+                fetch('{{ route("broadsheets.update-vetted-status") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        broadsheet_id: broadsheetId,
+                        vettedstatus: vettedStatus
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Vetted status updated successfully');
                     } else {
-                        row.classList.add('bg-danger-subtle');
-                    }
-
-                    // Send AJAX request to update vettedstatus
-                    fetch('{{ route('broadsheets.update-vetted-status') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            broadsheet_id: broadsheetId,
-                            vettedstatus: vettedStatus
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            console.log('Vetted status updated successfully');
-                        } else {
-                            console.error('Failed to update vetted status:', data.message);
-                            // Revert toggle and background on error
-                            this.checked = !this.checked;
-                            row.classList.remove('bg-success-subtle', 'bg-danger-subtle', 'bg-warning-subtle');
-                            row.classList.add(vettedStatus === 1 ? 'bg-danger-subtle' : 'bg-success-subtle');
-                            alert('Error: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
+                        console.error('Failed to update vetted status:', data.message);
                         // Revert toggle and background on error
                         this.checked = !this.checked;
                         row.classList.remove('bg-success-subtle', 'bg-danger-subtle', 'bg-warning-subtle');
-                        row.classList.add(vettedStatus === 1 ? 'bg-danger-subtle' : 'bg-success-subtle');
-                        alert('Error updating vetted status');
-                    });
+                        row.classList.add(this.checked ? 'bg-success-subtle' : 'bg-danger-subtle');
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Revert toggle and background on error
+                    this.checked = !this.checked;
+                    row.classList.remove('bg-success-subtle', 'bg-danger-subtle', 'bg-warning-subtle');
+                    row.classList.add(this.checked ? 'bg-success-subtle' : 'bg-danger-subtle');
+                    alert('Error updating vetted status');
                 });
             });
         });
-    </script>
+    });
+</script>
 @endsection
