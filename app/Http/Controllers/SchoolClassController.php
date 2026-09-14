@@ -22,32 +22,21 @@ class SchoolClassController extends Controller
         $this->middleware('permission:Delete school-class', ['only' => ['destroy', 'deleteMultiple']]);
     }
 
-    // =========================================================================
-    // INDEX
-    // =========================================================================
-
     public function index(Request $request)
     {
         $pagetitle = "School Class Management";
 
         try {
-            $arms = Schoolarm::orderBy('arm')->get();
+            $arms            = Schoolarm::orderBy('arm')->get();
             $classcategories = Classcategory::orderBy('category')->get();
 
-            return view('schoolclass.index')
-                ->with('arms', $arms)
-                ->with('classcategories', $classcategories)
-                ->with('pagetitle', $pagetitle);
+            return view('schoolclass.index', compact('arms', 'classcategories', 'pagetitle'));
 
         } catch (\Exception $e) {
             Log::error('SchoolClass index error', ['error' => $e->getMessage()]);
             return back()->with('danger', 'Error loading school classes: ' . $e->getMessage());
         }
     }
-
-    // =========================================================================
-    // DATATABLE
-    // =========================================================================
 
     public function data(Request $request)
     {
@@ -133,17 +122,13 @@ class SchoolClassController extends Controller
         }
     }
 
-    // =========================================================================
-    // STATS
-    // =========================================================================
-
     public function stats()
     {
         try {
             return response()->json([
                 'stats' => [
-                    'total' => Schoolclass::count(),
-                    'total_arms' => Schoolarm::count(),
+                    'total'            => Schoolclass::count(),
+                    'total_arms'       => Schoolarm::count(),
                     'total_categories' => Classcategory::count(),
                 ],
             ]);
@@ -154,10 +139,6 @@ class SchoolClassController extends Controller
         }
     }
 
-    // =========================================================================
-    // SHOW
-    // =========================================================================
-
     public function show($id)
     {
         try {
@@ -165,9 +146,9 @@ class SchoolClassController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'id' => $class->id,
-                    'schoolclass' => $class->schoolclass,
-                    'arm_id' => $class->arm,
+                    'id'              => $class->id,
+                    'schoolclass'     => $class->schoolclass,
+                    'arm_id'          => $class->arm,
                     'classcategoryid' => $class->classcategoryid,
                 ],
             ]);
@@ -176,21 +157,17 @@ class SchoolClassController extends Controller
         }
     }
 
-    // =========================================================================
-    // STORE
-    // =========================================================================
-
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'schoolclass' => 'required|string|max:255',
-            'arm_id' => 'required|array|min:1',
-            'arm_id.*' => 'exists:schoolarm,id',
+            'schoolclass'     => 'required|string|max:255',
+            'arm_id'          => 'required|array|min:1',
+            'arm_id.*'        => 'exists:schoolarm,id',
             'classcategoryid' => 'required',
         ], [
-            'schoolclass.required' => 'Please enter a school class name.',
-            'arm_id.required' => 'Please select at least one arm.',
-            'arm_id.*.exists' => 'One or more selected arms do not exist.',
+            'schoolclass.required'     => 'Please enter a school class name.',
+            'arm_id.required'          => 'Please select at least one arm.',
+            'arm_id.*.exists'          => 'One or more selected arms do not exist.',
             'classcategoryid.required' => 'Please select a category.',
         ]);
 
@@ -200,10 +177,7 @@ class SchoolClassController extends Controller
 
         $existingCats = Classcategory::whereIn('id', $categoryIds)->pluck('id')->toArray();
         if (count($existingCats) !== count($categoryIds)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'One or more selected categories do not exist.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'One or more selected categories do not exist.'], 422);
         }
 
         $validator->after(function ($validator) use ($request, $categoryIds) {
@@ -231,7 +205,7 @@ class SchoolClassController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -243,23 +217,16 @@ class SchoolClassController extends Controller
             foreach ($request->arm_id as $armId) {
                 foreach ($categoryIds as $catId) {
                     $class = new Schoolclass();
-                    $class->schoolclass = $request->schoolclass;
-                    $class->arm = $armId;
+                    $class->schoolclass     = $request->schoolclass;
+                    $class->arm             = $armId;
                     $class->classcategoryid = $catId;
-                    $class->description = $request->description ?? null;
+                    $class->description     = $request->description ?? null;
                     $class->save();
 
                     if ($pivotReady) {
                         DB::table('schoolclass_classcategory')->updateOrInsert(
-                            [
-                                'schoolclass_id' => $class->id,
-                                'classcategory_id' => $catId,
-                            ],
-                            [
-                                'promotion_pass_average' => null,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]
+                            ['schoolclass_id' => $class->id, 'classcategory_id' => $catId],
+                            ['promotion_pass_average' => null, 'created_at' => now(), 'updated_at' => now()]
                         );
                     }
 
@@ -267,10 +234,10 @@ class SchoolClassController extends Controller
                     $cat = Classcategory::find($catId);
 
                     $created[] = [
-                        'id' => $class->id,
-                        'schoolclass' => $class->schoolclass,
-                        'arm_id' => $class->arm,
-                        'arm_name' => $arm->arm ?? 'Unknown',
+                        'id'              => $class->id,
+                        'schoolclass'     => $class->schoolclass,
+                        'arm_id'          => $class->arm,
+                        'arm_name'        => $arm->arm ?? 'Unknown',
                         'classcategoryid' => $class->classcategoryid,
                         'classcategory_name' => $cat->category ?? 'Unknown',
                     ];
@@ -281,28 +248,21 @@ class SchoolClassController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => count($created) . ' school class(es) added successfully!',
-                'data' => $created,
+                'data'    => $created,
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass store error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error storing school class: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error storing school class: ' . $e->getMessage()], 500);
         }
     }
-
-    // =========================================================================
-    // UPDATE
-    // =========================================================================
 
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'schoolclass' => 'required|string|max:255',
-            'arm_id' => 'required|exists:schoolarm,id',
+            'schoolclass'     => 'required|string|max:255',
+            'arm_id'          => 'required|exists:schoolarm,id',
             'classcategoryid' => 'required',
         ]);
 
@@ -315,7 +275,7 @@ class SchoolClassController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first() ?: 'Please select a category.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -338,23 +298,20 @@ class SchoolClassController extends Controller
         DB::beginTransaction();
         try {
             $class = Schoolclass::findOrFail($id);
-            $class->schoolclass = $request->schoolclass;
-            $class->arm = $request->arm_id;
+            $class->schoolclass     = $request->schoolclass;
+            $class->arm             = $request->arm_id;
             $class->classcategoryid = $primaryCatId;
-            $class->description = $request->description ?? null;
+            $class->description     = $request->description ?? null;
             $class->save();
 
             if (Schema::hasTable('schoolclass_classcategory')) {
-                DB::table('schoolclass_classcategory')
-                    ->where('schoolclass_id', $class->id)
-                    ->delete();
-
+                DB::table('schoolclass_classcategory')->where('schoolclass_id', $class->id)->delete();
                 DB::table('schoolclass_classcategory')->insert([
-                    'schoolclass_id' => $class->id,
-                    'classcategory_id' => $primaryCatId,
+                    'schoolclass_id'         => $class->id,
+                    'classcategory_id'       => $primaryCatId,
                     'promotion_pass_average' => null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
                 ]);
             }
 
@@ -363,10 +320,10 @@ class SchoolClassController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'School class updated successfully!',
-                'data' => [
-                    'id' => $class->id,
-                    'schoolclass' => $class->schoolclass,
-                    'arm_id' => $class->arm,
+                'data'    => [
+                    'id'              => $class->id,
+                    'schoolclass'     => $class->schoolclass,
+                    'arm_id'          => $class->arm,
                     'classcategoryid' => $class->classcategoryid,
                 ],
             ], 200);
@@ -374,16 +331,9 @@ class SchoolClassController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass update error', ['error' => $e->getMessage(), 'id' => $id]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating school class: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error updating school class: ' . $e->getMessage()], 500);
         }
     }
-
-    // =========================================================================
-    // DESTROY
-    // =========================================================================
 
     public function destroy($id)
     {
@@ -410,16 +360,9 @@ class SchoolClassController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass destroy error', ['error' => $e->getMessage(), 'id' => $id]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting school class: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error deleting school class: ' . $e->getMessage()], 500);
         }
     }
-
-    // =========================================================================
-    // BULK DESTROY
-    // =========================================================================
 
     public function deleteMultiple(Request $request)
     {
@@ -437,23 +380,18 @@ class SchoolClassController extends Controller
             }
 
             $existingIds = Schoolclass::whereIn('id', $ids)->pluck('id')->toArray();
-            $invalidIds = array_diff($ids, $existingIds);
+            $invalidIds  = array_diff($ids, $existingIds);
             if (!empty($invalidIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Some selected classes do not exist.',
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Some selected classes do not exist.'], 400);
             }
 
             DB::beginTransaction();
-
             if (Schema::hasTable('schoolclass_classcategory')) {
                 DB::table('schoolclass_classcategory')->whereIn('schoolclass_id', $ids)->delete();
             }
             if (Schema::hasTable('classteacher')) {
                 DB::table('classteacher')->whereIn('schoolclassid', $ids)->delete();
             }
-
             $deleted = Schoolclass::whereIn('id', $ids)->delete();
             DB::commit();
 
@@ -466,36 +404,9 @@ class SchoolClassController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass bulk delete error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting classes: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Error deleting classes: ' . $e->getMessage()], 500);
         }
     }
-
-    // =========================================================================
-    // LEGACY ALIASES
-    // =========================================================================
-
-    public function deleteschoolclass(Request $request)
-    {
-        $request->merge(['ids' => [$request->input('schoolclassid')]]);
-        return $this->deleteMultiple($request);
-    }
-
-    public function getArms($id)
-    {
-        try {
-            $class = Schoolclass::findOrFail($id);
-            return response()->json(['success' => true, 'armIds' => [$class->arm]], 200);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to fetch arms'], 500);
-        }
-    }
-
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
 
     private function cleanUtf8String($string)
     {
