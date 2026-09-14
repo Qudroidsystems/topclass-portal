@@ -22,6 +22,10 @@ class SchoolClassController extends Controller
         $this->middleware('permission:Delete school-class', ['only' => ['destroy', 'deleteMultiple']]);
     }
 
+    // =========================================================================
+    // INDEX
+    // =========================================================================
+
     public function index(Request $request)
     {
         $pagetitle = "School Class Management";
@@ -37,6 +41,10 @@ class SchoolClassController extends Controller
             return back()->with('danger', 'Error loading school classes: ' . $e->getMessage());
         }
     }
+
+    // =========================================================================
+    // DATATABLE — returns ONE category per row (Project 1 FK model)
+    // =========================================================================
 
     public function data(Request $request)
     {
@@ -58,17 +66,20 @@ class SchoolClassController extends Controller
 
             return DataTables::of($classes)
                 ->addIndexColumn()
+
                 ->addColumn('class_info', function ($row) {
                     return '<div>'
                         . '<span class="fw-semibold text-dark">' . e($this->cleanUtf8String($row->schoolclass ?? '')) . '</span>'
                         . '<small class="text-muted d-block">ID: ' . $row->id . '</small>'
                         . '</div>';
                 })
+
                 ->addColumn('arm_info', function ($row) {
                     $armName = $this->cleanUtf8String($row->arm_name ?? 'N/A');
                     return '<span class="sc-badge sc-badge-arm">' . e($armName) . '</span>'
                         . '<small class="text-muted d-block">Arm ID: ' . ($row->arm_id ?? 'N/A') . '</small>';
                 })
+
                 ->addColumn('categories_info', function ($row) {
                     if (empty($row->classcategory_name)) {
                         return '<span class="text-muted">No category</span>';
@@ -78,12 +89,14 @@ class SchoolClassController extends Controller
                         . '</span>'
                         . '<small class="text-muted d-block">Category ID: ' . ($row->classcategoryid ?? 'N/A') . '</small>';
                 })
+
                 ->addColumn('formatted_date', function ($row) {
                     if (!$row->updated_at) return '<span class="text-muted small">—</span>';
                     return '<small class="text-muted">'
                         . \Carbon\Carbon::parse($row->updated_at)->format('d M Y')
                         . '</small>';
                 })
+
                 ->addColumn('action', function ($row) {
                     $buttons = '<div class="d-flex gap-1">';
 
@@ -110,6 +123,7 @@ class SchoolClassController extends Controller
 
                     return $buttons . '</div>';
                 })
+
                 ->rawColumns(['class_info', 'arm_info', 'categories_info', 'formatted_date', 'action'])
                 ->make(true);
 
@@ -121,6 +135,10 @@ class SchoolClassController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    // =========================================================================
+    // STATS
+    // =========================================================================
 
     public function stats()
     {
@@ -138,6 +156,10 @@ class SchoolClassController extends Controller
             ]);
         }
     }
+
+    // =========================================================================
+    // SHOW
+    // =========================================================================
 
     public function show($id)
     {
@@ -157,6 +179,10 @@ class SchoolClassController extends Controller
         }
     }
 
+    // =========================================================================
+    // STORE
+    // =========================================================================
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -172,12 +198,17 @@ class SchoolClassController extends Controller
         ]);
 
         $categoryIds = $request->input('classcategoryid');
-        if (!is_array($categoryIds)) $categoryIds = [$categoryIds];
+        if (!is_array($categoryIds)) {
+            $categoryIds = [$categoryIds];
+        }
         $categoryIds = array_values(array_filter($categoryIds));
 
         $existingCats = Classcategory::whereIn('id', $categoryIds)->pluck('id')->toArray();
         if (count($existingCats) !== count($categoryIds)) {
-            return response()->json(['success' => false, 'message' => 'One or more selected categories do not exist.'], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'One or more selected categories do not exist.',
+            ], 422);
         }
 
         $validator->after(function ($validator) use ($request, $categoryIds) {
@@ -211,7 +242,7 @@ class SchoolClassController extends Controller
 
         DB::beginTransaction();
         try {
-            $created = [];
+            $created    = [];
             $pivotReady = Schema::hasTable('schoolclass_classcategory');
 
             foreach ($request->arm_id as $armId) {
@@ -225,8 +256,15 @@ class SchoolClassController extends Controller
 
                     if ($pivotReady) {
                         DB::table('schoolclass_classcategory')->updateOrInsert(
-                            ['schoolclass_id' => $class->id, 'classcategory_id' => $catId],
-                            ['promotion_pass_average' => null, 'created_at' => now(), 'updated_at' => now()]
+                            [
+                                'schoolclass_id'   => $class->id,
+                                'classcategory_id' => $catId,
+                            ],
+                            [
+                                'promotion_pass_average' => null,
+                                'created_at'             => now(),
+                                'updated_at'             => now(),
+                            ]
                         );
                     }
 
@@ -234,11 +272,11 @@ class SchoolClassController extends Controller
                     $cat = Classcategory::find($catId);
 
                     $created[] = [
-                        'id'              => $class->id,
-                        'schoolclass'     => $class->schoolclass,
-                        'arm_id'          => $class->arm,
-                        'arm_name'        => $arm->arm ?? 'Unknown',
-                        'classcategoryid' => $class->classcategoryid,
+                        'id'                 => $class->id,
+                        'schoolclass'        => $class->schoolclass,
+                        'arm_id'             => $class->arm,
+                        'arm_name'           => $arm->arm ?? 'Unknown',
+                        'classcategoryid'    => $class->classcategoryid,
                         'classcategory_name' => $cat->category ?? 'Unknown',
                     ];
                 }
@@ -254,9 +292,16 @@ class SchoolClassController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass store error', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error storing school class: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error storing school class: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
 
     public function update(Request $request, $id)
     {
@@ -267,8 +312,10 @@ class SchoolClassController extends Controller
         ]);
 
         $categoryIds = $request->input('classcategoryid');
-        if (!is_array($categoryIds)) $categoryIds = [$categoryIds];
-        $categoryIds = array_values(array_filter($categoryIds));
+        if (!is_array($categoryIds)) {
+            $categoryIds = [$categoryIds];
+        }
+        $categoryIds  = array_values(array_filter($categoryIds));
         $primaryCatId = $categoryIds[0] ?? null;
 
         if ($validator->fails() || !$primaryCatId) {
@@ -284,6 +331,7 @@ class SchoolClassController extends Controller
             ->where('classcategoryid', $primaryCatId)
             ->where('id', '!=', $id)
             ->exists();
+
         if ($exists) {
             $arm = Schoolarm::find($request->arm_id);
             $cat = Classcategory::find($primaryCatId);
@@ -331,9 +379,16 @@ class SchoolClassController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass update error', ['error' => $e->getMessage(), 'id' => $id]);
-            return response()->json(['success' => false, 'message' => 'Error updating school class: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating school class: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
+    // =========================================================================
+    // DESTROY (single)
+    // =========================================================================
 
     public function destroy($id)
     {
@@ -355,14 +410,24 @@ class SchoolClassController extends Controller
             $class->delete();
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'School class deleted successfully!'], 200);
+            return response()->json([
+                'success' => true,
+                'message' => 'School class deleted successfully!',
+            ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass destroy error', ['error' => $e->getMessage(), 'id' => $id]);
-            return response()->json(['success' => false, 'message' => 'Error deleting school class: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting school class: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
+    // =========================================================================
+    // BULK DESTROY
+    // =========================================================================
 
     public function deleteMultiple(Request $request)
     {
@@ -382,31 +447,63 @@ class SchoolClassController extends Controller
             $existingIds = Schoolclass::whereIn('id', $ids)->pluck('id')->toArray();
             $invalidIds  = array_diff($ids, $existingIds);
             if (!empty($invalidIds)) {
-                return response()->json(['success' => false, 'message' => 'Some selected classes do not exist.'], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some selected classes do not exist.',
+                ], 400);
             }
 
             DB::beginTransaction();
+
             if (Schema::hasTable('schoolclass_classcategory')) {
                 DB::table('schoolclass_classcategory')->whereIn('schoolclass_id', $ids)->delete();
             }
             if (Schema::hasTable('classteacher')) {
                 DB::table('classteacher')->whereIn('schoolclassid', $ids)->delete();
             }
+
             $deleted = Schoolclass::whereIn('id', $ids)->delete();
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => $deleted . ' class(es) deleted successfully.',
+                'success'       => true,
+                'message'       => $deleted . ' class(es) deleted successfully.',
                 'deleted_count' => $deleted,
             ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SchoolClass bulk delete error', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Error deleting classes: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting classes: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
+    // =========================================================================
+    // LEGACY ALIASES (in case old route names still point here)
+    // =========================================================================
+
+    public function deleteschoolclass(Request $request)
+    {
+        $request->merge(['ids' => [$request->input('schoolclassid')]]);
+        return $this->deleteMultiple($request);
+    }
+
+    public function getArms($id)
+    {
+        try {
+            $class = Schoolclass::findOrFail($id);
+            return response()->json(['success' => true, 'armIds' => [$class->arm]], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to fetch arms'], 500);
+        }
+    }
+
+    // =========================================================================
+    // HELPER
+    // =========================================================================
 
     private function cleanUtf8String($string)
     {
