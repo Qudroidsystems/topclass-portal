@@ -1,5 +1,17 @@
 @extends('layouts.master')
 
+{{--
+    ─────────────────────────────────────────────────────────────
+    REQUIRED META TAGS IN layouts/master.blade.php <head>:
+    ─────────────────────────────────────────────────────────────
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="school-name" content="{{ config('app.school_name', 'CSS Kabba') }}">
+
+    The print slip logic reads `school-name` to brand credential
+    cards. If it's missing, slips fall back to 'CSS Kabba'.
+    ─────────────────────────────────────────────────────────────
+--}}
+
 @section('content')
 <?php use Spatie\Permission\Models\Role; ?>
 
@@ -173,6 +185,18 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; }
 .u-role-pill.teacher  { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; }
 .u-role-pill.staff    { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
 .u-role-pill.default  { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+
+/* ── Username chip (used in credential results) ── */
+.u-username {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 5px;
+    padding: 1px 6px;
+    white-space: nowrap;
+}
 
 /* ── Action buttons ── */
 .u-action-btn {
@@ -1213,12 +1237,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }
             }).then(r => r.json()).then(data => {
                 if (data.success) {
+                    // Project 2's controller also returns username / email — surface them.
+                    const extras = [];
+                    if (data.user?.username) extras.push(`<div class="text-muted small mt-2">Username: <code>${data.user.username}</code></div>`);
+                    if (data.user?.email)    extras.push(`<div class="text-muted small">Email: <code>${data.user.email}</code></div>`);
+
                     Swal.fire({
                         title: 'Password Reset!',
                         html: `<div style="text-align:center"><p class="text-muted mb-3">New password for <strong>${data.user.name}</strong></p>
                             <div style="background:#f0f9ff;border:2px solid #bfdbfe;border-radius:10px;padding:16px 24px;display:inline-block;">
                                 <code style="font-size:26px;font-weight:700;letter-spacing:4px;color:#1e40af;">${data.password}</code>
-                            </div></div>`,
+                            </div>
+                            ${extras.join('')}</div>`,
                         icon: 'success',
                         confirmButtonColor: '#2563eb'
                     });
@@ -1295,8 +1325,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
     let currentResults = null;
     let isProcessing = false;
 
-    // Normalizes any id (number/string/null) to a consistent string key
-    // so comparisons never fail on type mismatches (e.g. "12" !== 12).
     function idKey(v) {
         return v === null || v === undefined ? '' : String(v);
     }
@@ -1364,9 +1392,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                     generatedEmail: genEmail(s.firstname, s.lastname)
                 }));
 
-                // IMPORTANT: rebuild selectedStudents from the freshly loaded list so
-                // stale references never linger, but preserve prior selection by id.
-                // Compare via idKey() so string/number id mismatches don't drop selections.
                 if (selectedStudents.length) {
                     const keptIds = new Set(selectedStudents.map(s => idKey(s && s.id)));
                     selectedStudents = allStudents.filter(s => keptIds.has(idKey(s.id)));
@@ -1374,7 +1399,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
 
                 renderStudentTable(allStudents);
 
-                // Populate class filter
                 const classFilter = document.getElementById('massClassFilter');
                 if (classFilter && classFilter.options.length <= 1) {
                     let html = '<option value="">All Classes</option>';
@@ -1415,8 +1439,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
 
         let html = '';
         students.forEach(s => {
-            // idKey() comparison — was strict `x.id === s.id`, which silently
-            // failed whenever one side was a string and the other a number.
             const checked = selectedStudents.some(x => x && idKey(x.id) === idKey(s.id)) ? 'checked' : '';
             html += `<tr>
                 <td><input type="checkbox" class="student-checkbox" data-id="${escHtml(String(s.id))}" ${checked}></td>
@@ -1430,19 +1452,8 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
         tbody.innerHTML = html;
         updateSelectedCount();
 
-        // Attach change events to new checkboxes — this table is fully
-        // re-rendered on every filter/select-all action, so there's never
-        // more than one listener per checkbox at a time.
         document.querySelectorAll('#massStudentList .student-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
-                // FIX: previously used `parseInt(this.dataset.id, 10)` and then
-                // compared with strict `===` against `x.id`. If the API returns
-                // ids as strings (or any non-Number type), that strict comparison
-                // never matched, `stu` came back undefined, and the handler
-                // returned early — so nothing was ever pushed to selectedStudents
-                // and updateSelectedCount() never ran. That's why a single
-                // checkbox click ticked the box but left the "0 selected" counter
-                // frozen and the "Continue to Action" button disabled.
                 const id = this.dataset.id;
                 const stu = allStudents.find(x => x && idKey(x.id) === idKey(id));
                 if (!stu) return;
@@ -1471,8 +1482,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
         updateProceedButton();
     }
 
-    // Enables "Continue to Action" as soon as ONE student is checked — no
-    // requirement to select all, and no accidental "select everything".
     function updateProceedButton() {
         const proceedBtn = document.getElementById('proceedToAction');
         if (proceedBtn) {
@@ -1541,7 +1550,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
         proceedToActionBtn.addEventListener('click', function(e) {
             e.preventDefault();
 
-            // Works identically whether 1 student or all students are checked.
             if (!selectedStudents || selectedStudents.length === 0) {
                 Swal.fire({
                     icon: 'warning',
@@ -1552,7 +1560,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 return;
             }
 
-            // Build the summary table
             let html = '';
             selectedStudents.forEach(s => {
                 if (!s) return;
@@ -1575,7 +1582,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 countSpan.textContent = selectedStudents.length;
             }
 
-            // Show step 2, hide step 1
             const step1 = document.getElementById('massStep1');
             const step2 = document.getElementById('massStep2');
             if (step1) step1.style.display = 'none';
@@ -1599,7 +1605,6 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
             if (pwdSettings) pwdSettings.style.display = showPwd ? '' : 'none';
             if (roleSettings) roleSettings.style.display = showPwd ? '' : 'none';
 
-            // Show warnings
             const hasAcc = selectedStudents.filter(s => s && s.has_account).length;
             const noAcc = selectedStudents.filter(s => s && !s.has_account).length;
             let warn = '';
@@ -1770,7 +1775,7 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 ['Name', 'Username', 'Email', 'Password', 'Admission No', 'Class'],
                 c => `<tr>
                     <td>${escHtml(c.name)}</td>
-                    <td><code>${escHtml(c.username)}</code></td>
+                    <td><span class="u-username">${escHtml(c.username || '')}</span></td>
                     <td><small>${escHtml(c.email)}</small></td>
                     <td><code class="text-success fw-bold">${escHtml(c.password)}</code></td>
                     <td>${escHtml(c.admissionNo || 'N/A')}</td>
@@ -1784,7 +1789,7 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 ['Name', 'Username', 'Email', 'New Password', 'Admission No', 'Class'],
                 r => `<tr>
                     <td>${escHtml(r.name)}</td>
-                    <td><code>${escHtml(r.username)}</code></td>
+                    <td><span class="u-username">${escHtml(r.username || '')}</span></td>
                     <td><small>${escHtml(r.email)}</small></td>
                     <td><code class="text-warning fw-bold">${escHtml(r.password)}</code></td>
                     <td>${escHtml(r.admissionNo || 'N/A')}</td>
@@ -1807,7 +1812,7 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 ['Name', 'Username', 'Email', 'Admission No', 'Note'],
                 r => `<tr>
                     <td>${escHtml(r.name)}</td>
-                    <td><code>${escHtml(r.username)}</code></td>
+                    <td><span class="u-username">${escHtml(r.username || '')}</span></td>
                     <td><small>${escHtml(r.email)}</small></td>
                     <td>${escHtml(r.admissionNo || 'N/A')}</td>
                     <td><small class="text-muted">Password hidden</small></td>
@@ -1873,13 +1878,11 @@ document.getElementById('import-staff-form')?.addEventListener('submit', functio
                 return;
             }
 
-            // Build slips with photos if available
             const slipHtml = allCreds.map(s => {
                 const isReset = s.type === 'reset';
                 const tag = isReset ? 'RESET' : 'NEW';
                 const tagColor = isReset ? '#d97706' : '#16a34a';
 
-                // idKey() comparison here too — matching against student_id.
                 const matchingStudent = selectedStudents.find(st => st && idKey(st.id) === idKey(s.student_id));
                 let photoHtml = '';
                 if (matchingStudent && matchingStudent.photo_url) {
@@ -2191,12 +2194,14 @@ window.onload = function() {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
+                    // Project 2's controller returns username as well — surface it in the toast.
+                    const usernameLine = data.user?.username ? `<br><small class="text-muted">Username: <code>${data.user.username}</code></small>` : '';
                     Swal.fire({
                         icon: 'success',
                         title: 'Student User Created!',
-                        text: data.message,
+                        html: `${data.message || ''}${usernameLine}`,
                         showConfirmButton: false,
-                        timer: 2000
+                        timer: 2200
                     });
                     hideModal('setStudentCredentialsModal');
                     setTimeout(() => location.reload(), 2000);
