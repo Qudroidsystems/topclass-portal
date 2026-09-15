@@ -384,6 +384,11 @@ class SchoolBillTermSessionController extends Controller
 
             // Real delete — bypass SoftDeletes so the rows are gone
             $deleted = SchoolBillTermSession::whereIn('id', $ids)->forceDelete();
+            // TEMP: log exact count
+            \Log::info('bulkDestroy result', [
+                'requested_ids' => $ids,
+                'rows_actually_deleted' => $deleted,
+            ]);
 
             DB::commit();
 
