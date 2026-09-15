@@ -16,6 +16,8 @@
     --ts-radius:  12px;
     --ts-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
+
+/* ── Hero ──────────────────────────────────────────────── */
 .ts-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #0f766e 60%, #0891b2 100%);
     border-radius: var(--ts-radius);
@@ -27,20 +29,24 @@
 .ts-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
 .ts-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
 
+/* ── Stat cards ────────────────────────────────────────── */
 .stat-card { background:#fff; border:1px solid var(--ts-border); border-radius:var(--ts-radius); padding:18px 20px; transition:transform .15s, box-shadow .15s; }
 .stat-card:hover { transform:translateY(-2px); box-shadow:var(--ts-shadow); }
 .stat-card .stat-value { font-size:28px; font-weight:700; color:var(--ts-primary); }
 .stat-card .stat-label { font-size:12px; color:var(--ts-muted); margin-top:4px; }
 .stat-card .stat-icon  { font-size:32px; opacity:.12; float:right; margin-top:-8px; }
 
+/* ── Table ─────────────────────────────────────────────── */
 .ts-table th { background:var(--ts-primary); color:#fff; padding:12px 16px; font-weight:600; font-size:13px; white-space:nowrap; }
 .ts-table td { padding:12px 16px; vertical-align:middle; border-bottom:1px solid var(--ts-border); font-size:13px; }
 .ts-table tr:hover td { background:#f0fdfa; }
 
+/* ── Badges ────────────────────────────────────────────── */
 .ts-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
 .ts-badge-term    { background:#dbeafe; color:#2563eb; }
 .ts-badge-session { background:#ccfbf1; color:#0f766e; }
 
+/* ── DataTables overrides ──────────────────────────────── */
 .dataTables_wrapper .dataTables_filter input { border:1.5px solid var(--ts-border); border-radius:8px; padding:7px 14px; margin-left:8px; font-size:13px; transition:border .15s; }
 .dataTables_wrapper .dataTables_filter input:focus { border-color:var(--ts-accent); outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .dataTables_wrapper .dataTables_length select { border:1.5px solid var(--ts-border); border-radius:8px; padding:6px 10px; margin:0 6px; font-size:13px; }
@@ -49,6 +55,7 @@
 .dataTables_wrapper .paginate_button.current,
 .dataTables_wrapper .paginate_button.current:hover { background:var(--ts-accent) !important; border-color:var(--ts-accent) !important; color:#fff !important; }
 
+/* ── Modal ─────────────────────────────────────────────── */
 #tsModal .modal-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15); }
 .modal-hero-bar { background:linear-gradient(135deg, #1e3a5f 0%, #0f766e 100%); padding:22px 28px; position:relative; overflow:hidden; }
 .modal-hero-bar::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(255,255,255,.07); border-radius:50%; }
@@ -59,27 +66,62 @@
 .form-control, .form-select { border:1.5px solid var(--ts-border); border-radius:8px; font-size:13px; padding:9px 14px; transition:border .15s; }
 .form-control:focus, .form-select:focus { border-color:var(--ts-accent); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 
+/* ── Checkbox group ────────────────────────────────────── */
 .check-group { border:1.5px solid var(--ts-border); border-radius:10px; padding:14px 16px; background:var(--ts-bg); max-height:160px; overflow-y:auto; }
 .check-group .form-check { margin-bottom:6px; }
 .check-group .form-check:last-child { margin-bottom:0; }
 .check-group .form-check-input:checked { background-color:var(--ts-accent); border-color:var(--ts-accent); }
 .select-all-bar { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:8px; padding:7px 12px; margin-bottom:8px; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ts-accent); }
 
+/* ── Bulk bar ──────────────────────────────────────────── */
 .bulk-bar { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; display:none; align-items:center; gap:12px; margin-bottom:12px; }
 .bulk-bar.show { display:flex; }
 
+/* ── Edit mode note ────────────────────────────────────── */
 .edit-info-note { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; font-size:12px; color:#2563eb; margin-bottom:16px; }
+
+/* ── Full-page loader overlay ──────────────────────────── */
+#ts-page-loader { position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .22s, visibility .22s; }
+#ts-page-loader.active { opacity:1; visibility:visible; }
+.ts-loader-card { background:#fff; border-radius:16px; padding:32px 40px; text-align:center; box-shadow:0 24px 64px rgba(0,0,0,.22); min-width:220px; }
+.ts-loader-spinner { width:52px; height:52px; margin:0 auto 16px; border:4px solid #e2e8f0; border-top-color:var(--ts-accent); border-radius:50%; animation:ts-spin .75s linear infinite; }
+@keyframes ts-spin { to { transform:rotate(360deg); } }
+.ts-loader-label { font-size:14px; font-weight:600; color:var(--ts-primary); margin-bottom:12px; }
+
+/* ── Toast stack ───────────────────────────────────────── */
+#ts-toast-stack { position:fixed; bottom:24px; right:24px; z-index:10000; display:flex; flex-direction:column-reverse; gap:10px; pointer-events:none; }
+.ts-toast { pointer-events:all; background:#fff; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.14); padding:14px 18px; min-width:280px; max-width:360px; display:flex; align-items:flex-start; gap:12px; border-left:4px solid var(--ts-accent); transform:translateX(120%); transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
+.ts-toast.show { transform:translateX(0); }
+.ts-toast-success { border-left-color:var(--ts-success); }
+.ts-toast-error   { border-left-color:var(--ts-danger);  }
+.ts-toast-warning { border-left-color:var(--ts-warning); }
+.ts-toast .ts-toast-icon { font-size:20px; flex-shrink:0; }
+.ts-toast .ts-toast-body { flex:1; }
+.ts-toast .ts-toast-title { font-size:13px; font-weight:700; color:#111827; }
+.ts-toast .ts-toast-msg   { font-size:12px; color:var(--ts-muted); }
+.ts-toast .ts-toast-close { background:none; border:none; cursor:pointer; color:var(--ts-muted); font-size:16px; }
+
+/* ── Button loading ────────────────────────────────────── */
+.btn-loading { position:relative; pointer-events:none; opacity:.85; }
+.btn-loading .btn-text { visibility:hidden; }
+.btn-loading::after { content:''; position:absolute; inset:0; margin:auto; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:ts-spin .65s linear infinite; }
 </style>
+
+{{-- Toast + loader containers --}}
+<div id="ts-page-loader"><div class="ts-loader-card"><div class="ts-loader-spinner"></div><div class="ts-loader-label" id="ts-loader-label">Processing…</div></div></div>
+<div id="ts-toast-stack"></div>
 
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
 
+    {{-- Hero --}}
     <div class="ts-hero">
         <h1><i class="ri-calendar-check-line me-2"></i>{{ $pagetitle }}</h1>
         <p>Assign school bills to classes, terms, and sessions in one step.</p>
     </div>
 
+    {{-- Stat cards --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-links-line"></i></div><div class="stat-value" id="statTotal">—</div><div class="stat-label">Total Assignments</div></div></div>
         <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-file-list-3-line"></i></div><div class="stat-value text-primary" id="statBills">—</div><div class="stat-label">Unique Bills Assigned</div></div></div>
@@ -87,6 +129,7 @@
         <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-money-dollar-circle-line"></i></div><div class="stat-value text-warning" id="statAmount">—</div><div class="stat-label">Total Assigned Value</div></div></div>
     </div>
 
+    {{-- Table card --}}
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
@@ -149,7 +192,6 @@
                 @csrf
                 <input type="hidden" id="assignmentId">
                 <div class="modal-body p-4">
-
                     <div class="edit-info-note d-none" id="editNote">
                         <i class="ri-information-line me-1"></i>
                         You are editing a <strong>single</strong> assignment record. To reassign multiple classes or terms, delete and recreate.
@@ -278,7 +320,6 @@
 
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function () {
 
@@ -295,6 +336,33 @@ $(document).ready(function () {
     const CSRF = $('meta[name="csrf-token"]').attr('content');
     let table, deleteId = null;
 
+    // =========================================================================
+    // LOADING HELPERS
+    // =========================================================================
+    const PageLoader = {
+        show(lbl) { $('#ts-loader-label').text(lbl || 'Processing…'); $('#ts-page-loader').addClass('active'); },
+        hide() { setTimeout(() => $('#ts-page-loader').removeClass('active'), 300); }
+    };
+
+    function toast(type, title, msg) {
+        var icons = { success: 'ri-checkbox-circle-fill', error: 'ri-close-circle-fill', warning: 'ri-alert-fill', info: 'ri-information-fill' };
+        var id = 'ts-toast-' + Date.now();
+        var $el = $('<div class="ts-toast ts-toast-' + type + '" id="' + id + '">'
+            + '<span class="ts-toast-icon"><i class="' + icons[type] + '"></i></span>'
+            + '<div class="ts-toast-body"><div class="ts-toast-title">' + title + '</div>'
+            + (msg ? '<div class="ts-toast-msg">' + msg + '</div>' : '') + '</div>'
+            + '<button class="ts-toast-close" onclick="$(\'#' + id + '\').remove()">×</button></div>');
+        $('#ts-toast-stack').append($el);
+        setTimeout(() => $el.addClass('show'), 20);
+        setTimeout(() => { $el.removeClass('show'); setTimeout(() => $el.remove(), 300); }, 4000);
+    }
+
+    function btnLoad($b, lbl) { $b.data('orig', $b.html()).prop('disabled', true).addClass('btn-loading'); if (lbl) $b.html('<span class="btn-text">' + lbl + '</span>'); }
+    function btnReset($b) { var o = $b.data('orig'); if (o) $b.html(o); $b.prop('disabled', false).removeClass('btn-loading'); }
+
+    // =========================================================================
+    // DATATABLE
+    // =========================================================================
     table = $('#assignmentsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -303,7 +371,7 @@ $(document).ready(function () {
             type: 'GET',
             error: function (xhr) {
                 console.error('DataTables AJAX error:', xhr.status, xhr.responseText);
-                Swal.fire('Error', 'Failed to load assignments. Please refresh the page.', 'error');
+                toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
             }
         },
         columns: [
@@ -341,6 +409,9 @@ $(document).ready(function () {
         },
     });
 
+    // =========================================================================
+    // STATS
+    // =========================================================================
     function loadStats() {
         $.get(ROUTES.stats, function (data) {
             if (data.stats) {
@@ -356,6 +427,9 @@ $(document).ready(function () {
     }
     loadStats();
 
+    // =========================================================================
+    // CHECKBOXES / BULK BAR
+    // =========================================================================
     function bindCheckboxes() {
         $('.row-checkbox').off('change').on('change', updateBulkBar);
     }
@@ -377,6 +451,9 @@ $(document).ready(function () {
         $('.class-cb').prop('checked', this.checked);
     });
 
+    // =========================================================================
+    // MODE SWITCHING
+    // =========================================================================
     function setCreateMode() {
         $('#editNote'          ).addClass('d-none');
         $('#classCheckboxGroup').removeClass('d-none');
@@ -434,6 +511,9 @@ $(document).ready(function () {
         $('#tsModal').modal('show');
     });
 
+    // =========================================================================
+    // SAVE (CREATE + UPDATE)
+    // =========================================================================
     $('#tsForm').on('submit', function (e) {
         e.preventDefault();
 
@@ -456,8 +536,7 @@ $(document).ready(function () {
             payload['termid_id[]'] = $('.term-cb:checked').map(function(i, el) { return el.value; }).get();
         }
 
-        $('#saveBtn').prop('disabled', true)
-                     .html('<span class="spinner-border spinner-border-sm me-2"></span>Saving...');
+        btnLoad($('#saveBtn'), 'Saving…');
         $('#formErrors').addClass('d-none').html('');
 
         $.ajax({
@@ -466,29 +545,24 @@ $(document).ready(function () {
             data:        payload,
             traditional: true,
             success: function(res) {
+                btnReset($('#saveBtn'));
                 if (res.success) {
                     $('#tsModal').modal('hide');
                     table.ajax.reload();
                     loadStats();
-                    Swal.fire({
-                        icon: 'success', title: 'Saved!', text: res.message,
-                        timer: 2500, showConfirmButton: false,
-                    });
+                    toast('success', 'Saved!', res.message);
                 } else {
                     showErrors(res.message, res.errors);
                 }
             },
             error: function(xhr) {
+                btnReset($('#saveBtn'));
                 if (xhr.status === 422) {
                     const json = xhr.responseJSON;
                     showErrors(json ? json.message : null, json ? json.errors : null);
                 } else {
-                    Swal.fire('Error!', 'Something went wrong. Please try again.', 'error');
+                    toast('error', 'Error', 'Something went wrong. Please try again.');
                 }
-            },
-            complete: function() {
-                $('#saveBtn').prop('disabled', false)
-                             .html('<i class="ri-save-line me-1"></i>Save Assignment');
             },
         });
     });
@@ -506,6 +580,9 @@ $(document).ready(function () {
         $('#formErrors').removeClass('d-none').html(html);
     }
 
+    // =========================================================================
+    // SINGLE DELETE
+    // =========================================================================
     $(document).on('click', '.delete-assignment', function () {
         deleteId = $(this).data('id');
         $('#deleteItemTitle').text('"' + $(this).data('title') + '"');
@@ -514,85 +591,75 @@ $(document).ready(function () {
 
     $('#confirmDelete').on('click', function () {
         if (!deleteId) return;
-        const btn = $(this);
-        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+        const $b = $(this);
+        btnLoad($b, 'Deleting…');
 
         $.ajax({
             url:  ROUTES.destroy(deleteId),
             type: 'POST',
             data: { _method: 'DELETE', _token: CSRF },
             success: function(res) {
+                $('#deleteModal').modal('hide');
                 if (res.success) {
-                    $('#deleteModal').modal('hide');
+                    toast('success', 'Deleted!', res.message);
                     table.ajax.reload();
                     loadStats();
-                    Swal.fire({
-                        icon: 'success', title: 'Deleted!', text: res.message,
-                        timer: 2000, showConfirmButton: false,
-                    });
                 } else {
-                    Swal.fire('Error!', res.message, 'error');
+                    toast('error', 'Cannot Delete', res.message || 'Failed.');
                 }
             },
             error: function(xhr) {
+                $('#deleteModal').modal('hide');
                 const j = xhr.responseJSON;
-                Swal.fire('Error!', (j && j.message) || 'Failed to delete assignment.', 'error');
+                toast('error', 'Error', (j && j.message) || 'Failed to delete.');
             },
             complete: function() {
-                btn.prop('disabled', false)
-                   .html('<i class="ri-delete-bin-line me-1"></i>Delete');
+                btnReset($b);
                 deleteId = null;
             },
         });
     });
 
     // =========================================================================
-    // BULK DELETE — sends as JSON, no traditional serialisation
+    // BULK DELETE — sent as JSON, with custom toast confirmation
     // =========================================================================
     function doBulkDelete() {
         const ids = $('.row-checkbox:checked').map(function () { return this.value; }).get();
 
         if (!ids.length) {
-            Swal.fire('No Selection', 'Please select at least one assignment.', 'warning');
+            toast('warning', 'No Selection', 'Please select at least one assignment.');
             return;
         }
 
-        Swal.fire({
-            title: 'Delete ' + ids.length + ' assignment(s)?',
-            text:  'This cannot be undone.',
-            icon:  'warning',
-            showCancelButton:   true,
-            confirmButtonColor: '#dc2626',
-            confirmButtonText:  'Yes, delete',
-        }).then(function (result) {
-            if (!result.isConfirmed) return;
+        // Custom confirmation via the same toast pattern — brief modal, not SweetAlert
+        const confirmed = window.confirm('Delete ' + ids.length + ' assignment(s)? This cannot be undone.');
+        if (!confirmed) return;
 
-            $.ajax({
-                url: '{{ route("schoolbilltermsession.bulk-destroy") }}',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ ids: ids, _token: CSRF }),
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                success: function(res) {
-                    if (res.success) {
-                        table.ajax.reload();
-                        loadStats();
-                        $('#selectAll').prop('checked', false);
-                        updateBulkBar();
-                        Swal.fire({
-                            icon: 'success', title: 'Deleted!', text: res.message,
-                            timer: 2000, showConfirmButton: false,
-                        });
-                    } else {
-                        Swal.fire('Cannot Delete', res.message || 'Failed.', 'error');
-                    }
-                },
-                error: function(xhr) {
-                    const j = xhr.responseJSON;
-                    const msg = (j && j.message) || 'Failed to delete assignments.';
-                    Swal.fire('Error!', msg, 'error');
-                },
-            });
+        PageLoader.show('Deleting ' + ids.length + ' assignment(s)…');
+
+        $.ajax({
+            url: '{{ route("schoolbilltermsession.bulk-destroy") }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ ids: ids, _token: CSRF }),
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            success: function(res) {
+                PageLoader.hide();
+                if (res.success) {
+                    toast('success', 'Deleted!', res.message);
+                    table.ajax.reload();
+                    loadStats();
+                    $('#selectAll').prop('checked', false);
+                    updateBulkBar();
+                } else {
+                    toast('error', 'Cannot Delete', res.message || 'Failed.');
+                }
+            },
+            error: function(xhr) {
+                PageLoader.hide();
+                const j = xhr.responseJSON;
+                toast('error', 'Error', (j && j.message) || 'Failed to delete assignments.');
+            },
         });
     }
 
