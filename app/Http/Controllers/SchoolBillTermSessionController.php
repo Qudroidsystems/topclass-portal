@@ -33,7 +33,6 @@ class SchoolBillTermSessionController extends Controller
         $terms          = Schoolterm::all();
         $schoolsessions = Schoolsession::all();
 
-        // Classes with ARM NAME (avoid `as arm` alias collision)
         $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->get([
                 'schoolclass.id as id',
@@ -59,7 +58,8 @@ class SchoolBillTermSessionController extends Controller
 
     public function data(Request $request)
     {
-        $assignments = SchoolBillTermSession::leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
+        $assignments = SchoolBillTermSession::query()
+            ->leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
             ->leftJoin('schoolclass', 'schoolclass.id', '=', 'school_bill_class_term_session.class_id')
             ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->leftJoin('schoolterm', 'schoolterm.id', '=', 'school_bill_class_term_session.termid_id')
@@ -140,7 +140,8 @@ class SchoolBillTermSessionController extends Controller
 
     public function stats()
     {
-        $assignments = SchoolBillTermSession::leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
+        $assignments = SchoolBillTermSession::query()
+            ->leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
             ->select([
                 'school_bill_class_term_session.id',
                 'school_bill_class_term_session.session_id',
@@ -314,7 +315,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // DESTROY (single)
+    // DESTROY (single) — hard delete via forceDelete()
     // =========================================================================
 
     public function destroy($id)
@@ -325,7 +326,8 @@ class SchoolBillTermSessionController extends Controller
                 return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
             }
 
-            $assignment->delete();
+            // Real delete — bypass SoftDeletes so the row is gone
+            $assignment->forceDelete();
 
             return response()->json([
                 'success' => true,
@@ -345,7 +347,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // BULK DESTROY — normalises array/string/JSON inputs
+    // BULK DESTROY — hard delete via forceDelete()
     // =========================================================================
 
     public function bulkDestroy(Request $request)
@@ -379,7 +381,10 @@ class SchoolBillTermSessionController extends Controller
             }
 
             DB::beginTransaction();
-            $deleted = SchoolBillTermSession::whereIn('id', $ids)->delete();
+
+            // Real delete — bypass SoftDeletes so the rows are gone
+            $deleted = SchoolBillTermSession::whereIn('id', $ids)->forceDelete();
+
             DB::commit();
 
             return response()->json([
@@ -403,7 +408,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // GET RELATED (for group edit)
+    // GET RELATED
     // =========================================================================
 
     public function getRelated($id)
