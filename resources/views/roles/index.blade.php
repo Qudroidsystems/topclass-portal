@@ -78,13 +78,23 @@ body{font-family:var(--rol-font);}
     background:var(--rol-surface);
     border:1px solid var(--rol-border);
     border-radius:var(--rol-radius);
-    overflow:hidden;
+    /* overflow:visible — needed so the dropdown menu can escape the card.
+       The rounded corners are re-applied on .rol-card-top / .rol-card-footer. */
+    overflow:visible;
     box-shadow:var(--rol-shadow);
     transition:transform .2s, box-shadow .2s, border-color .2s;
     animation:fadeUp .4s ease both;
     display:flex; flex-direction:column;
+    position:relative;
+    z-index:1;
 }
-.rol-card:hover { transform:translateY(-4px); box-shadow:0 12px 32px rgba(15,23,42,.12); border-color:#c7d2fe; }
+.rol-card:hover {
+    transform:translateY(-4px);
+    box-shadow:0 12px 32px rgba(15,23,42,.12);
+    border-color:#c7d2fe;
+    /* Lift above sibling cards so an open dropdown isn't hidden behind the next card. */
+    z-index:5;
+}
 .rol-card:nth-child(1){animation-delay:.05s}
 .rol-card:nth-child(2){animation-delay:.10s}
 .rol-card:nth-child(3){animation-delay:.15s}
@@ -94,12 +104,18 @@ body{font-family:var(--rol-font);}
 .rol-card-top {
     background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 80%,#312e81 100%);
     padding:20px 18px 16px;
-    position:relative; overflow:hidden;
+    position:relative;
+    /* overflow:visible — do NOT clip; the dropdown lives inside this box. */
+    overflow:visible;
+    /* Top-only rounded corners, since .rol-card no longer clips. */
+    border-radius:var(--rol-radius) var(--rol-radius) 0 0;
 }
 .rol-card-top::before {
     content:''; position:absolute; top:-30px; right:-30px;
     width:100px; height:100px; background:rgba(99,102,241,.18);
     border-radius:50%;
+    /* Don't let the decorative circle swallow clicks aimed at the toggle. */
+    pointer-events:none;
 }
 .rol-card-icon {
     width:46px; height:46px; border-radius:12px;
@@ -136,6 +152,8 @@ body{font-family:var(--rol-font);}
     border-top:1px solid var(--rol-border);
     background:var(--rol-surface2);
     display:flex; align-items:center; justify-content:space-between;
+    /* Bottom-only rounded corners to match .rol-card's visual shape. */
+    border-radius:0 0 var(--rol-radius) var(--rol-radius);
 }
 .rol-users-badge {
     display:inline-flex; align-items:center; gap:5px;
@@ -150,12 +168,16 @@ body{font-family:var(--rol-font);}
     background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
     color:#fff; border-radius:8px; padding:5px 9px; font-size:14px;
     transition:background .15s;
+    position:relative; z-index:2;
 }
 .rol-dropdown .dropdown-toggle:hover { background:rgba(255,255,255,.25); }
+.rol-dropdown .dropdown-toggle:focus,
+.rol-dropdown .dropdown-toggle:active { box-shadow:0 0 0 3px rgba(99,102,241,.35); }
 .rol-dropdown .dropdown-menu {
     border-radius:10px; border:1px solid var(--rol-border);
     box-shadow:0 8px 24px rgba(15,23,42,.12); padding:6px;
     animation:scaleIn .15s ease;
+    z-index:1080;
 }
 .rol-dropdown .dropdown-item {
     border-radius:7px; font-size:13px; font-weight:500; padding:8px 12px;
@@ -263,10 +285,18 @@ body{font-family:var(--rol-font);}
 
     {{-- Role cards --}}
     @if($roles->count())
+    @php
+        // Precompute all role user counts in ONE query instead of N queries
+        // inside the @foreach (was: DB::table('model_has_roles')->count() per role).
+        $userCounts = DB::table('model_has_roles')
+            ->select('role_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('role_id')
+            ->pluck('total', 'role_id');
+    @endphp
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-4 g-3">
         @foreach ($roles as $role)
         @php
-            $roles_num = DB::table('model_has_roles')->where('role_id',$role->id)->count();
+            $roles_num        = $userCounts[$role->id] ?? 0;
             $role_permissions = $role->permissions->pluck('name')->take(4);
             $icons = ['Admin'=>'bi-shield-check','Student'=>'bi-mortarboard','Staff'=>'bi-person-badge','Teacher'=>'bi-book'];
             $icon  = $icons[$role->name] ?? 'bi-key';
@@ -279,7 +309,10 @@ body{font-family:var(--rol-font);}
                         <div class="rol-card-icon"><i class="bi {{ $icon }}"></i></div>
                         @canany(['Update user-role','Remove user-role'])
                         <div class="dropdown rol-dropdown">
-                            <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <button class="btn dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown"
+                                    data-bs-display="static"
+                                    aria-expanded="false">
                                 <i class="bi bi-three-dots-vertical"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -462,9 +495,18 @@ body{font-family:var(--rol-font);}
 </div>
 </div>
 
+{{-- Bootstrap bundle is REQUIRED for the card dropdowns and the Create Role modal.
+     The original file only loaded SweetAlert2, which is why the ⋮ menus did nothing. --}}
+<script src="{{ asset('theme/layouts/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Guard: if Bootstrap still isn't loaded (e.g. wrong asset path), say so loudly
+    // instead of silently letting the dropdown do nothing.
+    if (typeof bootstrap === 'undefined') {
+        console.error('[roles/index] Bootstrap JS is not loaded — dropdowns and modals will not work. Check the asset() path for bootstrap.bundle.min.js.');
+    }
+
     const selectAll     = document.getElementById('kt_roles_select_all');
     const permBoxes     = document.querySelectorAll('input[name="permission[]"]');
     const moduleToggles = document.querySelectorAll('.module-select-all');
