@@ -16,6 +16,7 @@
     --ts-radius:  12px;
     --ts-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
+
 .ts-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #0f766e 60%, #0891b2 100%);
     border-radius: var(--ts-radius);
@@ -304,6 +305,7 @@
 
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function () {
 
@@ -320,6 +322,9 @@ $(document).ready(function () {
     const CSRF = $('meta[name="csrf-token"]').attr('content');
     let table, deleteId = null;
 
+    // =========================================================================
+    // LOADING + TOAST HELPERS
+    // =========================================================================
     const PageLoader = {
         show(lbl) { $('#ts-loader-label').text(lbl || 'Processing…'); $('#ts-page-loader').addClass('active'); },
         hide() { setTimeout(() => $('#ts-page-loader').removeClass('active'), 300); }
@@ -341,6 +346,9 @@ $(document).ready(function () {
     function btnLoad($b, lbl) { $b.data('orig', $b.html()).prop('disabled', true).addClass('btn-loading'); if (lbl) $b.html('<span class="btn-text">' + lbl + '</span>'); }
     function btnReset($b) { var o = $b.data('orig'); if (o) $b.html(o); $b.prop('disabled', false).removeClass('btn-loading'); }
 
+    // =========================================================================
+    // DATATABLE
+    // =========================================================================
     table = $('#assignmentsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -387,6 +395,9 @@ $(document).ready(function () {
         },
     });
 
+    // =========================================================================
+    // STATS
+    // =========================================================================
     function loadStats() {
         $.get(ROUTES.stats, function (data) {
             if (data.stats) {
@@ -402,6 +413,9 @@ $(document).ready(function () {
     }
     loadStats();
 
+    // =========================================================================
+    // CHECKBOXES / BULK BAR
+    // =========================================================================
     function bindCheckboxes() {
         $('.row-checkbox').off('change').on('change', updateBulkBar);
     }
@@ -423,6 +437,9 @@ $(document).ready(function () {
         $('.class-cb').prop('checked', this.checked);
     });
 
+    // =========================================================================
+    // MODE SWITCHING
+    // =========================================================================
     function setCreateMode() {
         $('#editNote'          ).addClass('d-none');
         $('#classCheckboxGroup').removeClass('d-none');
@@ -480,6 +497,9 @@ $(document).ready(function () {
         $('#tsModal').modal('show');
     });
 
+    // =========================================================================
+    // SAVE (CREATE + UPDATE)
+    // =========================================================================
     $('#tsForm').on('submit', function (e) {
         e.preventDefault();
 
@@ -546,6 +566,9 @@ $(document).ready(function () {
         $('#formErrors').removeClass('d-none').html(html);
     }
 
+    // =========================================================================
+    // SINGLE DELETE
+    // =========================================================================
     $(document).on('click', '.delete-assignment', function () {
         deleteId = $(this).data('id');
         $('#deleteItemTitle').text('"' + $(this).data('title') + '"');
@@ -583,6 +606,9 @@ $(document).ready(function () {
         });
     });
 
+    // =========================================================================
+    // BULK DELETE — SweetAlert2 confirm + toast result + page loader
+    // =========================================================================
     function doBulkDelete() {
         const ids = $('.row-checkbox:checked').map(function () { return this.value; }).get();
 
@@ -591,34 +617,53 @@ $(document).ready(function () {
             return;
         }
 
-        const confirmed = window.confirm('Delete ' + ids.length + ' assignment(s)? This cannot be undone.');
-        if (!confirmed) return;
+        Swal.fire({
+            title: 'Delete ' + ids.length + ' assignment(s)?',
+            html: 'This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            showLoaderOnConfirm: true,
+            preConfirm: function () {
+                return new Promise(function (resolve, reject) {
+                    PageLoader.show('Deleting ' + ids.length + ' assignment(s)…');
 
-        PageLoader.show('Deleting ' + ids.length + ' assignment(s)…');
-
-        $.ajax({
-            url: '{{ route("schoolbilltermsession.bulk-destroy") }}',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ ids: ids, _token: CSRF }),
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-            success: function(res) {
-                PageLoader.hide();
-                if (res.success) {
-                    toast('success', 'Deleted!', res.message);
-                    table.ajax.reload();
-                    loadStats();
-                    $('#selectAll').prop('checked', false);
-                    updateBulkBar();
-                } else {
-                    toast('error', 'Cannot Delete', res.message || 'Failed.');
-                }
-            },
-            error: function(xhr) {
-                PageLoader.hide();
-                const j = xhr.responseJSON;
-                toast('error', 'Error', (j && j.message) || 'Failed to delete assignments.');
-            },
+                    $.ajax({
+                        url: '{{ route("schoolbilltermsession.bulk-destroy") }}',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ ids: ids, _token: CSRF }),
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        success: function (res) {
+                            PageLoader.hide();
+                            if (res.success) {
+                                resolve(res);
+                            } else {
+                                reject(res.message || 'Failed.');
+                            }
+                        },
+                        error: function (xhr) {
+                            PageLoader.hide();
+                            const j = xhr.responseJSON;
+                            reject((j && j.message) || 'Failed to delete assignments.');
+                        },
+                    });
+                });
+            }
+        }).then(function (result) {
+            if (result.isConfirmed && result.value) {
+                toast('success', 'Deleted!', result.value.message || 'Assignments deleted.');
+                table.ajax.reload();
+                loadStats();
+                $('#selectAll').prop('checked', false);
+                updateBulkBar();
+            }
+        }).catch(function (err) {
+            toast('error', 'Failed', typeof err === 'string' ? err : 'Could not delete.');
         });
     }
 
