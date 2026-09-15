@@ -1,52 +1,45 @@
 <?php
+// app/Models/Classcategory.php
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Classcategory extends Model
 {
     use HasFactory;
 
+    // Explicitly define the table name (plural)
     protected $table = 'classcategories';
 
     protected $fillable = [
         'category',
-        'ca1score',
-        'ca2score',
-        'ca3score',
-        'examscore',
         'is_senior',
+        'promotion_pass_average',
     ];
 
     protected $casts = [
-        'is_senior' => 'boolean',
-        'ca1score'  => 'float',
-        'ca2score'  => 'float',
-        'ca3score'  => 'float',
-        'examscore' => 'float',
+        'is_senior'              => 'boolean',
+        'promotion_pass_average' => 'decimal:2',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
 
-    /**
-     * Project 1: schoolclass.classcategoryid is a direct FK.
-     * Returns all schoolclasses that point at this category.
-     */
-    public function schoolclasses()
+    public function assessments()
     {
-        return $this->hasMany(Schoolclass::class, 'classcategoryid');
+        return $this->hasMany(Assessment::class, 'classcategory_id');
     }
 
-    /**
-     * Alias used by some P2 code paths — kept for compatibility if you ever
-     * add the pivot table. For P1, just delegates to schoolclasses().
-     */
-    // public function schoolClasses()
-    // {
-    //     return $this->schoolclasses();
-    // }
+    public function schoolClasses()
+    {
+        return $this->belongsToMany(
+            Schoolclass::class,
+            'schoolclass_classcategory',
+            'classcategory_id',
+            'schoolclass_id'
+        );
+    }
 
     public function grades()
     {
@@ -64,7 +57,7 @@ class Classcategory extends Model
 
     private function calculateJuniorGrade($totalScore)
     {
-        if ($totalScore >= 70 && $totalScore <= 100) return 'A';
+        if ($totalScore >= 70) return 'A';
         if ($totalScore >= 60) return 'B';
         if ($totalScore >= 50) return 'C';
         if ($totalScore >= 40) return 'D';
@@ -73,7 +66,7 @@ class Classcategory extends Model
 
     private function calculateSeniorGrade($totalScore)
     {
-        if ($totalScore >= 75 && $totalScore <= 100) return 'A1';
+        if ($totalScore >= 75) return 'A1';
         if ($totalScore >= 70) return 'B2';
         if ($totalScore >= 65) return 'B3';
         if ($totalScore >= 60) return 'C4';
@@ -83,8 +76,6 @@ class Classcategory extends Model
         if ($totalScore >= 40) return 'E8';
         return 'F9';
     }
-
-    // ── Accessors (used by the new blade) ────────────────────────────────────
 
     public function getGradeScaleAttribute(): array
     {
@@ -105,16 +96,14 @@ class Classcategory extends Model
         return $this->is_senior ? 'Senior' : 'Junior';
     }
 
-    /**
-     * Sum of all CA maxes + exam max. Used by the blade's "Total Max" column.
-     * (In P1's model this is a computed sum, not a stored column.)
-     */
-    public function getTotalMaxScoreAttribute(): float
+    public function getTotalMaxScoreAttribute()
     {
-        return (float) $this->ca1score
-             + (float) $this->ca2score
-             + (float) $this->ca3score
-             + (float) $this->examscore;
+        return $this->assessments->sum('max_score');
+    }
+
+    public function hasPassAverageThreshold(): bool
+    {
+        return $this->promotion_pass_average !== null;
     }
 
     // ── Scopes ───────────────────────────────────────────────────────────────
@@ -127,5 +116,10 @@ class Classcategory extends Model
     public function scopeJunior($query)
     {
         return $query->where('is_senior', false);
+    }
+
+    public function scopeWithPassAverage($query)
+    {
+        return $query->whereNotNull('promotion_pass_average');
     }
 }

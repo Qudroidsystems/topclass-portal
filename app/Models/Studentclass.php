@@ -2,12 +2,8 @@
 
 namespace App\Models;
 
-use App\Models\Schoolarm;
-use App\Models\Schoolterm;
-use App\Models\Schoolclass;
-use App\Models\Schoolsession;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Studentclass extends Model
 {
@@ -23,14 +19,20 @@ class Studentclass extends Model
 
     ];
 
-    public function armRelation()
-    {
-        return $this->belongsTo(Schoolarm::class, 'arm');
-    }
-    public function schoolclass()
-    {
-        return $this->belongsTo(Schoolclass::class, 'schoolclassid', 'id');
-    }
+
+// In Studentclass model
+public function schoolclass()
+{
+    return $this->belongsTo(Schoolclass::class, 'schoolclassid', 'id');
+}
+
+// In Schoolclass model
+public function armRelation()
+{
+    return $this->belongsTo(Schoolarm::class, 'arm', 'id'); // Adjust based on your actual relationship
+}
+
+
 
     public function term()
     {
@@ -41,5 +43,4 @@ class Studentclass extends Model
     {
         return $this->belongsTo(Schoolsession::class, 'sessionid', 'id');
 }
-
 }

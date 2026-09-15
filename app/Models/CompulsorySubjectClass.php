@@ -1,4 +1,5 @@
 <?php
+// app/Models/CompulsorySubjectClass.php
 
 namespace App\Models;
 
@@ -17,11 +18,6 @@ class CompulsorySubjectClass extends Model
         'termid',
         'sessionid',
         'min_grade',
-    ];
-
-    protected $casts = [
-        'termid' => 'integer',
-        'sessionid' => 'integer',
     ];
 
     public function schoolclass()

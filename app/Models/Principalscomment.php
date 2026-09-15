@@ -18,23 +18,24 @@ class Principalscomment extends Model
         'termid',
     ];
 
+    // Relationships
     public function staff()
     {
-        return $this->belongsTo(User::class, 'staffId', 'id');
+        return $this->belongsTo(User::class, 'staffId');
     }
 
     public function schoolclass()
     {
-        return $this->belongsTo(Schoolclass::class, 'schoolclassid', 'id');
+        return $this->belongsTo(Schoolclass::class, 'schoolclassid');
     }
 
     public function session()
     {
-        return $this->belongsTo(Schoolsession::class, 'sessionid', 'id');
+        return $this->belongsTo(Schoolsession::class, 'sessionid');
     }
 
     public function term()
     {
-        return $this->belongsTo(Schoolterm::class, 'termid', 'id');
+        return $this->belongsTo(Schoolterm::class, 'termid');
     }
 }

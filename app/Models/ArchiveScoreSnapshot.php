@@ -31,7 +31,7 @@ class ArchiveScoreSnapshot extends Model
         'score' => 'decimal:2',
     ];
 
-    // ── Score type constants ─────────────────────────────────────────────────
+    // Score type constants
     const TYPE_ASSESSMENT     = 'assessment';
     const TYPE_SUB_ASSESSMENT = 'sub_assessment';
 

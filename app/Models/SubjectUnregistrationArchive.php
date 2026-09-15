@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Schoolsession;
+use App\Models\Schoolterm;
+use App\Models\Subjectclass;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,9 +53,6 @@ class SubjectUnregistrationArchive extends Model
         return $this->belongsTo(Subjectclass::class, 'subjectclassid');
     }
 
-    /**
-     * The teacher assigned to this subject at the time of unregistration.
-     */
     public function staff(): BelongsTo
     {
         return $this->belongsTo(User::class, 'staffid');
@@ -67,17 +68,13 @@ class SubjectUnregistrationArchive extends Model
         return $this->belongsTo(Schoolsession::class, 'sessionid');
     }
 
-    /**
-     * The staff member who performed the unregistration action.
-     */
     public function unregisteredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'unregistered_by');
     }
 
     /**
-     * Score snapshots captured at the moment of unregistration.
-     * Deleted automatically (CASCADE) when this archive row is hard-deleted.
+     * Score snapshots captured at unregistration time.
      */
     public function scoreSnapshots(): HasMany
     {
@@ -86,16 +83,15 @@ class SubjectUnregistrationArchive extends Model
 
     // ── Scopes ───────────────────────────────────────────────────────────────
 
-    /**
-     * Only rows that are still in the archived state (not yet restored or deleted).
-     */
     public function scopeArchived($query)
     {
         return $query->where('status', self::STATUS_ARCHIVED);
     }
 
-    public function scopeRestored($query)
+    // ── Alias (kept for backwards compat) ────────────────────────────────────
+
+    public function user(): BelongsTo
     {
-        return $query->where('status', self::STATUS_RESTORED);
+        return $this->belongsTo(User::class, 'staffid');
     }
 }

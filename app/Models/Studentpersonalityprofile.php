@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class Studentpersonalityprofile extends Model
 {
     protected $table = 'studentpersonalityprofiles';
-    
+
     protected $fillable = [
         'studentid',
         'staffid',
@@ -52,12 +52,12 @@ class Studentpersonalityprofile extends Model
     {
         return $this->belongsTo(Student::class, 'studentid', 'id');
     }
-        
+
     // Add this boot method to log model events
     protected static function boot()
     {
         parent::boot();
-        
+
         // Log when model is being updated
         static::updating(function($model) {
             \Log::warning('Studentpersonalityprofile model UPDATING event', [
@@ -73,7 +73,7 @@ class Studentpersonalityprofile extends Model
                 'call_stack' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10)
             ]);
         });
-        
+
         // Log when model was updated
         static::updated(function($model) {
             \Log::warning('Studentpersonalityprofile model UPDATED event', [
@@ -86,7 +86,7 @@ class Studentpersonalityprofile extends Model
                 'updated_at' => $model->updated_at
             ]);
         });
-        
+
         // Log when model is being created
         static::creating(function($model) {
             \Log::warning('Studentpersonalityprofile model CREATING event', [
@@ -97,7 +97,7 @@ class Studentpersonalityprofile extends Model
                 'call_stack' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10)
             ]);
         });
-        
+
         // Log when model was created
         static::created(function($model) {
             \Log::warning('Studentpersonalityprofile model CREATED event', [

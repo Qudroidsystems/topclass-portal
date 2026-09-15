@@ -1,38 +1,25 @@
 <?php
+// app/Models/Schoolclass.php
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\DB;
 
 class Schoolclass extends Model
 {
     use HasFactory;
 
-    protected $table = 'schoolclass';
+    protected $table = "schoolclass";
 
-    protected $fillable = [
-        'schoolclass',
-        'arm',
-        'classcategoryid',
-        'description',
-    ];
+    protected $fillable = ['schoolclass', 'arm', 'description'];
 
-    protected $casts = [
-        'arm'             => 'integer',
-        'classcategoryid' => 'integer',
-    ];
-
-    // ── Relationships ────────────────────────────────────────────────────────
-
-    /** Single category via the FK (Project 1 canonical). */
-    public function classcategory()
+    public function arms()
     {
-        return $this->belongsTo(Classcategory::class, 'classcategoryid', 'id');
+        return $this->belongsTo(Schoolarm::class, 'arm', 'id');
     }
 
-    /** Pivot-based plural (kept for compatibility). */
     public function classcategories()
     {
         return $this->belongsToMany(
@@ -44,9 +31,22 @@ class Schoolclass extends Model
          ->withTimestamps();
     }
 
+    // Add this method to handle singular queries that might be looking for 'classcategory'
+    public function classcategory()
+    {
+        return $this->belongsToMany(
+            Classcategory::class,
+            'schoolclass_classcategory',
+            'schoolclass_id',
+            'classcategory_id'
+        )->withPivot('promotion_pass_average')
+         ->withTimestamps()
+         ->limit(1);
+    }
+
     public function arm()
     {
-        return $this->belongsTo(Schoolarm::class, 'arm', 'id');
+        return $this->belongsTo(Schoolarm::class, 'arm');
     }
 
     public function armRelation()
@@ -58,47 +58,6 @@ class Schoolclass extends Model
     {
         return $this->hasMany(Subjectclass::class, 'schoolclassid', 'id');
     }
-
-    // ── Pivot-backed accessors ───────────────────────────────────────────────
-
-    public function getPromotionPassAverageAttribute()
-    {
-        if (!\Schema::hasTable('schoolclass_classcategory')) return null;
-
-        $pivot = DB::table('schoolclass_classcategory')
-            ->where('schoolclass_id', $this->id)
-            ->first();
-
-        return $pivot ? $pivot->promotion_pass_average : null;
-    }
-
-    public function setPromotionPassAverageAttribute($value)
-    {
-        if (!\Schema::hasTable('schoolclass_classcategory')) return;
-
-        $exists = DB::table('schoolclass_classcategory')
-            ->where('schoolclass_id', $this->id)
-            ->exists();
-
-        if ($exists) {
-            DB::table('schoolclass_classcategory')
-                ->where('schoolclass_id', $this->id)
-                ->update([
-                    'promotion_pass_average' => $value,
-                    'updated_at'             => now(),
-                ]);
-        } elseif (!empty($this->classcategoryid)) {
-            DB::table('schoolclass_classcategory')->insert([
-                'schoolclass_id'         => $this->id,
-                'classcategory_id'       => $this->classcategoryid,
-                'promotion_pass_average' => $value,
-                'created_at'             => now(),
-                'updated_at'             => now(),
-            ]);
-        }
-    }
-
-    // ── Current students (only if student_current_term exists) ───────────────
 
     public function studentCurrentTerms()
     {
@@ -115,5 +74,21 @@ class Schoolclass extends Model
             'id',
             'studentId'
         )->where('student_current_term.is_current', true);
+    }
+
+    public function getPromotionPassAverageAttribute()
+    {
+        $pivot = DB::table('schoolclass_classcategory')
+            ->where('schoolclass_id', $this->id)
+            ->first();
+
+        return $pivot ? $pivot->promotion_pass_average : null;
+    }
+
+    public function setPromotionPassAverageAttribute($value)
+    {
+        DB::table('schoolclass_classcategory')
+            ->where('schoolclass_id', $this->id)
+            ->update(['promotion_pass_average' => $value]);
     }
 }
