@@ -16,7 +16,6 @@
     --ts-radius:  12px;
     --ts-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
-
 .ts-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #0f766e 60%, #0891b2 100%);
     border-radius: var(--ts-radius);
@@ -355,6 +354,7 @@ $(document).ready(function () {
         ajax: {
             url:  ROUTES.data,
             type: 'GET',
+            cache: false,
             error: function (xhr) {
                 console.error('DataTables AJAX error:', xhr.status, xhr.responseText);
                 toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
@@ -543,11 +543,21 @@ $(document).ready(function () {
             },
             error: function(xhr) {
                 btnReset($('#saveBtn'));
+                const json = xhr.responseJSON;
+                const msg = (json && json.message)
+                         || (json && json.errors && Object.values(json.errors).flat()[0])
+                         || 'Server error (' + xhr.status + '): ' + (xhr.statusText || 'Unknown');
+
+                // Duplicate / validation errors — close modal, refresh, warn
                 if (xhr.status === 422) {
-                    const json = xhr.responseJSON;
-                    showErrors(json ? json.message : null, json ? json.errors : null);
+                    $('#tsModal').modal('hide');
+                    table.ajax.reload(null, false);
+                    loadStats();
+                    toast('warning', 'Duplicate', msg);
                 } else {
-                    toast('error', 'Error', 'Something went wrong. Please try again.');
+                    // Other server errors — keep modal open, show details
+                    showErrors(msg, json ? json.errors : null);
+                    toast('error', 'Failed', msg);
                 }
             },
         });
@@ -588,7 +598,7 @@ $(document).ready(function () {
                 $('#deleteModal').modal('hide');
                 if (res.success) {
                     toast('success', 'Deleted!', res.message);
-                    table.ajax.reload();
+                    table.ajax.reload(null, false);
                     loadStats();
                 } else {
                     toast('error', 'Cannot Delete', res.message || 'Failed.');
@@ -657,7 +667,7 @@ $(document).ready(function () {
         }).then(function (result) {
             if (result.isConfirmed && result.value) {
                 toast('success', 'Deleted!', result.value.message || 'Assignments deleted.');
-                table.ajax.reload();
+                table.ajax.reload(null, false);
                 loadStats();
                 $('#selectAll').prop('checked', false);
                 updateBulkBar();

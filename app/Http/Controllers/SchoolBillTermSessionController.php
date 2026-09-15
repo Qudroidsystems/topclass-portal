@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\SchoolBillTermSession;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Database\QueryException;
 use Yajra\DataTables\Facades\DataTables;
 
 class SchoolBillTermSessionController extends Controller
@@ -163,7 +164,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // STORE
+    // STORE — with duplicate pre-check + graceful handling of DB unique violations
     // =========================================================================
 
     public function store(Request $request)
@@ -189,25 +190,34 @@ class SchoolBillTermSessionController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
+                'message' => $validator->errors()->first(),
                 'errors'  => $validator->errors(),
             ], 422);
         }
 
         $bill_id    = $request->input('bill_id');
-        $class_ids  = $request->input('class_id');
-        $term_ids   = $request->input('termid_id');
+        $class_ids  = array_values(array_filter((array) $request->input('class_id', [])));
+        $term_ids   = array_values(array_filter((array) $request->input('termid_id', [])));
         $session_id = $request->input('session_id');
 
+        // Pre-check: find any existing combinations and describe them
         $existing = SchoolBillTermSession::where('bill_id', $bill_id)
             ->whereIn('class_id', $class_ids)
             ->whereIn('termid_id', $term_ids)
             ->where('session_id', $session_id)
-            ->exists();
+            ->get(['class_id', 'termid_id']);
 
-        if ($existing) {
+        if ($existing->isNotEmpty()) {
+            $existingLabels = $existing->map(function ($row) {
+                $class = Schoolclass::with('armRelation')->find($row->class_id);
+                $term  = Schoolterm::find($row->termid_id);
+                $label = trim(($class->schoolclass ?? '?') . ' ' . ($class->armRelation->arm ?? ''));
+                return $label . ' / ' . ($term->term ?? '?');
+            })->unique()->values()->implode(', ');
+
             return response()->json([
                 'success' => false,
-                'message' => 'One or more of the selected combinations already exist.',
+                'message' => 'These combinations already exist: ' . $existingLabels,
             ], 422);
         }
 
@@ -232,6 +242,23 @@ class SchoolBillTermSessionController extends Controller
                 'message' => count($created) . ' assignment(s) created successfully.',
                 'data'    => $created,
             ], 201);
+
+        } catch (QueryException $e) {
+            DB::rollBack();
+
+            // 1062 = duplicate entry (unique key violation)
+            if (($e->errorInfo[1] ?? null) === 1062) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'One or more of these combinations already exist. Please refresh and try again.',
+                ], 422);
+            }
+
+            Log::error('SchoolBillTermSession store QueryException', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error: ' . $e->getMessage(),
+            ], 500);
 
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -282,6 +309,7 @@ class SchoolBillTermSessionController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
+                'message' => $validator->errors()->first(),
                 'errors'  => $validator->errors(),
             ], 422);
         }
@@ -315,7 +343,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // DESTROY (single) — hard delete via forceDelete()
+    // DESTROY (single) — hard delete
     // =========================================================================
 
     public function destroy($id)
@@ -326,7 +354,6 @@ class SchoolBillTermSessionController extends Controller
                 return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
             }
 
-            // Real delete — bypass SoftDeletes so the row is gone
             $assignment->forceDelete();
 
             return response()->json([
@@ -347,7 +374,7 @@ class SchoolBillTermSessionController extends Controller
     }
 
     // =========================================================================
-    // BULK DESTROY — hard delete via forceDelete()
+    // BULK DESTROY — hard delete
     // =========================================================================
 
     public function bulkDestroy(Request $request)
@@ -381,15 +408,7 @@ class SchoolBillTermSessionController extends Controller
             }
 
             DB::beginTransaction();
-
-            // Real delete — bypass SoftDeletes so the rows are gone
             $deleted = SchoolBillTermSession::whereIn('id', $ids)->forceDelete();
-            // TEMP: log exact count
-            \Log::info('bulkDestroy result', [
-                'requested_ids' => $ids,
-                'rows_actually_deleted' => $deleted,
-            ]);
-
             DB::commit();
 
             return response()->json([
