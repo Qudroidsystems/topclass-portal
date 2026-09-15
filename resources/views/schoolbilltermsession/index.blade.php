@@ -16,186 +16,77 @@
     --ts-radius:  12px;
     --ts-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
-
-/* ── Hero ──────────────────────────────────────────────── */
 .ts-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #0f766e 60%, #0891b2 100%);
     border-radius: var(--ts-radius);
     padding: 28px 32px; margin-bottom: 24px;
     position: relative; overflow: hidden;
 }
-.ts-hero::before {
-    content:''; position:absolute; top:-60px; right:-60px;
-    width:220px; height:220px; background:rgba(255,255,255,.06); border-radius:50%;
-}
-.ts-hero::after {
-    content:''; position:absolute; bottom:-80px; left:-30px;
-    width:260px; height:260px; background:rgba(255,255,255,.03); border-radius:50%;
-}
+.ts-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:220px; height:220px; background:rgba(255,255,255,.06); border-radius:50%; }
+.ts-hero::after  { content:''; position:absolute; bottom:-80px; left:-30px; width:260px; height:260px; background:rgba(255,255,255,.03); border-radius:50%; }
 .ts-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
 .ts-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
 
-/* ── Stat cards ────────────────────────────────────────── */
-.stat-card {
-    background:#fff; border:1px solid var(--ts-border);
-    border-radius:var(--ts-radius); padding:18px 20px;
-    transition:transform .15s, box-shadow .15s;
-}
+.stat-card { background:#fff; border:1px solid var(--ts-border); border-radius:var(--ts-radius); padding:18px 20px; transition:transform .15s, box-shadow .15s; }
 .stat-card:hover { transform:translateY(-2px); box-shadow:var(--ts-shadow); }
 .stat-card .stat-value { font-size:28px; font-weight:700; color:var(--ts-primary); }
 .stat-card .stat-label { font-size:12px; color:var(--ts-muted); margin-top:4px; }
 .stat-card .stat-icon  { font-size:32px; opacity:.12; float:right; margin-top:-8px; }
 
-/* ── Table ─────────────────────────────────────────────── */
-.ts-table th {
-    background:var(--ts-primary); color:#fff;
-    padding:12px 16px; font-weight:600; font-size:13px;
-    white-space:nowrap;
-}
-.ts-table td {
-    padding:12px 16px; vertical-align:middle;
-    border-bottom:1px solid var(--ts-border); font-size:13px;
-}
+.ts-table th { background:var(--ts-primary); color:#fff; padding:12px 16px; font-weight:600; font-size:13px; white-space:nowrap; }
+.ts-table td { padding:12px 16px; vertical-align:middle; border-bottom:1px solid var(--ts-border); font-size:13px; }
 .ts-table tr:hover td { background:#f0fdfa; }
 
-/* ── Badges ────────────────────────────────────────────── */
-.ts-badge {
-    display:inline-flex; align-items:center;
-    padding:3px 9px; border-radius:20px;
-    font-size:11px; font-weight:600;
-}
+.ts-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
 .ts-badge-term    { background:#dbeafe; color:#2563eb; }
 .ts-badge-session { background:#ccfbf1; color:#0f766e; }
 
-/* ── DataTables overrides ──────────────────────────────── */
-.dataTables_wrapper .dataTables_filter input {
-    border:1.5px solid var(--ts-border); border-radius:8px;
-    padding:7px 14px; margin-left:8px; font-size:13px;
-    transition:border .15s;
-}
-.dataTables_wrapper .dataTables_filter input:focus {
-    border-color:var(--ts-accent); outline:none;
-    box-shadow:0 0 0 3px rgba(37,99,235,.1);
-}
-.dataTables_wrapper .dataTables_length select {
-    border:1.5px solid var(--ts-border); border-radius:8px;
-    padding:6px 10px; margin:0 6px; font-size:13px;
-}
+.dataTables_wrapper .dataTables_filter input { border:1.5px solid var(--ts-border); border-radius:8px; padding:7px 14px; margin-left:8px; font-size:13px; transition:border .15s; }
+.dataTables_wrapper .dataTables_filter input:focus { border-color:var(--ts-accent); outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+.dataTables_wrapper .dataTables_length select { border:1.5px solid var(--ts-border); border-radius:8px; padding:6px 10px; margin:0 6px; font-size:13px; }
 .dataTables_wrapper .dataTables_info  { font-size:13px; color:var(--ts-muted); }
-.dataTables_wrapper .paginate_button {
-    border-radius:6px !important; font-size:13px !important;
-    padding:4px 10px !important;
-}
+.dataTables_wrapper .paginate_button { border-radius:6px !important; font-size:13px !important; padding:4px 10px !important; }
 .dataTables_wrapper .paginate_button.current,
-.dataTables_wrapper .paginate_button.current:hover {
-    background:var(--ts-accent) !important;
-    border-color:var(--ts-accent) !important; color:#fff !important;
-}
+.dataTables_wrapper .paginate_button.current:hover { background:var(--ts-accent) !important; border-color:var(--ts-accent) !important; color:#fff !important; }
 
-/* ── Modal ─────────────────────────────────────────────── */
-#tsModal .modal-content {
-    border:none; border-radius:16px;
-    overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15);
-}
-.modal-hero-bar {
-    background:linear-gradient(135deg, #1e3a5f 0%, #0f766e 100%);
-    padding:22px 28px; position:relative; overflow:hidden;
-}
-.modal-hero-bar::before {
-    content:''; position:absolute; top:-30px; right:-30px;
-    width:120px; height:120px; background:rgba(255,255,255,.07); border-radius:50%;
-}
+#tsModal .modal-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15); }
+.modal-hero-bar { background:linear-gradient(135deg, #1e3a5f 0%, #0f766e 100%); padding:22px 28px; position:relative; overflow:hidden; }
+.modal-hero-bar::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(255,255,255,.07); border-radius:50%; }
 .modal-hero-bar h5 { color:#fff; font-weight:700; margin:0; font-size:16px; position:relative; }
 .modal-hero-bar .btn-close { position:absolute; top:18px; right:20px; filter:invert(1); }
 
 .form-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
-.form-control, .form-select {
-    border:1.5px solid var(--ts-border); border-radius:8px;
-    font-size:13px; padding:9px 14px; transition:border .15s;
-}
-.form-control:focus, .form-select:focus {
-    border-color:var(--ts-accent);
-    box-shadow:0 0 0 3px rgba(37,99,235,.1);
-}
+.form-control, .form-select { border:1.5px solid var(--ts-border); border-radius:8px; font-size:13px; padding:9px 14px; transition:border .15s; }
+.form-control:focus, .form-select:focus { border-color:var(--ts-accent); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 
-/* ── Checkbox group ────────────────────────────────────── */
-.check-group {
-    border:1.5px solid var(--ts-border); border-radius:10px;
-    padding:14px 16px; background:var(--ts-bg);
-    max-height:160px; overflow-y:auto;
-}
+.check-group { border:1.5px solid var(--ts-border); border-radius:10px; padding:14px 16px; background:var(--ts-bg); max-height:160px; overflow-y:auto; }
 .check-group .form-check { margin-bottom:6px; }
 .check-group .form-check:last-child { margin-bottom:0; }
-.check-group .form-check-input:checked {
-    background-color:var(--ts-accent);
-    border-color:var(--ts-accent);
-}
-.select-all-bar {
-    background:#eff6ff; border:1.5px solid #bfdbfe;
-    border-radius:8px; padding:7px 12px; margin-bottom:8px;
-    display:flex; align-items:center; gap:8px; font-size:12px;
-    font-weight:600; color:var(--ts-accent);
-}
+.check-group .form-check-input:checked { background-color:var(--ts-accent); border-color:var(--ts-accent); }
+.select-all-bar { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:8px; padding:7px 12px; margin-bottom:8px; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ts-accent); }
 
-/* ── Bulk bar ──────────────────────────────────────────── */
-.bulk-bar {
-    background:#fff3cd; border:1px solid #ffc107;
-    border-radius:8px; padding:10px 16px;
-    display:none; align-items:center; gap:12px; margin-bottom:12px;
-}
+.bulk-bar { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; display:none; align-items:center; gap:12px; margin-bottom:12px; }
 .bulk-bar.show { display:flex; }
 
-/* Edit mode note ──────────────────────────────────────── */
-.edit-info-note {
-    background:#eff6ff; border:1px solid #bfdbfe;
-    border-radius:8px; padding:10px 14px;
-    font-size:12px; color:#2563eb; margin-bottom:16px;
-}
+.edit-info-note { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; font-size:12px; color:#2563eb; margin-bottom:16px; }
 </style>
 
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
 
-    {{-- Hero --}}
     <div class="ts-hero">
         <h1><i class="ri-calendar-check-line me-2"></i>{{ $pagetitle }}</h1>
         <p>Assign school bills to classes, terms, and sessions in one step.</p>
     </div>
 
-    {{-- Stat cards --}}
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="ri-links-line"></i></div>
-                <div class="stat-value" id="statTotal">—</div>
-                <div class="stat-label">Total Assignments</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="ri-file-list-3-line"></i></div>
-                <div class="stat-value text-primary" id="statBills">—</div>
-                <div class="stat-label">Unique Bills Assigned</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="ri-calendar-2-line"></i></div>
-                <div class="stat-value text-success" id="statSessions">—</div>
-                <div class="stat-label">Active Sessions</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="ri-money-dollar-circle-line"></i></div>
-                <div class="stat-value text-warning" id="statAmount">—</div>
-                <div class="stat-label">Total Assigned Value</div>
-            </div>
-        </div>
+        <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-links-line"></i></div><div class="stat-value" id="statTotal">—</div><div class="stat-label">Total Assignments</div></div></div>
+        <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-file-list-3-line"></i></div><div class="stat-value text-primary" id="statBills">—</div><div class="stat-label">Unique Bills Assigned</div></div></div>
+        <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-calendar-2-line"></i></div><div class="stat-value text-success" id="statSessions">—</div><div class="stat-label">Active Sessions</div></div></div>
+        <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><i class="ri-money-dollar-circle-line"></i></div><div class="stat-value text-warning" id="statAmount">—</div><div class="stat-label">Total Assigned Value</div></div></div>
     </div>
 
-    {{-- Table card --}}
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
@@ -216,8 +107,6 @@
             </div>
         </div>
         <div class="card-body">
-
-            {{-- Bulk bar --}}
             <div class="bulk-bar" id="bulkBar">
                 <i class="ri-checkbox-circle-line text-warning"></i>
                 <span id="bulkCount">0</span> assignment(s) selected
@@ -230,9 +119,7 @@
                 <table class="table ts-table w-100 mb-0" id="assignmentsTable">
                     <thead>
                         <tr>
-                            <th width="40">
-                                <input type="checkbox" id="selectAll" class="form-check-input">
-                            </th>
+                            <th width="40"><input type="checkbox" id="selectAll" class="form-check-input"></th>
                             <th>#</th>
                             <th>School Bill</th>
                             <th>Class</th>
@@ -248,9 +135,7 @@
         </div>
     </div>
 
-</div>
-</div>
-</div>
+</div></div></div>
 
 {{-- CREATE / EDIT MODAL --}}
 <div class="modal fade" id="tsModal" tabindex="-1" data-bs-backdrop="static">
@@ -265,7 +150,6 @@
                 <input type="hidden" id="assignmentId">
                 <div class="modal-body p-4">
 
-                    {{-- Edit mode note (hidden for create) --}}
                     <div class="edit-info-note d-none" id="editNote">
                         <i class="ri-information-line me-1"></i>
                         You are editing a <strong>single</strong> assignment record. To reassign multiple classes or terms, delete and recreate.
@@ -281,7 +165,6 @@
                         </select>
                     </div>
 
-                    {{-- Classes (checkboxes for create, single select for edit) --}}
                     <div class="mb-4" id="classCheckboxGroup">
                         <label class="form-label">
                             Classes <span class="text-danger">*</span>
@@ -304,7 +187,6 @@
                         </div>
                     </div>
 
-                    {{-- Single class select (edit mode only) --}}
                     <div class="mb-4 d-none" id="classSingleGroup">
                         <label class="form-label">Class <span class="text-danger">*</span></label>
                         <select id="class_id_single" class="form-select">
@@ -315,7 +197,6 @@
                         </select>
                     </div>
 
-                    {{-- Terms (checkboxes for create, single select for edit) --}}
                     <div class="mb-4" id="termCheckboxGroup">
                         <label class="form-label">
                             Terms <span class="text-danger">*</span>
@@ -334,7 +215,6 @@
                         </div>
                     </div>
 
-                    {{-- Single term select (edit mode only) --}}
                     <div class="mb-4 d-none" id="termSingleGroup">
                         <label class="form-label">Term <span class="text-danger">*</span></label>
                         <select id="termid_id_single" class="form-select">
@@ -345,7 +225,6 @@
                         </select>
                     </div>
 
-                    {{-- Session --}}
                     <div class="mb-3">
                         <label class="form-label">Session <span class="text-danger">*</span></label>
                         <div class="d-flex flex-wrap gap-3" id="sessionRadios">
@@ -403,7 +282,6 @@
 <script>
 $(document).ready(function () {
 
-    // ── Route helpers ──────────────────────────────────────────────────
     const ROUTES = {
         index:       '{{ route("schoolbilltermsession.index") }}',
         data:        '{{ route("schoolbilltermsession.data") }}',
@@ -417,7 +295,6 @@ $(document).ready(function () {
     const CSRF = $('meta[name="csrf-token"]').attr('content');
     let table, deleteId = null;
 
-    // ── DataTable ──────────────────────────────────────────────────────
     table = $('#assignmentsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -464,7 +341,6 @@ $(document).ready(function () {
         },
     });
 
-    // ── Load stats ─────────────────────────────────────────────────────
     function loadStats() {
         $.get(ROUTES.stats, function (data) {
             if (data.stats) {
@@ -472,7 +348,7 @@ $(document).ready(function () {
                 $('#statBills'   ).text(data.stats.unique_bills);
                 $('#statSessions').text(data.stats.unique_sessions);
                 $('#statAmount'  ).text(
-                    '&#8358;' + Number(data.stats.total_amount)
+                    '\u20A6' + Number(data.stats.total_amount)
                         .toLocaleString('en-NG', { minimumFractionDigits: 0 })
                 );
             }
@@ -480,7 +356,6 @@ $(document).ready(function () {
     }
     loadStats();
 
-    // ── Checkboxes ─────────────────────────────────────────────────────
     function bindCheckboxes() {
         $('.row-checkbox').off('change').on('change', updateBulkBar);
     }
@@ -498,12 +373,10 @@ $(document).ready(function () {
         if (count === 0) $('#selectAll').prop('checked', false);
     }
 
-    // ── "Select All Classes" toggle ───────────────────────────────────
     $('#selectAllClasses').on('change', function () {
         $('.class-cb').prop('checked', this.checked);
     });
 
-    // ── Helpers: switch between create mode (checkboxes) / edit mode (selects)
     function setCreateMode() {
         $('#editNote'          ).addClass('d-none');
         $('#classCheckboxGroup').removeClass('d-none');
@@ -532,7 +405,6 @@ $(document).ready(function () {
         $('#formErrors').addClass('d-none').html('');
     }
 
-    // ── Create ─────────────────────────────────────────────────────────
     $('#createAssignmentBtn').on('click', function () {
         resetForm();
         setCreateMode();
@@ -541,7 +413,6 @@ $(document).ready(function () {
         $('#tsModal').modal('show');
     });
 
-    // ── Edit ───────────────────────────────────────────────────────────
     $(document).on('click', '.edit-assignment', function () {
         resetForm();
         setEditMode();
@@ -563,7 +434,6 @@ $(document).ready(function () {
         $('#tsModal').modal('show');
     });
 
-    // ── Save (create + update) ─────────────────────────────────────────
     $('#tsForm').on('submit', function (e) {
         e.preventDefault();
 
@@ -571,7 +441,6 @@ $(document).ready(function () {
         const isEdit = !!id;
         const url    = isEdit ? ROUTES.update(id) : ROUTES.store;
 
-        // Build payload
         const payload = {
             bill_id:    $('#bill_id').val(),
             session_id: $('input[name="session_id"]:checked').val() || '',
@@ -637,7 +506,6 @@ $(document).ready(function () {
         $('#formErrors').removeClass('d-none').html(html);
     }
 
-    // ── Single delete ──────────────────────────────────────────────────
     $(document).on('click', '.delete-assignment', function () {
         deleteId = $(this).data('id');
         $('#deleteItemTitle').text('"' + $(this).data('title') + '"');
@@ -666,8 +534,9 @@ $(document).ready(function () {
                     Swal.fire('Error!', res.message, 'error');
                 }
             },
-            error: function() {
-                Swal.fire('Error!', 'Failed to delete assignment.', 'error');
+            error: function(xhr) {
+                const j = xhr.responseJSON;
+                Swal.fire('Error!', (j && j.message) || 'Failed to delete assignment.', 'error');
             },
             complete: function() {
                 btn.prop('disabled', false)
@@ -677,10 +546,16 @@ $(document).ready(function () {
         });
     });
 
-    // ── Bulk delete ────────────────────────────────────────────────────
+    // =========================================================================
+    // BULK DELETE — sends as JSON, no traditional serialisation
+    // =========================================================================
     function doBulkDelete() {
-        const ids = $('.row-checkbox:checked').map(function(i, el) { return el.value; }).get();
-        if (!ids.length) return;
+        const ids = $('.row-checkbox:checked').map(function () { return this.value; }).get();
+
+        if (!ids.length) {
+            Swal.fire('No Selection', 'Please select at least one assignment.', 'warning');
+            return;
+        }
 
         Swal.fire({
             title: 'Delete ' + ids.length + ' assignment(s)?',
@@ -689,14 +564,15 @@ $(document).ready(function () {
             showCancelButton:   true,
             confirmButtonColor: '#dc2626',
             confirmButtonText:  'Yes, delete',
-        }).then(function(result) {
+        }).then(function (result) {
             if (!result.isConfirmed) return;
 
             $.ajax({
-                url:         ROUTES.bulkDestroy,
-                type:        'POST',
-                data:        { ids: ids, _token: CSRF },
-                traditional: true,
+                url: '{{ route("schoolbilltermsession.bulk-destroy") }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ ids: ids, _token: CSRF }),
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 success: function(res) {
                     if (res.success) {
                         table.ajax.reload();
@@ -707,10 +583,14 @@ $(document).ready(function () {
                             icon: 'success', title: 'Deleted!', text: res.message,
                             timer: 2000, showConfirmButton: false,
                         });
+                    } else {
+                        Swal.fire('Cannot Delete', res.message || 'Failed.', 'error');
                     }
                 },
-                error: function() {
-                    Swal.fire('Error!', 'Failed to delete assignments.', 'error');
+                error: function(xhr) {
+                    const j = xhr.responseJSON;
+                    const msg = (j && j.message) || 'Failed to delete assignments.';
+                    Swal.fire('Error!', msg, 'error');
                 },
             });
         });
