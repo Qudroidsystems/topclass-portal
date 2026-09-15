@@ -12,6 +12,7 @@ use App\Models\Schoolsession;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 use App\Models\StudentBillPayment;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\View;
 use App\Models\SchoolBillTermSession;
 use App\Models\StudentBillPaymentBook;
@@ -19,6 +20,12 @@ use Illuminate\Support\Facades\Validator;
 
 class AnalysisController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:View analysis', ['only' => ['index', 'analysisClassTermSession']]);
+        $this->middleware('permission:Export analysis', ['only' => ['exportPDF', 'schoolWidePaymentAnalysis']]);
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -326,7 +333,7 @@ class AnalysisController extends Controller
     /**
      * School-wide payment analysis.
      */
-    public function schoolWidePaymentAnalysis($termid_id = 1, $session_id = 2, $action = 'view', $format = 'pdf')
+    public function schoolWidePaymentAnalysis($termid_id = 2, $session_id = 1, $action = 'view', $format = 'pdf')
     {
         // Validate parameters
         $validator = Validator::make([

@@ -31,6 +31,10 @@ use App\Models\Studentpersonalityprofile;
 use App\Models\Studentpersonalityprofiles;
 use App\Models\Studentpicture;
 use App\Models\Subjectclass;
+use App\Models\Club;
+use App\Models\Sport;
+use App\Models\StudentClub;
+use App\Models\StudentSport;
 use App\Models\SubjectRegistrationStatus;
 use App\Traits\ImageManager as TraitsImageManager;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -44,6 +48,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Jobs\ProcessStudentBatchImport;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StudentController extends Controller
@@ -72,6 +77,8 @@ class StudentController extends Controller
         $schoolsessions = Schoolsession::select('id', 'session as name')->get();
         $currentSession = Schoolsession::where('status', 'Current')->first();
         $schoolhouses = Schoolhouse::all();
+        $clubs = Club::orderBy('club')->get(['id', 'club']);
+        $sports = Sport::orderBy('sport')->get(['id', 'sport']);
 
         $status_counts = Student::groupBy('statusId')
             ->selectRaw("CASE WHEN statusId = 1 THEN 'Old Student' ELSE 'New Student' END as student_status, COUNT(*) as student_count")
@@ -123,6 +130,8 @@ class StudentController extends Controller
             'schoolterms',
             'schoolsessions',
             'schoolhouses',
+            'clubs',
+            'sports',
             'currentSession',
             'status_counts',
             'student_status_counts',
@@ -209,6 +218,10 @@ class StudentController extends Controller
                 ->leftJoin('parentRegistration',  'parentRegistration.studentId',  '=', 'studentRegistration.id')
                 ->leftJoin('studenthouses',       'studenthouses.studentid',       '=', 'studentRegistration.id')
                 ->leftJoin('schoolhouses',        'schoolhouses.id',               '=', 'studenthouses.schoolhouse')
+                ->leftJoin('studentclubs',        'studentclubs.studentid',        '=', 'studentRegistration.id')
+                ->leftJoin('clubs',                'clubs.id',                      '=', 'studentclubs.clubid')
+                ->leftJoin('studentsports',       'studentsports.studentid',       '=', 'studentRegistration.id')
+                ->leftJoin('sports',               'sports.id',                     '=', 'studentsports.sportid')
                 ->whereIn('studentRegistration.id', $studentIds)
                 ->select([
                     'studentRegistration.*',
@@ -229,7 +242,15 @@ class StudentController extends Controller
                     'parentRegistration.parent_address',
                     'parentRegistration.father_title',
                     'parentRegistration.mother_title',
+                    'parentRegistration.guardian_name',
+                    'parentRegistration.guardian_relationship',
+                    'parentRegistration.guardian_phone',
+                    'parentRegistration.whatsapp_number',
                     'schoolhouses.house as school_house',
+                    'studentclubs.clubid',
+                    'clubs.club as club_name',
+                    'studentsports.sportid',
+                    'sports.sport as sport_name',
                 ])
                 ->orderBy('studentRegistration.created_at', 'desc')
                 ->get();
@@ -299,7 +320,11 @@ class StudentController extends Controller
                         'city'              => $student->city,
                         'religion'          => $student->religion,
                         'blood_group'       => $student->blood_group,
+                        'genotype'          => $student->genotype,
                         'mother_tongue'     => $student->mother_tongue,
+                        'emergency_contact_name'       => $student->emergency_contact_name,
+                        'emergency_contact_phone'      => $student->emergency_contact_phone,
+                        'allergies_medical_conditions' => $student->allergies_medical_conditions,
                         'nin_number'        => $student->nin_number,
                         'student_category'  => $student->student_category,
                         'last_school'       => $student->last_school,
@@ -315,8 +340,16 @@ class StudentController extends Controller
                         'mother_phone'      => $student->mother_phone,
                         'parent_email'      => $student->parent_email,
                         'parent_address'    => $student->parent_address,
+                        'guardian_name'         => $student->guardian_name,
+                        'guardian_relationship' => $student->guardian_relationship,
+                        'guardian_phone'        => $student->guardian_phone,
+                        'whatsapp_number'       => $student->whatsapp_number,
                         'office_address'    => $student->office_address,
                         'school_house'      => $student->school_house,
+                        'clubid'            => $student->clubid,
+                        'club_name'         => $student->club_name,
+                        'sportid'           => $student->sportid,
+                        'sport_name'        => $student->sport_name,
                     ];
                 } catch (\Exception $e) {
                     Log::error('Error processing student ID '.($student->id ?? 'unknown').': '.$e->getMessage());
@@ -366,6 +399,7 @@ class StudentController extends Controller
                 'nationality'        => 'required|string|max:255',
                 'age'                => 'required|integer|min:1|max:100',
                 'blood_group'        => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
+                'genotype'           => 'nullable|in:AA,AS,SS,AC,SC,CC',
                 'mother_tongue'      => 'nullable|string|max:255',
                 'religion'           => 'required|in:Christianity,Islam,Others',
                 'sport_house'        => 'nullable|string|max:255',
@@ -373,6 +407,9 @@ class StudentController extends Controller
                 'email'              => 'nullable|email|max:255',
                 'nin_number'         => 'nullable|string|max:20',
                 'city'               => 'nullable|string|max:255',
+                'emergency_contact_name'       => 'nullable|string|max:255',
+                'emergency_contact_phone'      => 'nullable|string|max:20',
+                'allergies_medical_conditions' => 'nullable|string|max:1000',
                 'state'              => ['required','string','max:255', function ($a,$v,$fail) use ($states) {
                     if (!in_array($v,$states)) $fail('The selected state is invalid.');
                 }],
@@ -385,6 +422,8 @@ class StudentController extends Controller
                 'student_category'   => 'required|in:Day,Boarding',
                 'schoolclassid'      => 'required|exists:schoolclass,id',
                 'schoolhouseid'      => 'required|exists:schoolhouses,id',
+                'clubid'             => 'nullable|exists:clubs,id',
+                'sportid'            => 'nullable|exists:sports,id',
                 'termid'             => 'required|exists:schoolterm,id',
                 'sessionid'          => 'required|exists:schoolsession,id',
                 'statusId'           => 'required|in:1,2',
@@ -400,6 +439,10 @@ class StudentController extends Controller
                 'mother_phone'       => 'nullable|string|max:20',
                 'parent_email'       => 'nullable|email|max:255',
                 'parent_address'     => 'nullable|string|max:255',
+                'guardian_name'         => 'nullable|string|max:255',
+                'guardian_relationship' => 'nullable|string|max:100',
+                'guardian_phone'        => 'nullable|string|max:20',
+                'whatsapp_number'       => 'nullable|string|max:20',
                 'last_school'        => 'nullable|string|max:255',
                 'last_class'         => 'nullable|string|max:255',
                 'reason_for_leaving' => 'nullable|string|max:500',
@@ -435,6 +478,7 @@ class StudentController extends Controller
             $student->dateofbirth        = $request->dateofbirth;
             $student->age                = $request->age;
             $student->blood_group        = $request->blood_group;
+            $student->genotype           = $request->genotype;
             $student->mother_tongue      = $request->mother_tongue;
             $student->religion           = $request->religion;
             $student->sport_house        = $request->sport_house;
@@ -442,6 +486,9 @@ class StudentController extends Controller
             $student->email              = $request->email;
             $student->nin_number         = $request->nin_number;
             $student->city               = $request->city;
+            $student->emergency_contact_name       = $request->emergency_contact_name;
+            $student->emergency_contact_phone      = $request->emergency_contact_phone;
+            $student->allergies_medical_conditions = $request->allergies_medical_conditions;
             $student->state              = $request->state;
             $student->local              = $request->local;
             $student->nationality        = $request->nationality;
@@ -488,6 +535,10 @@ class StudentController extends Controller
             $parent->office_address = $request->office_address;
             $parent->parent_email = $request->parent_email;
             $parent->parent_address = $request->parent_address;
+            $parent->guardian_name         = $request->guardian_name;
+            $parent->guardian_relationship = $request->guardian_relationship;
+            $parent->guardian_phone        = $request->guardian_phone;
+            $parent->whatsapp_number       = $request->whatsapp_number;
             $parent->save();
 
             $picture            = new Studentpicture();
@@ -506,6 +557,24 @@ class StudentController extends Controller
             $studenthouses->termid    = $request->termid;
             $studenthouses->sessionid = $request->sessionid;
             $studenthouses->save();
+
+            if ($request->filled('clubid')) {
+                StudentClub::create([
+                    'studentid' => $studentId,
+                    'clubid'    => $request->clubid,
+                    'termid'    => $request->termid,
+                    'sessionid' => $request->sessionid,
+                ]);
+            }
+
+            if ($request->filled('sportid')) {
+                StudentSport::create([
+                    'studentid' => $studentId,
+                    'sportid'   => $request->sportid,
+                    'termid'    => $request->termid,
+                    'sessionid' => $request->sessionid,
+                ]);
+            }
 
             $studentpersonalityprofiles              = new Studentpersonalityprofile();
             $studentpersonalityprofiles->studentid   = $studentId;
@@ -674,6 +743,10 @@ class StudentController extends Controller
                 ->leftJoin('schoolsession',     'schoolsession.id',       '=','studentclass.sessionid')
                 ->leftJoin('studenthouses',     'studenthouses.studentId','=','studentRegistration.id')
                 ->leftJoin('schoolhouses',      'schoolhouses.id',        '=','studenthouses.schoolhouse')
+                ->leftJoin('studentclubs',      'studentclubs.studentid', '=','studentRegistration.id')
+                ->leftJoin('clubs',             'clubs.id',               '=','studentclubs.clubid')
+                ->leftJoin('studentsports',     'studentsports.studentid','=','studentRegistration.id')
+                ->leftJoin('sports',            'sports.id',              '=','studentsports.sportid')
                 ->select([
                     'studentRegistration.id',
                     'studentRegistration.admissionNo',
@@ -687,7 +760,11 @@ class StudentController extends Controller
                     'studentRegistration.dateofbirth',
                     'studentRegistration.age',
                     'studentRegistration.blood_group',
+                    'studentRegistration.genotype',
                     'studentRegistration.mother_tongue',
+                    'studentRegistration.emergency_contact_name',
+                    'studentRegistration.emergency_contact_phone',
+                    'studentRegistration.allergies_medical_conditions',
                     'studentRegistration.religion',
                     'studentRegistration.sport_house',
                     'studentRegistration.phone_number',
@@ -724,9 +801,17 @@ class StudentController extends Controller
                     'parentRegistration.mother_phone',
                     'parentRegistration.parent_email',
                     'parentRegistration.parent_address',
+                    'parentRegistration.guardian_name',
+                    'parentRegistration.guardian_relationship',
+                    'parentRegistration.guardian_phone',
+                    'parentRegistration.whatsapp_number',
                     'studentpicture.picture',
                     'studenthouses.schoolhouse as schoolhouseid',
                     'schoolhouses.house as school_house',
+                    'studentclubs.clubid',
+                    'clubs.club as club_name',
+                    'studentsports.sportid',
+                    'sports.sport as sport_name',
                 ])
                 ->first();
 
@@ -798,6 +883,7 @@ public function update(Request $request, $id): JsonResponse
             'nationality'        => 'required|string|max:255',
             'age'                => 'required|integer|min:1|max:100',
             'blood_group'        => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
+            'genotype'           => 'nullable|in:AA,AS,SS,AC,SC,CC',
             'mother_tongue'      => 'nullable|string|max:255',
             'religion'           => 'required|in:Christianity,Islam,Others',
             'sport_house'        => 'nullable|string|max:255',
@@ -805,6 +891,9 @@ public function update(Request $request, $id): JsonResponse
             'email'              => 'nullable|email|max:255',
             'nin_number'         => 'nullable|string|max:20',
             'city'               => 'nullable|string|max:255',
+            'emergency_contact_name'       => 'nullable|string|max:255',
+            'emergency_contact_phone'      => 'nullable|string|max:20',
+            'allergies_medical_conditions' => 'nullable|string|max:1000',
             'state'              => 'required|string|max:255',
             'local'              => 'required|string|max:255',
             'future_ambition'    => 'required|string|max:500',
@@ -812,6 +901,8 @@ public function update(Request $request, $id): JsonResponse
             'student_category'   => 'required|in:Day,Boarding',
             'schoolclassid'      => 'required|exists:schoolclass,id',
             'schoolhouseid'      => 'nullable|exists:schoolhouses,id',
+            'clubid'             => 'nullable|exists:clubs,id',
+            'sportid'            => 'nullable|exists:sports,id',
             'termid'             => 'required|exists:schoolterm,id',
             'sessionid'          => 'required|exists:schoolsession,id',
             'statusId'           => 'required|in:1,2',
@@ -827,6 +918,10 @@ public function update(Request $request, $id): JsonResponse
             'mother_phone'       => 'nullable|string|max:20',
             'parent_email'       => 'nullable|email|max:255',
             'parent_address'     => 'nullable|string|max:255',
+            'guardian_name'         => 'nullable|string|max:255',
+            'guardian_relationship' => 'nullable|string|max:100',
+            'guardian_phone'        => 'nullable|string|max:20',
+            'whatsapp_number'       => 'nullable|string|max:20',
             'last_school'        => 'nullable|string|max:255',
             'last_class'         => 'nullable|string|max:255',
             'reason_for_leaving' => 'nullable|string|max:500',
@@ -872,26 +967,11 @@ public function update(Request $request, $id): JsonResponse
         // 1. Core student record
         $student = Student::findOrFail($id);
 
-        // Handle title field - if empty, set default based on gender
-        $title = $request->title;
-        if (empty($title)) {
-            $title = $request->gender === 'Male' ? 'Master' : 'Miss';
-            Log::info('Title was empty, set default: ' . $title . ' for student ID: ' . $id);
-        }
-
-        // Handle admission number
-        if ($request->admissionMode === 'auto') {
-            $admissionResponse = $this->getLastAdmissionNumber(new Request(['year' => $request->admissionYear]));
-            $admissionData = json_decode($admissionResponse->getContent(), true);
-            if ($admissionData['success']) {
-                $student->admissionNo = $admissionData['admissionNo'];
-            }
-        } else {
-            $student->admissionNo = $request->admissionNo;
-        }
-
+        $student->admissionNo        = $request->admissionMode === 'auto'
+            ? $this->generateAdmissionNumber()
+            : $request->admissionNo;
         $student->admission_date     = $request->admissionDate;
-        $student->title              = $title;
+        $student->title              = $request->title;
         $student->admissionYear      = $request->admissionYear;
         $student->firstname          = $request->firstname;
         $student->lastname           = $request->lastname;
@@ -900,6 +980,7 @@ public function update(Request $request, $id): JsonResponse
         $student->dateofbirth        = $request->dateofbirth;
         $student->age                = $request->age;
         $student->blood_group        = $request->blood_group;
+        $student->genotype           = $request->genotype;
         $student->mother_tongue      = $request->mother_tongue;
         $student->religion           = $request->religion;
         $student->sport_house        = $request->sport_house;
@@ -907,6 +988,9 @@ public function update(Request $request, $id): JsonResponse
         $student->email              = $request->email;
         $student->nin_number         = $request->nin_number;
         $student->city               = $request->city;
+        $student->emergency_contact_name       = $request->emergency_contact_name;
+        $student->emergency_contact_phone      = $request->emergency_contact_phone;
+        $student->allergies_medical_conditions = $request->allergies_medical_conditions;
         $student->state              = $request->state;
         $student->local              = $request->local;
         $student->nationality        = $request->nationality;
@@ -922,9 +1006,9 @@ public function update(Request $request, $id): JsonResponse
         $student->registeredBy       = auth()->user()->id;
         $student->save();
 
-        // 2. Studentclass - Update or create
+        // 2. Studentclass
         $existingClass = Studentclass::where('studentId', $id)
-            ->where('termid', $request->termid)
+            ->where('termid',    $request->termid)
             ->where('sessionid', $request->sessionid)
             ->first();
 
@@ -939,7 +1023,7 @@ public function update(Request $request, $id): JsonResponse
             ]);
         }
 
-        // 3. PromotionStatus - Update or create
+        // 3. PromotionStatus
         PromotionStatus::updateOrCreate(
             [
                 'studentId'     => $id,
@@ -953,7 +1037,7 @@ public function update(Request $request, $id): JsonResponse
             ]
         );
 
-        // 4. Parent Registration - Update or create
+        // 4. Parent
         $parent = ParentRegistration::firstOrNew(['studentId' => $id]);
         $parent->father_title      = $request->father_title;
         $parent->mother_title      = $request->mother_title;
@@ -966,20 +1050,26 @@ public function update(Request $request, $id): JsonResponse
         $parent->office_address    = $request->office_address;
         $parent->parent_email      = $request->parent_email;
         $parent->parent_address    = $request->parent_address;
+        $parent->guardian_name         = $request->guardian_name;
+        $parent->guardian_relationship = $request->guardian_relationship;
+        $parent->guardian_phone        = $request->guardian_phone;
+        $parent->whatsapp_number       = $request->whatsapp_number;
         $parent->save();
 
-        // 5. Student Picture - Update or create
+        // 5. Picture
         $picture = Studentpicture::firstOrNew(['studentid' => $id]);
         if ($request->hasFile('avatar')) {
-            // Delete old image if exists
             if ($picture->picture && $picture->picture !== 'unnamed.jpg') {
-                try {
-                    Storage::delete('public/images/student_avatars/' . $picture->picture);
-                } catch (\Exception $e) {
-                    Log::warning('Could not delete old avatar: ' . $e->getMessage());
+                $oldPath = storage_path('app/public/images/student_avatars/' . $picture->picture);
+                if (file_exists($oldPath)) {
+                    try {
+                        Storage::delete('public/images/student_avatars/' . $picture->picture);
+                    } catch (\Exception $e) {
+                        Log::warning('Could not delete old avatar: ' . $e->getMessage());
+                    }
                 }
             }
-            $path = $this->storeImage($request->file('avatar'), 'images/student_avatars');
+            $path            = $this->storeImage($request->file('avatar'), 'images/student_avatars');
             $picture->picture = basename($path);
         }
         if (!$picture->picture) {
@@ -987,7 +1077,7 @@ public function update(Request $request, $id): JsonResponse
         }
         $picture->save();
 
-        // 6. Student House - Update or create
+        // 6. Student house
         if ($request->filled('schoolhouseid')) {
             Studenthouse::updateOrCreate(
                 [
@@ -999,7 +1089,24 @@ public function update(Request $request, $id): JsonResponse
             );
         }
 
-        // 7. Personality Profile - Create if not exists
+        // Club & Sport — keyed on studentid alone (matches their actual
+        // primary key), so a student has at most one of each at a time,
+        // with termid/sessionid updated to reflect when it was last set.
+        if ($request->filled('clubid')) {
+            StudentClub::updateOrCreate(
+                ['studentid' => $id],
+                ['clubid' => $request->clubid, 'termid' => $request->termid, 'sessionid' => $request->sessionid]
+            );
+        }
+
+        if ($request->filled('sportid')) {
+            StudentSport::updateOrCreate(
+                ['studentid' => $id],
+                ['sportid' => $request->sportid, 'termid' => $request->termid, 'sessionid' => $request->sessionid]
+            );
+        }
+
+        // 7. Personality profile
         Studentpersonalityprofile::firstOrCreate([
             'studentid'     => $id,
             'schoolclassid' => $request->schoolclassid,
@@ -1007,14 +1114,39 @@ public function update(Request $request, $id): JsonResponse
             'sessionid'     => $request->sessionid,
         ]);
 
-        // 8. StudentCurrentTerm - PROPERLY HANDLE UNIQUE CONSTRAINT
-        $this->updateStudentCurrentTerm($id, $request->schoolclassid, $request->termid, $request->sessionid);
+        // 8. StudentCurrentTerm - FIXED
+        // First, check if there's already a record for this specific combination
+        $existingTerm = StudentCurrentTerm::where('studentId', $id)
+            ->where('termId', $request->termid)
+            ->where('sessionId', $request->sessionid)
+            ->first();
+
+        if ($existingTerm) {
+            // Update existing record
+            $existingTerm->update([
+                'schoolclassId' => $request->schoolclassid,
+                'is_current'    => true
+            ]);
+
+            // Set all other term records for this student to is_current = false
+            StudentCurrentTerm::where('studentId', $id)
+                ->where('id', '!=', $existingTerm->id)
+                ->update(['is_current' => false]);
+        } else {
+            // Create new record - first, set all existing to false
+            StudentCurrentTerm::where('studentId', $id)->update(['is_current' => false]);
+
+            // Then create the new record
+            StudentCurrentTerm::create([
+                'studentId'     => $id,
+                'schoolclassId' => $request->schoolclassid,
+                'termId'        => $request->termid,
+                'sessionId'     => $request->sessionid,
+                'is_current'    => true,
+            ]);
+        }
 
         DB::commit();
-
-        // Clear cache for this student
-        Cache::forget('student_' . $id);
-        Cache::forget('student_terms_' . $id);
 
         return response()->json([
             'success'  => true,
@@ -1041,22 +1173,32 @@ public function update(Request $request, $id): JsonResponse
                 'phone_number'       => $student->phone_number,
                 'nin_number'         => $student->nin_number,
                 'blood_group'        => $student->blood_group,
+                'genotype'           => $student->genotype,
                 'mother_tongue'      => $student->mother_tongue,
-                'father_name'        => $parent->father ?? '',
-                'father_phone'       => $parent->father_phone ?? '',
+                'emergency_contact_name'       => $student->emergency_contact_name,
+                'emergency_contact_phone'      => $student->emergency_contact_phone,
+                'allergies_medical_conditions' => $student->allergies_medical_conditions,
+                'father_name'        => $parent->father          ?? '',
+                'father_phone'       => $parent->father_phone    ?? '',
                 'father_occupation'  => $parent->father_occupation ?? '',
-                'mother_name'        => $parent->mother ?? '',
-                'mother_phone'       => $parent->mother_phone ?? '',
-                'parent_address'     => $parent->parent_address ?? '',
+                'mother_name'        => $parent->mother          ?? '',
+                'mother_phone'       => $parent->mother_phone    ?? '',
+                'parent_address'     => $parent->parent_address  ?? '',
+                'guardian_name'         => $parent->guardian_name         ?? '',
+                'guardian_relationship' => $parent->guardian_relationship ?? '',
+                'guardian_phone'        => $parent->guardian_phone        ?? '',
+                'whatsapp_number'       => $parent->whatsapp_number       ?? '',
                 'student_category'   => $student->student_category,
                 'reason_for_leaving' => $student->reason_for_leaving,
-                'picture'            => $picture->picture ?? 'unnamed.jpg',
+                'picture'            => $picture->picture        ?? 'unnamed.jpg',
                 'state'              => $student->state,
                 'local'              => $student->local,
                 'statusId'           => $student->statusId,
                 'student_status'     => $student->student_status,
                 'future_ambition'    => $student->future_ambition,
                 'permanent_address'  => $student->home_address2,
+                'clubid'             => $request->clubid,
+                'sportid'            => $request->sportid,
             ],
         ], 200);
 
@@ -1064,23 +1206,6 @@ public function update(Request $request, $id): JsonResponse
         DB::rollBack();
         Log::error("Student ID {$id} not found during update");
         return response()->json(['success' => false, 'message' => 'Student not found'], 404);
-
-    } catch (\Illuminate\Database\QueryException $e) {
-        DB::rollBack();
-        Log::error("Database error updating student ID {$id}: {$e->getMessage()}");
-
-        // Check if it's a duplicate entry error
-        if ($e->errorInfo[1] == 1062) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Duplicate entry error. The student may already have a current term record. Please try again.',
-            ], 409);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Database error: ' . $e->getMessage(),
-        ], 500);
 
     } catch (\Exception $e) {
         DB::rollBack();
@@ -1092,87 +1217,6 @@ public function update(Request $request, $id): JsonResponse
     }
 }
 
-/**
- * Helper method to update student current term while respecting unique constraint
- */
-private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $sessionId)
-{
-    try {
-        // First, check if there's already a record for this specific term/session
-        $existingTerm = StudentCurrentTerm::where('studentId', $studentId)
-            ->where('termId', $termId)
-            ->where('sessionId', $sessionId)
-            ->first();
-
-        if ($existingTerm) {
-            // Before updating, set all other records to is_current = false
-            StudentCurrentTerm::where('studentId', $studentId)
-                ->where('id', '!=', $existingTerm->id)
-                ->update(['is_current' => false]);
-
-            // Now update the existing record
-            $existingTerm->update([
-                'schoolclassId' => $schoolclassId,
-                'is_current'    => true
-            ]);
-
-            Log::info('Updated existing current term record', [
-                'student_id' => $studentId,
-                'record_id' => $existingTerm->id
-            ]);
-        } else {
-            // Check if there's any record marked as current for this student
-            $currentRecord = StudentCurrentTerm::where('studentId', $studentId)
-                ->where('is_current', true)
-                ->first();
-
-            if ($currentRecord) {
-                // Set the existing current record to false
-                $currentRecord->update(['is_current' => false]);
-                Log::info('Unset previous current term record', [
-                    'student_id' => $studentId,
-                    'old_record_id' => $currentRecord->id
-                ]);
-            }
-
-            // Create the new record
-            $newRecord = StudentCurrentTerm::create([
-                'studentId'     => $studentId,
-                'schoolclassId' => $schoolclassId,
-                'termId'        => $termId,
-                'sessionId'     => $sessionId,
-                'is_current'    => true,
-            ]);
-
-            Log::info('Created new current term record', [
-                'student_id' => $studentId,
-                'record_id' => $newRecord->id
-            ]);
-        }
-
-    } catch (\Illuminate\Database\QueryException $e) {
-        // If we still get a duplicate error, do a more aggressive cleanup
-        if ($e->errorInfo[1] == 1062) {
-            Log::warning('Duplicate entry detected, performing aggressive cleanup for student: ' . $studentId);
-
-            // Delete ALL current term records for this student
-            StudentCurrentTerm::where('studentId', $studentId)->delete();
-
-            // Create fresh record
-            StudentCurrentTerm::create([
-                'studentId'     => $studentId,
-                'schoolclassId' => $schoolclassId,
-                'termId'        => $termId,
-                'sessionId'     => $sessionId,
-                'is_current'    => true,
-            ]);
-
-            Log::info('Aggressive cleanup completed for student: ' . $studentId);
-        } else {
-            throw $e;
-        }
-    }
-}
 
 
     protected function deleteImage($filename)
@@ -1218,6 +1262,8 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
 
             SubjectRegistrationStatus::where('studentId', $id)->delete();
             Studenthouse::where('studentid', $id)->delete();
+            StudentClub::where('studentid', $id)->delete();
+            StudentSport::where('studentid', $id)->delete();
             Studentpersonalityprofile::where('studentid', $id)->delete();
             StudentCurrentTerm::where('studentId', $id)->delete();
 
@@ -1258,6 +1304,8 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
                 Broadsheet::where('studentId', $id)->delete();
                 SubjectRegistrationStatus::where('studentId', $id)->delete();
                 Studenthouse::where('studentid', $id)->delete();
+                StudentClub::where('studentid', $id)->delete();
+                StudentSport::where('studentid', $id)->delete();
                 Studentpersonalityprofile::where('studentid', $id)->delete();
                 StudentCurrentTerm::where('studentId', $id)->delete();
             }
@@ -1315,6 +1363,8 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
                 Studentpicture::where('studentid', $studentId)->delete();
                 SubjectRegistrationStatus::where('studentId', $studentId)->delete();
                 Studenthouse::where('studentid', $studentId)->delete();
+                StudentClub::where('studentid', $studentId)->delete();
+                StudentSport::where('studentid', $studentId)->delete();
                 Studentpersonalityprofile::where('studentid', $studentId)->delete();
                 StudentCurrentTerm::where('studentId', $studentId)->delete();
             }
@@ -1376,54 +1426,96 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
         return view('student.batchindex', compact('batch','schoolclasses','schoolterms','schoolsessions','pagetitle'));
     }
 
-    public function bulkuploadsave(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'filesheet'    => 'required|mimes:xlsx,csv,xls',
-            'title'        => 'required',
-            'termid'       => 'required|exists:schoolterm,id',
-            'sessionid'    => 'required|exists:schoolsession,id',
-            'schoolclassid'=> 'required|exists:schoolclass,id',
-        ]);
+  public function bulkuploadsave(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'filesheet'    => 'required|mimes:xlsx,csv,xls|max:10240', // 10MB
+        'title'        => 'required|string|max:255',
+        'termid'       => 'required|exists:schoolterm,id',
+        'sessionid'    => 'required|exists:schoolsession,id',
+        'schoolclassid'=> 'required|exists:schoolclass,id',
+    ]);
 
-        if ($validator->fails()) return redirect()->back()->withErrors($validator)->withInput();
-
-        if (StudentBatchModel::where('title', $request->title)->exists()) {
-            return redirect()->back()->with('success', 'Title already used. Please choose another.');
+    if ($validator->fails()) {
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
-
-        try {
-            DB::beginTransaction();
-
-            $batch = StudentBatchModel::create([
-                'title'        => $request->title,
-                'schoolclassid'=> $request->schoolclassid,
-                'termid'       => $request->termid,
-                'session'      => $request->sessionid,
-                'status'       => '',
-            ]);
-
-            session(['sclassid'=>$request->schoolclassid,'tid'=>$request->termid,'sid'=>$request->sessionid,'batchid'=>$batch->id]);
-
-            (new StudentsImport())->import($request->file('filesheet'), null, \Maatwebsite\Excel\Excel::XLSX);
-            $batch->update(['status'=>'Success']);
-
-            DB::commit();
-
-            return redirect()->back()->with('success', 'Student Batch File Imported Successfully');
-
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-            DB::rollBack();
-            $batch->update(['status'=>'Failed']);
-            $errors = collect($e->failures())->map(fn($f) => "Row {$f->row()}: ".implode(', ',$f->errors()))->implode('; ');
-            return redirect()->back()->with('status', $errors);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error importing batch: {$e->getMessage()}");
-            return redirect()->back()->with('status', 'Failed to import batch: '.$e->getMessage());
-        }
+        return redirect()->back()->withErrors($validator)->withInput();
     }
 
+    if (StudentBatchModel::where('title', $request->title)->exists()) {
+        $message = 'Title already used. Please choose another.';
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+        return redirect()->back()->with('success', $message);
+    }
+
+    try {
+        // Persist to disk before the request ends — a queue worker runs in a
+        // separate process and cannot see PHP's ephemeral temp-upload file.
+        $storedPath = $request->file('filesheet')->store('batch-imports', 'local');
+
+        $batch = StudentBatchModel::create([
+            'title'         => $request->title,
+            'schoolclassid' => $request->schoolclassid,
+            'termid'        => $request->termid,
+            'session'       => $request->sessionid,
+            'status'        => 'Processing',
+        ]);
+
+        $progressKey = 'batch_import_' . $batch->id . '_' . uniqid();
+
+        Cache::put($progressKey, [
+            'status'   => 'queued',
+            'progress' => 0,
+            'total'    => 0,
+            'message'  => 'Waiting to start...',
+        ], now()->addMinutes(30));
+
+        ProcessStudentBatchImport::dispatch(
+            $storedPath,
+            $batch->id,
+            $progressKey,
+            (int) $request->schoolclassid,
+            (int) $request->termid,
+            (int) $request->sessionid,
+            auth()->id()
+        );
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'      => true,
+                'message'      => 'Batch upload queued for processing.',
+                'batch_id'     => $batch->id,
+                'progress_key' => $progressKey,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Batch upload queued for processing.');
+
+    } catch (\Exception $e) {
+        Log::error("Error queuing batch import: {$e->getMessage()}");
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => 'Failed to queue import: ' . $e->getMessage()], 500);
+        }
+        return redirect()->back()->with('status', 'Failed to queue import: ' . $e->getMessage());
+    }
+}
+
+public function getBatchImportProgress(Request $request)
+{
+    $request->validate(['progress_key' => 'required|string']);
+
+    $progress = Cache::get($request->progress_key, [
+        'status'   => 'unknown',
+        'progress' => 0,
+        'total'    => 0,
+        'message'  => 'No progress data found (it may have expired).',
+    ]);
+
+    return response()->json(['success' => true, 'progress' => $progress]);
+}
     public function getLastAdmissionNumber(Request $request)
     {
         try {
@@ -1449,12 +1541,6 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
             return response()->json(['success'=>false,'message'=>'Failed to generate admission number'], 500);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Report generation and all remaining methods below are UNCHANGED from
-    // the original — copy them in verbatim from your existing controller.
-    // Only store(), update(), edit(), and getStudentsOptimized() changed above.
-    // -------------------------------------------------------------------------
 
     public function generateReport(Request $request)
     {
@@ -1591,7 +1677,11 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
                     'dateofbirth'         => $student->dateofbirth,
                     'age'                 => $student->age,
                     'blood_group'         => $student->blood_group,
+                    'genotype'            => $student->genotype,
                     'mother_tongue'       => $student->mother_tongue,
+                    'emergency_contact_name'       => $student->emergency_contact_name,
+                    'emergency_contact_phone'      => $student->emergency_contact_phone,
+                    'allergies_medical_conditions' => $student->allergies_medical_conditions,
                     'religion'            => $student->religion,
                     'phone_number'        => $student->phone_number,
                     'email'               => $student->email,
@@ -1634,6 +1724,10 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
                     'parent_address'      => $parent ? $parent->parent_address : null,
                     'father_occupation'   => $parent ? $parent->father_occupation : null,
                     'father_city'         => $parent ? $parent->father_city : null,
+                    'guardian_name'         => $parent ? $parent->guardian_name : null,
+                    'guardian_relationship' => $parent ? $parent->guardian_relationship : null,
+                    'guardian_phone'        => $parent ? $parent->guardian_phone : null,
+                    'whatsapp_number'       => $parent ? $parent->whatsapp_number : null,
                 ];
             });
 
@@ -1871,227 +1965,452 @@ private function updateStudentCurrentTerm($studentId, $schoolclassId, $termId, $
         }
     }
 
-    public function getStudentsByCurrentFilters(Request $request)
-    {
-        $request->validate(['classId'=>'nullable|exists:schoolclass,id','termId'=>'nullable|exists:schoolterm,id','sessionId'=>'nullable|exists:schoolsession,id']);
-        try {
-            $query = StudentCurrentTerm::with(['student','schoolClass','term','session'])->where('is_current', true);
-            if ($request->filled('classId'))   $query->where('schoolclassId', $request->classId);
-            if ($request->filled('termId'))    $query->where('termId',        $request->termId);
-            if ($request->filled('sessionId')) $query->where('sessionId',     $request->sessionId);
-            return response()->json(['success'=>true,'data'=>$query->get()]);
-        } catch (\Exception $e) {
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
-        }
-    }
-
-    public function updateCurrentTerm(Request $request, $studentId)
-    {
-        $request->validate(['schoolclassId'=>'required|exists:schoolclass,id','termId'=>'required|exists:schoolterm,id','sessionId'=>'required|exists:schoolsession,id','is_current'=>'sometimes|boolean']);
-        try {
-            if (!Student::find($studentId)) return response()->json(['success'=>false,'message'=>'Student not found'], 404);
-            $currentTerm = StudentCurrentTerm::registerTerm($studentId, $request->schoolclassId, $request->termId, $request->sessionId, $request->input('is_current', true));
-            return response()->json(['success'=>true,'message'=>'Term registered successfully','data'=>$currentTerm]);
-        } catch (\Exception $e) {
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
-        }
-    }
-
-    public function bulkUpdateCurrentTerm(Request $request)
-    {
-        $request->validate([
-            'student_ids'   => 'required|array',
-            'student_ids.*' => 'exists:studentRegistration,id',
-            'schoolclassId' => 'required|exists:schoolclass,id',
-            'termId'        => 'required|exists:schoolterm,id',
-            'sessionId'     => 'required|exists:schoolsession,id',
-            'is_current'    => 'sometimes|boolean',
-        ]);
-        try {
-            DB::beginTransaction();
-            $success = 0; $failed = 0; $results = [];
-            foreach ($request->student_ids as $studentId) {
-                try {
-                    if (!Student::find($studentId)) { $results[$studentId]='Not found'; $failed++; continue; }
-                    StudentCurrentTerm::registerTerm($studentId, $request->schoolclassId, $request->termId, $request->sessionId, $request->input('is_current', true));
-                    $results[$studentId]='Success'; $success++;
-                } catch (\Exception $e) {
-                    Log::error("Error registering term for student {$studentId}: ".$e->getMessage());
-                    $results[$studentId]='Failed: '.$e->getMessage(); $failed++;
-                }
-            }
-            DB::commit();
-            return response()->json(['success'=>true,'message'=>"Registered term for {$success} student(s). Failed: {$failed}.",'data'=>$results,'summary'=>['total'=>count($request->student_ids),'success'=>$success,'failed'=>$failed]]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
-        }
-    }
-
-    public function getStudentsByClassAndSession(Request $request)
+    public function getBatchImportErrors($id)
     {
         try {
-            $request->validate(['class_id'=>'required|exists:schoolclass,id','session_id'=>'required|exists:schoolsession,id']);
+            $batch = StudentBatchModel::findOrFail($id);
 
-            $students = Student::query()
-                ->leftJoin('studentclass',  'studentclass.studentId',  '=','studentRegistration.id')
-                ->leftJoin('studentpicture','studentpicture.studentid','=','studentRegistration.id')
-                ->leftJoin('schoolclass',   'schoolclass.id',          '=','studentclass.schoolclassid')
-                ->leftJoin('schoolarm',     'schoolarm.id',            '=','schoolclass.arm')
-                ->where('studentclass.schoolclassid', $request->class_id)
-                ->where('studentclass.sessionid',     $request->session_id)
-                ->select([
-                    'studentRegistration.id',
-                    'studentRegistration.admissionNo',
-                    'studentRegistration.firstname',
-                    'studentRegistration.lastname',
-                    'studentRegistration.othername',
-                    'studentRegistration.gender',
-                    'studentRegistration.statusId',
-                    'studentRegistration.student_status',
-                    'studentpicture.picture',
-                    'schoolclass.schoolclass',
-                    'schoolarm.arm',
-                ])->get();
-
-            $processedStudents = $students->map(function ($student) {
-                $s = new \stdClass();
-                $s->id             = $student->id;
-                $s->admissionNo    = $student->admissionNo;
-                $s->firstname      = $student->firstname;
-                $s->lastname       = $student->lastname;
-                $s->othername      = $student->othername;
-                $s->gender         = $student->gender;
-                $s->statusId       = $student->statusId;
-                $s->student_status = $student->student_status;
-                $s->picture        = $student->picture;
-                $s->schoolclass    = $student->schoolclass;
-                $s->arm            = $student->arm;
-                return $s;
-            });
+            $errors = $batch->import_errors
+                ? json_decode($batch->import_errors, true)
+                : [];
 
             return response()->json([
-                'success'  => true,
-                'students' => $processedStudents,
-                'stats'    => [
-                    'total'        => $processedStudents->count(),
-                    'active'       => $processedStudents->where('student_status','Active')->count(),
-                    'inactive'     => $processedStudents->where('student_status','Inactive')->count(),
-                    'old_students' => $processedStudents->where('statusId',1)->count(),
-                    'new_students' => $processedStudents->where('statusId',2)->count(),
-                ],
+                'success' => true,
+                'title'   => $batch->title,
+                'status'  => $batch->status,
+                'errors'  => $errors,
             ]);
-
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'Batch not found'], 404);
         } catch (\Exception $e) {
-            Log::error('Error in getStudentsByClassAndSession: '.$e->getMessage());
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
+            Log::error("Error fetching batch import errors: {$e->getMessage()}");
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    public function bulkUpdateStatus(Request $request)
-    {
-        try {
-            $request->validate([
-                'student_ids'   => 'required|array',
-                'student_ids.*' => 'exists:studentRegistration,id',
-                'update_type'   => 'required|in:activity_status,student_type',
-                'value'         => 'required',
-            ]);
+/**
+ * Generate a locked Excel template for batch student upload.
+ */
+public function generateBatchTemplate(Request $request)
+{
+    $request->validate([
+        'schoolclassid' => 'required|exists:schoolclass,id',
+        'termid'        => 'required|exists:schoolterm,id',
+        'sessionid'     => 'required|exists:schoolsession,id',
+        'rows'          => 'nullable|integer|min:1|max:500',
+    ]);
 
-            DB::beginTransaction();
+    try {
+        $class = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select(
+                'schoolclass.id',
+                'schoolclass.schoolclass',
+                'schoolarm.arm'
+            )
+            ->where('schoolclass.id', $request->schoolclassid)
+            ->firstOrFail();
 
-            $updated = 0;
-            if ($request->update_type === 'activity_status') {
-                if (!in_array($request->value, ['Active','Inactive'])) throw new \Exception('Invalid activity status value.');
-                $updated = Student::whereIn('id', $request->student_ids)->update(['student_status'=>$request->value]);
-            } else {
-                if (!in_array($request->value, ['old','new'])) throw new \Exception('Invalid student type value.');
-                $updated = Student::whereIn('id', $request->student_ids)->update(['statusId'=>$request->value==='old'?1:2]);
+        $term    = Schoolterm::findOrFail($request->termid);
+        $session = Schoolsession::findOrFail($request->sessionid);
+
+        $className = $class->schoolclass . ($class->arm ? ' ' . $class->arm : '');
+        $rows      = (int) $request->input('rows', 30);
+
+        // ── Build a filesystem-safe filename from class/arm, term, and session ──
+        $sanitize = function (string $value): string {
+            $value = str_replace(['/', '\\'], '-', $value);          // "2026/2027" -> "2026-2027"
+            $value = preg_replace('/[^A-Za-z0-9\- ]/', '', $value);  // strip anything else unsafe
+            $value = preg_replace('/\s+/', '-', trim($value));       // spaces -> dashes
+            $value = preg_replace('/-+/', '-', $value);              // collapse repeated dashes
+            return $value;
+        };
+
+        $filename = sprintf(
+            '%s_%s_%s_Batch-Template_%s.xlsx',
+            $sanitize($className),
+            $sanitize($term->term),
+            $sanitize($session->session),
+            now()->format('Ymd-His')
+        );
+
+        return Excel::download(
+            new \App\Exports\StudentBatchTemplateExport(
+                (int) $request->schoolclassid,
+                (int) $request->termid,
+                (int) $request->sessionid,
+                $rows,
+                $className,
+                $term->term,
+                $session->session
+            ),
+            $filename
+        );
+    } catch (\Exception $e) {
+        Log::error('Failed to generate batch template: ' . $e->getMessage());
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return redirect()->back()->with('error', 'Failed to generate template: ' . $e->getMessage());
+    }
+}
+
+
+/**
+ * Delete multiple student batches (and all students belonging to them).
+ */
+public function deleteStudentBatchMultiple(Request $request): JsonResponse
+{
+    $validator = Validator::make($request->all(), [
+        'ids'   => 'required|array|min:1',
+        'ids.*' => 'required|integer|exists:student_batch_upload,id',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid batch selection: ' . $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+        ], 422);
+    }
+
+    try {
+        if (!Schema::hasTable('student_batch_upload')) {
+            throw new \Exception('student_batch_upload table does not exist');
+        }
+        if (!Schema::hasColumn('studentRegistration', 'batchid')) {
+            throw new \Exception('batchid column missing on studentRegistration');
+        }
+
+        DB::beginTransaction();
+
+        $batches      = StudentBatchModel::whereIn('id', $request->ids)->get();
+        $deletedCount = 0;
+
+        foreach ($batches as $batch) {
+            $studentIds = Student::where('batchid', $batch->id)->pluck('id');
+
+            foreach ($studentIds as $studentId) {
+                // Picture
+                $picture = Studentpicture::where('studentid', $studentId)->first();
+                if ($picture && $picture->picture) {
+                    $this->deleteImage($picture->picture);
+                }
+
+                // Bill payments
+                $billPayments = StudentBillPayment::where('student_id', $studentId)->get();
+                foreach ($billPayments as $bp) {
+                    StudentBillPaymentRecord::where('student_bill_payment_id', $bp->id)->delete();
+                    $bp->delete();
+                }
+                StudentBillPaymentBook::where('student_id', $studentId)->delete();
+                StudentBillInvoice::where('student_id', $studentId)->delete();
+
+                // Broadsheet records (real + mock)
+                $bsRecords = BroadsheetRecord::where('student_id', $studentId)->get();
+                foreach ($bsRecords as $r) {
+                    Broadsheets::where('broadsheet_record_id', $r->id)->delete();
+                    $r->delete();
+                }
+
+                $bsMockRecords = BroadsheetRecordMock::where('student_id', $studentId)->get();
+                foreach ($bsMockRecords as $r) {
+                    BroadsheetsMock::where('broadsheet_records_mock_id', $r->id)->delete();
+                    $r->delete();
+                }
+
+                // Related records
+                Studentclass::where('studentId', $studentId)->delete();
+                PromotionStatus::where('studentId', $studentId)->delete();
+                ParentRegistration::where('studentId', $studentId)->delete();
+                Studentpicture::where('studentid', $studentId)->delete();
+                SubjectRegistrationStatus::where('studentId', $studentId)->delete();
+                Studenthouse::where('studentid', $studentId)->delete();
+                StudentClub::where('studentid', $studentId)->delete();
+                StudentSport::where('studentid', $studentId)->delete();
+                Studentpersonalityprofile::where('studentid', $studentId)->delete();
+                StudentCurrentTerm::where('studentId', $studentId)->delete();
             }
 
-            DB::commit();
-            return response()->json(['success'=>true,'message'=>"Successfully updated {$updated} student(s)",'updated_count'=>$updated]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
+            // Delete students belonging to this batch, then the batch itself
+            Student::where('batchid', $batch->id)->delete();
+            $batch->delete();
+            $deletedCount++;
         }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$deletedCount} batch(es) deleted successfully.",
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'One or more batches were not found.',
+        ], 404);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Error deleting multiple batches: {$e->getMessage()}\n{$e->getTraceAsString()}");
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to delete batches: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/**
+ * Generate one or more locked Excel templates for batch student upload,
+ * across any combination of selected classes, terms, and sessions.
+ * A single combination downloads as .xlsx; multiple combinations are
+ * bundled into a .zip.
+ */
+public function generateBatchTemplateBulk(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'schoolclassids'   => 'required|array|min:1',
+        'schoolclassids.*' => 'integer|exists:schoolclass,id',
+        'termids'          => 'required|array|min:1',
+        'termids.*'        => 'integer|exists:schoolterm,id',
+        'sessionids'       => 'required|array|min:1',
+        'sessionids.*'     => 'integer|exists:schoolsession,id',
+        'rows'             => 'nullable|integer|min:1|max:500',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed: ' . $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+        ], 422);
     }
 
-    public function getStudentsInTerm(Request $request)
-    {
-        try {
-            $request->validate([
-                'term_id'    => 'required|exists:schoolterm,id',
-                'session_id' => 'required|exists:schoolsession,id',
-                'class_id'   => 'nullable|exists:schoolclass,id',
-            ]);
+    $classIds   = array_values(array_unique($request->input('schoolclassids')));
+    $termIds    = array_values(array_unique($request->input('termids')));
+    $sessionIds = array_values(array_unique($request->input('sessionids')));
+    $rows       = (int) $request->input('rows', 30);
 
-            $query = StudentCurrentTerm::with(['student.picture','schoolClass.armRelation','term','session'])
-                ->where('termId',    $request->term_id)
-                ->where('sessionId', $request->session_id);
+    $totalCombinations = count($classIds) * count($termIds) * count($sessionIds);
+    $maxCombinations   = 60;
 
-            if ($request->filled('class_id')) $query->where('schoolclassId', $request->class_id);
-
-            $registrations = $query->get();
-
-            $formattedStudents = $registrations->map(function ($reg) {
-                $student = $reg->student;
-                if (!$student) return null;
-                return [
-                    'registration_id' => $reg->id,
-                    'student_id'      => $student->id,
-                    'admissionNo'     => $student->admissionNo ?? 'N/A',
-                    'firstname'       => $student->firstname ?? '',
-                    'lastname'        => $student->lastname  ?? '',
-                    'othername'       => $student->othername ?? '',
-                    'fullname'        => trim(($student->lastname??'').' '.($student->firstname??'').' '.($student->othername??'')),
-                    'gender'          => $student->gender ?? 'N/A',
-                    'class'           => $reg->schoolClass ? $reg->schoolClass->schoolclass : 'N/A',
-                    'arm'             => $reg->schoolClass && $reg->schoolClass->armRelation ? $reg->schoolClass->armRelation->arm : '',
-                    'term'            => $reg->term    ? $reg->term->term       : 'N/A',
-                    'session'         => $reg->session ? $reg->session->session : 'N/A',
-                    'is_current'      => $reg->is_current,
-                    'picture'         => $student->picture ? $student->picture->picture : null,
-                    'registered_at'   => $reg->created_at ? $reg->created_at->format('d M Y') : 'N/A',
-                ];
-            })->filter()->values();
-
-            return response()->json(['success'=>true,'students'=>$formattedStudents,'total'=>$formattedStudents->count()]);
-
-        } catch (\Exception $e) {
-            Log::error('Error fetching students in term: '.$e->getMessage());
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
-        }
+    if ($totalCombinations > $maxCombinations) {
+        return response()->json([
+            'success' => false,
+            'message' => "That's {$totalCombinations} combinations — please select {$maxCombinations} or fewer at a time.",
+        ], 422);
     }
 
-    public function removeFromTerm(Request $request)
-    {
-        try {
-            $request->validate(['registration_id'=>'required|exists:student_current_term,id']);
-            DB::beginTransaction();
-            $reg         = StudentCurrentTerm::findOrFail($request->registration_id);
-            $studentName = $reg->student ? $reg->student->firstname.' '.$reg->student->lastname : 'Unknown';
-            $reg->delete();
-            DB::commit();
-            return response()->json(['success'=>true,'message'=>'Student removed from term registration successfully','student_name'=>$studentName]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
-        }
-    }
+    $sanitize = function (string $value): string {
+        $value = str_replace(['/', '\\'], '-', $value);
+        $value = preg_replace('/[^A-Za-z0-9\- ]/', '', $value);
+        $value = preg_replace('/\s+/', '-', trim($value));
+        $value = preg_replace('/-+/', '-', $value);
+        return trim($value, '-');
+    };
 
-    public function bulkRemoveFromTerm(Request $request)
-    {
-        try {
-            $request->validate(['registration_ids'=>'required|array','registration_ids.*'=>'exists:student_current_term,id']);
-            DB::beginTransaction();
-            $count = StudentCurrentTerm::whereIn('id', $request->registration_ids)->delete();
-            DB::commit();
-            return response()->json(['success'=>true,'message'=>"Successfully removed {$count} student(s) from term registration",'removed_count'=>$count]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
+    $batchDirName     = 'batch-templates-' . now()->format('Ymd-His') . '-' . uniqid();
+    $batchDirRelative = 'temp/' . $batchDirName;
+    $batchDirAbsolute = storage_path('app' . DIRECTORY_SEPARATOR . 'temp' . DIRECTORY_SEPARATOR . $batchDirName);
+
+    try {
+        $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select('schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm')
+            ->whereIn('schoolclass.id', $classIds)
+            ->get()->keyBy('id');
+
+        $terms    = Schoolterm::whereIn('id', $termIds)->get()->keyBy('id');
+        $sessions = Schoolsession::whereIn('id', $sessionIds)->get()->keyBy('id');
+
+        // ── 1. Create the temp dir explicitly (recursive) and verify writable ──
+        if (!is_dir($batchDirAbsolute)) {
+            if (!@mkdir($batchDirAbsolute, 0775, true) && !is_dir($batchDirAbsolute)) {
+                throw new \Exception(
+                    "Could not create temp directory. Check that storage/app/ exists and is writable. Path: {$batchDirAbsolute}"
+                );
+            }
         }
+
+        if (!is_writable($batchDirAbsolute)) {
+            throw new \Exception("Temp directory is not writable: {$batchDirAbsolute}");
+        }
+
+        if (!class_exists('ZipArchive')) {
+            throw new \Exception('PHP ZipArchive extension is not installed. Enable ext-zip in php.ini.');
+        }
+
+        $generatedFiles = [];
+
+        foreach ($classIds as $classId) {
+            $class     = $classes[$classId] ?? null;
+            if (!$class) continue;
+
+            $className = trim($class->schoolclass . ($class->arm ? ' ' . $class->arm : ''));
+
+            foreach ($termIds as $termId) {
+                $term = $terms[$termId] ?? null;
+                if (!$term) continue;
+
+                foreach ($sessionIds as $sessionId) {
+                    $session = $sessions[$sessionId] ?? null;
+                    if (!$session) continue;
+
+                    $filename = sprintf(
+                        '%s_%s_%s_Batch-Template.xlsx',
+                        $sanitize($className) ?: 'Class',
+                        $sanitize($term->term) ?: 'Term',
+                        $sanitize($session->session) ?: 'Session'
+                    );
+
+                    $absolutePath = $batchDirAbsolute . DIRECTORY_SEPARATOR . $filename;
+
+                    // Ensure unique filename
+                    if (file_exists($absolutePath)) {
+                        $filename = pathinfo($filename, PATHINFO_FILENAME)
+                            . '_' . substr(uniqid(), -5) . '.xlsx';
+                        $absolutePath = $batchDirAbsolute . DIRECTORY_SEPARATOR . $filename;
+                    }
+
+                    // ── 2. Build the export and grab the raw bytes ──
+                    // Using Excel::raw() avoids Storage/disk lookup entirely,
+                    // so there's no ambiguity about where the file lands.
+                    try {
+                        $export = new \App\Exports\StudentBatchTemplateExport(
+                            (int) $classId,
+                            (int) $termId,
+                            (int) $sessionId,
+                            $rows,
+                            $className,
+                            $term->term,
+                            $session->session
+                        );
+
+                        $binary = Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX);
+                    } catch (\Throwable $e) {
+                        Log::error("Excel::raw failed for class={$classId} term={$termId} session={$sessionId}: " . $e->getMessage());
+                        throw new \Exception(
+                            "Failed to build template for {$className} / {$term->term} / {$session->session}: " . $e->getMessage()
+                        );
+                    }
+
+                    if (empty($binary)) {
+                        throw new \Exception("Template for {$className} / {$term->term} / {$session->session} produced no data.");
+                    }
+
+                    // ── 3. Write the bytes ourselves — deterministic and synchronous ──
+                    $written = @file_put_contents($absolutePath, $binary);
+                    if ($written === false) {
+                        $err = error_get_last();
+                        throw new \Exception(
+                            "Could not write template to disk: {$filename}. "
+                            . ($err['message'] ?? 'Unknown write error.')
+                        );
+                    }
+
+                    clearstatcache(true, $absolutePath);
+
+                    if (!is_file($absolutePath) || filesize($absolutePath) === 0) {
+                        throw new \Exception("Template file was written but is empty or missing: {$filename}");
+                    }
+
+                    $generatedFiles[] = [
+                        'path'     => $absolutePath,
+                        'filename' => $filename,
+                    ];
+                }
+            }
+        }
+
+        if (empty($generatedFiles)) {
+            throw new \Exception('No templates were generated. Check that your class/term/session selections are valid.');
+        }
+
+        // ── 4. Single combination — return the xlsx directly ──
+        if (count($generatedFiles) === 1) {
+            $file = $generatedFiles[0];
+            return response()->download($file['path'], $file['filename'], [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend(true);
+        }
+
+        // ── 5. Multiple combinations — zip them up ──
+        $zipFilename = 'Batch-Templates_' . now()->format('Ymd-His') . '.zip';
+        $zipAbsolute = $batchDirAbsolute . '.zip';
+
+        $zip = new \ZipArchive();
+        $openResult = $zip->open($zipAbsolute, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if ($openResult !== true) {
+            throw new \Exception("Could not create zip archive (ZipArchive error code: {$openResult}).");
+        }
+
+        foreach ($generatedFiles as $file) {
+            if (!is_readable($file['path'])) {
+                $zip->close();
+                throw new \Exception("Template file became unreadable before zipping: {$file['filename']}");
+            }
+
+            if (!$zip->addFile($file['path'], $file['filename'])) {
+                $zip->close();
+                throw new \Exception("Failed to add {$file['filename']} to the zip archive.");
+            }
+        }
+
+        if (!$zip->close()) {
+            throw new \Exception('Failed to finalize the zip archive.');
+        }
+
+        if (!is_file($zipAbsolute) || filesize($zipAbsolute) === 0) {
+            throw new \Exception('Zip archive was not created on disk or is empty.');
+        }
+
+        // xlsx files are inside the zip now — clean them up.
+        foreach ($generatedFiles as $file) {
+            @unlink($file['path']);
+        }
+
+        // Delete the zip after response finishes streaming.
+        $zipPathToDelete = $zipAbsolute;
+        $dirToDelete     = $batchDirAbsolute;
+        app()->terminating(function () use ($zipPathToDelete, $dirToDelete) {
+            if (is_file($zipPathToDelete)) @unlink($zipPathToDelete);
+            if (is_dir($dirToDelete)) {
+                $files = glob($dirToDelete . DIRECTORY_SEPARATOR . '*') ?: [];
+                foreach ($files as $f) @unlink($f);
+                @rmdir($dirToDelete);
+            }
+        });
+
+        return response()->download($zipAbsolute, $zipFilename, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(false);
+
+    } catch (\Throwable $e) {
+        Log::error('Failed to generate bulk batch templates: ' . $e->getMessage(), [
+            'classIds'   => $classIds,
+            'termIds'    => $termIds,
+            'sessionIds' => $sessionIds,
+            'trace'      => $e->getTraceAsString(),
+        ]);
+
+        // Best-effort cleanup
+        if (isset($batchDirAbsolute) && is_dir($batchDirAbsolute)) {
+            $files = glob($batchDirAbsolute . DIRECTORY_SEPARATOR . '*') ?: [];
+            foreach ($files as $f) @unlink($f);
+            @rmdir($batchDirAbsolute);
+        }
+        if (isset($zipAbsolute) && is_file($zipAbsolute)) {
+            @unlink($zipAbsolute);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to generate template(s): ' . $e->getMessage(),
+        ], 500);
     }
+}
 }

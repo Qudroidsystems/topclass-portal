@@ -11,19 +11,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
 class ClassTeacherController extends Controller
 {
     public function __construct()
     {
-        // Read endpoints
-        $this->middleware('permission:View class-teacher', [
-            'only' => ['index', 'data', 'stats', 'show', 'assignments'],
-        ]);
-
-        // Write endpoints
+        $this->middleware('permission:View class-teacher|Create class-teacher|Update class-teacher|Delete class-teacher', ['only' => ['index', 'data']]);
         $this->middleware('permission:Create class-teacher', ['only' => ['store']]);
         $this->middleware('permission:Update class-teacher', ['only' => ['update']]);
         $this->middleware('permission:Delete class-teacher', ['only' => ['destroy', 'deleteMultiple']]);
@@ -35,28 +29,26 @@ class ClassTeacherController extends Controller
 
     public function index(Request $request)
     {
-        $pagetitle = 'Class Teacher Management';
+        $pagetitle = "Class Teacher Management";
 
         $schoolclass = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select([
-                'schoolclass.id as id',
-                'schoolarm.arm as schoolarm',
-                'schoolclass.schoolclass as schoolclass',
-            ])
+            ->select(['schoolclass.id as id', 'schoolarm.arm as schoolarm', 'schoolclass.schoolclass as schoolclass'])
             ->orderBy('schoolclass.schoolclass')
-            ->orderBy('schoolarm.arm')
             ->get();
 
         $subjectteachers = User::whereHas('roles', function ($q) {
             $q->where('name', '!=', 'Student');
-        })->orderBy('name')->get(['users.id as userid', 'users.name as name', 'users.avatar as avatar']);
+        })->get(['users.id as userid', 'users.name as name', 'users.avatar as avatar']);
 
-        $schoolterms    = Schoolterm::orderBy('term')->get();
-        $schoolsessions = Schoolsession::orderByDesc('session')->get();
+        $schoolterms    = Schoolterm::all();
+        $schoolsessions = Schoolsession::all();
 
-        return view('classteacher.index')->with(compact(
-            'schoolclass', 'subjectteachers', 'schoolterms', 'schoolsessions', 'pagetitle'
-        ));
+        return view('classteacher.index')
+            ->with('schoolclass',     $schoolclass)
+            ->with('subjectteachers', $subjectteachers)
+            ->with('schoolterms',     $schoolterms)
+            ->with('schoolsessions',  $schoolsessions)
+            ->with('pagetitle',       $pagetitle);
     }
 
     // =========================================================================
@@ -65,68 +57,102 @@ class ClassTeacherController extends Controller
 
     public function data(Request $request)
     {
-        $assignments = ClassTeacher::query()
-            ->leftJoin('users',        'users.id',        '=', 'classteacher.staffid')
-            ->leftJoin('schoolclass',  'schoolclass.id',  '=', 'classteacher.schoolclassid')
-            ->leftJoin('schoolarm',    'schoolarm.id',    '=', 'schoolclass.arm')
-            ->leftJoin('schoolterm',   'schoolterm.id',   '=', 'classteacher.termid')
-            ->leftJoin('schoolsession','schoolsession.id','=', 'classteacher.sessionid')
+        $assignments = ClassTeacher::leftJoin('users',        'users.id',        '=', 'classteacher.staffid')
+            ->leftJoin('schoolclass',   'schoolclass.id',   '=', 'classteacher.schoolclassid')
+            ->leftJoin('schoolarm',     'schoolarm.id',     '=', 'schoolclass.arm')
+            ->leftJoin('schoolterm',    'schoolterm.id',    '=', 'classteacher.termid')
+            ->leftJoin('schoolsession', 'schoolsession.id', '=', 'classteacher.sessionid')
             ->select([
-                'classteacher.id              as id',
-                'classteacher.staffid         as staffid',
-                'classteacher.schoolclassid   as schoolclassid',
-                'classteacher.termid          as termid',
-                'classteacher.sessionid       as sessionid',
-                'users.name                   as staffname',
-                'users.avatar                 as avatar',
-                'schoolclass.schoolclass      as schoolclass',
-                'schoolarm.arm                as schoolarm',
-                'schoolterm.term              as term',
-                'schoolsession.session        as session',
-                'classteacher.updated_at      as updated_at',
+                'classteacher.id         as id',
+                'users.id                as staffid',
+                'users.name              as staffname',
+                'users.avatar            as avatar',
+                'schoolclass.schoolclass as schoolclass',
+                'schoolarm.arm           as schoolarm',
+                'schoolterm.id           as termid',
+                'schoolterm.term         as term',
+                'schoolsession.id        as sessionid',
+                'schoolsession.session   as session',
+                'classteacher.updated_at as updated_at',
             ]);
 
         return DataTables::of($assignments)
             ->addIndexColumn()
 
-            // ── Teacher cell ──────────────────────────────────────────────
+            // ── Teacher cell with avatar / initials ───────────────────────
             ->addColumn('teacher_info', function ($row) {
                 $staffname = $this->cleanUtf8String($row->staffname ?? 'Unknown');
 
+                // ── Avatar resolution ─────────────────────────────────────
+                // Always produce an absolute asset() URL. The zoom modal reads
+                // data-image directly, so relative paths from Storage::url()
+                // can silently break when APP_URL differs from the request host.
                 $defaultUrl = asset('storage/staff_avatars/unnamed.jpg');
-                $avatarUrl  = $defaultUrl;
+                $avatarUrl  = $defaultUrl;   // safe fallback for the modal
                 $hasImage   = false;
 
-                $avatar = trim($row->avatar ?? '');
-                if ($avatar !== '' && !in_array($avatar, ['unnamed.jpg', 'unnamed.png'], true)) {
-                    $resolved = $this->resolveAvatar($avatar);
-                    if ($resolved) {
-                        $avatarUrl = $resolved;
-                        $hasImage  = true;
+                $avatar    = trim($row->avatar ?? '');
+                $isDefault = in_array($avatar, ['unnamed.jpg', 'unnamed.png', ''], true);
+
+                if (!$isDefault && $avatar !== '') {
+                    // Pass 1 — Storage facade (handles configured disks / symlinks)
+                    $storageCandidates = [
+                        'public/staff_avatars/'      . $avatar => asset('storage/staff_avatars/'      . $avatar),
+                        'public/images/staffavatar/' . $avatar => asset('storage/images/staffavatar/' . $avatar),
+                        'public/staffavatar/'        . $avatar => asset('storage/staffavatar/'        . $avatar),
+                    ];
+                    foreach ($storageCandidates as $storagePath => $assetUrl) {
+                        if (Storage::exists($storagePath)) {
+                            $avatarUrl = $assetUrl;
+                            $hasImage  = true;
+                            break;
+                        }
+                    }
+
+                    // Pass 2 — direct disk check when Storage misses (no symlink yet)
+                    if (!$hasImage) {
+                        $diskCandidates = [
+                            public_path('storage/staff_avatars/'      . $avatar) => asset('storage/staff_avatars/'      . $avatar),
+                            public_path('storage/images/staffavatar/' . $avatar) => asset('storage/images/staffavatar/' . $avatar),
+                        ];
+                        foreach ($diskCandidates as $diskPath => $assetUrl) {
+                            if (file_exists($diskPath)) {
+                                $avatarUrl = $assetUrl;
+                                $hasImage  = true;
+                                break;
+                            }
+                        }
                     }
                 }
 
+                // data-* attributes consumed by the blade JS zoom handler
                 $dataAttrs = sprintf(
                     'data-staffname="%s" data-image="%s" data-has-image="%s"',
                     e($staffname),
-                    e($avatarUrl),
+                    e($avatarUrl),      // always an absolute URL
                     $hasImage ? 'true' : 'false'
                 );
 
                 if ($hasImage) {
                     $avatarHtml = sprintf(
-                        '<img src="%s" alt="%s" class="teacher-avatar ct-avatar-trigger" %s onerror="this.onerror=null;this.src=\'%s\'">',
-                        e($avatarUrl), e($staffname), $dataAttrs, e($defaultUrl)
+                        '<img src="%s" alt="%s" class="teacher-avatar ct-avatar-trigger" %s '
+                        . 'onerror="this.onerror=null;this.src=\'%s\'">',
+                        e($avatarUrl),
+                        e($staffname),
+                        $dataAttrs,
+                        e($defaultUrl)
                     );
                 } else {
+                    // Initials bubble — first letter of each of the first two words
                     $words    = preg_split('/\s+/', trim($staffname));
                     $initials = implode('', array_map(
-                        fn ($w) => mb_strtoupper(mb_substr($w, 0, 1, 'UTF-8'), 'UTF-8'),
+                        fn($w) => mb_strtoupper(mb_substr($w, 0, 1, 'UTF-8'), 'UTF-8'),
                         array_slice($words, 0, 2)
                     ));
                     $avatarHtml = sprintf(
                         '<div class="avatar-initials ct-avatar-trigger" %s>%s</div>',
-                        $dataAttrs, e($initials)
+                        $dataAttrs,
+                        e($initials)
                     );
                 }
 
@@ -136,29 +162,46 @@ class ClassTeacherController extends Controller
                     . '</div>';
             })
 
+            // ── Class badge ───────────────────────────────────────────────
             ->addColumn('class_info', function ($row) {
-                $text = trim($this->cleanUtf8String($row->schoolclass ?? '') . ' ' . $this->cleanUtf8String($row->schoolarm ?? ''));
+                $text = trim(
+                    $this->cleanUtf8String($row->schoolclass ?? '')
+                    . ' '
+                    . $this->cleanUtf8String($row->schoolarm ?? '')
+                );
                 return '<span class="ct-badge ct-badge-class">' . e($text) . '</span>';
             })
 
+            // ── Term badge ────────────────────────────────────────────────
             ->addColumn('term', function ($row) {
-                return '<span class="ct-badge ct-badge-term">' . e($this->cleanUtf8String($row->term ?? '')) . '</span>';
+                return '<span class="ct-badge ct-badge-term">'
+                    . e($this->cleanUtf8String($row->term ?? ''))
+                    . '</span>';
             })
 
+            // ── Session badge ─────────────────────────────────────────────
             ->addColumn('session', function ($row) {
-                return '<span class="ct-badge ct-badge-session">' . e($this->cleanUtf8String($row->session ?? '')) . '</span>';
+                return '<span class="ct-badge ct-badge-session">'
+                    . e($this->cleanUtf8String($row->session ?? ''))
+                    . '</span>';
             })
 
+            // ── Date ──────────────────────────────────────────────────────
             ->addColumn('formatted_date', function ($row) {
-                if (!$row->updated_at) return '<span class="text-muted small">—</span>';
-                return '<small class="text-muted">' . \Carbon\Carbon::parse($row->updated_at)->format('d M Y') . '</small>';
+                if (!$row->updated_at) {
+                    return '<span class="text-muted small">—</span>';
+                }
+                return '<small class="text-muted">'
+                    . \Carbon\Carbon::parse($row->updated_at)->format('d M Y')
+                    . '</small>';
             })
 
+            // ── Actions ───────────────────────────────────────────────────
             ->addColumn('action', function ($row) {
                 $title = e(trim(
-                    $this->cleanUtf8String($row->staffname ?? '') . ' — '
+                    $this->cleanUtf8String($row->staffname   ?? '') . ' — '
                     . $this->cleanUtf8String($row->schoolclass ?? '') . ' '
-                    . $this->cleanUtf8String($row->schoolarm ?? '')
+                    . $this->cleanUtf8String($row->schoolarm   ?? '')
                 ));
 
                 $buttons = '<div class="d-flex gap-1">';
@@ -183,14 +226,6 @@ class ClassTeacherController extends Controller
                 return $buttons . '</div>';
             })
 
-            // Prevent Yajra from generating WHERE clauses against computed columns
-            ->filterColumn('teacher_info',   fn ($q, $kw) => null)
-            ->filterColumn('class_info',     fn ($q, $kw) => null)
-            ->filterColumn('term',           fn ($q, $kw) => null)
-            ->filterColumn('session',        fn ($q, $kw) => null)
-            ->filterColumn('formatted_date', fn ($q, $kw) => null)
-            ->orderColumn('formatted_date',  fn ($q, $dir) => $q->orderBy('classteacher.updated_at', $dir))
-
             ->rawColumns(['teacher_info', 'class_info', 'term', 'session', 'formatted_date', 'action'])
             ->make(true);
     }
@@ -205,12 +240,12 @@ class ClassTeacherController extends Controller
             return response()->json([
                 'stats' => [
                     'total'           => ClassTeacher::count(),
-                    'unique_teachers' => ClassTeacher::query()->distinct()->count('staffid'),
-                    'unique_classes'  => ClassTeacher::query()->distinct()->count('schoolclassid'),
-                    'active_sessions' => ClassTeacher::query()->distinct()->count('sessionid'),
+                    'unique_teachers' => ClassTeacher::distinct('staffid')->count('staffid'),
+                    'unique_classes'  => ClassTeacher::distinct('schoolclassid')->count('schoolclassid'),
+                    'active_sessions' => ClassTeacher::distinct('sessionid')->count('sessionid'),
                 ],
             ]);
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::error('ClassTeacher stats error: ' . $e->getMessage());
             return response()->json([
                 'stats' => ['total' => 0, 'unique_teachers' => 0, 'unique_classes' => 0, 'active_sessions' => 0],
@@ -250,95 +285,64 @@ class ClassTeacherController extends Controller
             ], 422);
         }
 
-        $staffId   = (int) $request->input('staffid');
-        $termId    = (int) $request->input('termid');
-        $sessionId = (int) $request->input('sessionid');
-        $classIds  = (array) $request->input('schoolclassid', []);
-
         $createdRecords = [];
         $duplicateNames = [];
         $conflictNames  = [];
-        $failedIds      = [];
 
-        // Preload class names for messages
-        $classNames = Schoolclass::whereIn('id', $classIds)->pluck('schoolclass', 'id')->toArray();
+        foreach ($request->input('schoolclassid') as $classId) {
 
-        DB::beginTransaction();
-        try {
-            foreach ($classIds as $classId) {
-                $classId = (int) $classId;
+            // Same teacher already assigned to this class/term/session
+            $dup = ClassTeacher::where('staffid',      $request->input('staffid'))
+                ->where('schoolclassid', $classId)
+                ->where('termid',        $request->input('termid'))
+                ->where('sessionid',     $request->input('sessionid'))
+                ->exists();
 
-                $dup = ClassTeacher::where('staffid', $staffId)
-                    ->where('schoolclassid', $classId)
-                    ->where('termid', $termId)
-                    ->where('sessionid', $sessionId)
-                    ->exists();
-
-                if ($dup) {
-                    $duplicateNames[] = $classNames[$classId] ?? $classId;
-                    continue;
-                }
-
-                $conflict = ClassTeacher::where('schoolclassid', $classId)
-                    ->where('termid', $termId)
-                    ->where('sessionid', $sessionId)
-                    ->where('staffid', '!=', $staffId)
-                    ->exists();
-
-                if ($conflict) {
-                    $conflictNames[] = $classNames[$classId] ?? $classId;
-                    continue;
-                }
-
-                try {
-                    $createdRecords[] = ClassTeacher::create([
-                        'staffid'       => $staffId,
-                        'schoolclassid' => $classId,
-                        'termid'        => $termId,
-                        'sessionid'     => $sessionId,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('ClassTeacher store row failed', [
-                        'classid' => $classId,
-                        'error'   => $e->getMessage(),
-                    ]);
-                    $failedIds[] = $classNames[$classId] ?? $classId;
-                }
+            if ($dup) {
+                $sc = Schoolclass::find($classId);
+                $duplicateNames[] = $sc ? $this->cleanUtf8String($sc->schoolclass) : $classId;
+                continue;
             }
 
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ClassTeacher store transaction failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Could not save assignments: ' . $e->getMessage(),
-            ], 500);
+            // A different teacher already has this class/term/session
+            $conflict = ClassTeacher::where('schoolclassid', $classId)
+                ->where('termid',    $request->input('termid'))
+                ->where('sessionid', $request->input('sessionid'))
+                ->where('staffid',   '!=', $request->input('staffid'))
+                ->exists();
+
+            if ($conflict) {
+                $sc = Schoolclass::find($classId);
+                $conflictNames[] = $sc ? $this->cleanUtf8String($sc->schoolclass) : $classId;
+                continue;
+            }
+
+            $createdRecords[] = ClassTeacher::create([
+                'staffid'       => $request->input('staffid'),
+                'schoolclassid' => $classId,
+                'termid'        => $request->input('termid'),
+                'sessionid'     => $request->input('sessionid'),
+            ]);
         }
 
-        if (empty($createdRecords) && empty($failedIds)) {
+        if (empty($createdRecords)) {
             $msg = 'No assignments created.';
-            if ($duplicateNames) {
+            if (!empty($duplicateNames)) {
                 $msg = 'Already assigned: ' . implode(', ', $duplicateNames) . '.';
-            } elseif ($conflictNames) {
+            } elseif (!empty($conflictNames)) {
                 $msg = 'These classes already have another teacher: ' . implode(', ', $conflictNames) . '.';
             }
             return response()->json(['success' => false, 'message' => $msg], 422);
         }
 
         $msg = count($createdRecords) . ' class teacher assignment(s) added successfully.';
-        $skipped = array_merge($duplicateNames, $conflictNames, $failedIds);
-        if (!empty($skipped)) {
-            $msg .= ' Skipped: ' . implode(', ', $skipped) . '.';
+        if (!empty($duplicateNames) || !empty($conflictNames)) {
+            $skipped = array_merge($duplicateNames, $conflictNames);
+            $msg    .= ' Skipped: ' . implode(', ', $skipped) . '.';
         }
 
-        Log::info('ClassTeacher store', ['created' => count($createdRecords), 'skipped' => count($skipped)]);
-
-        return response()->json([
-            'success' => !empty($createdRecords),
-            'message' => $msg,
-            'data'    => $createdRecords,
-        ], !empty($createdRecords) ? 201 : 422);
+        Log::info('ClassTeacher store', ['created' => count($createdRecords)]);
+        return response()->json(['success' => true, 'message' => $msg, 'data' => $createdRecords], 201);
     }
 
     // =========================================================================
@@ -378,77 +382,55 @@ class ClassTeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
         }
 
-        $newStaffId   = (int) $request->input('staffid');
-        $newTermId    = (int) $request->input('termid');
-        $newSessionId = (int) $request->input('sessionid');
-        $newClassIds  = array_map('intval', (array) $request->input('schoolclassid', []));
-
-        // All rows we will REPLACE:
-        //   - the original (staff, term, session) group
-        //   - the new (staff, term, session) group (if the teacher changed)
+        // ── Collect IDs for the ENTIRE original group ─────────────────────
+        // One "edit" covers all rows that share the same original teacher +
+        // original term + original session.  We must exclude every one of
+        // these rows from the conflict check because they are about to be
+        // deleted and replaced — they are NOT "another teacher's assignment".
         $originalGroupIds = ClassTeacher::where('staffid',   $primary->staffid)
             ->where('termid',    $primary->termid)
             ->where('sessionid', $primary->sessionid)
-            ->pluck('id')->toArray();
+            ->pluck('id')
+            ->toArray();
 
-        $newGroupIds = ClassTeacher::where('staffid',   $newStaffId)
-            ->where('termid',    $newTermId)
-            ->where('sessionid', $newSessionId)
-            ->pluck('id')->toArray();
-
-        $idsToDelete = array_unique(array_merge($originalGroupIds, $newGroupIds));
-
-        // Conflict check — ignore anything we're about to delete
-        $classNames = Schoolclass::whereIn('id', $newClassIds)->pluck('schoolclass', 'id')->toArray();
+        // ── Conflict check — genuinely different teacher/group only ────────
         $conflictNames = [];
-
-        foreach ($newClassIds as $classId) {
+        foreach ($request->input('schoolclassid') as $classId) {
             $conflict = ClassTeacher::where('schoolclassid', $classId)
-                ->where('termid',    $newTermId)
-                ->where('sessionid', $newSessionId)
-                ->where('staffid',   '!=', $newStaffId)
-                ->whereNotIn('id',   $idsToDelete)
+                ->where('termid',    $request->input('termid'))
+                ->where('sessionid', $request->input('sessionid'))
+                ->where('staffid',   '!=', $request->input('staffid'))
+                ->whereNotIn('id',   $originalGroupIds)   // ← the critical exclusion
                 ->exists();
 
             if ($conflict) {
-                $conflictNames[] = $classNames[$classId] ?? $classId;
+                $sc = Schoolclass::find($classId);
+                $conflictNames[] = $sc ? $this->cleanUtf8String($sc->schoolclass) : $classId;
             }
         }
 
         if (!empty($conflictNames)) {
             return response()->json([
                 'success' => false,
-                'message' => 'These classes are already assigned to a different teacher for this term/session: '
+                'message' => 'The following classes are already assigned to a different teacher for this term/session: '
                     . implode(', ', $conflictNames) . '.',
             ], 422);
         }
 
-        DB::beginTransaction();
-        try {
-            ClassTeacher::whereIn('id', $idsToDelete)->delete();
+        // ── Delete original group then re-create ──────────────────────────
+        ClassTeacher::whereIn('id', $originalGroupIds)->delete();
 
-            $createdRecords = [];
-            foreach ($newClassIds as $classId) {
-                $createdRecords[] = ClassTeacher::create([
-                    'staffid'       => $newStaffId,
-                    'schoolclassid' => $classId,
-                    'termid'        => $newTermId,
-                    'sessionid'     => $newSessionId,
-                ]);
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ClassTeacher update failed: ' . $e->getMessage(), ['id' => $id]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Could not update assignment: ' . $e->getMessage(),
-            ], 500);
+        $createdRecords = [];
+        foreach ($request->input('schoolclassid') as $classId) {
+            $createdRecords[] = ClassTeacher::create([
+                'staffid'       => $request->input('staffid'),
+                'schoolclassid' => $classId,
+                'termid'        => $request->input('termid'),
+                'sessionid'     => $request->input('sessionid'),
+            ]);
         }
 
         Log::info('ClassTeacher update', ['id' => $id, 'new_records' => count($createdRecords)]);
-
         return response()->json([
             'success' => true,
             'message' => count($createdRecords) . ' class teacher assignment(s) updated successfully.',
@@ -466,10 +448,8 @@ class ClassTeacherController extends Controller
         if (!$ct) {
             return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
         }
-
         $ct->delete();
         Log::info('ClassTeacher deleted', ['id' => $id]);
-
         return response()->json(['success' => true, 'message' => 'Assignment deleted successfully.'], 200);
     }
 
@@ -479,16 +459,12 @@ class ClassTeacherController extends Controller
 
     public function deleteMultiple(Request $request)
     {
-        $ids = (array) $request->input('ids', []);
-        $ids = array_values(array_filter(array_map('intval', $ids)));
-
+        $ids = $request->input('ids', []);
         if (empty($ids)) {
             return response()->json(['success' => false, 'message' => 'No assignments selected.'], 400);
         }
-
         $deleted = ClassTeacher::whereIn('id', $ids)->delete();
         Log::info('ClassTeacher bulk delete', ['count' => $deleted]);
-
         return response()->json([
             'success' => true,
             'message' => $deleted . ' assignment(s) deleted successfully.',
@@ -496,16 +472,15 @@ class ClassTeacherController extends Controller
     }
 
     // =========================================================================
-    // ASSIGNMENTS — pre-load for edit modal
+    // ASSIGNMENTS — edit modal pre-load
     // =========================================================================
 
     public function assignments($staffId, $termId, $sessionId)
     {
-        $classIds = ClassTeacher::where('staffid',   (int) $staffId)
-            ->where('termid',    (int) $termId)
-            ->where('sessionid', (int) $sessionId)
+        $classIds = ClassTeacher::where('staffid',   $staffId)
+            ->where('termid',    $termId)
+            ->where('sessionid', $sessionId)
             ->pluck('schoolclassid')
-            ->map(fn ($v) => (int) $v)
             ->toArray();
 
         return response()->json(['success' => true, 'classIds' => $classIds]);
@@ -528,39 +503,13 @@ class ClassTeacherController extends Controller
     // HELPERS
     // =========================================================================
 
-    /**
-     * Resolve an avatar filename to a public URL (cached for 10 min).
-     * Returns null if no file exists on any known path.
-     */
-    private function resolveAvatar(string $filename): ?string
+    private function cleanUtf8String($string)
     {
-        return cache()->remember('avatar_url:' . md5($filename), now()->addMinutes(10), function () use ($filename) {
-            $storageCandidates = [
-                'public/staff_avatars/'      . $filename => asset('storage/staff_avatars/'      . $filename),
-                'public/images/staffavatar/' . $filename => asset('storage/images/staffavatar/' . $filename),
-                'public/staffavatar/'        . $filename => asset('storage/staffavatar/'        . $filename),
-            ];
-            foreach ($storageCandidates as $storagePath => $assetUrl) {
-                if (Storage::exists($storagePath)) return $assetUrl;
-            }
-
-            $diskCandidates = [
-                public_path('storage/staff_avatars/'      . $filename) => asset('storage/staff_avatars/'      . $filename),
-                public_path('storage/images/staffavatar/' . $filename) => asset('storage/images/staffavatar/' . $filename),
-                public_path('storage/staffavatar/'        . $filename) => asset('storage/staffavatar/'        . $filename),
-            ];
-            foreach ($diskCandidates as $diskPath => $assetUrl) {
-                if (file_exists($diskPath)) return $assetUrl;
-            }
-
-            return null;
-        });
-    }
-
-    private function cleanUtf8String($string): string
-    {
-        if (empty($string)) return '';
-        $string = mb_convert_encoding((string) $string, 'UTF-8', 'UTF-8');
-        return (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $string);
+        if (empty($string)) {
+            return '';
+        }
+        $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+        $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $string);
+        return $string;
     }
 }

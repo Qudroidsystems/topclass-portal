@@ -77,6 +77,13 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
             'parent_address' => 'Parent Address',
             'nin_number'     => 'NIN Number',
             'school_house'   => 'School House',
+            'genotype'                     => 'Genotype',
+            'emergency_contact_name'       => 'Emergency Contact Name',
+            'emergency_contact_phone'      => 'Emergency Contact Phone',
+            'allergies_medical_conditions' => 'Allergies / Medical Conditions',
+            'guardian_name'                => 'Guardian Name',
+            'guardian_relationship'        => 'Guardian Relationship to Student',
+            'whatsapp_number'              => 'Parent/Guardian WhatsApp Number',
         ];
 
         foreach ($columns as $col) {
@@ -114,7 +121,7 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
                     break;
 
                 case 'guardian_phone':
-                    $phone = $student->father_phone ?? $student->mother_phone ?? $student->guardian_phone ?? '';
+                    $phone = $student->guardian_phone ?? $student->father_phone ?? $student->mother_phone ?? '';
                     $row[] = $phone ?: 'N/A';
                     break;
 
@@ -282,6 +289,34 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
                     $row[] = $student->blood_group ?? 'N/A';
                     break;
 
+                case 'genotype':
+                    $row[] = $student->genotype ?? 'N/A';
+                    break;
+
+                case 'emergency_contact_name':
+                    $row[] = $student->emergency_contact_name ?? 'N/A';
+                    break;
+
+                case 'emergency_contact_phone':
+                    $row[] = $student->emergency_contact_phone ?? 'N/A';
+                    break;
+
+                case 'allergies_medical_conditions':
+                    $row[] = $student->allergies_medical_conditions ?? 'N/A';
+                    break;
+
+                case 'guardian_name':
+                    $row[] = $student->guardian_name ?? 'N/A';
+                    break;
+
+                case 'guardian_relationship':
+                    $row[] = $student->guardian_relationship ?? 'N/A';
+                    break;
+
+                case 'whatsapp_number':
+                    $row[] = $student->whatsapp_number ?? 'N/A';
+                    break;
+
                 case 'religion':
                     $row[] = $student->religion ?? 'N/A';
                     break;
@@ -380,6 +415,7 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
             'admissionNo' => ['admissionNo', 'admission_no', 'admission_number'],
             'phone_number' => ['phone_number', 'phone', 'mobile'],
             'blood_group' => ['blood_group', 'bloodgroup'],
+            'genotype' => ['genotype'],
             'mother_tongue' => ['mother_tongue', 'mothertongue'],
             'father_name' => ['father_name', 'father'],
             'mother_name' => ['mother_name', 'mother'],
@@ -401,6 +437,13 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
             'placeofbirth' => ['placeofbirth', 'birth_place'],
             'student_status' => ['student_status', 'status'],
             'statusId' => ['statusId', 'status_id', 'student_status_id'],
+            'emergency_contact_name' => ['emergency_contact_name'],
+            'emergency_contact_phone' => ['emergency_contact_phone'],
+            'allergies_medical_conditions' => ['allergies_medical_conditions'],
+            'guardian_name' => ['guardian_name'],
+            'guardian_relationship' => ['guardian_relationship'],
+            'guardian_phone' => ['guardian_phone'],
+            'whatsapp_number' => ['whatsapp_number'],
         ];
 
         if (isset($mappings[$property])) {
@@ -432,10 +475,11 @@ class StudentReportExport implements FromCollection, WithHeadings, WithMapping, 
         $groupDefinitions = [
             'Student Information' => ['photo', 'admissionNo', 'firstname', 'lastname', 'othername', 'gender', 'dateofbirth', 'age'],
             'Academic Information' => ['class', 'status', 'term', 'session', 'admission_date', 'student_category'],
-            'Contact Information' => ['phone_number', 'email', 'parent_email', 'parent_address', 'guardian_phone'],
+            'Contact Information' => ['phone_number', 'email', 'parent_email', 'parent_address', 'guardian_phone', 'whatsapp_number'],
             'Geographical Information' => ['state', 'local', 'city', 'nationality', 'placeofbirth'],
-            'Parent Information' => ['father_name', 'mother_name', 'father_phone', 'mother_phone', 'father_occupation', 'mother_occupation', 'father_city'],
-            'Personal Information' => ['blood_group', 'religion', 'mother_tongue', 'nin_number', 'school_house'],
+            'Parent & Guardian Information' => ['father_name', 'mother_name', 'father_phone', 'mother_phone', 'father_occupation', 'mother_occupation', 'father_city', 'guardian_name', 'guardian_relationship'],
+            'Personal Information' => ['blood_group', 'genotype', 'religion', 'mother_tongue', 'nin_number', 'school_house'],
+            'Medical & Emergency Information' => ['allergies_medical_conditions', 'emergency_contact_name', 'emergency_contact_phone'],
             'Additional Information' => ['future_ambition', 'last_school', 'last_class', 'reason_for_leaving'],
         ];
 

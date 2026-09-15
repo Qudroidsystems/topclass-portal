@@ -122,7 +122,7 @@ class SchoolArmController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-
+            
             return response()->json([
                 'error' => $e->getMessage()
             ], 500);
@@ -141,7 +141,7 @@ class SchoolArmController extends Controller
                 ->join('schoolclass', 'schoolclass.arm', '=', 'schoolarm.id')
                 ->distinct('schoolarm.id')
                 ->count('schoolarm.id');
-
+            
             $recentlyUpdated = Schoolarm::where('updated_at', '>=', now()->subDays(30))->count();
 
             return response()->json([
@@ -261,7 +261,7 @@ class SchoolArmController extends Controller
 
             // Check if arm is being used
             $inUse = DB::table('schoolclass')->where('arm', $id)->exists();
-
+            
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -311,7 +311,7 @@ class SchoolArmController extends Controller
 
             // Check if arm is being used
             $inUse = DB::table('schoolclass')->where('arm', $request->armid)->exists();
-
+            
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -345,7 +345,7 @@ class SchoolArmController extends Controller
     {
         try {
             $ids = $request->input('ids', []);
-
+            
             if (empty($ids)) {
                 return response()->json([
                     'success' => false,
@@ -356,7 +356,7 @@ class SchoolArmController extends Controller
             // Validate that all IDs exist
             $existingIds = Schoolarm::whereIn('id', $ids)->pluck('id')->toArray();
             $invalidIds = array_diff($ids, $existingIds);
-
+            
             if (!empty($invalidIds)) {
                 return response()->json([
                     'success' => false,
@@ -368,7 +368,7 @@ class SchoolArmController extends Controller
             $inUse = DB::table('schoolclass')
                 ->whereIn('arm', $ids)
                 ->exists();
-
+                
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -377,7 +377,7 @@ class SchoolArmController extends Controller
             }
 
             DB::beginTransaction();
-
+            
             $deleted = Schoolarm::whereIn('id', $ids)->delete();
 
             DB::commit();

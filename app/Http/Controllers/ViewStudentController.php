@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Schoolclass;
+use App\Models\Schoolsession;
+use App\Models\Schoolterm;
+use App\Models\Student;
+use App\Models\Studentclass;
+use App\Models\StudentPicture;
+use App\Models\StudentRegistration;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use App\Models\Schoolsession;
-use App\Models\Schoolterm;
-use App\Models\Studentclass;
-use App\Models\Schoolclass;
-use App\Models\StudentRegistration;
-use App\Models\StudentPicture;
 
 class ViewStudentController extends Controller
 {
@@ -132,7 +133,7 @@ class ViewStudentController extends Controller
                 'sessionid' => 'required|exists:schoolsession,id',
             ]);
 
-            $student = StudentRegistration::create([
+            $student = Student::create([
                 'admissionNo' => $validated['admissionno'],
                 'firstname' => $validated['firstname'],
                 'lastname' => $validated['lastname'],
@@ -213,7 +214,7 @@ class ViewStudentController extends Controller
                 'sessionid' => 'required|exists:schoolsession,id',
             ]);
 
-            $student = StudentRegistration::findOrFail($id);
+            $student = Student::findOrFail($id);
             $student->update([
                 'admissionNo' => $validated['admissionno'],
                 'firstname' => $validated['firstname'],
@@ -276,7 +277,7 @@ class ViewStudentController extends Controller
     {
         Log::debug("Attempting to delete student ID: {$id}");
         try {
-            $student = StudentRegistration::findOrFail($id);
+            $student = Student::findOrFail($id);
 
             // Delete related Studentclass entries
             Log::debug("Deleting Studentclass for student ID: {$id}");

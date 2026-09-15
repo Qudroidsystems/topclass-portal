@@ -17,10 +17,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 
 class RoleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function __construct()
+    function __construct()
     {
         $this->middleware('permission:View role|Create role|Update role|Delete role|Add user-role|Update user-role|Remove user-role', ['only' => ['index', 'store']]);
         $this->middleware('permission:Create role', ['only' => ['create', 'store']]);
@@ -29,9 +26,6 @@ class RoleController extends Controller
         $this->middleware('permission:Update user-role', ['only' => ['adduser', 'updateuserrole']]);
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request): View
     {
         $pagetitle = "Role Management";
@@ -54,28 +48,22 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create(): View
     {
         $permission = Permission::get();
         return view('roles.create', compact('permission'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request): RedirectResponse
     {
         $pagetitle = "Role Management";
 
         $this->validate($request, [
-            'name'         => 'required|unique:roles,name',
-            'permission'   => 'required|array',
-            'permission.*' => 'exists:permissions,id',
-            'title'        => 'nullable|string',
-            'badge'        => 'nullable|string',
+            'name'           => 'required|unique:roles,name',
+            'permission'     => 'required|array',
+            'permission.*'   => 'exists:permissions,id',
+            'title'          => 'nullable|string',
+            'badge'          => 'nullable|string',
         ]);
 
         $role = Role::create([
@@ -93,16 +81,12 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
         $pagetitle = "Role Management";
 
         $userRoleCount = DB::table('model_has_roles')->where('role_id', $id)->count();
 
-        // Kept v2's paginate(500) — v1's paginate(5) made large roles unusable.
         $usersWithRole = User::leftJoin("roles", "roles.id", "=", "users.id")
             ->join("model_has_roles", "model_has_roles.model_id", "=", "users.id")
             ->where("model_has_roles.role_id", $id)
@@ -116,11 +100,9 @@ class RoleController extends Controller
             ->paginate(500);
 
         $role = Role::find($id);
-
         $rolePermissions = Permission::join("role_has_permissions", "role_has_permissions.permission_id", "=", "permissions.id")
             ->where("role_has_permissions.role_id", $id)
             ->get();
-
         $rolePermissions2 = DB::table("role_has_permissions")
             ->where("role_has_permissions.role_id", $id)
             ->pluck('role_has_permissions.permission_id', 'role_has_permissions.permission_id')
@@ -148,9 +130,6 @@ class RoleController extends Controller
         ))->with('perm_title', $ex);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit($id): View
     {
         $pagetitle = "Role Management";
@@ -160,7 +139,6 @@ class RoleController extends Controller
             ->where("role_has_permissions.role_id", $id)
             ->pluck('role_has_permissions.permission_id', 'role_has_permissions.permission_id')
             ->all();
-
         $permission = Permission::get();
         $perm_title = Permission::get(['title']);
         $array = [];
@@ -176,9 +154,6 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id): RedirectResponse
     {
         $pagetitle = "Role Management";
@@ -211,16 +186,12 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Show form to add users to a role.
-     */
     public function adduser($id): View
     {
         $pagetitle = "Role Management";
 
         $role = Role::find($id);
         $r    = $role->name;
-
         $users = User::whereDoesntHave('roles', function ($q) use ($r) {
             $q->where('name', $r);
         })->get();
@@ -233,8 +204,7 @@ class RoleController extends Controller
 
     /**
      * Assign role(s) to users.
-     *
-     * When the Student role is assigned, auto-populate users.student_id
+     * When the student role is assigned, auto-populate users.student_id
      * from studentRegistration (matched by email, then by name).
      */
     public function updateuserrole(Request $request): RedirectResponse
@@ -242,9 +212,9 @@ class RoleController extends Controller
         $pagetitle = "Role Management";
 
         $this->validate($request, [
-            'users'   => 'required|array',
-            'users.*' => 'exists:users,id',
-            'roleid'  => 'required|exists:roles,id',
+            'users'    => 'required|array',
+            'users.*'  => 'exists:users,id',
+            'roleid'   => 'required|exists:roles,id',
         ]);
 
         $role    = Role::findOrFail($request->input('roleid'));
@@ -256,8 +226,7 @@ class RoleController extends Controller
             $user = User::findOrFail($userId);
             $user->assignRole($role->name);
 
-            // When assigning the Student role, link the user to their
-            // studentRegistration row so $user->student resolves.
+            // When assigning the student role, link the user to studentRegistration
             if ($isStudentRole && is_null($user->student_id)) {
                 $this->linkUserToStudentRecord($user);
             }
@@ -274,7 +243,7 @@ class RoleController extends Controller
      *
      * Matching priority:
      *   1. Email match (most reliable)
-     *   2. Full name match — TRIM(firstname + ' ' + lastname)
+     *   2. Full name match  (CONCAT firstname + ' ' + lastname)
      */
     private function linkUserToStudentRecord(User $user): void
     {
@@ -313,7 +282,7 @@ class RoleController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
-            // Non-fatal — role was still assigned, just log the failure.
+            // Non-fatal — role was still assigned, just log the failure
             Log::error('Error linking user to studentRegistration', [
                 'user_id' => $user->id,
                 'error'   => $e->getMessage(),
@@ -333,27 +302,18 @@ class RoleController extends Controller
             $role = Role::findOrFail($roleid);
             $user->removeRole($role->name);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'User role removed successfully',
-            ]);
+            return response()->json(['success' => true, 'message' => 'User role removed successfully']);
         } catch (\Exception $e) {
             Log::error("Error removing user role", [
                 'error'   => $e->getMessage(),
                 'user_id' => $userid,
                 'role_id' => $roleid,
-                'trace'   => $e->getTraceAsString(),
+                'trace'   => $e->getTraceAsString()
             ]);
-
-            return response()->json([
-                'message' => 'Error removing user role: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['message' => 'Error removing user role: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Delete a user (legacy endpoint).
-     */
     public function delete($id)
     {
         $delete = User::destroy($id);
@@ -372,9 +332,6 @@ class RoleController extends Controller
         ]);
     }
 
-    /**
-     * Remove the specified role from storage.
-     */
     public function destroy($id): RedirectResponse
     {
         $pagetitle = "Role Management";
@@ -386,9 +343,6 @@ class RoleController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    /**
-     * Bulk remove users from a role.
-     */
     public function bulkRemoveUsers(Request $request)
     {
         try {
@@ -428,7 +382,6 @@ class RoleController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Bulk remove users error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to remove users: ' . $e->getMessage(),
@@ -436,9 +389,6 @@ class RoleController extends Controller
         }
     }
 
-    /**
-     * AJAX-paginated list of users that belong to a role.
-     */
     public function getRoleUsers(Role $role, Request $request)
     {
         try {

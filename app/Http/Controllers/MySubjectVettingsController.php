@@ -2,20 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Subject;
-use App\Models\Schoolterm;
-use App\Models\Broadsheets;
-use App\Models\Schoolclass;
-use App\Models\Studentclass;
-use App\Models\Subjectclass;
-use Illuminate\Http\Request;
-use App\Models\Schoolsession;
-use App\Models\SubjectTeacher;
 use App\Models\SubjectVetting;
-use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
+use App\Models\Schoolclass;
+use App\Models\Subjectclass;
+use App\Models\SubjectTeacher;
+use App\Models\Schoolterm;
+use App\Models\Schoolsession;
+use App\Models\User;
+use App\Models\Studentclass;
+use App\Models\Subject;
+use App\Models\Broadsheets;
+use App\Models\Assessment;
+use App\Models\BroadsheetAssessmentScore;
+use App\Models\BroadsheetSubAssessmentScore;
+use App\Models\PromotionStatus;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class MySubjectVettingsController extends Controller
@@ -134,14 +138,33 @@ class MySubjectVettingsController extends Controller
     {
         Log::info('classBroadsheet parameters:', compact('staffid', 'termid', 'sessionid', 'schoolclassid', 'subjectclassid'));
 
-        $pagetitle = "Class Broadsheet";
+        // Fetch assessments for this class category
+        $schoolclass = Schoolclass::with('classcategories')->find($schoolclassid);
+        $assessments = collect();
 
-        // Fetch broadsheets without metric/position updates
+        if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
+            $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
+                ->with('subAssessments')
+                ->orderBy('id')
+                ->get();
+        }
+
+        // Fetch broadsheets with assessment scores
         $broadsheets = $this->getBroadsheets($staffid, $termid, $sessionid, $schoolclassid, $subjectclassid);
 
         if ($broadsheets->isEmpty()) {
             Log::warning('No broadsheets found for classBroadsheet', compact('staffid', 'termid', 'sessionid', 'schoolclassid', 'subjectclassid'));
         } else {
+            // Update metrics and positions
+            $this->updateClassMetrics($subjectclassid, $staffid, $termid, $sessionid);
+            $this->computeDynamicTotals($broadsheets, $assessments, $schoolclass, $termid, $sessionid);
+            $this->updateSubjectPositions($subjectclassid, $staffid, $termid, $sessionid);
+            $this->updateClassPositions($schoolclassid, $termid, $sessionid);
+
+            // Refresh broadsheets
+            $broadsheets = $this->getBroadsheets($staffid, $termid, $sessionid, $schoolclassid, $subjectclassid);
+
             $pagetitle = sprintf(
                 'Class Broadsheet for %s (%s) - %s %s - %s %s',
                 $broadsheets->first()->subject,
@@ -153,16 +176,14 @@ class MySubjectVettingsController extends Controller
             );
         }
 
-        $schoolclass = Schoolclass::where('schoolclass.id', $schoolclassid)
-            ->leftJoin('schoolarm', 'schoolclass.arm', '=', 'schoolarm.id')
-            ->first(['schoolclass.schoolclass', 'schoolclass.arm as arm_id', 'schoolarm.arm']);
-
+        $pagetitle = $pagetitle ?? "Class Broadsheet";
         $schoolterm = Schoolterm::where('id', $termid)->value('term') ?? 'N/A';
         $schoolsession = Schoolsession::where('id', $sessionid)->value('session') ?? 'N/A';
 
         return view('mysubjectvettings.classbroadsheet')
             ->with('broadsheets', $broadsheets)
             ->with('schoolclass', $schoolclass)
+            ->with('assessments', $assessments)
             ->with('schoolterm', $schoolterm)
             ->with('schoolsession', $schoolsession)
             ->with('schoolclassid', $schoolclassid)
@@ -171,13 +192,13 @@ class MySubjectVettingsController extends Controller
             ->with('pagetitle', $pagetitle);
     }
 
-    
     protected function getBroadsheets($staffId, $termId, $sessionId, $schoolClassId = null, $subjectClassId = null)
     {
         $query = Broadsheets::query()
             ->where('broadsheets.staff_id', $staffId)
             ->where('broadsheets.term_id', $termId)
-            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->with(['assessmentScores', 'subAssessmentScores'])
+            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->join('subjectclass', function ($join) use ($subjectClassId) {
                 $join->on('subjectclass.id', '=', 'broadsheets.subjectclass_id')
                     ->on('broadsheet_records.subject_id', '=', 'subjectclass.subjectid')
@@ -228,22 +249,14 @@ class MySubjectVettingsController extends Controller
             'broadsheets.staff_id',
             'broadsheets.term_id',
             'broadsheet_records.session_id as sessionid',
-            'classcategories.ca1score as ca1score',
-            'classcategories.ca2score as ca2score',
-            'classcategories.ca3score as ca3score',
-            'classcategories.examscore as examscore',
             'studentpicture.picture',
-            'broadsheets.ca1',
-            'broadsheets.ca2',
-            'broadsheets.ca3',
-            'broadsheets.exam',
             'broadsheets.total',
             'broadsheets.bf',
             'broadsheets.cum',
             'broadsheets.grade',
             'broadsheets.subject_position_class as position',
             'broadsheets.remark',
-            'broadsheets.vettedstatus', // Added vettedstatus
+            'broadsheets.vettedstatus',
         ])->sortBy('lastname');
 
         Log::debug('getBroadsheets: Retrieved broadsheets', [
@@ -261,20 +274,31 @@ class MySubjectVettingsController extends Controller
                     'subject_id' => $item->subject_id,
                     'subjectclass_id' => $item->subjectclid,
                     'position' => $item->position,
-                    'vettedstatus' => $item->vettedstatus, // Added to log
+                    'vettedstatus' => $item->vettedstatus,
                 ];
             })->toArray(),
             'subjects' => $results->pluck('subject')->unique()->values()->toArray(),
         ]);
 
-        foreach ($results as $broadsheet) {
-            $ca1 = $broadsheet->ca1 ?? 0;
-            $ca2 = $broadsheet->ca2 ?? 0;
-            $ca3 = $broadsheet->ca3 ?? 0;
-            $exam = $broadsheet->exam ?? 0;
-            $caAverage = ($ca1 + $ca2 + $ca3) / 3;
-            $newTotal = round(($caAverage + $exam) / 2, 1);
+        return $results;
+    }
 
+    /**
+     * Compute dynamic totals, cums, grades, and remarks based on assessment scores.
+     */
+    private function computeDynamicTotals($broadsheets, $assessments, $schoolclass, $termId, $sessionId)
+    {
+        foreach ($broadsheets as $broadsheet) {
+            $assessmentScores = $broadsheet->assessmentScores ?? collect();
+            $totalRaw = 0;
+
+            foreach ($assessments as $assessment) {
+                $scoreObj = $assessmentScores->where('assessment_id', $assessment->id)->first();
+                $assessmentScore = $scoreObj ? $scoreObj->score : 0;
+                $totalRaw += $assessmentScore;
+            }
+
+            // Get BF (brought forward from previous term)
             $newBf = $this->getPreviousTermCum(
                 $broadsheet->student_id,
                 $broadsheet->subject_id,
@@ -282,63 +306,48 @@ class MySubjectVettingsController extends Controller
                 $sessionId
             );
 
-            $newCum = $termId == 1 ? $newTotal : round(($newBf + $newTotal) / 2, 2);
+            // Calculate cum as (total + bf) / 2, or just total for term 1
+            $newCum = $termId == 1 ? round($totalRaw, 2) : round(($totalRaw + $newBf) / 2, 2);
 
-            // Use Classcategory model for grading
-            $schoolclass = Schoolclass::with('classcategory')->find($broadsheet->schoolclass_id);
-            $newGrade = $schoolclass && $schoolclass->classcategory
-                ? $schoolclass->classcategory->calculateGrade($newCum)
+            $newGrade = $schoolclass && $schoolclass->classcategories->isNotEmpty()
+                ? $schoolclass->classcategories->first()->calculateGrade($newCum)
                 : $this->getDefaultGrade($newCum);
 
             $newRemark = $this->getRemark($newGrade);
 
-            $significantChange = abs($broadsheet->bf - $newBf) > 0.01 ||
-                                abs($broadsheet->total - $newTotal) > 0.01 ||
+            $significantChange = abs($broadsheet->total - $totalRaw) > 0.01 ||
+                                abs($broadsheet->bf - $newBf) > 0.01 ||
                                 abs($broadsheet->cum - $newCum) > 0.01 ||
                                 $broadsheet->grade !== $newGrade ||
                                 $broadsheet->remark !== $newRemark;
 
             if ($significantChange) {
-                Log::info("getBroadsheets: Updating broadsheet {$broadsheet->id} due to significant changes", [
-                    'schoolclass_id' => $broadsheet->schoolclass_id,
-                    'subjectclass_id' => $subjectClassId,
-                    'student_id' => $broadsheet->student_id,
-                    'admissionno' => $broadsheet->admissionno,
-                    'subject_id' => $broadsheet->subject_id,
-                    'subject' => $broadsheet->subject,
+                Log::info("computeDynamicTotals: Updating broadsheet {$broadsheet->id} due to significant changes", [
                     'old_values' => [
-                        'bf' => $broadsheet->bf,
                         'total' => $broadsheet->total,
+                        'bf' => $broadsheet->bf,
                         'cum' => $broadsheet->cum,
                         'grade' => $broadsheet->grade,
                         'remark' => $broadsheet->remark,
-                        'position' => $broadsheet->position,
-                        'vettedstatus' => $broadsheet->vettedstatus, // Added to log
                     ],
                     'new_values' => [
+                        'total' => $totalRaw,
                         'bf' => $newBf,
-                        'total' => $newTotal,
                         'cum' => $newCum,
                         'grade' => $newGrade,
                         'remark' => $newRemark,
-                        'position' => $broadsheet->position,
-                        'vettedstatus' => $broadsheet->vettedstatus, // Added to log
                     ],
                 ]);
 
+                $broadsheet->total = $totalRaw;
                 $broadsheet->bf = $newBf;
-                $broadsheet->total = $newTotal;
                 $broadsheet->cum = $newCum;
                 $broadsheet->grade = $newGrade;
                 $broadsheet->remark = $newRemark;
                 $broadsheet->save();
             }
         }
-
-        return $results;
     }
-
- 
 
     public function updateVettedStatus(Request $request)
     {
@@ -350,7 +359,7 @@ class MySubjectVettingsController extends Controller
         try {
             // Find the broadsheet
             $broadsheet = Broadsheets::findOrFail($request->broadsheet_id);
-            
+
             // Update vetted status and vettedby
             $broadsheet->vettedstatus = $request->vettedstatus;
             $broadsheet->vettedby = Auth::id();
@@ -420,7 +429,6 @@ class MySubjectVettingsController extends Controller
         }
     }
 
-
     protected function checkAllBroadsheetsVetted($termId, $subjectClassId, $userId)
     {
         $totalBroadsheets = Broadsheets::where('term_id', $termId)
@@ -460,11 +468,22 @@ class MySubjectVettingsController extends Controller
                 ], 400);
             }
 
+            $schoolclass = Schoolclass::with('classcategories')->find($schoolclass_id);
+            $assessments = collect();
+
+            if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+                $categoryIds = $schoolclass->classcategories->pluck('id');
+                $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
+                    ->with('subAssessments')
+                    ->orderBy('id')->get();
+            }
+
             $broadsheets = Broadsheets::where([
                 'subjectclass_id' => $subjectclass_id,
                 'term_id' => $term_id,
             ])
-                ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+                ->with(['assessmentScores', 'subAssessmentScores'])
+                ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
                 ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records.student_id')
                 ->leftJoin('subject', 'subject.id', '=', 'broadsheet_records.subject_id')
                 ->where('broadsheet_records.session_id', $session_id)
@@ -473,21 +492,46 @@ class MySubjectVettingsController extends Controller
                     'studentRegistration.admissionNO as admissionno',
                     'studentRegistration.firstname as fname',
                     'studentRegistration.lastname as lname',
-                    'broadsheets.ca1',
-                    'broadsheets.ca2',
-                    'broadsheets.ca3',
-                    'broadsheets.exam',
                     'broadsheets.total',
                     'broadsheets.bf',
                     'broadsheets.cum',
                     'broadsheets.grade',
                     'broadsheets.subject_position_class as position',
                     'broadsheets.term_id',
+                    'broadsheets.vettedstatus',
                 ]);
+
+            // Compute dynamic data for response
+            $scoresData = $broadsheets->map(function ($broadsheet) use ($assessments) {
+                $assessmentData = [];
+                foreach ($assessments as $assessment) {
+                    $scoreObj = $broadsheet->assessmentScores->where('assessment_id', $assessment->id)->first();
+                    $assessmentData[$assessment->id] = [
+                        'name' => $assessment->name,
+                        'max_score' => $assessment->max_score,
+                        'score' => $scoreObj ? $scoreObj->score : 0,
+                    ];
+                }
+
+                return [
+                    'id' => $broadsheet->id,
+                    'admissionno' => $broadsheet->admissionno,
+                    'fname' => $broadsheet->fname,
+                    'lname' => $broadsheet->lname,
+                    'assessments' => $assessmentData,
+                    'total' => $broadsheet->total,
+                    'bf' => $broadsheet->bf,
+                    'cum' => $broadsheet->cum,
+                    'grade' => $broadsheet->grade,
+                    'position' => $broadsheet->position,
+                    'vettedstatus' => $broadsheet->vettedstatus,
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'scores' => $broadsheets->toArray(),
+                'assessments' => $assessments,
+                'scores' => $scoresData,
             ]);
         } catch (\Exception $e) {
             Log::error('Error in results endpoint: ' . $e->getMessage());
@@ -496,8 +540,8 @@ class MySubjectVettingsController extends Controller
                 'message' => 'Internal server error: ' . $e->getMessage(),
             ], 500);
         }
-    }  
-    
+    }
+
     protected function updateClassMetrics($subjectclassid, $staffid, $termid, $sessionid)
     {
         // Fetch the subjectclass to get the subject_id
@@ -521,25 +565,24 @@ class MySubjectVettingsController extends Controller
 
         $subjectId = $subjectTeacher->subjectid;
 
-        // Calculate class metrics (min, max, avg) for the subject across all students linked to the subjectclass_id
+        // Calculate class metrics (min, max, avg) for the subject using cum instead of total
         $metrics = Broadsheets::where('broadsheets.subjectclass_id', $subjectclassid)
             ->where('broadsheets.staff_id', $staffid)
             ->where('broadsheets.term_id', $termid)
-            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->where('broadsheet_records.session_id', $sessionid)
             ->where('broadsheet_records.subject_id', $subjectId)
             ->select([
-                DB::raw('MIN(broadsheets.total) as class_min'),
-                DB::raw('MAX(broadsheets.total) as class_max'),
-                DB::raw('AVG(broadsheets.total) as class_avg'),
-                DB::raw('COUNT(broadsheets.id) as student_count'),
-                DB::raw('SUM(broadsheets.total) as total_sum')
+                DB::raw('MIN(broadsheets.cum) as class_min'),
+                DB::raw('MAX(broadsheets.cum) as class_max'),
+                DB::raw('SUM(broadsheets.cum) as cum_sum'),
+                DB::raw('COUNT(broadsheets.id) as student_count')
             ])
             ->first();
 
         $classMin = $metrics->class_min ?? 0;
         $classMax = $metrics->class_max ?? 0;
-        $classAvg = $metrics->student_count > 0 ? round($metrics->class_avg, 1) : 0;
+        $classAvg = $metrics->student_count > 0 ? round($metrics->cum_sum / $metrics->student_count, 1) : 0;
 
         Log::info('Calculated class metrics', [
             'subjectclass_id' => $subjectclassid,
@@ -551,14 +594,14 @@ class MySubjectVettingsController extends Controller
             'class_max' => $classMax,
             'class_avg' => $classAvg,
             'student_count' => $metrics->student_count,
-            'total_sum' => $metrics->total_sum,
+            'cum_sum' => $metrics->cum_sum,
         ]);
 
         // Update all relevant broadsheet records with the calculated metrics
         Broadsheets::where('subjectclass_id', $subjectclassid)
             ->where('staff_id', $staffid)
             ->where('term_id', $termid)
-            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->where('broadsheet_records.session_id', $sessionid)
             ->where('broadsheet_records.subject_id', $subjectId)
             ->update([
@@ -579,11 +622,12 @@ class MySubjectVettingsController extends Controller
     protected function updateSubjectPositions($subjectclass_id, $staff_id, $term_id, $session_id)
     {
         Log::info('updateSubjectPositions called', compact('subjectclass_id', 'staff_id', 'term_id', 'session_id'));
+
         $broadsheets = Broadsheets::where('subjectclass_id', $subjectclass_id)
             ->where('staff_id', $staff_id)
             ->where('term_id', $term_id)
             ->where('broadsheet_records.session_id', $session_id)
-            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->orderByDesc('broadsheets.cum')
             ->orderBy('broadsheets.id')
             ->get();
@@ -605,9 +649,11 @@ class MySubjectVettingsController extends Controller
                 $lastPosition = $rank;
                 $lastCum = $broadsheet->cum;
             }
+
             if ($broadsheet->subject_position_class != $lastPosition) {
                 $broadsheet->subject_position_class = $lastPosition;
                 $broadsheet->save();
+
                 Log::info('Updated position', [
                     'broadsheet_id' => $broadsheet->id,
                     'student_id' => $broadsheet->student_id,
@@ -655,7 +701,8 @@ class MySubjectVettingsController extends Controller
     public function edit($id)
     {
         $broadsheet = Broadsheets::where('broadsheets.id', $id)
-            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->with(['assessmentScores', 'subAssessmentScores'])
+            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records.student_id')
             ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
             ->leftJoin('subjectclass', 'subjectclass.id', '=', 'broadsheets.subjectclass_id')
@@ -673,10 +720,6 @@ class MySubjectVettingsController extends Controller
                 'studentRegistration.firstname as fname',
                 'studentRegistration.lastname as lname',
                 'studentpicture.picture',
-                'broadsheets.ca1',
-                'broadsheets.ca2',
-                'broadsheets.ca3',
-                'broadsheets.exam',
                 'broadsheets.total',
                 'broadsheets.bf',
                 'broadsheets.cum',
@@ -686,17 +729,14 @@ class MySubjectVettingsController extends Controller
                 'subject.subject',
                 'subject.subject_code',
                 'schoolclass.schoolclass',
-                'schoolarm.id',
+                'schoolarm.arm',
                 'broadsheets.subject_position_class as position',
                 'broadsheets.remark',
-                'classcategories.ca1id as id1',
-                'classcategories.ca2id as id2',
-                'classcategories.ca3id as id3',
-                'classcategories.examid as id4',
                 'broadsheet_records.student_id',
                 'broadsheets.staff_id',
                 'broadsheets.term_id',
                 'broadsheet_records.session_id as sessionid',
+                'schoolclass.id as schoolclass_id',
             ]);
 
         if (!$broadsheet) {
@@ -707,6 +747,16 @@ class MySubjectVettingsController extends Controller
             ]);
         }
 
+        $schoolclass = Schoolclass::with('classcategories')->find($broadsheet->schoolclass_id);
+        $assessments = collect();
+
+        if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
+            $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
+                ->with('subAssessments')
+                ->orderBy('id')->get();
+        }
+
         $pagetitle = sprintf(
             'Edit Score for %s %s - %s (%s)',
             $broadsheet->fname,
@@ -715,67 +765,61 @@ class MySubjectVettingsController extends Controller
             $id
         );
 
-        return view('scoresheet.edit', compact('broadsheet', 'pagetitle'));
+        return view('mysubjectvettings.edit', compact('broadsheet', 'pagetitle', 'assessments'));
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'ca1' => 'nullable|numeric|min:0|max:100',
-            'ca2' => 'nullable|numeric|min:0|max:100',
-            'ca3' => 'nullable|numeric|min:0|max:100',
-            'exam' => 'nullable|numeric|min:0|max:100',
-        ]);
-
         $broadsheet = Broadsheets::findOrFail($id);
         $termId = $broadsheet->term_id;
-        $broadsheetRecord = DB::table('broadsheet_records')
-            ->where('id', $broadsheet->broadsheet_record_id)
-            ->first();
+        $broadsheetRecord = BroadsheetRecord::find($broadsheet->broadSheet_record_id);
 
         if (!$broadsheetRecord) {
             return redirect()->back()->with('error', 'Broadsheet record not found.');
         }
 
-        $ca1 = $request->ca1 ?? 0;
-        $ca2 = $request->ca2 ?? 0;
-        $ca3 = $request->ca3 ?? 0;
-        $exam = $request->exam ?? 0;
-        $caAverage = ($ca1 + $ca2 + $ca3) / 3;
-        $total = round(($caAverage + $exam) / 2, 1);
-        $bf = $this->getPreviousTermCum(
-            $broadsheetRecord->student_id,
-            $broadsheetRecord->subject_id,
-            $termId,
-            $broadsheetRecord->session_id
-        );
-        $cum = $termId == 1 ? $total : round(($bf + $total) / 2, 2);
+        $schoolclass = Schoolclass::with('classcategories')->find($broadsheetRecord->schoolclass_id);
+        $assessments = collect();
 
-        // Fetch the school class and its class category for grading
-        $schoolclass = Schoolclass::with('classcategory')->find($broadsheetRecord->schoolclass_id);
-        $grade = $schoolclass && $schoolclass->classcategory
-            ? $schoolclass->classcategory->calculateGrade($cum)
-            : $this->getDefaultGrade($cum); // Fallback grading if classcategory is not found
-        $remark = $this->getRemark($grade);
+        if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
+            $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
+                ->with('subAssessments')
+                ->get();
+        }
 
-        $broadsheet->update([
-            'ca1' => $ca1,
-            'ca2' => $ca2,
-            'ca3' => $ca3,
-            'exam' => $exam,
-            'total' => $total,
-            'bf' => $bf,
-            'cum' => $cum,
-            'grade' => $grade,
-            'remark' => $remark,
-        ]);
+        // Validate dynamic assessments
+        $validationRules = [];
+        foreach ($assessments as $assessment) {
+            $field = 'assessment_' . $assessment->id;
+            $validationRules[$field] = 'nullable|numeric|min:0|max:' . $assessment->max_score;
+        }
+        $request->validate($validationRules);
+
+        // Update assessment scores
+        foreach ($assessments as $assessment) {
+            $field = 'assessment_' . $assessment->id;
+            $score = $request->input($field, 0);
+
+            BroadsheetAssessmentScore::updateOrCreate(
+                [
+                    'broadsheet_id' => $id,
+                    'assessment_id' => $assessment->id,
+                ],
+                ['score' => $score]
+            );
+        }
+
+        // Recompute total, cum, grade, remark
+        $broadsheet->load('assessmentScores');
+        $this->computeDynamicTotals(collect([$broadsheet]), $assessments, $schoolclass, $termId, $broadsheetRecord->session_id);
 
         $this->updateClassMetrics($broadsheet->subjectclass_id, $broadsheet->staff_id, $broadsheet->term_id, $broadsheetRecord->session_id);
         $this->updateSubjectPositions($broadsheet->subjectclass_id, $broadsheet->staff_id, $broadsheet->term_id, $broadsheetRecord->session_id);
         $this->updateClassPositions($broadsheetRecord->schoolclass_id, $broadsheet->term_id, $broadsheetRecord->session_id);
 
         return redirect()->action(
-            [self::class, 'subjectscoresheet'],
+            [self::class, 'classBroadsheet'],
             [
                 'schoolclassid' => $broadsheetRecord->schoolclass_id,
                 'subjectclassid' => $broadsheet->subjectclass_id,
@@ -795,8 +839,12 @@ class MySubjectVettingsController extends Controller
         $termid = $broadsheet->term_id;
 
         $broadsheetRecord = DB::table('broadsheet_records')
-            ->where('id', $broadsheet->broadsheet_record_id)
+            ->where('id', $broadsheet->broadSheet_record_id)
             ->first();
+
+        // Delete assessment scores
+        BroadsheetAssessmentScore::where('broadsheet_id', $id)->delete();
+        BroadsheetSubAssessmentScore::where('broadsheet_id', $id)->delete();
 
         $broadsheet->delete();
 
@@ -812,7 +860,7 @@ class MySubjectVettingsController extends Controller
         ]);
     }
 
-     protected function calculateJuniorGrade($score)
+    protected function calculateJuniorGrade($score)
     {
         if ($score >= 70 && $score <= 100) {
             return 'A';
@@ -826,7 +874,7 @@ class MySubjectVettingsController extends Controller
         return 'F';
     }
 
-        /**
+    /**
      * Fallback grading logic when class category is not available
      */
     protected function getDefaultGrade($score)
@@ -867,7 +915,7 @@ class MySubjectVettingsController extends Controller
     protected function getPreviousTermCum($studentId, $subjectId, $termId, $sessionId)
     {
         if ($termId == 1) {
-            Log::debug('getBroadsheets: Term 1, bf set to 0', [
+            Log::debug('getPreviousTermCum: Term 1, bf set to 0', [
                 'student_id' => $studentId,
                 'subject_id' => $subjectId,
             ]);
@@ -878,11 +926,11 @@ class MySubjectVettingsController extends Controller
             ->where('broadsheet_records.subject_id', $subjectId)
             ->where('broadsheets.term_id', $termId - 1)
             ->where('broadsheet_records.session_id', $sessionId)
-            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+            ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadSheet_record_id')
             ->value('broadsheets.cum');
 
         if (is_null($previousTerm)) {
-            Log::warning('getBroadsheets: No previous term cum found', [
+            Log::warning('getPreviousTermCum: No previous term cum found', [
                 'student_id' => $studentId,
                 'subject_id' => $subjectId,
                 'term_id' => $termId - 1,
@@ -892,7 +940,7 @@ class MySubjectVettingsController extends Controller
         }
 
         $cum = round($previousTerm, 2);
-        Log::debug('getBroadsheets: Fetched previous cum', [
+        Log::debug('getPreviousTermCum: Fetched previous cum', [
             'student_id' => $studentId,
             'subject_id' => $subjectId,
             'term_id' => $termId - 1,
@@ -901,5 +949,4 @@ class MySubjectVettingsController extends Controller
 
         return $cum;
     }
-
 }

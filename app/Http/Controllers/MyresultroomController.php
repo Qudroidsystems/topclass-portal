@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Broadsheets;
-use App\Models\BroadsheetsMock;
-use App\Models\Schoolclass;
-use App\Models\Schoolsession;
 use App\Models\Schoolterm;
-use App\Models\SubjectTeacher;
+use App\Models\Broadsheets;
+use App\Models\Schoolclass;
 use Illuminate\Http\Request;
+use App\Models\Schoolsession;
+use App\Models\SubjectTeacher;
+use App\Models\BroadsheetsMock;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Validation\ValidationException;
 
 class MyresultroomController extends Controller
@@ -57,9 +59,25 @@ class MyresultroomController extends Controller
                     ->leftJoin('subject', 'subject.id', '=', 'subjectteacher.subjectid')
                     ->leftJoin('schoolterm', 'schoolterm.id', '=', 'subjectteacher.termid')
                     ->leftJoin('schoolsession', 'schoolsession.id', '=', 'subjectteacher.sessionid')
+                    ->leftJoin('schoolclass_classcategory', 'schoolclass_classcategory.schoolclass_id', '=', 'schoolclass.id')
+                    ->leftJoin('classcategories', 'classcategories.id', '=', 'schoolclass_classcategory.classcategory_id')
                     ->where('subjectteacher.sessionid', $validated['sessionid'])
                     ->where('subjectteacher.termid', $validated['termid'])
                     ->whereNotNull('subjectclass.id')
+                    ->groupBy(
+                        'subjectteacher.id',
+                        'users.id',
+                        'users.name',
+                        'subject.subject',
+                        'subject.subject_code',
+                        'schoolterm.id',
+                        'subjectclass.id',
+                        'schoolclass.id',
+                        'subjectteacher.sessionid',
+                        DB::raw("CONCAT(schoolclass.schoolclass, ' ', COALESCE(schoolarm.arm, ''))"),
+                        'schoolterm.term',
+                        'schoolsession.session'
+                    )
                     ->orderBy('schoolclass.schoolclass')
                     ->orderBy('schoolarm.arm');
 
@@ -74,6 +92,7 @@ class MyresultroomController extends Controller
                     'schoolclass.id as schoolclassid',
                     'subjectteacher.sessionid as sessionid',
                     \DB::raw("CONCAT(schoolclass.schoolclass, ' ', COALESCE(schoolarm.arm, '')) as schoolclass"),
+                    DB::raw("GROUP_CONCAT(DISTINCT classcategories.category ORDER BY classcategories.category SEPARATOR ', ') as classcategories"),
                     'schoolterm.term as term',
                     'schoolsession.session as session',
                 ]);
@@ -123,6 +142,7 @@ class MyresultroomController extends Controller
                     return (object) [
                         'id' => $subject->id,
                         'schoolclass' => $subject->schoolclass,
+                        'classcategories' => $subject->classcategories ?? 'N/A',
                         'subject' => $subject->subject,
                         'subjectcode' => $subject->subjectcode,
                         'term' => $subject->term,
@@ -145,7 +165,7 @@ class MyresultroomController extends Controller
                         'subjectname' => $subject->subject,
                         'termid' => $subject->termid,
                         'term' => $subject->term,
-                        'schoolclass' => $subject->schoolclass,
+                        'schoolclass' => $subject->schoolclass . ' (' . ($subject->classcategories ?? 'N/A') . ')',
                     ];
                 })->filter();
 

@@ -2,632 +2,495 @@
 
 namespace App\Imports;
 
-use Carbon\Carbon;
 use App\Models\Student;
-use Illuminate\Support\Str;
 use App\Models\Studentclass;
 use App\Models\Studenthouse;
-use App\Models\StudentStatus;
 use App\Models\Studentpicture;
 use App\Models\PromotionStatus;
-use App\Models\StudentBatchModel;
 use App\Models\ParentRegistration;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
-use Maatwebsite\Excel\Concerns\ToModel;
 use App\Models\Studentpersonalityprofile;
-use Maatwebsite\Excel\Validators\Failure;
+use App\Models\StudentCurrentTerm;
+use App\Models\Club;
+use App\Models\Sport;
+use App\Models\StudentClub;
+use App\Models\StudentSport;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\Importable;
-use Maatwebsite\Excel\Concerns\WithUpserts;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\WithProgressBar;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithUpserts;
 use Maatwebsite\Excel\Concerns\WithUpsertColumns;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use Maatwebsite\Excel\Validators\Failure;
 
-class StudentsImport implements ToModel, WithProgressBar, WithStartRow, WithUpsertColumns, WithUpserts, WithValidation, WithChunkReading
+class StudentsImport implements
+    ToModel,
+    WithStartRow,
+    WithValidation,
+    SkipsOnFailure,
+    SkipsOnError,
+    WithUpserts,
+    WithUpsertColumns,
+    WithMultipleSheets
 {
-    use Importable;
+    use Importable, SkipsFailures, SkipsErrors;
 
-    public $id = 0;
+    protected int $sclassid;
+    protected int $termid;
+    protected int $sessionid;
+    protected int $batchid;
+    protected ?int $userId;
 
-    public $_sclassid = 0;
-
-    public $_teremid = 0;
-
-    public $_sessionid = 0;
-
-    public $_batchid = 0;
+    protected int $rowCounter = 0;
+    protected ?string $progressKey = null;
+    protected int $totalRows = 0;
 
     /**
-     * Chunk size for reading large files.
+     * Set by prepareForValidation() when the current row contains only
+     * the locked Class/Term/Session IDs (cols 15, 16, 17) and nothing
+     * else. rules() consults this to no-op its `required` checks on
+     * template blank rows.
      */
-    public function chunkSize(): int
-    {
-        return 1000;
+    protected bool $currentRowSkipped = false;
+
+    public function __construct(
+        int $schoolclassid,
+        int $termid,
+        int $sessionid,
+        int $batchid,
+        ?int $userId = null
+    ) {
+        $this->sclassid  = $schoolclassid;
+        $this->termid    = $termid;
+        $this->sessionid = $sessionid;
+        $this->batchid   = $batchid;
+        $this->userId    = $userId;
+
+        Log::info('StudentsImport started', [
+            'batch_id'         => $this->batchid,
+            'expected_class'   => $this->sclassid,
+            'expected_term'    => $this->termid,
+            'expected_session' => $this->sessionid,
+            'user_id'          => $this->userId,
+        ]);
     }
 
     /**
-     * Parse Excel date with support for serial dates and multiple formats
-     * Returns only the date part without time
+     * ONLY import the "Student Data" sheet.
      */
-    private function parseExcelDate($rawDate)
+    public function sheets(): array
     {
-        // Handle empty values
-        if (empty($rawDate) || $rawDate === 'N/A' || trim($rawDate) === '') {
-            return null;
-        }
-        
-        // Handle Excel serial dates (numbers)
-        if (is_numeric($rawDate)) {
-            $excelBaseDate = Carbon::create(1899, 12, 30); // Excel Windows base date
-            $parsedDate = $excelBaseDate->addDays((int)$rawDate);
-            
-            // For students, allow dates back to 1940 (for very old teachers/staff, but adjust as needed)
-            if ($parsedDate->isFuture()) {
-                // If date is in future, subtract 100 years (common Excel issue with dates)
-                $parsedDate = $parsedDate->subYears(100);
-            }
-            
-            // Return only date part without time
-            return $parsedDate->startOfDay();
-        }
-        
-        // Handle string dates - be more flexible with parsing
-        try {
-            $parsedDate = Carbon::parse($rawDate);
-            
-            // If it's a datetime string like "2012-02-07 00:00:00", extract only the date part
-            if (strpos($rawDate, ' ') !== false || strpos($rawDate, 'T') !== false) {
-                // Extract date part from datetime string
-                $datePart = explode(' ', $rawDate)[0];
-                $datePart = explode('T', $datePart)[0];
-                $parsedDate = Carbon::parse($datePart);
-            }
-            
-            // Return only date part without time
-            return $parsedDate->startOfDay();
-        } catch (\Exception $e) {
-            // Try common date formats more aggressively - prioritize DD/MM/YYYY formats first
-            $formats = [
-                'd/m/Y', 'd/m/y', // DD/MM/YYYY or DD/MM/YY
-                'd-m-Y', 'd-m-y', // DD-MM-YYYY or DD-MM-YY
-                'Y-m-d', 'y-m-d', // YYYY-MM-DD or YY-MM-DD
-                'm/d/Y', 'm/d/y', // MM/DD/YYYY or MM/DD/YY
-                'm-d-Y', 'm-d-y', // MM-DD-YYYY or MM-DD-YY
-                'd.M.Y', 'd.M.y', // DD.MM.YYYY or DD.MM.YY
-                'd/M/Y', 'M/d/Y', // DD/MMM/YYYY or MM/DD/YYYY
-                'd F Y', 'M d, Y', // DD Month YYYY or Month DD, YYYY
-                'Ymd', 'dmY'      // YYYYMMDD or DDMMYYYY
-            ];
-            
-            foreach ($formats as $format) {
-                try {
-                    $parsedDate = Carbon::createFromFormat($format, $rawDate);
-                    
-                    // Validate the parsed date
-                    if (!$parsedDate) {
-                        continue;
-                    }
-                    
-                    // If year is 2-digit, assume it's in 1900-1999 range
-                    if ($parsedDate->year < 100) {
-                        $parsedDate = $parsedDate->addYears(1900);
-                    }
-                    
-                    // Validate reasonable date range for students (born after 1990)
-                    if ($parsedDate->year < 1990 || $parsedDate->isFuture()) {
-                        continue; // Skip unreasonable dates
-                    }
-                    
-                    // Return only date part without time
-                    return $parsedDate->startOfDay();
-                } catch (\Exception $e) {
-                    continue;
-                }
-            }
-            
-            // If all parsing fails, try to extract date components manually with different separators
-            $patterns = [
-                '/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/', // DD/MM/YYYY or DD-MM-YYYY
-                '/(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/',   // YYYY/MM/DD or YYYY-MM-DD
-            ];
-            
-            foreach ($patterns as $pattern) {
-                preg_match($pattern, $rawDate, $matches);
-                if (count($matches) === 4) {
-                    $part1 = (int)$matches[1];
-                    $part2 = (int)$matches[2];
-                    $part3 = (int)$matches[3];
-                    
-                    // Determine format (DD/MM/YYYY vs YYYY/MM/DD)
-                    if ($part3 > 31) {
-                        // YYYY/MM/DD format
-                        $year = $part1;
-                        $month = $part2;
-                        $day = $part3;
-                    } else if ($part1 > 31) {
-                        // YYYY/MM/DD format (different pattern)
-                        $year = $part1;
-                        $month = $part2;
-                        $day = $part3;
-                    } else {
-                        // Assume DD/MM/YYYY format (most common in your data)
-                        $day = $part1;
-                        $month = $part2;
-                        $year = $part3;
-                        
-                        // Handle 2-digit years
-                        if ($year < 100) {
-                            $year += 2000; // For student data, assume 2000s
-                        }
-                    }
-                    
-                    // Validate date
-                    if (checkdate($month, $day, $year)) {
-                        $parsedDate = Carbon::create($year, $month, $day);
-                        
-                        // Validate reasonable range
-                        if ($parsedDate->year >= 1990 && !$parsedDate->isFuture()) {
-                            return $parsedDate->startOfDay();
-                        }
-                    }
-                }
-            }
-            
-            // Last attempt: try to extract any date-like pattern
-            preg_match('/(\d{4}-\d{2}-\d{2})/', $rawDate, $matches);
-            if (count($matches) === 2) {
-                try {
-                    $parsedDate = Carbon::parse($matches[1]);
-                    if ($parsedDate->year >= 1990 && !$parsedDate->isFuture()) {
-                        return $parsedDate->startOfDay();
-                    }
-                } catch (\Exception $e) {
-                    // Continue to throw exception
-                }
-            }
-            
-            // If we get here, log the problematic date for debugging
-            \Log::warning("Unable to parse date, using fallback: '{$rawDate}'");
-            
-            // Final fallback: use current date minus 11 years (typical student age)
-            return Carbon::now()->subYears(11)->startOfYear();
-        }
-    }
-
-    /**
-     * Normalize gender with comprehensive mapping
-     */
-    private function normalizeGender($rawGender)
-    {
-        if ($rawGender === 'N/A' || empty(trim($rawGender))) {
-            return 'N/A';
-        }
-
-        $cleanGender = strtolower(trim($rawGender));
-        
-        // Comprehensive gender mapping
-        $genderMap = [
-            // Male variations
-            'male' => 'Male',
-            'm' => 'Male',
-            'm.' => 'Male',
-            'boy' => 'Male',
-            'masculine' => 'Male',
-            '1' => 'Male',
-            'male.' => 'Male',
-            'm ' => 'Male',
-            ' male' => 'Male',
-            'male ' => 'Male',
-            
-            // Female variations  
-            'female' => 'Female',
-            'f' => 'Female',
-            'f.' => 'Female',
-            'girl' => 'Female',
-            'feminine' => 'Female',
-            '2' => 'Female',
-            'female.' => 'Female',
-            'f ' => 'Female',
-            ' female' => 'Female',
-            'female ' => 'Female',
+        return [
+            'Student Data' => $this,
         ];
+    }
 
-        // Exact match
-        if (isset($genderMap[$cleanGender])) {
-            return $genderMap[$cleanGender];
-        }
-
-        // Remove any special characters and extra spaces
-        $cleanGender = preg_replace('/[^a-z0-9]/', '', $cleanGender);
-        
-        // Check again after cleaning
-        if (isset($genderMap[$cleanGender])) {
-            return $genderMap[$cleanGender];
-        }
-
-        // Partial matching
-        if (strpos($cleanGender, 'male') !== false || $cleanGender === 'm' || strpos($cleanGender, 'boy') !== false) {
-            return 'Male';
-        }
-        
-        if (strpos($cleanGender, 'female') !== false || $cleanGender === 'f' || strpos($cleanGender, 'girl') !== false) {
-            return 'Female';
-        }
-
-        // First character matching
-        if (strpos($cleanGender, 'm') === 0) {
-            return 'Male';
-        }
-        
-        if (strpos($cleanGender, 'f') === 0) {
-            return 'Female';
-        }
-
-        // If still not determined, log for debugging and return N/A
-        \Log::warning("Unable to normalize gender value: '{$rawGender}' (cleaned: '{$cleanGender}')");
-        return 'N/A';
+    public function setProgressTracking(string $progressKey, int $totalRows): void
+    {
+        $this->progressKey = $progressKey;
+        $this->totalRows   = $totalRows;
     }
 
     /**
-     * Handle a single row of the Excel file and map it to models.
+     * Runs BEFORE rules() for every row.
+     *
+     * The batch template pre-fills columns P/Q/R (indexes 15/16/17) with
+     * the locked Class/Term/Session IDs on every blank row. That makes
+     * those rows non-empty from the validator's point of view, so the
+     * `required` rules on admission number / surname / first name fire
+     * on all of them.
+     *
+     * SkipsEmptyRows' isEmptyWhen() is NOT consulted by the
+     * ToModel + WithValidation pipeline (it only applies to the
+     * toCollection()/toArray() path), so we handle the skip here:
+     * if the only populated cells are 15/16/17, flag the row and let
+     * rules() no-op.
      */
+    public function prepareForValidation($data, $index)
+    {
+        // Diagnostic — remove once confirmed working.
+        Log::info('prepareForValidation called', [
+            'index'  => $index,
+            'row'    => array_slice($data, 0, 5),
+        ]);
+
+        $this->currentRowSkipped = false;
+
+        $editable = $data;
+        unset($editable[15], $editable[16], $editable[17]);
+
+        foreach ($editable as $value) {
+            if (!is_null($value) && trim((string) $value) !== '') {
+                return $data;   // row has real content — validate normally
+            }
+        }
+
+        $this->currentRowSkipped = true;
+        return $data;
+    }
+
     public function model(array $row)
     {
-        // Helper function to return "N/A" for null, empty, or whitespace-only values
-        $naIfEmpty = function ($value) {
-            return (is_null($value) || trim($value) === '') ? 'N/A' : trim($value);
-        };
+        // If prepareForValidation() flagged this as a blank template row,
+        // skip it outright — no import, no logging noise.
+        if ($this->currentRowSkipped) {
+            $this->currentRowSkipped = false;
+            return null;
+        }
 
-        // Retrieve session data with "N/A" fallback
-        $schoolclassid = $naIfEmpty(Session::get('sclassid'));
-        $termid = $naIfEmpty(Session::get('tid'));
-        $sessionid = $naIfEmpty(Session::get('sid'));
-        $batchid = $naIfEmpty(Session::get('batchid'));
+        $this->rowCounter++;
+        $this->reportProgress();
 
-        // CORRECT COLUMN MAPPING based on your Excel file:
-        $admissionno = $naIfEmpty($row[0] ?? null);  // A: Admission No
-        $surname = $naIfEmpty($row[1] ?? null);      // B: Surname
-        $firstname = $naIfEmpty($row[2] ?? null);    // C: First Name
-        $othername = $naIfEmpty($row[3] ?? null);    // D: Other Names
-        $rawGender = $naIfEmpty($row[4] ?? null);    // E: Gender (this exists!)
-        $homeAddress = $naIfEmpty($row[5] ?? null);  // F: Home Address
-        $rawDob = $naIfEmpty($row[6] ?? null);       // G: DOB
-        $rawAge = $naIfEmpty($row[7] ?? null);       // H: Age
-        $placeofbirth = $naIfEmpty($row[8] ?? null); // I: Place of Birth
-        $nationality = $naIfEmpty($row[9] ?? null);  // J: Nationality
-        $state = $naIfEmpty($row[10] ?? null);       // K: State of Origin
-        $local = $naIfEmpty($row[11] ?? null);       // L: L.G.A
-        $religion = $naIfEmpty($row[12] ?? null);    // M: Religion
-        $lastschool = $naIfEmpty($row[13] ?? null);  // N: Last Sch. Attended
-        $lastclass = $naIfEmpty($row[14] ?? null);   // O: Last Class
-        // Columns P, Q, R are schoolclassid, termid, sessionid (constants)
+        $rowNumber = $this->startRow() + $this->rowCounter - 1;
 
-        // Normalize gender
-        $gender = $this->normalizeGender($rawGender);
+        $clean = fn ($v) => (is_null($v) || trim((string) $v) === '') ? null : trim((string) $v);
 
-        // Parse date of birth
-        $parsedDob = null;
-        $age = null;
-        
-        try {
-            if ($rawDob !== 'N/A') {
-                $parsedDob = $this->parseExcelDate($rawDob);
+        // Cast admission number to string (Excel often returns it as int/float)
+        $admissionNo  = $clean($row[0] ?? null);
+        if ($admissionNo !== null) {
+            $admissionNo = (string) $admissionNo;
+        }
+
+        $lastname     = $clean($row[1] ?? null);
+        $firstname    = $clean($row[2] ?? null);
+        $othername    = $clean($row[3] ?? null);
+        $gender       = $clean($row[4] ?? null);
+        $homeAddress  = $clean($row[5] ?? null);
+        $dob          = $clean($row[6] ?? null);
+        $age          = $clean($row[7] ?? null);
+        $placeOfBirth = $clean($row[8] ?? null);
+        $nationality  = $clean($row[9] ?? null);
+        $state        = $clean($row[10] ?? null);
+        $local        = $clean($row[11] ?? null);
+        $religion     = $clean($row[12] ?? null);
+        $lastSchool   = $clean($row[13] ?? null);
+        $lastClass    = $clean($row[14] ?? null);
+
+        // Normalise DOB to Y-m-d if it parsed as a date; otherwise store as-is.
+        if ($dob) {
+            try {
+                $dob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+            } catch (\Exception $e) {
+                // leave as-is — column is varchar
             }
-        } catch (\Exception $e) {
-            \Log::warning("DOB parsing failed for '{$rawDob}', using age to estimate");
         }
 
-        // If DOB parsing failed, use age to estimate
-        if (!$parsedDob && $rawAge !== 'N/A' && is_numeric($rawAge)) {
-            $age = (int)$rawAge;
-            $estimatedBirthYear = Carbon::now()->subYears($age)->year;
-            $parsedDob = Carbon::create($estimatedBirthYear, 1, 1)->startOfDay();
+        $fatherTitle      = $clean($row[18] ?? null);
+        $fatherName       = $clean($row[19] ?? null);
+        $fatherPhone      = $clean($row[20] ?? null);
+        $officeAddress    = $clean($row[21] ?? null);
+        $fatherOccupation = $clean($row[22] ?? null);
+        $motherTitle      = $clean($row[23] ?? null);
+        $motherName       = $clean($row[24] ?? null);
+        $motherPhone      = $clean($row[25] ?? null);
+        $motherOccupation = $clean($row[26] ?? null);
+        $motherOfficeAddr = $clean($row[27] ?? null);
+        $parentAddress    = $clean($row[28] ?? null);
+        $parentReligion   = $clean($row[29] ?? null);
+
+        $bloodGroup            = $clean($row[30] ?? null);
+        $genotype              = $clean($row[31] ?? null);
+        $emergencyContactName  = $clean($row[32] ?? null);
+        $emergencyContactPhone = $clean($row[33] ?? null);
+        $allergiesMedical      = $clean($row[34] ?? null);
+        $guardianName          = $clean($row[35] ?? null);
+        $guardianRelationship  = $clean($row[36] ?? null);
+        $guardianPhone         = $clean($row[37] ?? null);
+        $whatsappNumber        = $clean($row[38] ?? null);
+        $clubName              = $clean($row[39] ?? null);
+        $sportName             = $clean($row[40] ?? null);
+
+        // Belt-and-braces skip — if a row somehow reaches here with no
+        // name data, drop it.
+        if (!$admissionNo && !$lastname && !$firstname) {
+            return null;
         }
 
-        // Set final age
-        if ($rawAge === 'N/A' || !is_numeric($rawAge)) {
-            $age = $parsedDob ? $parsedDob->diffInYears(Carbon::now()) : null;
-        } else {
-            $age = (int)$rawAge;
+        if (!$admissionNo || !$lastname || !$firstname) {
+            $msg = "Row {$rowNumber}: Admission No, Surname and First Name are required.";
+            Log::warning($msg);
+            throw new \Exception($msg);
         }
 
-        // Parent data columns
-        $father_title = $naIfEmpty(Str::limit($row[18] ?? '', 3, '')); // S: Father Name
-        $father = $naIfEmpty(Str::substr($row[18] ?? '', 3));          // S: Father Name
-        $father_phone = $naIfEmpty($row[19] ?? null);                  // T: Father Phone
-        $father_occupation = $naIfEmpty($row[20] ?? null);             // U: Father Occupation
-        $office_address = $naIfEmpty($row[21] ?? null);                // V: Office Address
-        $mother_title = $naIfEmpty(Str::limit($row[22] ?? '', 3, '')); // W: Mother Name
-        $mother = $naIfEmpty(Str::substr($row[22] ?? '', 3));          // W: Mother Name
-        $mother_phone = $naIfEmpty($row[23] ?? null);                  // X: Mother Phone
-        $mother_occupation = $naIfEmpty($row[24] ?? null);             // Y: Mother Occupation
-        $mother_office_address = $naIfEmpty($row[25] ?? null);         // Z: Office Address
-        $parent_address = $naIfEmpty($row[26] ?? null);                // AA: Parent Home Address
-        $parent_religion = $naIfEmpty($row[27] ?? null);               // AB: Religion
-
-        // Validate required fields
-        if (in_array($admissionno, ['N/A', ''], true) || in_array($surname, ['N/A', ''], true) || in_array($firstname, ['N/A', ''], true)) {
-            throw new \Exception("Required fields (admissionno, surname, firstname) cannot be empty or 'N/A' in row " . ($this->startRow() + $this->id));
-        }
-
-        // Validate session-based fields
-        if (in_array($schoolclassid, ['N/A', ''], true) || in_array($termid, ['N/A', ''], true) || in_array($sessionid, ['N/A', ''], true) || in_array($batchid, ['N/A', ''], true)) {
-            throw new \Exception("Session data (schoolclassid, termid, sessionid, batchid) cannot be empty or 'N/A' in row " . ($this->startRow() + $this->id));
-        }
-
-        // Debug logging for first few rows
-       // Debug logging for first few rows
-        if ($this->id < 5) {
-            \Log::info("Import Debug - Row {$this->id}:", [
-                'admissionno' => $admissionno,
-                'firstname' => $firstname,
-                'surname' => $surname,
-                'raw_gender' => $rawGender,
-                'raw_gender_length' => strlen($rawGender),
-                'raw_gender_chars' => array_map('ord', str_split($rawGender)),
-                'final_gender' => $gender,
-                'raw_dob' => $rawDob,
-                'raw_age' => $rawAge,
-                'parsed_dob' => $parsedDob ? $parsedDob->format('Y-m-d') : 'null',
-                'final_age' => $age
-            ]);
-        }
-
-        // Initialize models
-        $studentbiodata = new Student();
-        $studentclass = new Studentclass();
-        $promotion = new PromotionStatus();
-        $parent = new ParentRegistration();
-        $studenthouse = new Studenthouse();
-        $picture = new Studentpicture();
-        $studentpersonalityprofile = new Studentpersonalityprofile();
-        $studentStatus = StudentStatus::where('status', 'old')->first();
-
-        // Use transaction to ensure data consistency
-        return \DB::transaction(function () use (
-            $studentbiodata, $studentclass, $promotion, $parent, $studenthouse, $picture, $studentpersonalityprofile, $studentStatus,
-            $admissionno, $surname, $firstname, $othername, $gender, $homeAddress, $parsedDob, $age, $placeofbirth, $nationality, $state, $local, $religion, $lastschool, $lastclass,
-            $father_title, $father, $father_phone, $office_address, $father_occupation, $mother_title, $mother, $mother_phone, $mother_occupation, $mother_office_address, $parent_address, $parent_religion,
-            $schoolclassid, $termid, $sessionid, $batchid
+        return DB::transaction(function () use (
+            $admissionNo, $lastname, $firstname, $othername, $gender, $homeAddress,
+            $dob, $age, $placeOfBirth, $nationality, $state, $local, $religion,
+            $lastSchool, $lastClass,
+            $fatherTitle, $fatherName, $fatherPhone, $officeAddress, $fatherOccupation,
+            $motherTitle, $motherName, $motherPhone, $motherOccupation, $motherOfficeAddr,
+            $parentAddress, $parentReligion,
+            $bloodGroup, $genotype, $emergencyContactName, $emergencyContactPhone,
+            $allergiesMedical, $guardianName, $guardianRelationship, $guardianPhone,
+            $whatsappNumber, $clubName, $sportName, $rowNumber
         ) {
-            // Populate student biodata
-            $studentbiodata->admissionNo = $admissionno;
-            $studentbiodata->title = 'N/A';
-            $studentbiodata->firstname = $firstname;
-            $studentbiodata->lastname = $surname;
-            $studentbiodata->othername = $othername;
-            $studentbiodata->gender = $gender;
-            $studentbiodata->future_ambition = 'N/A';
-           
-            $studentbiodata->home_address2 = $homeAddress;
-            $studentbiodata->dateofbirth = $parsedDob;
-            $studentbiodata->age = $age;
-            $studentbiodata->placeofbirth = $placeofbirth;
-            $studentbiodata->religion = $religion;
-            $studentbiodata->nationality = $nationality;
-            $studentbiodata->state = $state;
-            $studentbiodata->local = $local;
-            $studentbiodata->last_school = $lastschool;
-            $studentbiodata->last_class = $lastclass;
-            $studentbiodata->registeredBy = Auth::user()->id ?? 'N/A';
-            $studentbiodata->batchid = $batchid;
-            $studentbiodata->statusId = $studentStatus ? $studentStatus->id : 'N/A';
-            $studentbiodata->save();
-            $studentId = $studentbiodata->id;
+            $student = Student::updateOrCreate(
+                ['admissionNo' => $admissionNo],
+                [
+                    // NOT NULL, no default — must always have a value.
+                    // 'title' and 'future_ambition' are not collected by
+                    // the batch template, so they are hardcoded rather
+                    // than referencing undefined variables.
+                    'title'            => 'N/A',
+                    'firstname'        => $firstname,
+                    'lastname'         => $lastname,
+                    'othername'        => $othername        ?? 'N/A',
+                    'gender'           => $gender           ?? 'N/A',
+                    'future_ambition'  => 'N/A',
+                    'home_address2'    => $homeAddress      ?? 'N/A',
+                    'dateofbirth'      => $dob              ?? 'N/A', // varchar — safe
+                    'age'              => $age              ?? 'N/A', // varchar — safe
+                    'placeofbirth'     => $placeOfBirth     ?? 'N/A',
+                    'religion'         => $religion         ?? 'N/A',
+                    'nationality'      => $nationality      ?? 'N/A',
+                    'state'            => $state            ?? 'N/A',
+                    'local'            => $local            ?? 'N/A',
+                    'last_school'      => $lastSchool       ?? 'N/A',
+                    'last_class'       => $lastClass        ?? 'N/A',
+                    'registeredBy'     => $this->userId     ?? '0',   // NOT NULL
 
-            // Populate parent data
-            $parent->studentId = $studentId;
-            $parent->father_title = $father_title;
-            $parent->father = $father;
-            $parent->father_phone = $father_phone;
-            $parent->office_address = $office_address;
-            $parent->father_occupation = $father_occupation;
-            $parent->mother_title = $mother_title;
-            $parent->mother = $mother;
-            $parent->mother_phone = $mother_phone;
-            $parent->mother_occupation = $mother_occupation;
-            $parent->mother_office_address = $mother_office_address;
-            $parent->parent_address = $parent_address;
-            $parent->religion = $parent_religion;
-            $parent->save();
+                    // Nullable in DB — null is fine
+                    'blood_group'                  => $bloodGroup,
+                    'genotype'                     => $genotype,
+                    'emergency_contact_name'       => $emergencyContactName,
+                    'emergency_contact_phone'      => $emergencyContactPhone,
+                    'allergies_medical_conditions' => $allergiesMedical,
 
-            // Populate student picture
-            $picture->studentid = $studentId;
-            $picture->picture = 'unnamed.jpg';
-            $picture->save();
+                    // Defaults
+                    'batchid'          => $this->batchid,
+                    'statusId'         => 1,
+                    'student_status'   => 'Active',
+                    'student_category' => 'Day',
+                ]
+            );
 
-            // Populate student class
-            $studentclass->studentId = $studentId;
-            $studentclass->schoolclassid = $schoolclassid;
-            $studentclass->termid = $termid;
-            $studentclass->sessionid = $sessionid;
-            $studentclass->save();
+            ParentRegistration::updateOrCreate(
+                ['studentId' => $student->id],
+                [
+                    'father_title'          => $fatherTitle,
+                    'father'                => $fatherName,
+                    'father_phone'          => $fatherPhone,
+                    'office_address'        => $officeAddress,
+                    'father_occupation'     => $fatherOccupation,
+                    'mother_title'          => $motherTitle,
+                    'mother'                => $motherName,
+                    'mother_phone'          => $motherPhone,
+                    'mother_occupation'     => $motherOccupation,
+                    'mother_office_address' => $motherOfficeAddr,
+                    'parent_address'        => $parentAddress,
+                    'religion'              => $parentReligion,
+                    'guardian_name'         => $guardianName,
+                    'guardian_relationship' => $guardianRelationship,
+                    'guardian_phone'        => $guardianPhone,
+                    'whatsapp_number'       => $whatsappNumber,
+                ]
+            );
 
-            // Populate promotion status
-            $promotion->studentId = $studentId;
-            $promotion->schoolclassid = $schoolclassid;
-            $promotion->termid = $termid;
-            $promotion->sessionid = $sessionid;
-            $promotion->promotionStatus = 'PROMOTED';
-            $promotion->classstatus = 'CURRENT';
-            $promotion->save();
+            Studentpicture::firstOrCreate(
+                ['studentid' => $student->id],
+                ['picture' => 'unnamed.jpg']
+            );
 
-            // Populate student house
-            $studenthouse->studentid = $studentId;
-            $studenthouse->termid = $termid;
-            $studenthouse->sessionid = $sessionid;
-            $studenthouse->schoolhouse = null;
-            $studenthouse->save();
+            Studentclass::updateOrCreate(
+                [
+                    'studentId' => $student->id,
+                    'termid'    => $this->termid,
+                    'sessionid' => $this->sessionid,
+                ],
+                ['schoolclassid' => $this->sclassid]
+            );
 
-            // Populate student personality profile
-            $studentpersonalityprofile->studentid = $studentId;
-            $studentpersonalityprofile->schoolclassid = $schoolclassid;
-            $studentpersonalityprofile->termid = $termid;
-            $studentpersonalityprofile->sessionid = $sessionid;
-            $studentpersonalityprofile->save();
+            PromotionStatus::updateOrCreate(
+                [
+                    'studentId'     => $student->id,
+                    'schoolclassid' => $this->sclassid,
+                    'termid'        => $this->termid,
+                    'sessionid'     => $this->sessionid,
+                ],
+                [
+                    'promotionStatus' => 'PROMOTED',
+                    'classstatus'     => 'CURRENT',
+                ]
+            );
 
-            $this->id++; // Increment row counter
+            Studenthouse::updateOrCreate(
+                [
+                    'studentid' => $student->id,
+                    'termid'    => $this->termid,
+                    'sessionid' => $this->sessionid,
+                ],
+                ['schoolhouse' => null]
+            );
 
-            return $studentbiodata;
+            Studentpersonalityprofile::firstOrCreate([
+                'studentid'     => $student->id,
+                'schoolclassid' => $this->sclassid,
+                'termid'        => $this->termid,
+                'sessionid'     => $this->sessionid,
+            ]);
+
+            StudentCurrentTerm::registerTerm(
+                $student->id,
+                $this->sclassid,
+                $this->termid,
+                $this->sessionid,
+                true
+            );
+
+            if ($clubName) {
+                $club = Club::whereRaw('LOWER(club) = ?', [strtolower($clubName)])->first();
+                if ($club) {
+                    StudentClub::updateOrCreate(
+                        ['studentid' => $student->id],
+                        ['clubid' => $club->id, 'termid' => $this->termid, 'sessionid' => $this->sessionid]
+                    );
+                }
+            }
+
+            if ($sportName) {
+                $sport = Sport::whereRaw('LOWER(sport) = ?', [strtolower($sportName)])->first();
+                if ($sport) {
+                    StudentSport::updateOrCreate(
+                        ['studentid' => $student->id],
+                        ['sportid' => $sport->id, 'termid' => $this->termid, 'sessionid' => $this->sessionid]
+                    );
+                }
+            }
+
+            Log::info("Row {$rowNumber} imported successfully", [
+                'admissionNo' => $admissionNo,
+                'student_id'  => $student->id,
+            ]);
+
+            return $student;
         });
     }
 
-    /**
-     * Validation rules for the Excel import.
-     * Note: Column indices are 1-based (A=1, B=2, etc.).
-     */
+    public function onFailure(Failure ...$failures)
+    {
+        foreach ($failures as $failure) {
+            Log::warning('Import validation failure', [
+                'row'       => $failure->row(),
+                'attribute' => $failure->attribute(),
+                'errors'    => $failure->errors(),
+                'values'    => $failure->values(),
+            ]);
+        }
+
+        $this->failures = array_merge($this->failures ?? [], $failures);
+    }
+
+    protected function reportProgress(): void
+    {
+        if (!$this->progressKey || $this->totalRows <= 0) {
+            return;
+        }
+
+        if ($this->rowCounter % 5 !== 0 && $this->rowCounter < $this->totalRows) {
+            return;
+        }
+
+        Cache::put($this->progressKey, [
+            'status'   => 'processing',
+            'progress' => min($this->rowCounter, $this->totalRows),
+            'total'    => $this->totalRows,
+            'message'  => "Processed {$this->rowCounter} of {$this->totalRows} rows",
+        ], now()->addMinutes(45));
+    }
+
     public function rules(): array
     {
-        $this->_sclassid = Session::get('sclassid') ?? 'N/A';
-        $this->_termid = Session::get('tid') ?? 'N/A';
-        $this->_sessionid = Session::get('sid') ?? 'N/A';
-        $this->_batchid = Session::get('batchid') ?? 'N/A';
-
         return [
-            '*.1' => 'required|string|max:255', // admissionno (column A)
-            '*.2' => 'required|string|max:255', // surname (column B)
-            '*.3' => 'required|string|max:255', // firstname (column C)
-            // '*.5' => [ // gender (column E)
-            //     function ($attribute, $value, $onFailure) {
-            //         if ($value === 'N/A' || trim($value ?? '') === '') {
-            //             return; // Allow N/A or empty for gender
-            //         }
-            //         $normalized = ucfirst(strtolower(trim($value)));
-            //         if (!in_array($normalized, ['Male', 'Female'])) {
-            //             $onFailure('Gender must be Male or Female.');
-            //         }
-            //     }
-            // ],
-            '*.7' => [ // dateofbirth (column G)
-                function ($attribute, $value, $onFailure) {
-                    if ($value === 'N/A' || trim($value ?? '') === '') {
-                        return; // Allow N/A or empty for DOB
+            '0' => [
+                function ($attribute, $value, $fail) {
+                    if ($this->currentRowSkipped) return;
+                    if (is_null($value) || trim((string) $value) === '') {
+                        $fail('Admission number is required.');
                     }
-                    
-                    try {
-                        if (is_numeric($value)) {
-                            return; // Excel serial number
-                        } else {
-                            Carbon::parse($value);
-                        }
-                    } catch (\Exception $e) {
-                        $onFailure('Date of birth must be in a recognizable date format.');
-                    }
-                }
+                },
+                'max:50',
             ],
-            '*.8' => [ // age (column H)
-                function ($attribute, $value, $onFailure) {
-                    if ($value === 'N/A' || trim($value ?? '') === '') {
-                        return; // Allow N/A or empty for age
+            '1' => [
+                function ($attribute, $value, $fail) {
+                    if ($this->currentRowSkipped) return;
+                    if (is_null($value) || trim((string) $value) === '') {
+                        $fail('Surname is required.');
                     }
-                    if (!is_numeric($value) || (int)$value < 1 || (int)$value > 100) {
-                        $onFailure('Age must be a number between 1 and 100.');
-                    }
-                }
+                },
+                'max:100',
             ],
+            '2' => [
+                function ($attribute, $value, $fail) {
+                    if ($this->currentRowSkipped) return;
+                    if (is_null($value) || trim((string) $value) === '') {
+                        $fail('First name is required.');
+                    }
+                },
+                'max:100',
+            ],
+            '4'  => 'nullable|in:Male,Female',
+
+            '15' => function ($attribute, $value, $fail) {
+                if ($this->currentRowSkipped) return;
+                if ((int) $value !== $this->sclassid) {
+                    $fail("Class ID does not match. Expected {$this->sclassid}, got {$value}");
+                }
+            },
+            '16' => function ($attribute, $value, $fail) {
+                if ($this->currentRowSkipped) return;
+                if ((int) $value !== $this->termid) {
+                    $fail("Term ID does not match. Expected {$this->termid}, got {$value}");
+                }
+            },
+            '17' => function ($attribute, $value, $fail) {
+                if ($this->currentRowSkipped) return;
+                if ((int) $value !== $this->sessionid) {
+                    $fail("Session ID does not match. Expected {$this->sessionid}, got {$value}");
+                }
+            },
+
+            '30' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
+            '31' => 'nullable|in:AA,AS,SS,AC,SC,CC',
         ];
     }
 
-    /**
-     * Custom validation messages.
-     */
     public function customValidationMessages()
     {
         return [
-            '*.1.required' => 'Admission number is required.',
-            '*.2.required' => 'Surname is required.',
-            '*.3.required' => 'First name is required.',
+            '4.in'  => 'Gender must be Male or Female.',
+            '30.in' => 'Blood Group must be one of A+, A-, B+, B-, AB+, AB-, O+, O-.',
+            '31.in' => 'Genotype must be one of AA, AS, SS, AC, SC, CC.',
         ];
     }
 
-    /**
-     * Custom validation attribute names.
-     */
-    public function customValidationAttributes()
-    {
-        return [
-            '*.1' => 'admissionno',
-            '*.2' => 'surname', 
-            '*.3' => 'firstname',
-            '*.5' => 'gender',
-            '*.7' => 'dateofbirth',
-            '*.8' => 'age',
-        ];
-    }
-
-    /**
-     * Start reading from row 2 (skip header).
-     */
     public function startRow(): int
     {
         return 2;
     }
 
-    /**
-     * Unique identifier for upserts.
-     */
     public function uniqueBy()
     {
-        return ['admissionNo'];
+        return 'admissionNo';
     }
 
-    /**
-     * Columns to update during upserts.
-     */
     public function upsertColumns()
     {
         return [
-            'title',
-            'firstname',
-            'lastname',
-            'othername',
-            'gender',
-            'future_ambition',
-            // 'home_address',
-            'home_address2',
-            'dateofbirth',
-            'age',
-            'placeofbirth',
-            'religion',
-            'nationality',
-            'state',
-            'local',
-            'last_school',
-            'last_class',
-            'registeredBy',
-            'batchid',
-            'statusId',
+            'title', 'firstname', 'lastname', 'othername', 'gender',
+            // NOTE: 'home_address' is NOT a column in studentRegistration —
+            // only 'home_address2' exists. Removed to avoid silent upsert
+            // failures on a non-existent key.
+            'home_address2', 'dateofbirth', 'age', 'placeofbirth',
+            'religion', 'nationality', 'state', 'local', 'last_school', 'last_class',
+            'blood_group', 'genotype', 'emergency_contact_name', 'emergency_contact_phone',
+            'allergies_medical_conditions',
+            'registeredBy', 'batchid', 'statusId', 'student_status',
         ];
-    }
-
-    /**
-     * Handle validation failures.
-     */
-    public function onFailure(Failure ...$failures)
-    {
-        StudentBatchModel::where('id', $this->_batchid)->update(['status' => 'Failed']);
-        foreach ($failures as $failure) {
-            \Log::error('Excel Import Failure', [
-                'row' => $failure->row(),
-                'attribute' => $failure->attribute(),
-                'errors' => $failure->errors(),
-                'values' => $failure->values(),
-            ]);
-        }
-    }
-
-    /**
-     * Handle exceptions during import.
-     */
-    public function onError(\Throwable $e)
-    {
-        StudentBatchModel::where('id', $this->_batchid)->update(['status' => 'Failed']);
-        \Log::error('Excel Import Error', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        throw $e;
     }
 }
