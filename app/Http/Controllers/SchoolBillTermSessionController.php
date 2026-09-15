@@ -332,9 +332,20 @@ class SchoolBillTermSessionController extends Controller
     /**
      * Bulk delete assignments.
      */
-    public function bulkDestroy(Request $request)
-    {
-        $ids = $request->input('ids', []);
+   public function bulkDestroy(Request $request)
+{
+    try {
+        $ids = $request->input('ids');
+
+        // Normalise: accept array, JSON string, or comma-separated string
+        if (is_string($ids)) {
+            $decoded = json_decode($ids, true);
+            $ids = is_array($decoded) ? $decoded : array_map('trim', explode(',', $ids));
+        }
+        if (!is_array($ids)) {
+            $ids = [];
+        }
+        $ids = array_values(array_filter($ids, fn($v) => $v !== null && $v !== ''));
 
         if (empty($ids)) {
             return response()->json([
@@ -343,11 +354,36 @@ class SchoolBillTermSessionController extends Controller
             ], 400);
         }
 
+        $existingIds = SchoolBillTermSession::whereIn('id', $ids)->pluck('id')->toArray();
+        $invalidIds  = array_diff($ids, $existingIds);
+        if (!empty($invalidIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some selected assignments do not exist: ' . implode(', ', $invalidIds),
+            ], 400);
+        }
+
+        DB::beginTransaction();
         $deleted = SchoolBillTermSession::whereIn('id', $ids)->delete();
+        DB::commit();
 
         return response()->json([
-            'success' => true,
-            'message' => $deleted . ' assignment(s) deleted successfully.',
+            'success'       => true,
+            'message'       => $deleted . ' assignment(s) deleted successfully.',
+            'deleted_count' => $deleted,
         ]);
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        \Log::error('SchoolBillTermSession bulkDestroy failed', [
+            'ids'   => $request->input('ids'),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Could not delete: ' . $e->getMessage(),
+        ], 500);
     }
+}
 }
