@@ -19,6 +19,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'username',          // ← REQUIRED: storeStudent() & massCreateStudents() write this
         'password',
         'student_id',
         'phone_number',
@@ -74,6 +75,20 @@ class User extends Authenticatable
         return $this->hasMany(Journals::class, 'user_id');
     }
 
+    // Subject teachings for teachers
+    public function subjectTeachings(): HasMany
+    {
+        return $this->hasMany(SubjectTeacher::class, 'staffid', 'id');
+    }
+
+    // Subjects taught directly
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'subjectteacher', 'staffid', 'subjectid')
+                    ->withPivot('termid', 'sessionid')
+                    ->withTimestamps();
+    }
+
     // Check if user has Staff role
     public function isStaff(): bool
     {
@@ -103,12 +118,10 @@ class User extends Authenticatable
     // Get avatar URL (safe fallback)
     public function getAvatarUrlAttribute(): string
     {
-        // Staff picture
         if ($this->isStaff() && $this->staffPicture?->picture) {
             return asset('storage/staff_avatars/' . $this->staffPicture->picture);
         }
 
-        // Student picture
         if ($this->isStudent() && $this->student_id) {
             $studentPicture = \App\Models\Studentpicture::where('studentid', $this->student_id)->first();
             if ($studentPicture?->picture) {
@@ -116,18 +129,14 @@ class User extends Authenticatable
             }
         }
 
-        // General avatar column
         if ($this->avatar) {
             return asset('storage/avatars/' . $this->avatar);
         }
 
-        // Legacy profile_image
         if ($this->profile_image) {
             return asset('storage/' . $this->profile_image);
         }
 
-        // Default fallback
-        $initials = strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
         return "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&color=7F9CF5&background=EBF4FF";
     }
 
@@ -140,7 +149,7 @@ class User extends Authenticatable
     // Check if user is active
     public function isActive(): bool
     {
-        return true; // Customize if needed
+        return true;
     }
 
     // Get formatted date of birth
