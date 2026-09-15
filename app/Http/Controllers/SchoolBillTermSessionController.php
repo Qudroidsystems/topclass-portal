@@ -1,7 +1,5 @@
 <?php
 
-// app/Http/Controllers/SchoolBillTermSessionController.php
-
 namespace App\Http\Controllers;
 
 use App\Models\Schoolterm;
@@ -11,6 +9,7 @@ use App\Models\Schoolsession;
 use App\Models\SchoolBillModel;
 use Illuminate\Support\Facades\DB;
 use App\Models\SchoolBillTermSession;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -18,24 +17,35 @@ class SchoolBillTermSessionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:View school-bill-for-term-session|Create school-bill-for-term-session|Update school-bill-for-term-session|Delete school-bill-for-term-session', ['only' => ['index']]);
+        $this->middleware('permission:View school-bill-for-term-session|Create school-bill-for-term-session|Update school-bill-for-term-session|Delete school-bill-for-term-session', ['only' => ['index', 'data', 'stats', 'show', 'getRelated']]);
         $this->middleware('permission:Create school-bill-for-term-session', ['only' => ['create', 'store']]);
         $this->middleware('permission:Update school-bill-for-term-session', ['only' => ['edit', 'update']]);
         $this->middleware('permission:Delete school-bill-for-term-session', ['only' => ['destroy', 'bulkDestroy']]);
     }
 
-    /**
-     * Display the index page (normal page load only).
-     */
+    // =========================================================================
+    // INDEX
+    // =========================================================================
+
     public function index()
     {
         $pagetitle      = 'School Bill Term Session Management';
         $terms          = Schoolterm::all();
         $schoolsessions = Schoolsession::all();
-        $schoolclasses  = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select(['schoolclass.id as id', 'schoolclass.schoolclass as schoolclass', 'schoolarm.arm as arm'])
-            ->orderBy('schoolclass')
-            ->get();
+
+        // Classes with ARM NAME (avoid `as arm` alias collision)
+        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->get([
+                'schoolclass.id as id',
+                'schoolclass.schoolclass as schoolclass',
+                'schoolarm.arm as arm_name',
+            ])
+            ->map(function ($c) {
+                $c->label = trim($c->schoolclass . ($c->arm_name ? ' ' . $c->arm_name : ''));
+                return $c;
+            })
+            ->sortBy('schoolclass');
+
         $schoolbills = SchoolBillModel::whereIn('statusId', [1, 2])->get();
 
         return view('schoolbilltermsession.index', compact(
@@ -43,9 +53,10 @@ class SchoolBillTermSessionController extends Controller
         ));
     }
 
-    /**
-     * DataTables AJAX data endpoint.
-     */
+    // =========================================================================
+    // DATATABLE
+    // =========================================================================
+
     public function data(Request $request)
     {
         $assignments = SchoolBillTermSession::leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
@@ -61,7 +72,7 @@ class SchoolBillTermSessionController extends Controller
                 'school_bill_class_term_session.termid_id',
                 'school_bill_class_term_session.session_id',
                 'schoolclass.schoolclass as schoolclass',
-                'schoolarm.arm as schoolarm',
+                'schoolarm.arm as arm_name',
                 'schoolterm.term as schoolterm',
                 'schoolsession.session as schoolsession',
                 'users.name as createdBy',
@@ -73,7 +84,7 @@ class SchoolBillTermSessionController extends Controller
         return DataTables::of($assignments)
             ->addIndexColumn()
             ->addColumn('formatted_class', function ($row) {
-                return trim($row->schoolclass . ' ' . ($row->schoolarm ?? ''));
+                return trim($row->schoolclass . ($row->arm_name ? ' ' . $row->arm_name : ''));
             })
             ->addColumn('formatted_term_session', function ($row) {
                 return '<span class="ts-badge ts-badge-term">'
@@ -97,6 +108,7 @@ class SchoolBillTermSessionController extends Controller
                     : 'N/A';
             })
             ->addColumn('action', function ($row) {
+                $classLabel = trim($row->schoolclass . ($row->arm_name ? ' ' . $row->arm_name : ''));
                 $buttons = '<div class="btn-group btn-group-sm">';
                 if (auth()->user()->can('Update school-bill-for-term-session')) {
                     $buttons .= '<button class="btn btn-primary edit-assignment" title="Edit"
@@ -111,7 +123,7 @@ class SchoolBillTermSessionController extends Controller
                 if (auth()->user()->can('Delete school-bill-for-term-session')) {
                     $buttons .= '<button class="btn btn-danger delete-assignment" title="Delete"
                         data-id="'    . $row->id       . '"
-                        data-title="' . e($row->schoolbill . ' — ' . $row->schoolclass . ' ' . $row->schoolarm) . '">
+                        data-title="' . e($row->schoolbill . ' — ' . $classLabel) . '">
                         <i class="ri-delete-bin-line"></i>
                     </button>';
                 }
@@ -122,9 +134,10 @@ class SchoolBillTermSessionController extends Controller
             ->make(true);
     }
 
-    /**
-     * Stats endpoint.
-     */
+    // =========================================================================
+    // STATS
+    // =========================================================================
+
     public function stats()
     {
         $assignments = SchoolBillTermSession::leftJoin('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
@@ -148,9 +161,10 @@ class SchoolBillTermSessionController extends Controller
         ]);
     }
 
-    /**
-     * Store new assignment(s) — supports multi-class x multi-term combos.
-     */
+    // =========================================================================
+    // STORE
+    // =========================================================================
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -183,7 +197,6 @@ class SchoolBillTermSessionController extends Controller
         $term_ids   = $request->input('termid_id');
         $session_id = $request->input('session_id');
 
-        // Check for any existing combinations
         $existing = SchoolBillTermSession::where('bill_id', $bill_id)
             ->whereIn('class_id', $class_ids)
             ->whereIn('termid_id', $term_ids)
@@ -197,29 +210,42 @@ class SchoolBillTermSessionController extends Controller
             ], 422);
         }
 
-        $created = [];
-        foreach ($term_ids as $term_id) {
-            foreach ($class_ids as $class_id) {
-                $created[] = SchoolBillTermSession::create([
-                    'bill_id'    => $bill_id,
-                    'class_id'   => $class_id,
-                    'termid_id'  => $term_id,
-                    'session_id' => $session_id,
-                    'created_by' => auth()->id(),
-                ]);
+        DB::beginTransaction();
+        try {
+            $created = [];
+            foreach ($term_ids as $term_id) {
+                foreach ($class_ids as $class_id) {
+                    $created[] = SchoolBillTermSession::create([
+                        'bill_id'    => $bill_id,
+                        'class_id'   => $class_id,
+                        'termid_id'  => $term_id,
+                        'session_id' => $session_id,
+                        'created_by' => auth()->id(),
+                    ]);
+                }
             }
-        }
+            DB::commit();
 
-        return response()->json([
-            'success' => true,
-            'message' => count($created) . ' assignment(s) created successfully.',
-            'data'    => $created,
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => count($created) . ' assignment(s) created successfully.',
+                'data'    => $created,
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('SchoolBillTermSession store failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    /**
-     * Show single record (for edit pre-fill via AJAX).
-     */
+    // =========================================================================
+    // SHOW / EDIT
+    // =========================================================================
+
     public function show($id)
     {
         $assignment = SchoolBillTermSession::find($id);
@@ -229,9 +255,15 @@ class SchoolBillTermSessionController extends Controller
         return response()->json(['success' => true, 'data' => $assignment]);
     }
 
-    /**
-     * Update a single assignment.
-     */
+    public function edit($id)
+    {
+        return $this->show($id);
+    }
+
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
+
     public function update(Request $request, $id)
     {
         $assignment = SchoolBillTermSession::find($id);
@@ -244,11 +276,6 @@ class SchoolBillTermSessionController extends Controller
             'class_id'   => 'required|exists:schoolclass,id',
             'termid_id'  => 'required|exists:schoolterm,id',
             'session_id' => 'required|exists:schoolsession,id',
-        ], [
-            'bill_id.required'    => 'Please select a school bill.',
-            'class_id.required'   => 'Please select a class.',
-            'termid_id.required'  => 'Please select a term.',
-            'session_id.required' => 'Please select a session.',
         ]);
 
         if ($validator->fails()) {
@@ -258,7 +285,6 @@ class SchoolBillTermSessionController extends Controller
             ], 422);
         }
 
-        // Check duplicate (excluding self)
         $duplicate = SchoolBillTermSession::where('bill_id', $request->bill_id)
             ->where('class_id', $request->class_id)
             ->where('termid_id', $request->termid_id)
@@ -287,27 +313,99 @@ class SchoolBillTermSessionController extends Controller
         ]);
     }
 
-    /**
-     * Delete a single assignment.
-     */
+    // =========================================================================
+    // DESTROY (single)
+    // =========================================================================
+
     public function destroy($id)
     {
-        $assignment = SchoolBillTermSession::find($id);
-        if (!$assignment) {
-            return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
+        try {
+            $assignment = SchoolBillTermSession::find($id);
+            if (!$assignment) {
+                return response()->json(['success' => false, 'message' => 'Assignment not found.'], 404);
+            }
+
+            $assignment->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment deleted successfully.',
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('SchoolBillTermSession destroy failed', [
+                'id'    => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not delete: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $assignment->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Assignment deleted successfully.',
-        ]);
     }
 
-    /**
-     * Get related records for group-edit.
-     */
+    // =========================================================================
+    // BULK DESTROY — normalises array/string/JSON inputs
+    // =========================================================================
+
+    public function bulkDestroy(Request $request)
+    {
+        try {
+            $ids = $request->input('ids');
+
+            if (is_string($ids)) {
+                $decoded = json_decode($ids, true);
+                $ids = is_array($decoded) ? $decoded : array_map('trim', explode(',', $ids));
+            }
+            if (!is_array($ids)) {
+                $ids = [];
+            }
+            $ids = array_values(array_filter($ids, fn($v) => $v !== null && $v !== ''));
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No assignments selected.',
+                ], 400);
+            }
+
+            $existingIds = SchoolBillTermSession::whereIn('id', $ids)->pluck('id')->toArray();
+            $invalidIds  = array_diff($ids, $existingIds);
+            if (!empty($invalidIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some selected assignments do not exist: ' . implode(', ', $invalidIds),
+                ], 400);
+            }
+
+            DB::beginTransaction();
+            $deleted = SchoolBillTermSession::whereIn('id', $ids)->delete();
+            DB::commit();
+
+            return response()->json([
+                'success'       => true,
+                'message'       => $deleted . ' assignment(s) deleted successfully.',
+                'deleted_count' => $deleted,
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('SchoolBillTermSession bulkDestroy failed', [
+                'ids'   => $request->input('ids'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not delete: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // =========================================================================
+    // GET RELATED (for group edit)
+    // =========================================================================
+
     public function getRelated($id)
     {
         $assignment = SchoolBillTermSession::find($id);
@@ -328,62 +426,4 @@ class SchoolBillTermSessionController extends Controller
             'session_id' => $assignment->session_id,
         ]);
     }
-
-    /**
-     * Bulk delete assignments.
-     */
-   public function bulkDestroy(Request $request)
-{
-    try {
-        $ids = $request->input('ids');
-
-        // Normalise: accept array, JSON string, or comma-separated string
-        if (is_string($ids)) {
-            $decoded = json_decode($ids, true);
-            $ids = is_array($decoded) ? $decoded : array_map('trim', explode(',', $ids));
-        }
-        if (!is_array($ids)) {
-            $ids = [];
-        }
-        $ids = array_values(array_filter($ids, fn($v) => $v !== null && $v !== ''));
-
-        if (empty($ids)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No assignments selected.',
-            ], 400);
-        }
-
-        $existingIds = SchoolBillTermSession::whereIn('id', $ids)->pluck('id')->toArray();
-        $invalidIds  = array_diff($ids, $existingIds);
-        if (!empty($invalidIds)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Some selected assignments do not exist: ' . implode(', ', $invalidIds),
-            ], 400);
-        }
-
-        DB::beginTransaction();
-        $deleted = SchoolBillTermSession::whereIn('id', $ids)->delete();
-        DB::commit();
-
-        return response()->json([
-            'success'       => true,
-            'message'       => $deleted . ' assignment(s) deleted successfully.',
-            'deleted_count' => $deleted,
-        ]);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        \Log::error('SchoolBillTermSession bulkDestroy failed', [
-            'ids'   => $request->input('ids'),
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Could not delete: ' . $e->getMessage(),
-        ], 500);
-    }
-}
 }
