@@ -8,7 +8,6 @@ use App\Models\CompulsorySubjectClass;
 use App\Models\Schoolsession;
 use App\Models\Schoolterm;
 use App\Models\Schoolclass;
-use App\Models\Classcategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +21,10 @@ class PromotionSettingController extends Controller
         $this->middleware('permission:View promotion|Update promotion');
     }
 
-    // ── Index ─────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // INDEX
+    // ══════════════════════════════════════════════════════════════════════
+
     public function index()
     {
         $pagetitle = 'Promotion Settings';
@@ -38,12 +40,14 @@ class PromotionSettingController extends Controller
             ->select('schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name')
             ->get();
 
-        $sessions  = Schoolsession::orderBy('session', 'desc')->get();
-        $terms     = Schoolterm::orderBy('term')->get();
+        $sessions = Schoolsession::orderBy('session', 'desc')->get();
+        $terms    = Schoolterm::orderBy('term')->get();
 
         $templates = [];
         if (Schema::hasTable('promotion_rule_templates')) {
-            $templates = PromotionRuleTemplate::select('id', 'name', 'grade_scale')->orderBy('name')->get();
+            $templates = PromotionRuleTemplate::select('id', 'name', 'grade_scale')
+                ->orderBy('name')
+                ->get();
         }
 
         return view('promotions.settings', compact(
@@ -51,7 +55,10 @@ class PromotionSettingController extends Controller
         ));
     }
 
-    // ── Class meta: grade scale + subject counts ──────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // CLASS PROMOTION DATA (AJAX — used by modal)
+    // ══════════════════════════════════════════════════════════════════════
+
     public function getClassPromotionData(Request $request)
     {
         try {
@@ -63,12 +70,14 @@ class PromotionSettingController extends Controller
                 return response()->json(['success' => false, 'message' => 'Class required'], 422);
             }
 
-            // Get class category to determine grade scale
+            // Class category (senior/junior + pass average)
             $classCategory = $this->getClassCategory($classId);
-            $isSenior = $classCategory ? (bool)$classCategory->is_senior : false;
+            $isSenior = false;
 
-            // Fallback: infer senior/junior from class name if no category
-            if (!$classCategory) {
+            if ($classCategory) {
+                $isSenior = (bool) $classCategory->is_senior;
+            } else {
+                // Fallback: infer from class name
                 $class = Schoolclass::find($classId);
                 $name  = strtoupper(trim($class->schoolclass ?? ''));
                 $isSenior = str_contains($name, 'SSS')
@@ -76,7 +85,6 @@ class PromotionSettingController extends Controller
                          || str_contains($name, 'SENIOR');
             }
 
-            // Set grade scale based on class category
             $gradeScale = $isSenior
                 ? ['A1', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9']
                 : ['A', 'B', 'C', 'D', 'F'];
@@ -84,10 +92,8 @@ class PromotionSettingController extends Controller
             $passAverage = $classCategory ? $classCategory->promotion_pass_average : null;
 
             // ── All subjects for this class ────────────────────────────────
-            // IMPORTANT: The `subjectclass` table in this schema has NO `sessionid` column.
-            // It has a `termid` (nullable) and `session` (varchar, nullable) column,
-            // but the canonical term/session linkage is on the `subjectteacher` table
-            // (st.termid, st.sessionid). We join through subjectteacher to filter correctly.
+            // subjectclass has NO sessionid column; term/session scoping
+            // lives on subjectteacher (st.termid, st.sessionid).
             $subjectParams = [$classId];
             $subjectSql    = "SELECT DISTINCT s.id, s.subject, s.subject_code
                               FROM subjectclass sc
@@ -110,21 +116,10 @@ class PromotionSettingController extends Controller
             $compIds = array_column($compulsorySubjects, 'id');
             $otherSubjects = array_filter(
                 $allSubjects,
-                fn($s) => !in_array((string)$s->id, array_map('strval', $compIds))
+                fn ($s) => !in_array((string) $s->id, array_map('strval', $compIds))
             );
 
-            // Determine recommended grade grouping based on class type
             $recommendedGrouping = $isSenior ? 'exact' : 'grouped';
-
-            Log::info('Class promotion data loaded', [
-                'class_id'             => $classId,
-                'is_senior'            => $isSenior,
-                'grade_scale'          => $gradeScale,
-                'recommended_grouping' => $recommendedGrouping,
-                'compulsory_subjects'  => $compulsorySubjects,
-                'subject_ids'          => $compIds,
-                'total_subjects'       => count($allSubjects),
-            ]);
 
             return response()->json([
                 'success'              => true,
@@ -146,53 +141,30 @@ class PromotionSettingController extends Controller
                 'file'       => $e->getFile(),
                 'line'       => $e->getLine(),
             ]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
-    /**
-     * Detect whether the given decoded rules array contains at least one rule
-     * with real, evaluatable conditions — i.e. anything beyond an empty
-     * shell. Used to warn when those conditions are about to be saved under
-     * an Evaluation Mode ('average_only') that will never evaluate them.
-     */
-    private function rulesHaveSubstantiveConditions(array $rules): bool
-    {
-        foreach ($rules as $rule) {
-            $hasCompSubjGrades = !empty(array_filter(
-                $rule['compulsory_section']['subjects'] ?? [],
-                fn($s) => !empty($s['min_grade'])
-            ));
-            $hasCompConds  = !empty($rule['compulsory_section']['count_conditions'] ?? []);
-            $hasOtherConds = !empty($rule['other_section']['count_conditions'] ?? []);
-            $hasAvgCond    = !empty($rule['average_condition']['enabled'] ?? false);
+    // ══════════════════════════════════════════════════════════════════════
+    // STORE
+    // ══════════════════════════════════════════════════════════════════════
 
-            if ($hasCompSubjGrades || $hasCompConds || $hasOtherConds || $hasAvgCond) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // ── Store ─────────────────────────────────────────────────────────────────
     public function store(Request $request)
     {
-        Log::info('========== STORE PROMOTION SETTINGS ==========');
-        Log::info('Raw request data', [
+        Log::info('STORE PROMOTION SETTINGS', [
             'schoolclass_id'         => $request->schoolclass_id,
             'session_id'             => $request->session_id,
             'term_id'                => $request->term_id,
-            'rule_set_name'          => $request->rule_set_name,
             'rule_logic'             => $request->rule_logic,
             'promotion_pass_average' => $request->promotion_pass_average,
-            'is_active'              => $request->is_active,
-            'promotion_rules_raw'    => $request->promotion_rules,
         ]);
 
         $v = $this->validateRequest($request);
         if ($v->fails()) {
-            Log::error('Validation failed', ['errors' => $v->errors()]);
             return response()->json([
                 'success' => false,
                 'errors'  => $v->errors(),
@@ -204,16 +176,10 @@ class PromotionSettingController extends Controller
             [$sessionId, $termId] = $this->cleanIds($request);
 
             $classCategory = $this->getClassCategory($request->schoolclass_id);
-            $isSenior = $classCategory ? (bool)$classCategory->is_senior : false;
+            $isSenior = $classCategory ? (bool) $classCategory->is_senior : false;
 
             $rules = $this->parseRules($request, $isSenior);
             if ($rules instanceof \Illuminate\Http\JsonResponse) return $rules;
-
-            Log::info('Parsed rules before save', [
-                'rules_count'     => count($rules),
-                'is_senior'       => $isSenior,
-                'rules_structure' => $rules,
-            ]);
 
             if (empty($rules)) {
                 return response()->json([
@@ -226,15 +192,7 @@ class PromotionSettingController extends Controller
 
             $averageOnlyWarning = null;
             if ($ruleLogic === 'average_only' && $this->rulesHaveSubstantiveConditions($rules)) {
-                $averageOnlyWarning = 'Evaluation Mode is "Minimum Average Only" — the compulsory subject grades, '
-                    . 'count conditions, and per-rule average conditions in the rules below will NOT be evaluated. '
-                    . 'Only the Global Minimum Average field decides the outcome in this mode. '
-                    . 'Switch to "Grade Count AND/OR Average" if you want the rules below to apply.';
-
-                Log::warning('Saving rule set in average_only mode with fully-configured rules', [
-                    'schoolclass_id' => $request->schoolclass_id,
-                    'rule_set_name'  => $request->rule_set_name,
-                ]);
+                $averageOnlyWarning = 'Evaluation Mode is "Minimum Average Only" — the rules below will NOT be evaluated. Only the Global Minimum Average decides the outcome.';
             }
 
             $isActive  = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
@@ -268,10 +226,6 @@ class PromotionSettingController extends Controller
                 && $request->promotion_pass_average !== ''
                 && $request->promotion_pass_average !== null) {
                 $avgValue = (float) $request->promotion_pass_average;
-                Log::info('Storing promotion setting with average', [
-                    'raw_value'       => $request->promotion_pass_average,
-                    'converted_value' => $avgValue,
-                ]);
             }
 
             $setting = PromotionSetting::create([
@@ -294,27 +248,17 @@ class PromotionSettingController extends Controller
             $setting->promotion_rules = $rules;
             $setting->save();
 
-            Log::info('Setting saved successfully', [
-                'id'                     => $setting->id,
-                'rule_set_name'          => $ruleSetName,
-                'promotion_pass_average' => $setting->promotion_pass_average,
-                'rules_count'            => count($setting->promotion_rules),
-            ]);
-
             $response = [
                 'success' => true,
                 'message' => "Rule set '{$ruleSetName}' created with " . count($rules) . ' rules.',
                 'data'    => $setting,
             ];
-            if ($averageOnlyWarning) {
-                $response['warning'] = $averageOnlyWarning;
-            }
+            if ($averageOnlyWarning) $response['warning'] = $averageOnlyWarning;
 
             return response()->json($response);
 
         } catch (\Exception $e) {
-            Log::error('Store Error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Store Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error saving settings: ' . $e->getMessage(),
@@ -322,23 +266,23 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Update ────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // UPDATE
+    // ══════════════════════════════════════════════════════════════════════
+
     public function update(Request $request, $id)
     {
-        Log::info('========== UPDATE PROMOTION SETTINGS ==========');
-        Log::info('Update request data', [
+        Log::info('UPDATE PROMOTION SETTINGS', [
             'id'                     => $id,
             'schoolclass_id'         => $request->schoolclass_id,
             'session_id'             => $request->session_id,
             'term_id'                => $request->term_id,
-            'rule_set_name'          => $request->rule_set_name,
+            'rule_logic'             => $request->rule_logic,
             'promotion_pass_average' => $request->promotion_pass_average,
-            'promotion_rules_raw'    => $request->promotion_rules,
         ]);
 
         $v = $this->validateRequest($request);
         if ($v->fails()) {
-            Log::error('Validation failed', ['errors' => $v->errors()]);
             return response()->json([
                 'success' => false,
                 'errors'  => $v->errors(),
@@ -351,16 +295,10 @@ class PromotionSettingController extends Controller
             [$sessionId, $termId] = $this->cleanIds($request);
 
             $classCategory = $this->getClassCategory($request->schoolclass_id ?? $setting->schoolclass_id);
-            $isSenior = $classCategory ? (bool)$classCategory->is_senior : false;
+            $isSenior = $classCategory ? (bool) $classCategory->is_senior : false;
 
             $rules = $this->parseRules($request, $isSenior);
             if ($rules instanceof \Illuminate\Http\JsonResponse) return $rules;
-
-            Log::info('Parsed rules before update', [
-                'rules_count'     => count($rules),
-                'is_senior'       => $isSenior,
-                'rules_structure' => $rules,
-            ]);
 
             if (empty($rules)) {
                 return response()->json([
@@ -373,18 +311,10 @@ class PromotionSettingController extends Controller
 
             $averageOnlyWarning = null;
             if ($ruleLogic === 'average_only' && $this->rulesHaveSubstantiveConditions($rules)) {
-                $averageOnlyWarning = 'Evaluation Mode is "Minimum Average Only" — the compulsory subject grades, '
-                    . 'count conditions, and per-rule average conditions in the rules below will NOT be evaluated. '
-                    . 'Only the Global Minimum Average field decides the outcome in this mode. '
-                    . 'Switch to "Grade Count AND/OR Average" if you want the rules below to apply.';
-
-                Log::warning('Updating rule set into average_only mode with fully-configured rules', [
-                    'settings_id'   => $id,
-                    'rule_set_name' => $request->rule_set_name ?? $setting->rule_set_name,
-                ]);
+                $averageOnlyWarning = 'Evaluation Mode is "Minimum Average Only" — the rules below will NOT be evaluated. Only the Global Minimum Average decides the outcome.';
             }
 
-            $isActive  = filter_var($request->input('is_active',  $setting->is_active),  FILTER_VALIDATE_BOOLEAN);
+            $isActive  = filter_var($request->input('is_active', $setting->is_active), FILTER_VALIDATE_BOOLEAN);
             $isDefault = filter_var($request->input('is_default', $setting->is_default), FILTER_VALIDATE_BOOLEAN);
 
             if ($isDefault && !$setting->is_default) {
@@ -400,11 +330,6 @@ class PromotionSettingController extends Controller
             if ($request->has('promotion_pass_average')) {
                 if ($request->promotion_pass_average !== '' && $request->promotion_pass_average !== null) {
                     $avgValue = (float) $request->promotion_pass_average;
-                    Log::info('Updating promotion setting with average', [
-                        'setting_id'      => $id,
-                        'raw_value'       => $request->promotion_pass_average,
-                        'converted_value' => $avgValue,
-                    ]);
                 } else {
                     $avgValue = null;
                 }
@@ -429,27 +354,17 @@ class PromotionSettingController extends Controller
             $setting->promotion_rules = $rules;
             $setting->save();
 
-            Log::info('Setting updated successfully', [
-                'id'                     => $id,
-                'rule_set_name'          => $setting->rule_set_name,
-                'promotion_pass_average' => $setting->promotion_pass_average,
-                'rules_count'            => count($setting->promotion_rules),
-            ]);
-
             $response = [
                 'success' => true,
                 'message' => "Rule set '{$setting->rule_set_name}' updated with " . count($rules) . ' rules.',
                 'data'    => $setting,
             ];
-            if ($averageOnlyWarning) {
-                $response['warning'] = $averageOnlyWarning;
-            }
+            if ($averageOnlyWarning) $response['warning'] = $averageOnlyWarning;
 
             return response()->json($response);
 
         } catch (\Exception $e) {
-            Log::error('Update Error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Update Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error updating settings: ' . $e->getMessage(),
@@ -457,19 +372,24 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Delete ────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // DESTROY
+    // ══════════════════════════════════════════════════════════════════════
+
     public function destroy($id)
     {
         try {
             $setting = PromotionSetting::find($id);
             if (!$setting) {
-                return response()->json(['success' => false, 'message' => 'Promotion setting not found.'], 404);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Promotion setting not found.',
+                ], 404);
             }
 
             $ruleSetName = $setting->rule_set_name;
             $setting->delete();
 
-            Log::info('Promotion rule set deleted', ['id' => $id, 'name' => $ruleSetName]);
             return response()->json([
                 'success' => true,
                 'message' => "Rule set '{$ruleSetName}' deleted successfully.",
@@ -483,13 +403,15 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Toggle Active Status ──────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // TOGGLE ACTIVE
+    // ══════════════════════════════════════════════════════════════════════
+
     public function toggleActive(Request $request, $id)
     {
         try {
             $setting = PromotionSetting::findOrFail($id);
-            $isActive = filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN);
-            $setting->is_active = $isActive;
+            $setting->is_active = filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN);
             $setting->save();
 
             return response()->json([
@@ -506,7 +428,10 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Subjects by Class API ─────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // AUXILIARY API
+    // ══════════════════════════════════════════════════════════════════════
+
     public function subjectsByClass(Request $request)
     {
         try {
@@ -523,7 +448,6 @@ class PromotionSettingController extends Controller
                     INNER JOIN subjectteacher st ON st.id = sc.subjectteacherid
                     INNER JOIN subject s ON s.id = sc.subjectid
                     WHERE sc.schoolclassid = ?";
-
             $params = [$classId];
 
             if ($termId && $termId !== 'null' && $termId !== '') {
@@ -537,13 +461,11 @@ class PromotionSettingController extends Controller
 
             $results = DB::select($sql, $params);
 
-            $subjects = array_map(function ($row) {
-                return [
-                    'id'           => (string) $row->id,
-                    'subject'      => $row->subject,
-                    'subject_code' => $row->subject_code,
-                ];
-            }, $results);
+            $subjects = array_map(fn ($row) => [
+                'id'           => (string) $row->id,
+                'subject'      => $row->subject,
+                'subject_code' => $row->subject_code,
+            ], $results);
 
             return response()->json([
                 'success'  => true,
@@ -560,7 +482,6 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Compulsory Subjects by Class API ──────────────────────────────────────
     public function compulsoryByClass(Request $request)
     {
         try {
@@ -589,49 +510,27 @@ class PromotionSettingController extends Controller
         }
     }
 
-    // ── Debug method to check saved rules ─────────────────────────────────────
-    public function debugRules($id)
+    // ══════════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private function rulesHaveSubstantiveConditions(array $rules): bool
     {
-        $setting = PromotionSetting::find($id);
-        if (!$setting) {
-            return response()->json(['error' => 'Setting not found'], 404);
+        foreach ($rules as $rule) {
+            $hasCompSubjGrades = !empty(array_filter(
+                $rule['compulsory_section']['subjects'] ?? [],
+                fn ($s) => !empty($s['min_grade'])
+            ));
+            $hasCompConds  = !empty($rule['compulsory_section']['count_conditions'] ?? []);
+            $hasOtherConds = !empty($rule['other_section']['count_conditions'] ?? []);
+            $hasAvgCond    = !empty($rule['average_condition']['enabled'] ?? false);
+
+            if ($hasCompSubjGrades || $hasCompConds || $hasOtherConds || $hasAvgCond) {
+                return true;
+            }
         }
-
-        $classCategory = $this->getClassCategory($setting->schoolclass_id);
-
-        $result = [
-            'id'                     => $setting->id,
-            'rule_set_name'          => $setting->rule_set_name,
-            'schoolclass_id'         => $setting->schoolclass_id,
-            'class_category'         => $classCategory,
-            'session_id'             => $setting->session_id,
-            'term_id'                => $setting->term_id,
-            'is_active'              => $setting->is_active,
-            'rule_logic'             => $setting->rule_logic,
-            'promotion_pass_average' => $setting->promotion_pass_average,
-            'rules_count'            => count($setting->promotion_rules ?? []),
-            'average_only_but_has_substantive_rules' =>
-                ($setting->rule_logic === 'average_only')
-                    && $this->rulesHaveSubstantiveConditions($setting->promotion_rules ?? []),
-            'rules' => [],
-        ];
-
-        foreach ($setting->promotion_rules as $index => $rule) {
-            $result['rules'][] = [
-                'index'         => $index,
-                'rule_name'     => $rule['rule_name']     ?? 'Unnamed',
-                'status_label'  => $rule['status_label']  ?? 'unknown',
-                'grade_grouping'=> $rule['grade_grouping'] ?? 'not set',
-                'subjects'      => $rule['compulsory_section']['subjects'] ?? [],
-                'subject_ids'   => array_column($rule['compulsory_section']['subjects'] ?? [], 'subject_id'),
-                'min_grades'    => array_column($rule['compulsory_section']['subjects'] ?? [], 'min_grade'),
-            ];
-        }
-
-        return response()->json($result);
+        return false;
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function getClassCategory($classId): ?object
     {
@@ -682,17 +581,13 @@ class PromotionSettingController extends Controller
 
         $rules = json_decode($request->promotion_rules, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('JSON decode error', ['error' => json_last_error_msg()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid JSON in promotion rules: ' . json_last_error_msg(),
             ], 422);
         }
 
-        Log::info('Raw JSON decoded rules', ['rules' => $rules]);
-
         $validStatuses = ['promoted', 'trial', 'see_principal', 'repeat'];
-        $recommendedGrouping = $isSenior ? 'exact' : 'grouped';
 
         foreach ($rules as $i => $rule) {
             $n = $i + 1;
@@ -700,7 +595,6 @@ class PromotionSettingController extends Controller
             if (empty($rule['rule_name'])) {
                 return response()->json(['success' => false, 'message' => "Rule {$n}: name required."], 422);
             }
-
             if (!in_array($rule['status_label'] ?? '', $validStatuses)) {
                 return response()->json(['success' => false, 'message' => "Rule {$n}: invalid status."], 422);
             }
@@ -708,18 +602,11 @@ class PromotionSettingController extends Controller
             // Auto-correct grade grouping based on class type
             $currentGrouping = $rule['grade_grouping'] ?? 'grouped';
             if ($isSenior && $currentGrouping === 'grouped') {
-                Log::warning("Rule {$n}: Auto-correcting grade grouping from 'grouped' to 'exact' for senior class", [
-                    'rule_name' => $rule['rule_name'],
-                ]);
                 $rule['grade_grouping'] = 'exact';
             } elseif (!$isSenior && $currentGrouping === 'exact') {
-                Log::warning("Rule {$n}: Auto-correcting grade grouping from 'exact' to 'grouped' for junior class", [
-                    'rule_name' => $rule['rule_name'],
-                ]);
                 $rule['grade_grouping'] = 'grouped';
             }
 
-            // Ensure compulsory_section exists
             if (!isset($rule['compulsory_section'])) {
                 $rule['compulsory_section'] = ['subjects' => [], 'count_conditions' => []];
             }
@@ -736,7 +623,6 @@ class PromotionSettingController extends Controller
             }
             $rule['compulsory_section']['subjects'] = $validSubjects;
 
-            // Ensure other_section exists
             if (!isset($rule['other_section'])) {
                 $rule['other_section'] = ['count_conditions' => []];
             }
@@ -744,19 +630,12 @@ class PromotionSettingController extends Controller
                 $rule['other_section']['count_conditions'] = [];
             }
 
-            // Ensure average_condition exists
             if (!isset($rule['average_condition'])) {
                 $rule['average_condition'] = ['enabled' => false, 'min_average' => 50, 'logic' => 'AND'];
             }
 
             $rules[$i] = $rule;
         }
-
-        Log::info('Final processed rules', [
-            'rules_count'          => count($rules),
-            'is_senior'            => $isSenior,
-            'recommended_grouping' => $recommendedGrouping,
-        ]);
 
         return $rules;
     }
@@ -774,20 +653,11 @@ class PromotionSettingController extends Controller
             })
             ->with('subject');
 
-        $results = $query->get()->map(fn($cs) => [
+        return $query->get()->map(fn ($cs) => [
             'id'                => (string) $cs->subjectId,
             'subject'           => $cs->subject?->subject ?? 'N/A',
             'subject_code'      => $cs->subject?->subject_code ?? '',
             'default_min_grade' => $cs->min_grade ?? '',
         ])->unique('id')->values()->toArray();
-
-        Log::info('getCompulsorySubjects result', [
-            'class_id'   => $classId,
-            'term_id'    => $termId,
-            'session_id' => $sessionId,
-            'subjects'   => $results,
-        ]);
-
-        return $results;
     }
 }

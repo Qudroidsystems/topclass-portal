@@ -1199,46 +1199,60 @@ Route::group(['middleware' => ['auth']], function () {
 
  
 
+        // ══════════════════════════════════════════════════════════════════════════
+        // PROMOTION SETTINGS
+        // ⚠️ ORDER MATTERS: All specific GET routes MUST come BEFORE /{id} routes.
+        // ══════════════════════════════════════════════════════════════════════════
+        Route::prefix('promotion-settings')->name('promotion-settings.')->middleware('auth')->group(function () {
 
-     // ── Promotions ──────────────────────────────────────────────────────────────
-    Route::prefix('promotions')->name('promotions.')->middleware('auth')->group(function () {
-        Route::get('/', [PromotionController::class, 'index'])->name('index');
-        Route::get('/student-details/{studentId}/{schoolclassId}/{sessionId}/{termId}', [PromotionController::class, 'getStudentDetails'])->name('student.details');
-        Route::put('/{studentId}', [PromotionController::class, 'update'])->name('update');
-        Route::delete('/{studentId}', [PromotionController::class, 'destroy'])->name('destroy');
-        Route::post('/bulk/promote', [PromotionController::class, 'bulkPromote'])->name('bulk.promote');
-    });
+            // ── 1. Specific GET endpoints — MUST BE FIRST ─────────────────────────
+            Route::get('/',                     [PromotionSettingController::class, 'index'])
+                ->name('index');
+            Route::get('/class-promotion-data', [PromotionSettingController::class, 'getClassPromotionData'])
+                ->name('class-data');
+            Route::get('/subjects-by-class',    [PromotionSettingController::class, 'subjectsByClass'])
+                ->name('subjects-by-class');
+            Route::get('/compulsory-by-class',  [PromotionSettingController::class, 'compulsoryByClass'])
+                ->name('compulsory-by-class');
 
-    // ── Promotion Settings ──────────────────────────────────────────────────────
-    Route::prefix('promotion-settings')->name('promotion-settings.')->middleware('auth')->group(function () {
-        Route::get('/',  [PromotionSettingController::class, 'index'])->name('index');
-        Route::post('/', [PromotionSettingController::class, 'store'])->name('store');
+            // ── 2. POST routes (specific paths first) ─────────────────────────────
+            Route::post('/',                   [PromotionSettingController::class, 'store'])
+                ->name('store');
+            Route::post('/{id}/toggle-active', [PromotionSettingController::class, 'toggleActive'])
+                ->name('toggle-active');
 
-        // ⚠️ THESE MUST COME BEFORE THE /{id} ROUTES ⚠️
-        Route::get('/class-promotion-data', [PromotionSettingController::class, 'getClassPromotionData'])->name('class-data');
-        Route::get('/subjects-by-class',    [PromotionSettingController::class, 'subjectsByClass'])->name('subjects-by-class');
-        Route::get('/compulsory-by-class',  [PromotionSettingController::class, 'compulsoryByClass'])->name('compulsory-by-class');
+            // ── 3. Wildcard /{id} routes — MUST BE LAST ───────────────────────────
+            Route::put('/{id}',    [PromotionSettingController::class, 'update'])
+                ->name('update');
+            Route::delete('/{id}', [PromotionSettingController::class, 'destroy'])
+                ->name('destroy');
+        });
 
-        // Wildcards LAST
-        Route::put('/{id}',                [PromotionSettingController::class, 'update'])->name('update');
-        Route::delete('/{id}',             [PromotionSettingController::class, 'destroy'])->name('destroy');
-        Route::post('/{id}/toggle-active', [PromotionSettingController::class, 'toggleActive'])->name('toggle-active');
-    });
+        // ══════════════════════════════════════════════════════════════════════════
+        // PROMOTION TEMPLATES
+        // ══════════════════════════════════════════════════════════════════════════
+        Route::prefix('promotion-templates')->name('promotion.templates.')->middleware('auth')->group(function () {
+            Route::get('/',                    [PromotionRuleTemplateController::class, 'index'])->name('index');
+            Route::get('/create',              [PromotionRuleTemplateController::class, 'create'])->name('create');
+            Route::post('/',                   [PromotionRuleTemplateController::class, 'store'])->name('store');
+            Route::get('/{id}/edit',           [PromotionRuleTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{id}',                [PromotionRuleTemplateController::class, 'update'])->name('update');
+            Route::delete('/{id}',             [PromotionRuleTemplateController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/toggle-active', [PromotionRuleTemplateController::class, 'toggleActive'])->name('toggle-active');
+            Route::get('/{id}/load-for-class', [PromotionRuleTemplateController::class, 'loadForClass'])->name('load-for-class');
+        });
 
-    // ── Promotion Templates ─────────────────────────────────────────────────────
-    Route::prefix('promotion-templates')->name('promotion.templates.')->middleware('auth')->group(function () {
-        Route::get('/',        [PromotionRuleTemplateController::class, 'index'])->name('index');
-        Route::get('/create',  [PromotionRuleTemplateController::class, 'create'])->name('create');
-        Route::post('/',       [PromotionRuleTemplateController::class, 'store'])->name('store');
-        Route::get('/{id}/edit', [PromotionRuleTemplateController::class, 'edit'])->name('edit');
-        Route::put('/{id}',    [PromotionRuleTemplateController::class, 'update'])->name('update');
-        Route::delete('/{id}', [PromotionRuleTemplateController::class, 'destroy'])->name('destroy');
-        Route::post('/{id}/toggle-active', [PromotionRuleTemplateController::class, 'toggleActive'])->name('toggle-active');
-        Route::get('/{id}/load-for-class', [PromotionRuleTemplateController::class, 'loadForClass'])->name('load-for-class');
-    });
-
-
-
+        // ══════════════════════════════════════════════════════════════════════════
+        // PROMOTIONS
+        // ══════════════════════════════════════════════════════════════════════════
+        Route::prefix('promotions')->name('promotions.')->middleware('auth')->group(function () {
+            Route::get('/', [PromotionController::class, 'index'])->name('index');
+            Route::get('/student-details/{studentId}/{schoolclassId}/{sessionId}/{termId}',
+                [PromotionController::class, 'getStudentDetails'])->name('student.details');
+            Route::put('/{studentId}',       [PromotionController::class, 'update'])->name('update');
+            Route::delete('/{studentId}',    [PromotionController::class, 'destroy'])->name('destroy');
+            Route::post('/bulk/promote',     [PromotionController::class, 'bulkPromote'])->name('bulk.promote');
+        });
 
     // ===================================================================
     // ATTENDANCE
