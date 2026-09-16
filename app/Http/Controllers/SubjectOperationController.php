@@ -14,27 +14,70 @@ use App\Models\Studentpicture;
 use App\Models\SubjectTeacher;
 use App\Models\BroadsheetsMock;
 use App\Models\BroadsheetRecord;
-use App\Models\SchoolInformation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Models\BroadsheetRecordMock;
 use App\Models\StudentSubjectRecord;
 use App\Models\ArchiveScoreSnapshot;
 use App\Models\SubjectRegistrationStatus;
-use App\Models\BroadsheetAssessmentScore;
-use App\Models\BroadsheetSubAssessmentScore;
 use App\Models\SubjectUnregistrationArchive;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Auth;
 
+/**
+ * SubjectOperationController (Project 1 — static score columns)
+ *
+ * Feature parity with the project 2 controller (snapshot archive, restore,
+ * registered-classes overview, per-student subject counts) but WITHOUT the
+ * dynamic Assessment / BroadsheetAssessmentScore / GPA-CGPA machinery.
+ *
+ * Scores in this project live as plain columns on `broadsheets`:
+ *     ca1, ca2, ca3, exam, total, bf, cum, grade, remark
+ *
+ * Snapshot storage strategy
+ * -------------------------
+ * `archive_score_snapshots` is re-used as a generic key/value store:
+ *   numeric columns -> score_type = TYPE_ASSESSMENT
+ *                      assessment_id   = synthetic 1-based column index
+ *                      assessment_name = uppercase column name  (CA1, EXAM …)
+ *                      score           = the numeric value
+ *   text columns    -> score_type = TYPE_SUB_ASSESSMENT
+ *                      assessment_name     = uppercase column name (GRADE)
+ *                      sub_assessment_name = the text value       ('A1')
+ *                      score               = 0
+ *
+ * Restore maps the column name back and issues a targeted UPDATE, then hands
+ * off to MyScoreSheetController to recompute class metrics and positions.
+ */
 class SubjectOperationController extends Controller
 {
+    /** Numeric score columns on `broadsheets`, in display order. */
+    private const NUMERIC_SCORE_COLUMNS = ['ca1', 'ca2', 'ca3', 'exam', 'total', 'bf', 'cum'];
+
+    /** Text columns on `broadsheets` captured alongside the numbers. */
+    private const TEXT_SCORE_COLUMNS = ['grade', 'remark'];
+
     public function __construct()
     {
-        $this->middleware('permission:View subject-operation|Create subject-operation|Update subject-operation|Delete subject-operation', ['only' => ['index', 'subjectinfo', 'getRegisteredClasses', 'getArchivedRegistrations', 'getSnapshotDetail']]);
-        $this->middleware('permission:Create subject-operation', ['only' => ['store', 'restoreRegistration']]);
-        $this->middleware('permission:Delete subject-operation', ['only' => ['destroy', 'permanentlyDeleteArchive', 'permanentlyDeleteArchiveBatch']]);
+        $this->middleware(
+            'permission:View subject-operation|Create subject-operation|Update subject-operation|Delete subject-operation',
+            ['only' => [
+                'index', 'subjectinfo', 'getSubjectTeachers', 'getSchoolInformation',
+                'registeredClasses', 'getRegisteredClasses', 'getStudentSubjectCounts',
+                'getArchivedRegistrations', 'getSnapshotDetail',
+            ]]
+        );
+
+        $this->middleware(
+            'permission:Create subject-operation',
+            ['only' => ['store', 'batchRegister', 'restoreRegistration']]
+        );
+
+        $this->middleware(
+            'permission:Delete subject-operation',
+            ['only' => ['destroy', 'permanentlyDeleteArchive', 'permanentlyDeleteArchiveBatch']]
+        );
     }
 
     // =========================================================================
@@ -49,6 +92,7 @@ class SubjectOperationController extends Controller
             ->select(['schoolclass.id as id', 'schoolarm.arm as schoolarm', 'schoolclass.schoolclass as schoolclass'])
             ->orderBy('schoolclass.schoolclass')
             ->get();
+
         $schoolterms    = Schoolterm::all();
         $schoolsessions = Schoolsession::all();
 
@@ -105,20 +149,18 @@ class SubjectOperationController extends Controller
                 });
             }
 
-            if ($gender = $request->input('gender')) {
-                if ($gender !== 'ALL') {
-                    $query->where('studentRegistration.gender', $gender);
-                }
+            if (($gender = $request->input('gender')) && $gender !== 'ALL') {
+                $query->where('studentRegistration.gender', $gender);
             }
 
-            if ($admissionNo = $request->input('admissionno')) {
-                if ($admissionNo !== 'ALL') {
-                    $query->where('studentRegistration.admissionno', $admissionNo);
-                }
+            if (($admissionNo = $request->input('admissionno')) && $admissionNo !== 'ALL') {
+                $query->where('studentRegistration.admissionno', $admissionNo);
             }
 
             $query->where('studentclass.schoolclassid', $request->input('class_id'))
-                ->where('studentclass.sessionid', $request->input('session_id'));
+                ->where('studentclass.sessionid', $request->input('session_id'))
+                ->orderBy('studentRegistration.lastname')
+                ->orderBy('studentRegistration.firstname');
 
             $students = $query->select([
                 'studentRegistration.id as id',
@@ -143,21 +185,22 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // SUBJECT INFO
+    // SUBJECT INFO — term now honoured instead of being hard-coded
     // =========================================================================
 
     public function subjectinfo(Request $request, $id, $schoolclassid, $termid, $sessionid): \Illuminate\View\View|\Illuminate\Http\JsonResponse
     {
-        $current = "Current";
-
         try {
             $pagetitle   = "Subject Operation Management";
             $studentdata = Student::where('id', $id)->get();
+
             if ($studentdata->isEmpty()) {
                 return response()->json(['success' => false, 'message' => 'Student not found'], 404);
             }
 
-            $studentpic = Studentpicture::where('studentid', $id)->select(['studentid', 'picture as avatar'])->get();
+            $studentpic = Studentpicture::where('studentid', $id)
+                ->select(['studentid', 'picture as avatar'])
+                ->get();
 
             $subjectclass = Subjectclass::query()
                 ->where('subjectclass.schoolclassid', $schoolclassid)
@@ -187,21 +230,21 @@ class SubjectOperationController extends Controller
                 ->orderBy('subject.subject')
                 ->get();
 
+            // One query for every registration this student holds this term/session
+            $registeredKeys = SubjectRegistrationStatus::where('studentid', $id)
+                ->where('termid', $termid)
+                ->where('sessionid', $sessionid)
+                ->get(['subjectclassid', 'staffid', 'broadsheetid'])
+                ->keyBy(fn ($r) => $r->subjectclassid . '_' . $r->staffid);
+
             $subjectRegistrations = [];
             foreach ($subjectclass as $sc) {
+                $hit = $registeredKeys->get($sc->subjectclassid . '_' . $sc->staffid);
+
                 $subjectRegistrations[$sc->subjectid][$sc->staffid] = [
                     'subjectclassid' => $sc->subjectclassid,
-                    'status' => StudentSubjectRecord::where([
-                        'studentId'      => $id,
-                        'subjectclassid' => $sc->subjectclassid,
-                        'staffid'        => $sc->staffid,
-                        'session'        => $sessionid,
-                    ])->exists()
-                        ? ['status' => 'Registered', 'broadsheetid' => SubjectRegistrationStatus::where([
-                            'studentid'      => $id,
-                            'subjectclassid' => $sc->subjectclassid,
-                            'staffid'        => $sc->staffid,
-                        ])->value('broadsheetid')]
+                    'status' => $hit
+                        ? ['status' => 'Registered',     'broadsheetid' => $hit->broadsheetid]
                         : ['status' => 'Not Registered', 'broadsheetid' => null],
                 ];
             }
@@ -215,16 +258,8 @@ class SubjectOperationController extends Controller
                 ->distinct('subjectteacher.subjectid')
                 ->count('subjectteacher.subjectid');
 
-            $regcount = StudentSubjectRecord::where('student_subject_register_record.studentId', $id)
-                ->leftJoin('subjectclass', 'subjectclass.id', '=', 'student_subject_register_record.subjectclassid')
-                ->leftJoin('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
-                ->leftJoin('schoolterm', 'schoolterm.id', '=', 'subjectteacher.termid')
-                ->leftJoin('schoolsession', 'schoolsession.id', '=', 'student_subject_register_record.session')
-                ->where('schoolterm.id', $termid)
-                ->where('schoolsession.status', $current)
-                ->count();
-
-            $noregcount = $totalreg - $regcount;
+            $regcount   = $registeredKeys->count();
+            $noregcount = max($totalreg - $regcount, 0);
 
             $classname = Schoolclass::where('schoolclass.id', $schoolclassid)
                 ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
@@ -235,8 +270,8 @@ class SubjectOperationController extends Controller
 
             return view('subjectoperation.subjectinfo', compact(
                 'studentpic', 'classname', 'subjectclass', 'subjectRegistrations',
-                'studentdata', 'id', 'termid', 'sessionid', 'totalreg',
-                'regcount', 'noregcount', 'pagetitle', 'terms'
+                'studentdata', 'id', 'schoolclassid', 'termid', 'sessionid',
+                'totalreg', 'regcount', 'noregcount', 'pagetitle', 'terms'
             ));
 
         } catch (\Exception $error) {
@@ -254,10 +289,10 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // GET SUBJECT TEACHERS AJAX
+    // SUBJECT TEACHERS (AJAX)
     // =========================================================================
 
-    public function getSubjectTeachers(Request $request)
+    public function getSubjectTeachers(Request $request): JsonResponse
     {
         if (!$request->ajax()) {
             return response()->json(['error' => 'Invalid request'], 400);
@@ -309,16 +344,22 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // GET SCHOOL INFORMATION (for print)
+    // SCHOOL INFORMATION (for the print header)
     // =========================================================================
 
     public function getSchoolInformation(): JsonResponse
     {
         try {
-            $schoolInfo = SchoolInformation::getActiveSchool();
+            if (!class_exists(\App\Models\SchoolInformation::class)) {
+                return response()->json(['success' => false, 'message' => 'School information is not configured.'], 404);
+            }
+
+            $schoolInfo = \App\Models\SchoolInformation::getActiveSchool();
+
             if (!$schoolInfo) {
                 return response()->json(['success' => false, 'message' => 'School information not found'], 404);
             }
+
             return response()->json(['success' => true, 'data' => $schoolInfo]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -326,7 +367,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // REGISTERED CLASSES — fixed student counts (no broken broadsheet join)
+    // REGISTERED CLASSES — per term, per subject, with real student counts
     // =========================================================================
 
     public function registeredClasses(Request $request): JsonResponse
@@ -383,12 +424,15 @@ class SubjectOperationController extends Controller
                     continue;
                 }
 
-                $subjectsWithTeachers = [];
-                foreach ($subjectRecords as $record) {
-                    $subjectKey = $record->subject_id;
+                $subjectsWithTeachers  = [];
+                $subjectclassToSubject = [];
 
-                    if (!isset($subjectsWithTeachers[$subjectKey])) {
-                        $subjectsWithTeachers[$subjectKey] = [
+                foreach ($subjectRecords as $record) {
+                    $subjectclassToSubject[$record->subjectclass_id] = $record->subject_id;
+                    $key = $record->subject_id;
+
+                    if (!isset($subjectsWithTeachers[$key])) {
+                        $subjectsWithTeachers[$key] = [
                             'id'              => $record->subject_id,
                             'name'            => $record->subject_name,
                             'code'            => $record->subject_code,
@@ -399,12 +443,12 @@ class SubjectOperationController extends Controller
                     }
 
                     if ($record->teacher_id && $record->teacher_name) {
-                        $alreadyAdded = false;
-                        foreach ($subjectsWithTeachers[$subjectKey]['teachers'] as $t) {
-                            if ($t['id'] == $record->teacher_id) { $alreadyAdded = true; break; }
+                        $already = false;
+                        foreach ($subjectsWithTeachers[$key]['teachers'] as $t) {
+                            if ($t['id'] == $record->teacher_id) { $already = true; break; }
                         }
-                        if (!$alreadyAdded) {
-                            $subjectsWithTeachers[$subjectKey]['teachers'][] = [
+                        if (!$already) {
+                            $subjectsWithTeachers[$key]['teachers'][] = [
                                 'id'   => $record->teacher_id,
                                 'name' => $record->teacher_name,
                             ];
@@ -418,28 +462,16 @@ class SubjectOperationController extends Controller
                     ->whereIn('subjectclassid', $subjectclassIds)
                     ->where('sessionid', $validated['session_id'])
                     ->where('termid', $term->id)
-                    ->select([
-                        'subjectclassid',
-                        DB::raw('COUNT(DISTINCT studentid) as student_count'),
-                    ])
+                    ->select(['subjectclassid', DB::raw('COUNT(DISTINCT studentid) as student_count')])
                     ->groupBy('subjectclassid')
-                    ->get()
-                    ->keyBy('subjectclassid');
-
-                $subjectclassToSubject = [];
-                foreach ($subjectRecords as $record) {
-                    $subjectclassToSubject[$record->subjectclass_id] = $record->subject_id;
-                }
+                    ->get();
 
                 $subjectStudentCounts = [];
-                foreach ($studentCountsRaw as $subjectclassId => $row) {
-                    $subjectId = $subjectclassToSubject[$subjectclassId] ?? null;
+                foreach ($studentCountsRaw as $row) {
+                    $subjectId = $subjectclassToSubject[$row->subjectclassid] ?? null;
                     if (!$subjectId) continue;
-                    if (!isset($subjectStudentCounts[$subjectId])) {
-                        $subjectStudentCounts[$subjectId] = 0;
-                    }
                     $subjectStudentCounts[$subjectId] = max(
-                        $subjectStudentCounts[$subjectId],
+                        $subjectStudentCounts[$subjectId] ?? 0,
                         (int) $row->student_count
                     );
                 }
@@ -471,7 +503,10 @@ class SubjectOperationController extends Controller
             }
 
             if (empty($processedData)) {
-                return response()->json(['success' => false, 'message' => 'No subjects found for this class and session. Please ensure subjects and teachers have been assigned.'], 200);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No subjects found for this class and session. Assign subjects and teachers first.',
+                ], 200);
             }
 
             return response()->json(['success' => true, 'data' => $processedData]);
@@ -485,7 +520,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // PER-STUDENT SUBJECT COUNT — for accurate PDF breakdown
+    // PER-STUDENT SUBJECT COUNT — drives the PDF breakdown table
     // =========================================================================
 
     public function getStudentSubjectCounts(Request $request): JsonResponse
@@ -548,7 +583,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // GET REGISTERED CLASSES (Legacy)
+    // GET REGISTERED CLASSES (legacy aggregate endpoint)
     // =========================================================================
 
     public function getRegisteredClasses(Request $request): JsonResponse
@@ -569,15 +604,9 @@ class SubjectOperationController extends Controller
                 ->leftJoin('users', 'users.id', '=', 'subjectteacher.staffid')
                 ->whereNotNull('student_subject_register_record.studentId');
 
-            if ($classId && $classId !== 'ALL') {
-                $query->where('subjectclass.schoolclassid', $classId);
-            }
-            if ($sessionId && $sessionId !== 'ALL') {
-                $query->where('subjectteacher.sessionid', $sessionId);
-            }
-            if ($termId && $termId !== 'ALL') {
-                $query->where('subjectteacher.termid', $termId);
-            }
+            if ($classId   && $classId   !== 'ALL') $query->where('subjectclass.schoolclassid', $classId);
+            if ($sessionId && $sessionId !== 'ALL') $query->where('subjectteacher.sessionid', $sessionId);
+            if ($termId    && $termId    !== 'ALL') $query->where('subjectteacher.termid', $termId);
 
             $registeredClasses = $query->select([
                 'schoolclass.id as class_id',
@@ -590,11 +619,11 @@ class SubjectOperationController extends Controller
                 DB::raw('GROUP_CONCAT(DISTINCT subject.subject ORDER BY subject.subject SEPARATOR ", ") as subjects'),
                 DB::raw('GROUP_CONCAT(DISTINCT users.name ORDER BY users.name SEPARATOR ", ") as teachers'),
             ])
-                ->groupBy([
-                    'schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm',
-                    'schoolsession.session', 'schoolterm.term',
-                ])
-                ->get();
+            ->groupBy([
+                'schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm',
+                'schoolsession.session', 'schoolterm.term',
+            ])
+            ->get();
 
             return response()->json(['success' => true, 'data' => $registeredClasses], 200);
 
@@ -605,7 +634,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // STORE (REGISTER) — Individual
+    // STORE (single subject, tiered by volume)
     // =========================================================================
 
     public function store(Request $request): array
@@ -619,21 +648,26 @@ class SubjectOperationController extends Controller
             'sessionid'      => ['required', 'exists:schoolsession,id'],
         ]);
 
-        $studentCount          = count($validated['studentid']);
-        $batchThreshold        = 50;
-        $largeDatasetThreshold = 500;
+        $count = count($validated['studentid']);
 
-        if ($studentCount <= $batchThreshold) {
-            return $this->processIndividually($validated);
-        } elseif ($studentCount <= $largeDatasetThreshold) {
-            return $this->processBatch($validated);
-        } else {
-            return $this->processLargeDataset($validated);
+        $result = $count <= 50
+            ? $this->processIndividually($validated)
+            : ($count <= 500 ? $this->processBatch($validated) : $this->processLargeDataset($validated));
+
+        if (($result['success_count'] ?? 0) > 0) {
+            $this->recalculateScoreMetrics(
+                (int) $validated['subjectclassid'],
+                (int) $validated['staffid'],
+                (int) $validated['termid'],
+                (int) $validated['sessionid']
+            );
         }
+
+        return $result;
     }
 
     // =========================================================================
-    // BATCH REGISTER
+    // BATCH REGISTER (many subjects at once)
     // =========================================================================
 
     public function batchRegister(Request $request): JsonResponse
@@ -651,6 +685,7 @@ class SubjectOperationController extends Controller
         $results      = [];
         $errors       = [];
         $successCount = 0;
+        $touched      = [];
 
         try {
             DB::beginTransaction();
@@ -666,6 +701,12 @@ class SubjectOperationController extends Controller
 
                 if ($response['success']) {
                     $successCount += $response['success_count'];
+                    $touched[] = [
+                        'subjectclassid' => (int) $subject['subjectclassid'],
+                        'staffid'        => (int) $subject['staffid'],
+                        'termid'         => (int) $subject['termid'],
+                        'sessionid'      => (int) $validated['sessionid'],
+                    ];
                 } else {
                     $errors[] = [
                         'subjectclassid' => $subject['subjectclassid'],
@@ -674,16 +715,23 @@ class SubjectOperationController extends Controller
                         'details'        => $response['errors'] ?? [],
                     ];
                 }
+
                 $results[] = $response;
             }
 
             DB::commit();
+
+            // Positions and class metrics are recomputed outside the transaction
+            foreach ($touched as $t) {
+                $this->recalculateScoreMetrics($t['subjectclassid'], $t['staffid'], $t['termid'], $t['sessionid']);
+            }
 
             return response()->json([
                 'success'       => empty($errors),
                 'message'       => 'Batch registration completed.',
                 'results'       => $results,
                 'error_details' => $errors,
+                'success_count' => $successCount,
             ]);
 
         } catch (\Exception $e) {
@@ -697,7 +745,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // DESTROY — soft-archives with score snapshot
+    // DESTROY — snapshot first, then remove the registration data
     // =========================================================================
 
     public function destroy(Request $request): JsonResponse
@@ -722,16 +770,17 @@ class SubjectOperationController extends Controller
         $errors               = [];
         $unregisteredStudents = [];
         $skippedCount         = 0;
+        $touched              = [];
         $unregisteredById     = Auth::id();
 
         try {
             DB::beginTransaction();
 
             foreach ($validated['subjectclasses'] as $subject) {
-                $subjectclassid = $subject['subjectclassid'];
-                $staffid        = $subject['staffid'];
-                $termid         = $subject['termid'];
-                $sessionid      = $validated['sessionid'];
+                $subjectclassid = (int) $subject['subjectclassid'];
+                $staffid        = (int) $subject['staffid'];
+                $termid         = (int) $subject['termid'];
+                $sessionid      = (int) $validated['sessionid'];
 
                 $subjectclass  = Subjectclass::findOrFail($subjectclassid);
                 $subjectId     = $subjectclass->subjectid;
@@ -750,6 +799,7 @@ class SubjectOperationController extends Controller
                     $validated['studentids'],
                     $existingRegistrations->keys()->toArray()
                 ));
+
                 $skippedCount += count(array_diff($validated['studentids'], $studentsToProcess));
 
                 if (empty($studentsToProcess)) {
@@ -762,13 +812,13 @@ class SubjectOperationController extends Controller
                 }
 
                 $unregisteredStudents = array_unique(array_merge($unregisteredStudents, $studentsToProcess));
+                $broadsheetRecordIds  = $existingRegistrations->pluck('broadsheetid')->filter()->toArray();
 
-                $broadsheetRecordIds = $existingRegistrations->pluck('broadsheetid')->filter()->toArray();
-
+                // ── 1. Archive rows are written before anything is deleted ────
                 $now         = now();
                 $archiveRows = [];
                 foreach ($studentsToProcess as $studentId) {
-                    $reg           = $existingRegistrations->get($studentId);
+                    $reg = $existingRegistrations->get($studentId);
                     $archiveRows[] = [
                         'studentid'            => $studentId,
                         'subjectclassid'       => $subjectclassid,
@@ -789,6 +839,7 @@ class SubjectOperationController extends Controller
                 }
                 SubjectUnregistrationArchive::insertOrIgnore($archiveRows);
 
+                // ── 2. Reload to get archive IDs ──────────────────────────────
                 $createdArchives = SubjectUnregistrationArchive::whereIn('studentid', $studentsToProcess)
                     ->where('subjectclassid', $subjectclassid)
                     ->where('termid', $termid)
@@ -798,29 +849,13 @@ class SubjectOperationController extends Controller
                     ->get()
                     ->keyBy('studentid');
 
+                // ── 3. Capture the static score columns ───────────────────────
                 $this->captureScoreSnapshots(
-                    $createdArchives,
-                    $studentsToProcess,
-                    $broadsheetRecordIds,
-                    $subjectclassid,
-                    $subjectId,
-                    $schoolclassId,
-                    $sessionid,
-                    $termid,
-                    $staffid,
-                    $now
+                    $createdArchives, $broadsheetRecordIds, $subjectclassid,
+                    $subjectId, $schoolclassId, $sessionid, $termid, $staffid, $now
                 );
 
-                $broadsheetSheetIds = Broadsheets::whereIn('broadsheet_record_id', $broadsheetRecordIds)
-                    ->where('term_id', $termid)
-                    ->where('subjectclass_id', $subjectclassid)
-                    ->pluck('id');
-
-                if ($broadsheetSheetIds->isNotEmpty()) {
-                    BroadsheetAssessmentScore::whereIn('broadsheet_id', $broadsheetSheetIds)->delete();
-                    BroadsheetSubAssessmentScore::whereIn('broadsheet_id', $broadsheetSheetIds)->delete();
-                }
-
+                // ── 4. Mock rows for this term ────────────────────────────────
                 $mockRecordIds = BroadsheetRecordMock::whereIn('student_id', $studentsToProcess)
                     ->where('subject_id', $subjectId)
                     ->where('schoolclass_id', $schoolclassId)
@@ -835,14 +870,16 @@ class SubjectOperationController extends Controller
                         ->delete();
                 }
 
+                // ── 5. Broadsheets for this term ──────────────────────────────
                 Broadsheets::whereIn('broadsheet_record_id', $broadsheetRecordIds)
                     ->where('term_id', $termid)
                     ->where('subjectclass_id', $subjectclassid)
                     ->delete();
 
-                $orphanedRecordIds = collect($broadsheetRecordIds)->filter(function ($recordId) {
-                    return Broadsheets::where('broadsheet_record_id', $recordId)->doesntExist();
-                })->toArray();
+                // ── 6. Drop parent records only when no term remains ──────────
+                $orphanedRecordIds = collect($broadsheetRecordIds)
+                    ->filter(fn ($recordId) => Broadsheets::where('broadsheet_record_id', $recordId)->doesntExist())
+                    ->toArray();
 
                 if (!empty($orphanedRecordIds)) {
                     BroadsheetRecord::whereIn('id', $orphanedRecordIds)->delete();
@@ -851,9 +888,7 @@ class SubjectOperationController extends Controller
                 if ($mockRecordIds->isNotEmpty()) {
                     $orphanedMockIds = BroadsheetRecordMock::whereIn('id', $mockRecordIds)
                         ->get()
-                        ->filter(function ($mock) {
-                            return BroadsheetsMock::where('broadsheet_records_mock_id', $mock->id)->doesntExist();
-                        })
+                        ->filter(fn ($m) => BroadsheetsMock::where('broadsheet_records_mock_id', $m->id)->doesntExist())
                         ->pluck('id')
                         ->toArray();
 
@@ -862,6 +897,7 @@ class SubjectOperationController extends Controller
                     }
                 }
 
+                // ── 7. Registration rows ──────────────────────────────────────
                 StudentSubjectRecord::whereIn('studentId', $studentsToProcess)
                     ->where('subjectclassid', $subjectclassid)
                     ->where('staffid', $staffid)
@@ -874,6 +910,22 @@ class SubjectOperationController extends Controller
                     ->where('sessionid', $sessionid)
                     ->where('staffid', $staffid)
                     ->delete();
+
+                $touched[] = [
+                    'subjectclassid' => $subjectclassid,
+                    'staffid'        => $staffid,
+                    'termid'         => $termid,
+                    'sessionid'      => $sessionid,
+                    'schoolclassid'  => $schoolclassId,
+                ];
+
+                Log::info('Unregistered subjects', [
+                    'subjectclassid' => $subjectclassid,
+                    'termid'         => $termid,
+                    'sessionid'      => $sessionid,
+                    'student_count'  => count($studentsToProcess),
+                    'snapshot_name'  => $validated['snapshot_name'],
+                ]);
 
                 $results[] = [
                     'subjectclassid'        => $subjectclassid,
@@ -898,6 +950,13 @@ class SubjectOperationController extends Controller
 
             DB::commit();
 
+            // Remaining students need fresh positions and class metrics
+            foreach ($touched as $t) {
+                $this->recalculateScoreMetrics(
+                    $t['subjectclassid'], $t['staffid'], $t['termid'], $t['sessionid'], $t['schoolclassid']
+                );
+            }
+
             return response()->json([
                 'success'       => empty($errors),
                 'message'       => "Successfully unregistered {$successCount} student(s) from " . count($validated['subjectclasses']) . " subject(s).",
@@ -918,7 +977,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // GET ARCHIVED REGISTRATIONS
+    // ARCHIVED REGISTRATIONS (snapshot cards)
     // =========================================================================
 
     public function getArchivedRegistrations(Request $request): JsonResponse
@@ -995,9 +1054,7 @@ class SubjectOperationController extends Controller
                 });
             }
 
-            $query->orderBy('unregistered_at', 'desc');
-
-            $archived = $query->paginate($perPage);
+            $archived = $query->orderBy('unregistered_at', 'desc')->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -1017,7 +1074,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // GET SNAPSHOT DETAIL
+    // SNAPSHOT DETAIL
     // =========================================================================
 
     public function getSnapshotDetail(Request $request): JsonResponse
@@ -1063,50 +1120,62 @@ class SubjectOperationController extends Controller
 
             $archiveIds = $archives->pluck('archive_id');
 
-            $scoreSnapshots = ArchiveScoreSnapshot::whereIn('archive_id', $archiveIds)
+            $allSnapshots = ArchiveScoreSnapshot::whereIn('archive_id', $archiveIds)
                 ->orderBy('student_id')
-                ->orderBy('score_type')
                 ->orderBy('assessment_id')
-                ->orderBy('sub_assessment_id')
-                ->get()
-                ->groupBy('archive_id');
+                ->get();
 
-            $rows = $archives->map(function ($row) use ($scoreSnapshots) {
-                $scores = $scoreSnapshots->get($row->archive_id, collect());
+            $grouped = $allSnapshots->groupBy('archive_id');
+
+            // Headers come from EVERY snapshot row, not just the first student's —
+            // a student with no captured scores no longer blanks out the table.
+            $assessmentHeaders = $allSnapshots
+                ->where('score_type', ArchiveScoreSnapshot::TYPE_ASSESSMENT)
+                ->unique('assessment_id')
+                ->sortBy('assessment_id')
+                ->map(fn ($s) => [
+                    'assessment_id'   => $s->assessment_id,
+                    'assessment_name' => $s->assessment_name,
+                ])
+                ->values();
+
+            $rows = $archives->map(function ($row) use ($grouped) {
+                $scores = $grouped->get($row->archive_id, collect());
 
                 return [
-                    'archive_id'            => $row->archive_id,
-                    'studentid'             => $row->studentid,
-                    'admissionno'           => $row->admissionno,
-                    'firstname'             => $row->firstname,
-                    'lastname'              => $row->lastname,
-                    'othername'             => $row->othername,
-                    'gender'                => $row->gender,
-                    'picture'               => $row->picture,
-                    'snapshot_name'         => $row->snapshot_name,
-                    'snapshot_notes'        => $row->snapshot_notes,
-                    'unregistered_at'       => $row->unregistered_at,
-                    'assessment_scores'     => $scores->where('score_type', ArchiveScoreSnapshot::TYPE_ASSESSMENT)->values()->toArray(),
-                    'sub_assessment_scores' => $scores->where('score_type', ArchiveScoreSnapshot::TYPE_SUB_ASSESSMENT)->values()->toArray(),
+                    'archive_id'      => $row->archive_id,
+                    'studentid'       => $row->studentid,
+                    'admissionno'     => $row->admissionno,
+                    'firstname'       => $row->firstname,
+                    'lastname'        => $row->lastname,
+                    'othername'       => $row->othername,
+                    'gender'          => $row->gender,
+                    'picture'         => $row->picture,
+                    'snapshot_name'   => $row->snapshot_name,
+                    'snapshot_notes'  => $row->snapshot_notes,
+                    'unregistered_at' => $row->unregistered_at,
+                    // numeric columns (CA1 … CUM)
+                    'assessment_scores' => $scores
+                        ->where('score_type', ArchiveScoreSnapshot::TYPE_ASSESSMENT)
+                        ->map(fn ($s) => [
+                            'assessment_id'   => $s->assessment_id,
+                            'assessment_name' => $s->assessment_name,
+                            'score'           => $s->score,
+                        ])->values()->toArray(),
+                    // text columns (GRADE, REMARK)
+                    'text_scores' => $scores
+                        ->where('score_type', ArchiveScoreSnapshot::TYPE_SUB_ASSESSMENT)
+                        ->map(fn ($s) => [
+                            'name'  => $s->assessment_name,
+                            'value' => $s->sub_assessment_name,
+                        ])->values()->toArray(),
                 ];
             });
-
-            $assessmentHeaders = collect();
-            $firstScores = $scoreSnapshots->first()?->groupBy('assessment_id') ?? collect();
-            foreach ($firstScores as $assessmentId => $group) {
-                $first = $group->first();
-                if ($first->score_type === ArchiveScoreSnapshot::TYPE_ASSESSMENT) {
-                    $assessmentHeaders->push([
-                        'assessment_id'   => $assessmentId,
-                        'assessment_name' => $first->assessment_name,
-                    ]);
-                }
-            }
 
             return response()->json([
                 'success'            => true,
                 'rows'               => $rows,
-                'assessment_headers' => $assessmentHeaders->values(),
+                'assessment_headers' => $assessmentHeaders,
                 'snapshot_name'      => $archives->first()->snapshot_name,
                 'snapshot_notes'     => $archives->first()->snapshot_notes,
                 'total_students'     => $archives->count(),
@@ -1119,7 +1188,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // RESTORE REGISTRATION (WITH POSITION RECALCULATION)
+    // RESTORE — re-register, put scores back, recompute positions
     // =========================================================================
 
     public function restoreRegistration(Request $request): JsonResponse
@@ -1137,30 +1206,21 @@ class SubjectOperationController extends Controller
                 ->get();
 
             if ($archives->isEmpty()) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'No valid archived records found.',
+                    'message' => 'No valid archived records found. They may have already been restored or deleted.',
                 ], 422);
             }
 
-            $groups = $archives->groupBy(function ($row) {
-                return $row->subjectclassid . '_' . $row->termid . '_' . $row->sessionid . '_' . $row->staffid;
-            });
-
+            $groups        = $archives->groupBy(fn ($r) => $r->subjectclassid . '_' . $r->termid . '_' . $r->sessionid . '_' . $r->staffid);
             $totalRestored = 0;
             $errors        = [];
-            $recalcParams = [];
+            $touched       = [];
 
             foreach ($groups as $groupArchives) {
                 $first      = $groupArchives->first();
                 $studentIds = $groupArchives->pluck('studentid')->unique()->toArray();
-
-                // Store parameters for recalculation
-                $recalcParams[] = [
-                    'schoolclass_id' => $first->schoolclassid,
-                    'session_id'     => $first->sessionid,
-                    'term_id'        => $first->termid,
-                ];
 
                 $result = $this->processIndividually([
                     'studentid'      => $studentIds,
@@ -1172,13 +1232,23 @@ class SubjectOperationController extends Controller
 
                 if ($result['success'] || ($result['skipped_count'] ?? 0) > 0) {
                     $this->restoreScoresFromSnapshot($groupArchives, $first);
+
                     SubjectUnregistrationArchive::whereIn('id', $groupArchives->pluck('id')->toArray())
                         ->update([
                             'status'      => SubjectUnregistrationArchive::STATUS_RESTORED,
                             'actioned_at' => now(),
                             'updated_at'  => now(),
                         ]);
+
                     $totalRestored += $result['success_count'] ?? 0;
+
+                    $touched[$first->subjectclassid . '_' . $first->termid . '_' . $first->sessionid . '_' . $first->staffid] = [
+                        'subjectclassid' => (int) $first->subjectclassid,
+                        'staffid'        => (int) $first->staffid,
+                        'termid'         => (int) $first->termid,
+                        'sessionid'      => (int) $first->sessionid,
+                        'schoolclassid'  => (int) $first->schoolclassid,
+                    ];
                 } else {
                     $errors[] = [
                         'subjectclassid' => $first->subjectclassid,
@@ -1190,19 +1260,10 @@ class SubjectOperationController extends Controller
 
             DB::commit();
 
-            // ── AFTER COMMIT, RECALCULATE POSITIONS ──
-            // Use unique parameters to avoid duplicate recalculations
-            $uniqueRecalcParams = [];
-            foreach ($recalcParams as $param) {
-                $key = $param['schoolclass_id'] . '_' . $param['session_id'] . '_' . $param['term_id'];
-                $uniqueRecalcParams[$key] = $param;
-            }
-
-            foreach ($uniqueRecalcParams as $param) {
-                $this->recalculatePositions(
-                    $param['schoolclass_id'],
-                    $param['session_id'],
-                    $param['term_id']
+            // Restored scores change every remaining student's ranking
+            foreach ($touched as $t) {
+                $this->recalculateScoreMetrics(
+                    $t['subjectclassid'], $t['staffid'], $t['termid'], $t['sessionid'], $t['schoolclassid']
                 );
             }
 
@@ -1215,7 +1276,7 @@ class SubjectOperationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Restore registration failed', ['error' => $e->getMessage()]);
+            Log::error('Restore registration failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Restore failed: ' . $e->getMessage(),
@@ -1224,7 +1285,7 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // PERMANENTLY DELETE SINGLE
+    // PERMANENT DELETE
     // =========================================================================
 
     public function permanentlyDeleteArchive(Request $request, int $archiveId): JsonResponse
@@ -1234,12 +1295,10 @@ class SubjectOperationController extends Controller
                 ->where('status', SubjectUnregistrationArchive::STATUS_ARCHIVED)
                 ->firstOrFail();
 
+            // Score snapshots go with it via the CASCADE foreign key
             $archive->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Archive record permanently deleted.',
-            ]);
+            return response()->json(['success' => true, 'message' => 'Archive record permanently deleted.']);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'Record not found or already actioned.'], 404);
@@ -1248,10 +1307,6 @@ class SubjectOperationController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
-    // =========================================================================
-    // PERMANENTLY DELETE BATCH
-    // =========================================================================
 
     public function permanentlyDeleteArchiveBatch(Request $request): JsonResponse
     {
@@ -1278,11 +1333,26 @@ class SubjectOperationController extends Controller
     }
 
     // =========================================================================
-    // PRIVATE HELPER METHODS
+    // SNAPSHOT HELPERS
     // =========================================================================
 
-    private function captureScoreSnapshots($createdArchives, array $studentsToProcess, array $broadsheetRecordIds, int $subjectclassid, int $subjectId, int $schoolclassId, int $sessionid, int $termid, int $staffid, $now): void
+    /** All captured columns in display order; index+1 becomes assessment_id. */
+    private function scoreColumnOrder(): array
     {
+        return array_merge(self::NUMERIC_SCORE_COLUMNS, self::TEXT_SCORE_COLUMNS);
+    }
+
+    private function captureScoreSnapshots(
+        $createdArchives,
+        array $broadsheetRecordIds,
+        int $subjectclassid,
+        int $subjectId,
+        int $schoolclassId,
+        int $sessionid,
+        int $termid,
+        int $staffid,
+        $now
+    ): void {
         try {
             if ($createdArchives->isEmpty() || empty($broadsheetRecordIds)) {
                 return;
@@ -1304,92 +1374,60 @@ class SubjectOperationController extends Controller
                 return;
             }
 
-            $broadsheetIds = $broadsheets->pluck('id');
-
-            $assessmentScores = BroadsheetAssessmentScore::whereIn('broadsheet_id', $broadsheetIds)
-                ->join('assessments', 'assessments.id', '=', 'broadsheet_assessment_scores.assessment_id')
-                ->select([
-                    'broadsheet_assessment_scores.broadsheet_id',
-                    'broadsheet_assessment_scores.assessment_id',
-                    'broadsheet_assessment_scores.score',
-                    'assessments.name as assessment_name',
-                ])
-                ->get()
-                ->groupBy('broadsheet_id');
-
-            $subAssessmentScores = BroadsheetSubAssessmentScore::whereIn('broadsheet_id', $broadsheetIds)
-                ->join('sub_assessments', 'sub_assessments.id', '=', 'broadsheet_sub_assessment_scores.sub_assessment_id')
-                ->select([
-                    'broadsheet_sub_assessment_scores.broadsheet_id',
-                    'broadsheet_sub_assessment_scores.assessment_id',
-                    'broadsheet_sub_assessment_scores.sub_assessment_id',
-                    'broadsheet_sub_assessment_scores.score',
-                    'sub_assessments.name as sub_assessment_name',
-                ])
-                ->get()
-                ->groupBy('broadsheet_id');
-
-            $snapshots = [];
+            $columnOrder = $this->scoreColumnOrder();
+            $snapshots   = [];
 
             foreach ($broadsheetRecordIds as $broadsheetRecordId) {
                 $broadsheet = $broadsheets->get($broadsheetRecordId);
-                if (!$broadsheet) {
-                    continue;
-                }
+                if (!$broadsheet) continue;
 
-                $broadsheetId = $broadsheet->id;
-                $studentId    = $recordToStudent->get($broadsheetRecordId);
-
-                if (!$studentId) {
-                    continue;
-                }
+                $studentId = $recordToStudent->get($broadsheetRecordId);
+                if (!$studentId) continue;
 
                 $archive = $createdArchives->get($studentId);
-                if (!$archive) {
-                    continue;
-                }
+                if (!$archive) continue;
 
-                foreach (($assessmentScores->get($broadsheetId) ?? []) as $score) {
-                    $snapshots[] = [
-                        'archive_id'          => $archive->id,
-                        'broadsheet_id'       => $broadsheetId,
-                        'student_id'          => $studentId,
-                        'subject_id'          => $subjectId,
-                        'schoolclass_id'      => $schoolclassId,
-                        'session_id'          => $sessionid,
-                        'term_id'             => $termid,
-                        'subjectclass_id'     => $subjectclassid,
-                        'staff_id'            => $staffid,
-                        'assessment_id'       => $score->assessment_id,
-                        'assessment_name'     => $score->assessment_name,
+                $base = [
+                    'archive_id'      => $archive->id,
+                    'broadsheet_id'   => $broadsheet->id,
+                    'student_id'      => $studentId,
+                    'subject_id'      => $subjectId,
+                    'schoolclass_id'  => $schoolclassId,
+                    'session_id'      => $sessionid,
+                    'term_id'         => $termid,
+                    'subjectclass_id' => $subjectclassid,
+                    'staff_id'        => $staffid,
+                    'created_at'      => $now,
+                    'updated_at'      => $now,
+                ];
+
+                foreach (self::NUMERIC_SCORE_COLUMNS as $col) {
+                    $value = $broadsheet->$col;
+                    if ($value === null) continue;
+
+                    $snapshots[] = $base + [
+                        'assessment_id'       => array_search($col, $columnOrder) + 1,
+                        'assessment_name'     => strtoupper($col),
                         'sub_assessment_id'   => null,
                         'sub_assessment_name' => null,
-                        'score'               => $score->score,
+                        'score'               => is_numeric($value) ? $value : 0,
                         'score_type'          => ArchiveScoreSnapshot::TYPE_ASSESSMENT,
-                        'created_at'          => $now,
-                        'updated_at'          => $now,
                     ];
                 }
 
-                foreach (($subAssessmentScores->get($broadsheetId) ?? []) as $score) {
-                    $snapshots[] = [
-                        'archive_id'          => $archive->id,
-                        'broadsheet_id'       => $broadsheetId,
-                        'student_id'          => $studentId,
-                        'subject_id'          => $subjectId,
-                        'schoolclass_id'      => $schoolclassId,
-                        'session_id'          => $sessionid,
-                        'term_id'             => $termid,
-                        'subjectclass_id'     => $subjectclassid,
-                        'staff_id'            => $staffid,
-                        'assessment_id'       => $score->assessment_id,
-                        'assessment_name'     => null,
-                        'sub_assessment_id'   => $score->sub_assessment_id,
-                        'sub_assessment_name' => $score->sub_assessment_name,
-                        'score'               => $score->score,
+                foreach (self::TEXT_SCORE_COLUMNS as $col) {
+                    $value = $broadsheet->$col;
+                    if ($value === null || $value === '') continue;
+
+                    $index = array_search($col, $columnOrder) + 1;
+
+                    $snapshots[] = $base + [
+                        'assessment_id'       => $index,
+                        'assessment_name'     => strtoupper($col),
+                        'sub_assessment_id'   => $index,
+                        'sub_assessment_name' => (string) $value,
+                        'score'               => 0,
                         'score_type'          => ArchiveScoreSnapshot::TYPE_SUB_ASSESSMENT,
-                        'created_at'          => $now,
-                        'updated_at'          => $now,
                     ];
                 }
             }
@@ -1412,11 +1450,9 @@ class SubjectOperationController extends Controller
     {
         try {
             $archiveIds = $groupArchives->pluck('id')->toArray();
+            $snapshots  = ArchiveScoreSnapshot::whereIn('archive_id', $archiveIds)->get();
 
-            $snapshots = ArchiveScoreSnapshot::whereIn('archive_id', $archiveIds)->get();
-            if ($snapshots->isEmpty()) {
-                return;
-            }
+            if ($snapshots->isEmpty()) return;
 
             $studentIds = $groupArchives->pluck('studentid')->toArray();
 
@@ -1427,48 +1463,40 @@ class SubjectOperationController extends Controller
                 ->where('staffid', $first->staffid)
                 ->pluck('broadsheetid', 'studentid');
 
-            $broadsheetRecordIds = $registrations->values()->toArray();
-            $broadsheets = Broadsheets::whereIn('broadsheet_record_id', $broadsheetRecordIds)
+            $broadsheets = Broadsheets::whereIn('broadsheet_record_id', $registrations->values()->toArray())
                 ->where('term_id', $first->termid)
                 ->where('subjectclass_id', $first->subjectclassid)
                 ->pluck('id', 'broadsheet_record_id');
 
             $archiveToBroadsheetId = [];
             foreach ($groupArchives as $archive) {
-                $broadsheetRecordId = $registrations->get($archive->studentid);
-                if (!$broadsheetRecordId) {
-                    continue;
-                }
-                $broadsheetId = $broadsheets->get($broadsheetRecordId);
-                if (!$broadsheetId) {
-                    continue;
-                }
-                $archiveToBroadsheetId[$archive->id] = $broadsheetId;
+                $bsRecordId = $registrations->get($archive->studentid);
+                if (!$bsRecordId) continue;
+                $bsId = $broadsheets->get($bsRecordId);
+                if (!$bsId) continue;
+                $archiveToBroadsheetId[$archive->id] = $bsId;
             }
 
-            $assessmentSnapshots = $snapshots->where('score_type', ArchiveScoreSnapshot::TYPE_ASSESSMENT);
-            foreach ($assessmentSnapshots as $snap) {
-                $broadsheetId = $archiveToBroadsheetId[$snap->archive_id] ?? null;
-                if (!$broadsheetId) {
-                    continue;
-                }
-                BroadsheetAssessmentScore::where([
-                    'broadsheet_id' => $broadsheetId,
-                    'assessment_id' => $snap->assessment_id,
-                ])->update(['score' => $snap->score]);
-            }
+            $allowed = $this->scoreColumnOrder();
 
-            $subSnapshots = $snapshots->where('score_type', ArchiveScoreSnapshot::TYPE_SUB_ASSESSMENT);
-            foreach ($subSnapshots as $snap) {
-                $broadsheetId = $archiveToBroadsheetId[$snap->archive_id] ?? null;
-                if (!$broadsheetId) {
-                    continue;
+            foreach ($snapshots->groupBy('archive_id') as $archiveId => $colSnapshots) {
+                $broadsheetId = $archiveToBroadsheetId[$archiveId] ?? null;
+                if (!$broadsheetId) continue;
+
+                $updates = [];
+                foreach ($colSnapshots as $snap) {
+                    $col = strtolower((string) $snap->assessment_name);
+                    if (!in_array($col, $allowed, true)) continue;
+
+                    $updates[$col] = $snap->score_type === ArchiveScoreSnapshot::TYPE_SUB_ASSESSMENT
+                        ? $snap->sub_assessment_name
+                        : $snap->score;
                 }
-                BroadsheetSubAssessmentScore::where([
-                    'broadsheet_id'     => $broadsheetId,
-                    'sub_assessment_id' => $snap->sub_assessment_id,
-                    'assessment_id'     => $snap->assessment_id,
-                ])->update(['score' => $snap->score]);
+
+                if (!empty($updates)) {
+                    $updates['updated_at'] = now();
+                    Broadsheets::where('id', $broadsheetId)->update($updates);
+                }
             }
 
             Log::info('Scores restored from snapshot', [
@@ -1481,12 +1509,59 @@ class SubjectOperationController extends Controller
         }
     }
 
+    // =========================================================================
+    // POSITION / METRIC RECALCULATION
+    // =========================================================================
+
+    /**
+     * Hands recalculation back to MyScoreSheetController so that cmin/cmax/avg
+     * and subject_position_class stay consistent with the teacher scoresheet.
+     * Always called AFTER the surrounding transaction has committed.
+     */
+    private function recalculateScoreMetrics(
+        int $subjectclassid,
+        int $staffid,
+        int $termid,
+        int $sessionid,
+        ?int $schoolclassid = null
+    ): void {
+        try {
+            $controller = app(MyScoreSheetController::class);
+
+            foreach (['updateClassMetrics', 'updateSubjectPositions'] as $methodName) {
+                if (!method_exists($controller, $methodName)) continue;
+                $method = new \ReflectionMethod($controller, $methodName);
+                $method->setAccessible(true);
+                $method->invoke($controller, $subjectclassid, $staffid, $termid, $sessionid);
+            }
+
+            if ($schoolclassid && method_exists($controller, 'updateClassPositions')) {
+                $method = new \ReflectionMethod($controller, 'updateClassPositions');
+                $method->setAccessible(true);
+                $method->invoke($controller, $schoolclassid, $termid, $sessionid);
+            }
+
+            Log::info('Score metrics recalculated', compact('subjectclassid', 'staffid', 'termid', 'sessionid', 'schoolclassid'));
+
+        } catch (\Throwable $e) {
+            Log::error('recalculateScoreMetrics failed', [
+                'error'          => $e->getMessage(),
+                'subjectclassid' => $subjectclassid,
+                'termid'         => $termid,
+                'sessionid'      => $sessionid,
+            ]);
+        }
+    }
+
+    // =========================================================================
+    // REGISTRATION PROCESSORS
+    // =========================================================================
+
     private function processIndividually(array $validated): array
     {
         $results      = [];
         $successCount = 0;
         $errors       = [];
-        $skippedCount = 0;
 
         try {
             DB::beginTransaction();
@@ -1506,8 +1581,8 @@ class SubjectOperationController extends Controller
             $studentsToProcess = array_diff($validated['studentid'], $existingRegistrations);
             $skippedCount      = count($existingRegistrations);
 
-            foreach ($existingRegistrations as $existingStudentId) {
-                $errors[] = "Student ID {$existingStudentId} is already registered";
+            foreach ($existingRegistrations as $id) {
+                $errors[] = "Student ID {$id} is already registered";
             }
 
             if (empty($studentsToProcess)) {
@@ -1591,61 +1666,55 @@ class SubjectOperationController extends Controller
             $schoolclassId = $subjectclass->schoolclassid;
             $now           = now();
 
-            $existingRegistrations = SubjectRegistrationStatus::where([
+            $existing = SubjectRegistrationStatus::where([
                 'subjectclassid' => $validated['subjectclassid'],
                 'termid'         => $validated['termid'],
                 'sessionid'      => $validated['sessionid'],
-            ])->whereIn('studentid', $validated['studentid'])
-                ->pluck('studentid')
-                ->toArray();
+            ])->whereIn('studentid', $validated['studentid'])->pluck('studentid')->toArray();
 
-            $studentsToProcess = array_diff($validated['studentid'], $existingRegistrations);
-            $skippedCount      = count($existingRegistrations);
+            $toProcess    = array_diff($validated['studentid'], $existing);
+            $skippedCount = count($existing);
 
-            if (empty($studentsToProcess)) {
+            if (empty($toProcess)) {
                 DB::rollBack();
-                return [
-                    'success'       => false,
-                    'message'       => 'All students are already registered.',
-                    'skipped_count' => $skippedCount,
-                    'success_count' => 0,
+                return ['success' => false, 'message' => 'All students are already registered.', 'skipped_count' => $skippedCount, 'success_count' => 0];
+            }
+
+            $bsRecords = $bsMockRecords = [];
+            foreach ($toProcess as $sid) {
+                $row = [
+                    'student_id'     => $sid,
+                    'subject_id'     => $subjectId,
+                    'schoolclass_id' => $schoolclassId,
+                    'session_id'     => $validated['sessionid'],
+                    'created_at'     => $now,
+                    'updated_at'     => $now,
                 ];
+                $bsRecords[]     = $row;
+                $bsMockRecords[] = $row;
             }
 
-            $broadsheetRecords     = [];
-            $broadsheetRecordsMock = [];
+            BroadsheetRecord::insertOrIgnore($bsRecords);
+            BroadsheetRecordMock::insertOrIgnore($bsMockRecords);
 
-            foreach ($studentsToProcess as $studentId) {
-                $broadsheetRecords[]     = ['student_id' => $studentId, 'subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
-                $broadsheetRecordsMock[] = ['student_id' => $studentId, 'subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
-            }
+            $createdRecords     = BroadsheetRecord::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $toProcess)->get()->keyBy('student_id');
+            $createdRecordsMock = BroadsheetRecordMock::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $toProcess)->get()->keyBy('student_id');
 
-            BroadsheetRecord::insertOrIgnore($broadsheetRecords);
-            BroadsheetRecordMock::insertOrIgnore($broadsheetRecordsMock);
-
-            $createdRecords     = BroadsheetRecord::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $studentsToProcess)->get()->keyBy('student_id');
-            $createdRecordsMock = BroadsheetRecordMock::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $studentsToProcess)->get()->keyBy('student_id');
-
-            $this->bulkCreateDependentRecords($createdRecords, $createdRecordsMock, $studentsToProcess, $validated, $now);
+            $this->bulkCreateDependentRecords($createdRecords, $createdRecordsMock, $toProcess, $validated, $now);
 
             DB::commit();
 
             return [
                 'success'       => true,
-                'message'       => count($studentsToProcess) . ' students registered',
+                'message'       => count($toProcess) . ' students registered',
                 'method'        => 'batch',
-                'success_count' => count($studentsToProcess),
+                'success_count' => count($toProcess),
                 'skipped_count' => $skippedCount,
             ];
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return [
-                'success'       => false,
-                'message'       => 'Batch processing failed: ' . $e->getMessage(),
-                'errors'        => [$e->getMessage()],
-                'success_count' => 0,
-            ];
+            return ['success' => false, 'message' => 'Batch processing failed: ' . $e->getMessage(), 'errors' => [$e->getMessage()], 'success_count' => 0];
         }
     }
 
@@ -1657,28 +1726,27 @@ class SubjectOperationController extends Controller
             $subjectclass   = Subjectclass::findOrFail($validated['subjectclassid']);
             $subjectId      = $subjectclass->subjectid;
             $schoolclassId  = $subjectclass->schoolclassid;
-            $chunkSize      = 200;
             $totalProcessed = 0;
             $totalSkipped   = 0;
-            $chunks         = array_chunk($validated['studentid'], $chunkSize);
 
-            foreach ($chunks as $studentChunk) {
-                $existingInChunk = SubjectRegistrationStatus::where([
+            foreach (array_chunk($validated['studentid'], 200) as $chunk) {
+                $existing = SubjectRegistrationStatus::where([
                     'subjectclassid' => $validated['subjectclassid'],
                     'termid'         => $validated['termid'],
                     'sessionid'      => $validated['sessionid'],
-                ])->whereIn('studentid', $studentChunk)->pluck('studentid')->toArray();
+                ])->whereIn('studentid', $chunk)->pluck('studentid')->toArray();
 
-                $studentsToProcess = array_diff($studentChunk, $existingInChunk);
-                $totalSkipped     += count($existingInChunk);
+                $toProcess     = array_diff($chunk, $existing);
+                $totalSkipped += count($existing);
 
-                if (!empty($studentsToProcess)) {
-                    $this->processChunk($studentsToProcess, $validated, $subjectId, $schoolclassId);
-                    $totalProcessed += count($studentsToProcess);
+                if (!empty($toProcess)) {
+                    $this->processChunk($toProcess, $validated, $subjectId, $schoolclassId);
+                    $totalProcessed += count($toProcess);
                 }
             }
 
             DB::commit();
+
             return [
                 'success'       => true,
                 'message'       => "{$totalProcessed} students registered",
@@ -1689,28 +1757,30 @@ class SubjectOperationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return [
-                'success'       => false,
-                'message'       => 'Large dataset processing failed: ' . $e->getMessage(),
-                'errors'        => [$e->getMessage()],
-                'success_count' => 0,
-            ];
+            return ['success' => false, 'message' => 'Large dataset processing failed: ' . $e->getMessage(), 'errors' => [$e->getMessage()], 'success_count' => 0];
         }
     }
 
     private function processChunk(array $students, array $validated, int $subjectId, int $schoolclassId): void
     {
         $now = now();
+        $bsRecords = $bsMockRecords = [];
 
-        $broadsheetRecords     = [];
-        $broadsheetRecordsMock = [];
-        foreach ($students as $studentId) {
-            $broadsheetRecords[]     = ['student_id' => $studentId, 'subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
-            $broadsheetRecordsMock[] = ['student_id' => $studentId, 'subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
+        foreach ($students as $sid) {
+            $row = [
+                'student_id'     => $sid,
+                'subject_id'     => $subjectId,
+                'schoolclass_id' => $schoolclassId,
+                'session_id'     => $validated['sessionid'],
+                'created_at'     => $now,
+                'updated_at'     => $now,
+            ];
+            $bsRecords[]     = $row;
+            $bsMockRecords[] = $row;
         }
 
-        BroadsheetRecord::insertOrIgnore($broadsheetRecords);
-        BroadsheetRecordMock::insertOrIgnore($broadsheetRecordsMock);
+        BroadsheetRecord::insertOrIgnore($bsRecords);
+        BroadsheetRecordMock::insertOrIgnore($bsMockRecords);
 
         $createdRecords     = BroadsheetRecord::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $students)->get()->keyBy('student_id');
         $createdRecordsMock = BroadsheetRecordMock::where(['subject_id' => $subjectId, 'schoolclass_id' => $schoolclassId, 'session_id' => $validated['sessionid']])->whereIn('student_id', $students)->get()->keyBy('student_id');
@@ -1720,25 +1790,20 @@ class SubjectOperationController extends Controller
 
     private function createDependentRecords(int $recordId, int $recordMockId, int $studentId, array $validated): void
     {
-        $broadsheet = Broadsheets::firstOrCreate([
-            'broadsheet_record_id' => $recordId,
-            'term_id'              => $validated['termid'],
-            'subjectclass_id'      => $validated['subjectclassid'],
-        ], ['staff_id' => $validated['staffid']]);
+        Broadsheets::firstOrCreate(
+            ['broadsheet_record_id' => $recordId, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid']],
+            ['staff_id' => $validated['staffid']]
+        );
 
-        BroadsheetsMock::firstOrCreate([
-            'broadsheet_records_mock_id' => $recordMockId,
-            'term_id'                    => $validated['termid'],
-            'subjectclass_id'            => $validated['subjectclassid'],
-        ], ['staff_id' => $validated['staffid']]);
+        BroadsheetsMock::firstOrCreate(
+            ['broadsheet_records_mock_id' => $recordMockId, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid']],
+            ['staff_id' => $validated['staffid']]
+        );
 
-        SubjectRegistrationStatus::firstOrCreate([
-            'studentid'      => $studentId,
-            'subjectclassid' => $validated['subjectclassid'],
-            'termid'         => $validated['termid'],
-            'sessionid'      => $validated['sessionid'],
-            'staffid'        => $validated['staffid'],
-        ], ['broadsheetid' => $recordId, 'Status' => 1]);
+        SubjectRegistrationStatus::firstOrCreate(
+            ['studentid' => $studentId, 'subjectclassid' => $validated['subjectclassid'], 'termid' => $validated['termid'], 'sessionid' => $validated['sessionid'], 'staffid' => $validated['staffid']],
+            ['broadsheetid' => $recordId, 'Status' => 1]
+        );
 
         StudentSubjectRecord::firstOrCreate([
             'studentId'      => $studentId,
@@ -1746,151 +1811,26 @@ class SubjectOperationController extends Controller
             'staffid'        => $validated['staffid'],
             'session'        => $validated['sessionid'],
         ]);
-
-        $this->createAssessmentScores($broadsheet->id, $validated['subjectclassid']);
-    }
-
-    private function createAssessmentScores(int $broadsheetId, int $subjectclassId): void
-    {
-        try {
-            $subjectclass = Subjectclass::with(['schoolClass.classcategories'])->find($subjectclassId);
-            if (!$subjectclass || !$subjectclass->schoolClass) return;
-
-            $categoryIds = $subjectclass->schoolClass->classcategories->pluck('id');
-            if ($categoryIds->isEmpty()) return;
-
-            $assessments = DB::table('assessments')->whereIn('classcategory_id', $categoryIds)->distinct()->get(['id', 'name', 'classcategory_id']);
-            if ($assessments->isEmpty()) return;
-
-            foreach ($assessments as $assessment) {
-                BroadsheetAssessmentScore::firstOrCreate(
-                    ['broadsheet_id' => $broadsheetId, 'assessment_id' => $assessment->id],
-                    ['score' => 0.00]
-                );
-
-                $subAssessments = DB::table('sub_assessments')->where('assessment_id', $assessment->id)->pluck('id');
-                foreach ($subAssessments as $subAssessmentId) {
-                    BroadsheetSubAssessmentScore::firstOrCreate(
-                        ['broadsheet_id' => $broadsheetId, 'sub_assessment_id' => $subAssessmentId, 'assessment_id' => $assessment->id],
-                        ['score' => 0.00]
-                    );
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to create assessment scores', ['broadsheet_id' => $broadsheetId, 'error' => $e->getMessage()]);
-        }
     }
 
     private function bulkCreateDependentRecords($createdRecords, $createdRecordsMock, array $students, array $validated, $now): void
     {
-        $broadsheets           = [];
-        $broadsheetsMock       = [];
-        $subjectRegistrations  = [];
-        $studentSubjectRecords = [];
+        $broadsheets = $broadsheetsMock = $subjectRegs = $studentSubjectRecs = [];
 
-        foreach ($students as $studentId) {
-            $record     = $createdRecords->get($studentId);
-            $recordMock = $createdRecordsMock->get($studentId);
-            if (!$record || !$recordMock) continue;
+        foreach ($students as $sid) {
+            $r  = $createdRecords->get($sid);
+            $rm = $createdRecordsMock->get($sid);
+            if (!$r || !$rm) continue;
 
-            $broadsheets[]           = ['broadsheet_record_id' => $record->id, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid'], 'staff_id' => $validated['staffid'], 'created_at' => $now, 'updated_at' => $now];
-            $broadsheetsMock[]       = ['broadsheet_records_mock_id' => $recordMock->id, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid'], 'staff_id' => $validated['staffid'], 'created_at' => $now, 'updated_at' => $now];
-            $subjectRegistrations[]  = ['studentid' => $studentId, 'subjectclassid' => $validated['subjectclassid'], 'staffid' => $validated['staffid'], 'termid' => $validated['termid'], 'sessionid' => $validated['sessionid'], 'broadsheetid' => $record->id, 'Status' => 1, 'created_at' => $now, 'updated_at' => $now];
-            $studentSubjectRecords[] = ['studentId' => $studentId, 'subjectclassid' => $validated['subjectclassid'], 'staffid' => $validated['staffid'], 'session' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
+            $broadsheets[]        = ['broadsheet_record_id' => $r->id, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid'], 'staff_id' => $validated['staffid'], 'created_at' => $now, 'updated_at' => $now];
+            $broadsheetsMock[]    = ['broadsheet_records_mock_id' => $rm->id, 'term_id' => $validated['termid'], 'subjectclass_id' => $validated['subjectclassid'], 'staff_id' => $validated['staffid'], 'created_at' => $now, 'updated_at' => $now];
+            $subjectRegs[]        = ['studentid' => $sid, 'subjectclassid' => $validated['subjectclassid'], 'staffid' => $validated['staffid'], 'termid' => $validated['termid'], 'sessionid' => $validated['sessionid'], 'broadsheetid' => $r->id, 'Status' => 1, 'created_at' => $now, 'updated_at' => $now];
+            $studentSubjectRecs[] = ['studentId' => $sid, 'subjectclassid' => $validated['subjectclassid'], 'staffid' => $validated['staffid'], 'session' => $validated['sessionid'], 'created_at' => $now, 'updated_at' => $now];
         }
 
-        if (!empty($broadsheets))           Broadsheets::insertOrIgnore($broadsheets);
-        if (!empty($broadsheetsMock))       BroadsheetsMock::insertOrIgnore($broadsheetsMock);
-        if (!empty($subjectRegistrations))  SubjectRegistrationStatus::insertOrIgnore($subjectRegistrations);
-        if (!empty($studentSubjectRecords)) StudentSubjectRecord::insertOrIgnore($studentSubjectRecords);
-
-        $recordIds = collect($students)->map(fn($sid) => $createdRecords->get($sid)?->id)->filter()->toArray();
-        if (empty($recordIds)) return;
-
-        $createdBroadsheets = Broadsheets::whereIn('broadsheet_record_id', $recordIds)
-            ->where('term_id', $validated['termid'])
-            ->where('subjectclass_id', $validated['subjectclassid'])
-            ->get();
-
-        $this->bulkCreateAssessmentScoresForBroadsheets($createdBroadsheets, $validated['subjectclassid'], $now);
-    }
-
-    private function bulkCreateAssessmentScoresForBroadsheets($broadsheets, int $subjectclassId, $now): void
-    {
-        try {
-            if ($broadsheets->isEmpty()) return;
-
-            $subjectclass = Subjectclass::with(['schoolClass.classcategories'])->find($subjectclassId);
-            if (!$subjectclass || !$subjectclass->schoolClass) return;
-
-            $categoryIds = $subjectclass->schoolClass->classcategories->pluck('id');
-            if ($categoryIds->isEmpty()) return;
-
-            $assessments = DB::table('assessments')->whereIn('classcategory_id', $categoryIds)->distinct()->get(['id']);
-            if ($assessments->isEmpty()) return;
-
-            $assessmentScores    = [];
-            $subAssessmentScores = [];
-
-            foreach ($broadsheets as $broadsheet) {
-                foreach ($assessments as $assessment) {
-                    $assessmentScores[] = ['broadsheet_id' => $broadsheet->id, 'assessment_id' => $assessment->id, 'score' => 0.00, 'created_at' => $now, 'updated_at' => $now];
-                }
-            }
-            if (!empty($assessmentScores)) BroadsheetAssessmentScore::insertOrIgnore($assessmentScores);
-
-            $assessmentIds  = $assessments->pluck('id')->toArray();
-            $subAssessments = DB::table('sub_assessments')->whereIn('assessment_id', $assessmentIds)->get(['id', 'assessment_id']);
-
-            foreach ($broadsheets as $broadsheet) {
-                foreach ($subAssessments as $subAssessment) {
-                    $subAssessmentScores[] = ['broadsheet_id' => $broadsheet->id, 'sub_assessment_id' => $subAssessment->id, 'assessment_id' => $subAssessment->assessment_id, 'score' => 0.00, 'created_at' => $now, 'updated_at' => $now];
-                }
-            }
-            if (!empty($subAssessmentScores)) BroadsheetSubAssessmentScore::insertOrIgnore($subAssessmentScores);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to bulk create assessment scores', ['error' => $e->getMessage()]);
-        }
-    }
-
-    // =========================================================================
-    // RECALCULATE POSITIONS AFTER RESTORE
-    // =========================================================================
-
-    /**
-     * Recalculate positions after restoring registrations or scores
-     */
-    protected function recalculatePositions($schoolclassId, $sessionId, $termId)
-    {
-        try {
-            $controller = app(\App\Http\Controllers\ViewStudentReportController::class);
-            $method = new \ReflectionMethod($controller, 'calculateClassPositionsAndAverages');
-            $method->setAccessible(true);
-
-            // Get all arms for this class group
-            $baseClass = \App\Models\Schoolclass::find($schoolclassId);
-            if ($baseClass) {
-                $allArmIds = \App\Models\Schoolclass::where('schoolclass', $baseClass->schoolclass)
-                    ->pluck('id');
-
-                foreach ($allArmIds as $armId) {
-                    $method->invoke($controller, $armId, $sessionId, $termId);
-                }
-            }
-
-            Log::info('Position recalculation completed after restore', [
-                'schoolclass_id' => $schoolclassId,
-                'session_id' => $sessionId,
-                'term_id' => $termId
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Position recalculation after restore failed', [
-                'error' => $e->getMessage(),
-                'schoolclass_id' => $schoolclassId,
-                'session_id' => $sessionId,
-                'term_id' => $termId
-            ]);
-        }
+        if (!empty($broadsheets))        Broadsheets::insertOrIgnore($broadsheets);
+        if (!empty($broadsheetsMock))    BroadsheetsMock::insertOrIgnore($broadsheetsMock);
+        if (!empty($subjectRegs))        SubjectRegistrationStatus::insertOrIgnore($subjectRegs);
+        if (!empty($studentSubjectRecs)) StudentSubjectRecord::insertOrIgnore($studentSubjectRecs);
     }
 }

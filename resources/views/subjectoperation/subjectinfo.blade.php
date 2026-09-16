@@ -11,13 +11,13 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0 fw-semibold">
                             <i class="ri-book-open-line me-2 text-primary"></i>
-                            Subject Information
+                            Subject registration
                             <span class="text-muted fw-normal fs-6 ms-2">— {{ $studentdata->first()->firstname ?? '' }} {{ $studentdata->first()->lastname ?? '' }}</span>
                         </h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="{{ route('subjectoperation.index') }}">Subjects</a></li>
-                                <li class="breadcrumb-item active">Subject Information</li>
+                                <li class="breadcrumb-item active">Subject registration</li>
                             </ol>
                         </div>
                     </div>
@@ -26,24 +26,21 @@
 
             <div class="row">
 
-                {{-- ── Student Profile Card ─────────────────────────────────── --}}
+                {{-- ── Student profile ──────────────────────────────────────── --}}
                 <div class="col-lg-4">
                     <div class="card border-0 shadow-sm" style="border-radius:16px;overflow:hidden;">
                         <div class="text-center p-4" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
                             @php
                                 $avatarPath = !empty($studentpic->first()->avatar)
-                                    ? asset('storage/student_avatars/' . $studentpic->first()->avatar)
+                                    ? asset('storage/student_avatars/' . basename($studentpic->first()->avatar))
                                     : asset('storage/student_avatars/unnamed.jpg');
                             @endphp
                             <div class="mb-3" style="position:relative;display:inline-block;">
                                 <img src="{{ $avatarPath }}"
+                                     alt="{{ $studentdata->first()->firstname ?? '' }} {{ $studentdata->first()->lastname ?? '' }}"
                                      class="rounded-circle border border-4 border-white shadow"
                                      style="width:110px;height:110px;object-fit:cover;"
                                      onerror="this.src='{{ asset('storage/student_avatars/unnamed.jpg') }}'">
-                                <span class="position-absolute bottom-0 end-0 rounded-circle bg-white d-flex align-items-center justify-content-center shadow-sm"
-                                      style="width:28px;height:28px;">
-                                    <i class="ri-user-line text-primary" style="font-size:13px;"></i>
-                                </span>
                             </div>
                             <h5 class="text-white fw-bold mb-1">{{ $studentdata->first()->firstname ?? '' }} {{ $studentdata->first()->lastname ?? '' }}</h5>
                             <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
@@ -51,18 +48,17 @@
                                     <i class="ri-id-card-line me-1"></i>{{ $studentdata->first()->admissionno ?? 'N/A' }}
                                 </span>
                                 <span class="badge px-3 py-2 rounded-pill" style="background:rgba(255,255,255,0.2);color:#fff;font-size:11px;">
-                                    <i class="ri-gender-line me-1"></i>{{ $studentdata->first()->gender ?? 'N/A' }}
+                                    {{ $studentdata->first()->gender ?? 'N/A' }}
                                 </span>
                             </div>
                         </div>
 
                         <div class="card-body p-3">
-                            {{-- Registration Summary --}}
                             <div class="row g-2 mb-3">
                                 <div class="col-4">
                                     <div class="text-center p-2 rounded-3 border" style="background:#f0f4ff;">
                                         <div class="fw-bold text-primary fs-5 lh-1 mb-1">{{ $totalreg ?? 0 }}</div>
-                                        <small class="text-muted" style="font-size:10px;">Total</small>
+                                        <small class="text-muted" style="font-size:10px;">Offered</small>
                                     </div>
                                 </div>
                                 <div class="col-4">
@@ -74,48 +70,56 @@
                                 <div class="col-4">
                                     <div class="text-center p-2 rounded-3 border" style="background:#fff5f5;">
                                         <div class="fw-bold text-danger fs-5 lh-1 mb-1">{{ $noregcount ?? 0 }}</div>
-                                        <small class="text-muted" style="font-size:10px;">Unregistered</small>
+                                        <small class="text-muted" style="font-size:10px;">Outstanding</small>
                                     </div>
                                 </div>
                             </div>
 
-                            {{-- Progress Bar --}}
                             @php $percentage = $totalreg > 0 ? ($regcount / $totalreg) * 100 : 0; @endphp
                             <div>
                                 <div class="d-flex justify-content-between mb-1">
-                                    <small class="text-muted fw-medium">Registration Progress</small>
+                                    <small class="text-muted fw-medium">Registration progress</small>
                                     <small class="fw-semibold text-primary">{{ number_format($percentage, 1) }}%</small>
                                 </div>
                                 <div class="progress rounded-pill" style="height:8px;background:#e0e7ff;">
                                     <div class="progress-bar rounded-pill"
                                          style="width:{{ $percentage }}%;background:linear-gradient(90deg,#667eea,#764ba2);"
-                                         role="progressbar"></div>
+                                         role="progressbar"
+                                         aria-valuenow="{{ (int) $percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
 
-                            {{-- Class / Term info --}}
                             <hr class="my-3">
+
                             <div class="small text-muted">
                                 <div class="mb-1">
                                     <i class="ri-school-line me-2 text-primary"></i>
                                     <strong>Class:</strong>
-                                    @if($classname->isNotEmpty())
-                                        {{ $classname->first()->schoolclass }} {{ $classname->first()->arm }}
-                                    @else
-                                        Unknown Class
-                                    @endif
+                                    {{ $classname->isNotEmpty() ? $classname->first()->schoolclass . ' ' . $classname->first()->arm : 'Unknown class' }}
                                 </div>
                                 <div>
                                     <i class="ri-calendar-2-line me-2 text-primary"></i>
                                     <strong>Term:</strong>
-                                    {{ $subjectclass->isNotEmpty() ? $subjectclass->first()->term : 'N/A' }}
+                                    {{ $terms->firstWhere('id', $termid)->term ?? 'N/A' }}
                                 </div>
+                            </div>
+
+                            {{-- Term switcher --}}
+                            <hr class="my-3">
+                            <label class="form-label small text-muted fw-medium">Show another term</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach ($terms as $term)
+                                    <a href="{{ route('subjects.subjectinfo', [$id, $schoolclassid, $term->id, $sessionid]) }}"
+                                       class="btn btn-sm rounded-pill {{ (int) $term->id === (int) $termid ? 'btn-primary' : 'btn-outline-secondary' }}">
+                                        {{ $term->term }}
+                                    </a>
+                                @endforeach
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- ── Subjects Table ───────────────────────────────────────── --}}
+                {{-- ── Subjects ─────────────────────────────────────────────── --}}
                 <div class="col-lg-8">
                     <div class="card border-0 shadow-sm" style="border-radius:16px;overflow:hidden;">
                         <div class="card-header border-0 px-4 py-3" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 60%,#7c3aed 100%);">
@@ -126,23 +130,18 @@
                                         <i class="ri-graduation-cap-line text-white"></i>
                                     </div>
                                     <div>
-                                        <h6 class="text-white fw-bold mb-0">Subjects for
-                                            @if($classname->isNotEmpty())
-                                                {{ $classname->first()->schoolclass }} {{ $classname->first()->arm }}
-                                            @else
-                                                Unknown Class
-                                            @endif
+                                        <h6 class="text-white fw-bold mb-0">
+                                            Subjects for {{ $classname->isNotEmpty() ? $classname->first()->schoolclass . ' ' . $classname->first()->arm : 'this class' }}
                                         </h6>
                                         <small class="text-white opacity-75">
-                                            Term: {{ $subjectclass->isNotEmpty() ? $subjectclass->first()->term : 'N/A' }}
+                                            {{ $terms->firstWhere('id', $termid)->term ?? 'N/A' }}
+                                            @if($subjectclass->isNotEmpty()) · {{ $subjectclass->first()->session }} @endif
                                         </small>
                                     </div>
                                 </div>
-                                <div class="d-flex gap-2">
-                                    <span class="badge px-3 py-2 rounded-pill" style="background:rgba(255,255,255,0.2);color:#fff;">
-                                        <i class="ri-book-open-line me-1"></i>{{ $totalreg ?? 0 }} Subjects
-                                    </span>
-                                </div>
+                                <span class="badge px-3 py-2 rounded-pill" style="background:rgba(255,255,255,0.2);color:#fff;">
+                                    <i class="ri-book-open-line me-1"></i>{{ $totalreg ?? 0 }} subjects
+                                </span>
                             </div>
                         </div>
 
@@ -152,19 +151,17 @@
                                     <thead style="background:#f0f4ff;">
                                         <tr>
                                             <th class="ps-3" width="40">#</th>
-                                            <th><i class="ri-book-line me-1 text-primary"></i>Subject</th>
-                                            <th><i class="ri-user-star-line me-1 text-primary"></i>Teacher</th>
-                                            <th><i class="ri-checkbox-circle-line me-1 text-primary"></i>Status</th>
-                                            <th><i class="ri-calendar-line me-1 text-primary"></i>Term</th>
+                                            <th>Subject</th>
+                                            <th>Teacher</th>
+                                            <th>Status</th>
+                                            <th>Term</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @forelse ($subjectclass as $index => $sc)
                                             @php
-                                                $status = isset($subjectRegistrations[$sc->subjectid][$sc->staffid]['status']['status'])
-                                                    ? $subjectRegistrations[$sc->subjectid][$sc->staffid]['status']['status']
-                                                    : 'Not Registered';
-                                                $isReg = $status === 'Registered';
+                                                $status = $subjectRegistrations[$sc->subjectid][$sc->staffid]['status']['status'] ?? 'Not Registered';
+                                                $isReg  = $status === 'Registered';
                                             @endphp
                                             <tr>
                                                 <td class="ps-3 text-muted small">{{ $index + 1 }}</td>
@@ -176,16 +173,15 @@
                                                     <div class="d-flex align-items-center gap-2">
                                                         @php
                                                             $teacherPic = !empty($sc->picture)
-                                                                ? asset('storage/staff_avatars/' . $sc->picture)
+                                                                ? asset('storage/staff_avatars/' . basename($sc->picture))
                                                                 : asset('storage/staff_avatars/default.png');
                                                         @endphp
                                                         <img src="{{ $teacherPic }}"
+                                                             alt=""
                                                              class="rounded-circle border"
                                                              style="width:30px;height:30px;object-fit:cover;"
                                                              onerror="this.src='{{ asset('storage/staff_avatars/default.png') }}'">
-                                                        <div>
-                                                            <div class="fw-medium small">{{ $sc->title ?? '' }} {{ $sc->name ?? '' }}</div>
-                                                        </div>
+                                                        <div class="fw-medium small">{{ $sc->title ?? '' }} {{ $sc->name ?? '' }}</div>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -195,7 +191,7 @@
                                                         </span>
                                                     @else
                                                         <span class="badge rounded-pill px-3 py-2" style="background:#fee2e2;color:#991b1b;font-size:11px;">
-                                                            <i class="ri-close-line me-1"></i>Not Registered
+                                                            <i class="ri-close-line me-1"></i>Not registered
                                                         </span>
                                                     @endif
                                                 </td>
@@ -209,7 +205,7 @@
                                             <tr>
                                                 <td colspan="5" class="text-center text-muted py-5">
                                                     <i class="ri-information-line ri-2x mb-2 d-block text-primary opacity-50"></i>
-                                                    No subjects found for this class, term, and session.
+                                                    No subjects are assigned to this class for the selected term and session.
                                                 </td>
                                             </tr>
                                         @endforelse
