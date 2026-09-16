@@ -26,13 +26,13 @@ use Maatwebsite\Excel\Facades\Excel;
 class MyScoreSheetController extends Controller
 {
     // =========================================================================
-    // 3-LAYER LOCK CHECK — REUSABLE HELPER
+    // 3-LAYER LOCK CHECK
     // =========================================================================
 
     /**
-     * Check if a teacher can edit a scoresheet.
+     * Check whether a teacher can edit a given broadsheet.
      *
-     * Layer 1 — individual row lock (handled by Broadsheets::isEditableByTeacher)
+     * Layer 1 — individual row lock  (via Broadsheets::isEditableByTeacher)
      * Layer 2 — subjectclass teacher_editing_enabled flag
      * Layer 3 — global ScoresheetLock for this subject/term/session
      *
@@ -48,7 +48,6 @@ class MyScoreSheetController extends Controller
             return ['allowed' => false, 'message' => 'Record not found'];
         }
 
-        // Layer 1 + 2 + 3 (isEditableByTeacher does all three)
         if (!$isMock) {
             if (!$model->isEditableByTeacher()) {
                 return [
@@ -57,7 +56,6 @@ class MyScoreSheetController extends Controller
                 ];
             }
         } else {
-            // Mock rows don't have per-row locks in the same way, but check teacher_editing_enabled
             $subjectClass = Subjectclass::find($model->subjectclass_id);
             if ($subjectClass && !$subjectClass->teacher_editing_enabled) {
                 return [
@@ -79,15 +77,12 @@ class MyScoreSheetController extends Controller
         $pagetitle   = 'My Scoresheets';
         $broadsheets = collect();
 
-        Log::info('Index session:', $request->session()->all());
-
         if (!$request->ajax()) {
             $termId    = $request->query('termid', 'ALL');
             $sessionId = $request->query('sessionid', 'ALL');
 
             if ($termId !== 'ALL' && $sessionId !== 'ALL') {
                 $broadsheets = $this->getBroadsheets($request->user()->id, $termId, $sessionId);
-                Log::info('Index broadsheets count:', ['count' => $broadsheets->count()]);
             }
         }
 
@@ -129,7 +124,6 @@ class MyScoreSheetController extends Controller
             'session_id'      => $sessionid,
         ]);
 
-        // Initial broadsheets fetch
         $broadsheets = $this->getBroadsheets($staffid, $termid, $sessionid, $schoolclassid, $subjectclassid);
 
         if ($broadsheets->isNotEmpty()) {
@@ -137,7 +131,7 @@ class MyScoreSheetController extends Controller
             $this->updateSubjectPositions($subjectclassid, $staffid, $termid, $sessionid);
             $this->updateClassPositions($schoolclassid, $termid, $sessionid);
 
-            // Refresh broadsheets to ensure updated positions
+            // Refresh so the view shows the freshly computed positions
             $broadsheets = $this->getBroadsheets($staffid, $termid, $sessionid, $schoolclassid, $subjectclassid);
 
             $pagetitle = sprintf(
@@ -154,13 +148,13 @@ class MyScoreSheetController extends Controller
             Log::warning('No broadsheets found for the given parameters', compact('schoolclassid', 'subjectclassid', 'staffid', 'termid', 'sessionid'));
         }
 
-        // ── Class category (belongsTo — one per class) ─────────────────────
+        // ── Class category (belongsTo — one per class) ────────────────────
         $schoolclass = Schoolclass::with('classcategory')->find($schoolclassid);
         $is_senior   = $schoolclass && $schoolclass->classcategory
             ? $schoolclass->classcategory->is_senior
             : false;
 
-        // ── Lock info for the view ─────────────────────────────────────────
+        // ── Lock info for the view ────────────────────────────────────────
         $globalLock = ScoresheetLock::where([
             'subjectclass_id' => $subjectclassid,
             'term_id'         => $termid,
@@ -237,7 +231,7 @@ class MyScoreSheetController extends Controller
             'classcategories.examscore as examscore',
             'studentpicture.picture',
 
-            // ✅ CRITICAL — CA fields (these must be in the select list)
+            // ✅ CRITICAL — CA fields in the select list
             'broadsheets.ca1',
             'broadsheets.ca2',
             'broadsheets.ca3',
@@ -261,7 +255,7 @@ class MyScoreSheetController extends Controller
             'broadsheets.scheduled_unlock_at',
         ])->sortBy('lastname');
 
-        // Recalculate total/bf/cum/grade for each row
+        // Recalculate total/bf/cum/grade for each row (project-1 formulas)
         foreach ($results as $broadsheet) {
             $ca1  = $broadsheet->ca1 ?? 0;
             $ca2  = $broadsheet->ca2 ?? 0;
@@ -283,7 +277,6 @@ class MyScoreSheetController extends Controller
             $newGrade = $schoolclass && $schoolclass->classcategory
                 ? $schoolclass->classcategory->calculateGrade($newCum)
                 : $this->getDefaultGrade($newCum);
-
             $newRemark = $this->getRemark($newGrade);
 
             $significantChange = abs(($broadsheet->bf ?? 0) - $newBf) > 0.01 ||
@@ -432,26 +425,31 @@ class MyScoreSheetController extends Controller
     {
         Log::info('[updateSubjectPositions] START', compact('subjectclass_id', 'term_id', 'session_id'));
 
+        // Resolve subjectclass → subject_id + base schoolclass_id
         $subjectClass = DB::table('subjectclass')
             ->join('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
             ->where('subjectclass.id', $subjectclass_id)
             ->first(['subjectclass.schoolclassid', 'subjectteacher.subjectid']);
 
         if (!$subjectClass) {
-            Log::warning('[updateSubjectPositions] subjectClass not found');
+            Log::warning('[updateSubjectPositions] subjectClass not found', [
+                'subjectclass_id' => $subjectclass_id,
+            ]);
             return;
         }
 
         $subjectId     = $subjectClass->subjectid;
         $schoolclassId = $subjectClass->schoolclassid;
 
-        // Find all sibling arms
+        // Find sibling arms (same class name + category)
         $baseClass = DB::table('schoolclass')
             ->where('id', $schoolclassId)
             ->first(['schoolclass', 'classcategoryid']);
 
         if (!$baseClass) {
-            Log::warning('[updateSubjectPositions] baseClass not found');
+            Log::warning('[updateSubjectPositions] baseClass not found', [
+                'schoolclass_id' => $schoolclassId,
+            ]);
             return;
         }
 
@@ -460,13 +458,14 @@ class MyScoreSheetController extends Controller
             ->where('classcategoryid', $baseClass->classcategoryid)
             ->pluck('id');
 
+        // All subjectclass ids for this subject across arms
         $allSubjectClassIds = DB::table('subjectclass')
             ->join('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
             ->whereIn('subjectclass.schoolclassid', $allArmIds)
             ->where('subjectteacher.subjectid', $subjectId)
             ->pluck('subjectclass.id');
 
-        // All registered students across all arms
+        // Fetch every student across all arms
         $allStudents = DB::table('broadsheets')
             ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
             ->whereIn('broadsheets.subjectclass_id', $allSubjectClassIds)
@@ -479,9 +478,13 @@ class MyScoreSheetController extends Controller
                 'broadsheet_records.schoolclass_id',
             ]);
 
+        Log::info('[updateSubjectPositions] Students fetched', [
+            'count' => $allStudents->count(),
+            'all_subjectclass_ids' => $allSubjectClassIds->toArray(),
+        ]);
+
         if ($allStudents->isEmpty()) {
-            $this->nullOutStalePositions($allSubjectClassIds, $term_id, $session_id);
-            Log::warning('[updateSubjectPositions] No students found');
+            Log::warning('[updateSubjectPositions] No students to rank');
             return;
         }
 
@@ -497,31 +500,44 @@ class MyScoreSheetController extends Controller
             $this->denseRank($studentsInArm, 'cum',   'arm_position_cum');
         }
 
-        $this->nullOutStalePositions($allSubjectClassIds, $term_id, $session_id);
+        // NOTE: nullOutStalePositions removed — it was wiping every student's
+        // position because the query matched all rows in the subjectclass.
 
-        Log::info('[updateSubjectPositions] DONE', ['students' => $allStudents->count()]);
+        Log::info('[updateSubjectPositions] DONE', [
+            'students_ranked' => $allStudents->count(),
+        ]);
     }
 
     /**
      * Dense rank helper — ties share the same rank.
+     * Uses numeric comparison so DECIMAL-string values sort correctly.
      */
     protected function denseRank($rows, string $sortKey, string $column)
     {
-        $sorted  = $rows->sortByDesc($sortKey)->values();
+        $sorted = $rows->sortByDesc(function ($row) use ($sortKey) {
+            return (float) ($row->$sortKey ?? 0);
+        })->values();
+
         $lastVal = null;
         $rank    = 0;
 
         foreach ($sorted as $idx => $row) {
-            if ($lastVal === null || $row->$sortKey != $lastVal) {
+            $currentVal = (float) ($row->$sortKey ?? 0);
+
+            if ($lastVal === null || $currentVal !== $lastVal) {
                 $rank    = $idx + 1;
-                $lastVal = $row->$sortKey;
+                $lastVal = $currentVal;
             }
-            DB::table('broadsheets')->where('id', $row->id)->update([$column => $rank]);
+
+            DB::table('broadsheets')
+                ->where('id', $row->id)
+                ->update([$column => $rank]);
         }
     }
 
     /**
-     * Null out positions for students that aren't in the current roster.
+     * Optional — only call from an admin action, NOT from updateSubjectPositions.
+     * Nulls positions for students without a matching subjectRegistrationStatus.
      */
     protected function nullOutStalePositions($subjectClassIds, $termId, $sessionId): void
     {
@@ -530,6 +546,16 @@ class MyScoreSheetController extends Controller
             ->whereIn('broadsheets.subjectclass_id', $subjectClassIds)
             ->where('broadsheets.term_id', $termId)
             ->where('broadsheet_records.session_id', $sessionId)
+            ->whereNotExists(function ($q) use ($termId, $sessionId) {
+                $q->select(DB::raw(1))
+                    ->from('subjectRegistrationStatus')
+                    ->join('subjectclass as srs_sc', 'srs_sc.id', '=', 'subjectRegistrationStatus.subjectclassid')
+                    ->whereColumn('srs_sc.subjectid', 'broadsheet_records.subject_id')
+                    ->whereColumn('subjectRegistrationStatus.studentid', 'broadsheet_records.student_id')
+                    ->where('subjectRegistrationStatus.termid', $termId)
+                    ->where('subjectRegistrationStatus.sessionid', $sessionId)
+                    ->where('subjectRegistrationStatus.Status', 1);
+            })
             ->update([
                 'subject_position_class'       => null,
                 'subject_position_class_total' => null,
@@ -645,7 +671,7 @@ class MyScoreSheetController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Lock check
+        // 3-layer lock check
         $lockCheck = $this->checkTeacherCanEdit($id);
         if (!$lockCheck['allowed']) {
             return response()->json([
@@ -736,7 +762,7 @@ class MyScoreSheetController extends Controller
 
     public function bulkUpdateScores(Request $request)
     {
-        $scores = $request->input('scores', []);
+        $scores    = $request->input('scores', []);
         $lockedIds = [];
 
         foreach ($scores as $s) {
@@ -771,29 +797,28 @@ class MyScoreSheetController extends Controller
 
         $updatedCount = 0;
 
-        DB::transaction(function () use ($scores, $term_id, $session_id, $subjectclass_id, $staff_id, $schoolclass_id, $schoolclass, &$updatedCount) {
+        DB::transaction(function () use ($scores, $term_id, $session_id, $subjectclass_id, $staff_id, $schoolclass, &$updatedCount) {
             foreach ($scores as $score) {
                 $broadsheet = Broadsheets::find($score['id']);
                 if (!$broadsheet) continue;
 
-                $ca1  = floatval($score['ca1'] ?? 0);
-                $ca2  = floatval($score['ca2'] ?? 0);
-                $ca3  = floatval($score['ca3'] ?? 0);
-                $exam = floatval($score['exam'] ?? 0);
+                $ca1  = (float) ($score['ca1']  ?? 0);
+                $ca2  = (float) ($score['ca2']  ?? 0);
+                $ca3  = (float) ($score['ca3']  ?? 0);
+                $exam = (float) ($score['exam'] ?? 0);
 
-                $ca_average = ($ca1 + $ca2 + $ca3) / 3;
-                $total = round(($ca_average + $exam) / 2, 1);
+                $caAverage = ($ca1 + $ca2 + $ca3) / 3;
+                $total = round(($caAverage + $exam) / 2, 1);
 
-                $bf = $this->getPreviousTermCum(
-                    $broadsheet->broadsheetRecord->student_id,
-                    $broadsheet->broadsheetRecord->subject_id,
-                    $term_id,
-                    $session_id
-                );
+                $record = DB::table('broadsheet_records')
+                    ->where('id', $broadsheet->broadsheet_record_id)
+                    ->first();
+                if (!$record) continue;
 
+                $bf = $this->getPreviousTermCum($record->student_id, $record->subject_id, $term_id, $session_id);
                 $cum = $term_id == 1 ? $total : round(($bf + $total) / 2, 2);
 
-                $grade = $schoolclass && $schoolclass->classcategory
+                $grade = $schoolclass->classcategory
                     ? $schoolclass->classcategory->calculateGrade($cum)
                     : $this->getDefaultGrade($cum);
                 $remark = $this->getRemark($grade);
@@ -885,11 +910,11 @@ class MyScoreSheetController extends Controller
     protected function getRemark($grade)
     {
         $remarks = [
-            'A'  => 'Excellent', 'B'  => 'Very Good', 'C'  => 'Good',
-            'D'  => 'Pass',      'F'  => 'Fail',
-            'A1' => 'Excellent', 'B2' => 'Very Good', 'B3' => 'Good',
-            'C4' => 'Credit',    'C5' => 'Credit',    'C6' => 'Credit',
-            'D7' => 'Pass',      'E8' => 'Pass',      'F9' => 'Fail',
+            'A'  => 'Excellent',  'B'  => 'Very Good', 'C'  => 'Good',
+            'D'  => 'Pass',       'F'  => 'Fail',
+            'A1' => 'Excellent',  'B2' => 'Very Good', 'B3' => 'Good',
+            'C4' => 'Credit',     'C5' => 'Credit',    'C6' => 'Credit',
+            'D7' => 'Pass',       'E8' => 'Pass',      'F9' => 'Fail',
         ];
         return $remarks[$grade] ?? 'Unknown';
     }
@@ -905,7 +930,7 @@ class MyScoreSheetController extends Controller
             ->leftJoin('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
             ->value('broadsheets.cum');
 
-        return $previousTerm !== null ? round($previousTerm, 2) : 0;
+        return $previousTerm !== null ? round((float) $previousTerm, 2) : 0;
     }
 
     // =========================================================================
@@ -1106,7 +1131,7 @@ class MyScoreSheetController extends Controller
     }
 
     // =========================================================================
-    // RECALCULATE ALL ARM POSITIONS (admin/teacher button)
+    // RECALCULATE ALL ARM POSITIONS
     // =========================================================================
 
     public function updateAllArmPositions(Request $request)
@@ -1180,7 +1205,7 @@ class MyScoreSheetController extends Controller
     }
 
     // =========================================================================
-    // GRADE PREVIEW (AJAX — used by the live tooltip)
+    // GRADE PREVIEW (AJAX — live tooltip)
     // =========================================================================
 
     public function calculateGradePreview(Request $request)
