@@ -293,7 +293,6 @@
       </form>
 
       <div class="modal-body">
-        {{-- Class & Scope --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-book-2-line me-2"></i>Class &amp; Scope</span></div>
           <div class="row g-3">
@@ -334,7 +333,6 @@
           <div id="subjectSummary" class="mt-2" style="display:none;"></div>
         </div>
 
-        {{-- Template loader --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-file-copy-line me-2"></i>Load from Template <small class="text-muted fw-normal">(optional)</small></span></div>
           <div class="d-flex gap-2 align-items-end flex-wrap">
@@ -356,7 +354,6 @@
           </div>
         </div>
 
-        {{-- Evaluation Mode + Active --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-git-branch-line me-2"></i>Evaluation Mode &amp; Status</span></div>
           <div class="row g-3">
@@ -392,7 +389,6 @@
           </div>
         </div>
 
-        {{-- Rules --}}
         <div class="form-section">
           <div class="form-section-title">
             <span><i class="ri-price-tag-3-line me-2"></i>Promotion Rules
@@ -411,7 +407,6 @@
             </div>
           </div>
 
-          {{-- Global interpretation panel --}}
           <div id="globalInterpPanel"></div>
 
           <div id="rulesContainer">
@@ -422,7 +417,6 @@
           </div>
         </div>
 
-        {{-- Labels --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-price-tag-line me-2"></i>Status Labels</span></div>
           <div class="row g-3">
@@ -436,7 +430,7 @@
               <input type="text" class="form-control form-control-sm" id="repeat_label" value="Advice to Repeat"></div>
           </div>
         </div>
-      </div>{{-- /modal-body --}}
+      </div>
 
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -450,28 +444,21 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// ============================================================
-// RULE INTERPRETATION ENGINE
-// ============================================================
-
 const RuleInterpreter = (() => {
     const GRADE_LABELS_SENIOR = {
         A1: 'A1 (Distinction)', B2: 'B2 (Very Good)', B3: 'B3 (Good)',
         C4: 'C4 (Credit)', C5: 'C5 (Credit)', C6: 'C6 (Credit)',
         D7: 'D7 (Pass)', E8: 'E8 (Below Pass)', F9: 'F9 (Fail)',
     };
-
     const GRADE_LABELS_JUNIOR = {
         A: 'A (Excellent)', B: 'B (Good)', C: 'C (Credit)',
         D: 'D (Pass)', F: 'F (Fail)',
     };
-
     const GROUP_LABELS_SENIOR = {
         A: 'distinctions (A1)', B: 'very-good/good grades (B2–B3)',
         C: 'credit grades (C4–C6)', D: 'pass grades (D7)',
         E: 'below-pass grades (E8)', F: 'fail grades (F9)',
     };
-
     const GROUP_LABELS_JUNIOR = {
         A: 'A grades (Excellent)', B: 'B grades (Good)',
         C: 'C grades (Credit)', D: 'D grades (Pass)', F: 'F grades (Fail)',
@@ -656,7 +643,6 @@ const RuleInterpreter = (() => {
     return { interpret, interpretAll, renderPanel };
 })();
 
-// ── State ──────────────────────────────────────────────────────────────────────
 let promotionRules = [];
 let gradeScale = ['A1','B2','B3','C4','C5','C6','D7','E8','F9'];
 let isSenior = true;
@@ -908,7 +894,6 @@ function updateGlobalInterpPanel() {
     panel.innerHTML = html;
 }
 
-// ── Event Delegation ──────────────────────────────────────────────────────────
 function setupEventDelegation() {
     const container = document.getElementById('rulesContainer');
     if (!container) return;
@@ -1080,7 +1065,6 @@ function escH(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Class Info Loading ───────────────────────────────────────────────────────
 async function refreshClassInfo() {
     const classId = document.getElementById('schoolclass_id').value;
     const termId = document.getElementById('term_id').value;
@@ -1090,7 +1074,6 @@ async function refreshClassInfo() {
     const summaryEl = document.getElementById('subjectSummary');
     const scopeInfo = document.getElementById('ruleScopeInfo');
 
-    // Store current average value - IMPORTANT: preserve 0 as a valid value
     const currentAvg = document.getElementById('promotion_pass_average').value;
     const hasCurrentAvg = currentAvg !== '' && currentAvg !== null && currentAvg !== undefined;
 
@@ -1122,12 +1105,10 @@ async function refreshClassInfo() {
                 override: false
             }));
 
-            // FIX: Only set default if no value is currently set (including checking for 0)
             if (classPassAvg !== null && !hasCurrentAvg) {
                 document.getElementById('promotion_pass_average').value = classPassAvg;
                 document.getElementById('avg_slider').value = classPassAvg;
             } else if (hasCurrentAvg) {
-                // Preserve the existing value (including 0)
                 document.getElementById('promotion_pass_average').value = currentAvg;
                 document.getElementById('avg_slider').value = currentAvg;
             }
@@ -1136,8 +1117,8 @@ async function refreshClassInfo() {
             scopeInfo.textContent = `${totalSubjects} total | ${compulsoryCount} compulsory | ${otherCount} other | ${scaleLabel}`;
 
             let summaryHtml = `<div class="alert alert-success py-2 mb-0"><i class="ri-checkbox-circle-line me-1"></i><strong>${totalSubjects}</strong> total subjects &nbsp;|&nbsp;<strong>${compulsoryCount}</strong> compulsory &nbsp;|&nbsp;<strong>${otherCount}</strong> other &nbsp;|&nbsp;Grade scale: <strong>${scaleLabel}</strong>`;
-            if (compulsoryCount > 0) summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-star-fill text-warning me-1"></i>${compulsoryCount} compulsory subject${compulsoryCount > 1 ? 's' : ''} loaded — minimum grades pre-filled from Compulsory Subject setup (overridable per rule).</small>`;
-            else summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-information-line me-1"></i>No compulsory subjects assigned to this class. You can still add grade count conditions.</small>`;
+            if (compulsoryCount > 0) summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-star-fill text-warning me-1"></i>${compulsoryCount} compulsory subject${compulsoryCount > 1 ? 's' : ''} loaded.</small>`;
+            else summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-information-line me-1"></i>No compulsory subjects assigned to this class.</small>`;
             summaryHtml += `</div>`;
             summaryEl.innerHTML = summaryHtml;
             summaryEl.style.display = 'block';
@@ -1171,11 +1152,9 @@ async function refreshClassInfo() {
         loadEl.style.display = 'none';
         summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="ri-error-warning-line me-1"></i>Error: ${err.message}</div>`;
         summaryEl.style.display = 'block';
-        console.error('Error loading class info:', err);
     }
 }
 
-// ── Modal Functions ───────────────────────────────────────────────────────────
 function openModal() { new bootstrap.Modal(document.getElementById('settingModal')).show(); }
 
 function resetModal() {
@@ -1225,8 +1204,6 @@ async function handleEditClick(e) {
     const ruleLogic = d.rule_logic || 'grade_count';
     document.getElementById('rule_logic').value = ruleLogic;
 
-    // FIX: Handle 0 correctly - check if property exists and is not undefined/null
-    // Use d.promotion_pass_average !== undefined && d.promotion_pass_average !== null
     const avgValue = (d.promotion_pass_average !== undefined && d.promotion_pass_average !== null && d.promotion_pass_average !== '')
         ? d.promotion_pass_average
         : '';
@@ -1244,7 +1221,6 @@ async function handleEditClick(e) {
         badge.innerHTML = isActive ? '<i class="ri-checkbox-circle-line"></i> Active' : '<i class="ri-close-circle-line"></i> Inactive';
     }
 
-    // Manually trigger change event to show/hide average section
     const ruleLogicSelect = document.getElementById('rule_logic');
     const changeEvent = new Event('change');
     ruleLogicSelect.dispatchEvent(changeEvent);
@@ -1281,22 +1257,18 @@ function bindDeleteButtons() {
     });
 }
 
-// ── Save ───────────────────────────────────────────────────────────────────────
 document.getElementById('saveSettingBtn')?.addEventListener('click', async function() {
     const classId = document.getElementById('schoolclass_id').value;
     if (!classId) { Swal.fire('Validation', 'Please select a class.', 'warning'); return; }
 
-    // Validate average based on rule logic
     const ruleLogic = document.getElementById('rule_logic').value;
     let avgValue = document.getElementById('promotion_pass_average').value;
 
-    // FIX: For average_only and both, require a numeric value (0 is valid)
     if (ruleLogic === 'average_only' || ruleLogic === 'both') {
         if (avgValue === '' || avgValue === null || avgValue === undefined) {
             Swal.fire('Validation', 'Minimum average is required for Average Only or Both evaluation modes.', 'warning');
             return;
         }
-        // Ensure it's a number
         avgValue = parseFloat(avgValue);
         if (isNaN(avgValue)) {
             Swal.fire('Validation', 'Minimum average must be a valid number.', 'warning');
@@ -1327,7 +1299,6 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
     fd.set('repeat_label', document.getElementById('repeat_label').value);
     fd.set('rule_logic', ruleLogic);
 
-    // FIX: Send 0 as a valid value, not empty string
     if (ruleLogic === 'average_only' || ruleLogic === 'both') {
         fd.set('promotion_pass_average', avgValue.toString());
     } else {
@@ -1339,13 +1310,6 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
     const id = document.getElementById('setting_id').value;
     let url = '/promotion-settings';
     if (id) { url = `/promotion-settings/${id}`; fd.append('_method', 'PUT'); }
-
-    // Debug log to verify what's being sent
-    console.log('Saving with values:', {
-        rule_logic: ruleLogic,
-        promotion_pass_average: avgValue,
-        class_id: classId
-    });
 
     Swal.fire({ title: 'Saving…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
@@ -1364,7 +1328,6 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
     } catch { Swal.fire('Error', 'An error occurred.', 'error'); }
 });
 
-// ── Toggle Active ──────────────────────────────────────────────────────────────
 document.addEventListener('change', async function(e) {
     if (!e.target.classList.contains('toggle-active-switch')) return;
     const toggle = e.target, sid = toggle.dataset.id, isActive = toggle.checked;
@@ -1380,7 +1343,6 @@ document.addEventListener('change', async function(e) {
     } catch { toggle.checked = !isActive; Swal.fire('Error', 'Network error.', 'error'); }
 });
 
-// ── Event Listeners ───────────────────────────────────────────────────────────
 document.getElementById('openAddBtn')?.addEventListener('click', openModal);
 document.getElementById('openAddBtn2')?.addEventListener('click', openModal);
 document.getElementById('settingModal')?.addEventListener('hidden.bs.modal', resetModal);
@@ -1453,7 +1415,6 @@ document.getElementById('loadTemplateBtn')?.addEventListener('click', async func
 });
 ['schoolclass_id','session_id','term_id'].forEach(id => document.getElementById(id)?.addEventListener('change', refreshClassInfo));
 
-// ── Initialize ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     setupEventDelegation();
     bindEditButtons();

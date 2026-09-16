@@ -2,7 +2,7 @@
 @extends('layouts.master')
 
 @section('content')
-<link rel="stylesheet" href="[cdn.datatables.net](https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css)">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <style>
 :root {
     --bill-primary: #1e3a5f;
@@ -64,6 +64,7 @@
     border-bottom:1px solid var(--bill-border); font-size:13px;
 }
 .bill-table tr:hover td { background:#eff6ff; }
+.bill-table tr.table-active td { background:#dbeafe !important; }
 
 /* ── Form controls ─────────────────────────────────────── */
 .form-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
@@ -152,6 +153,13 @@
     @if (session('status') || session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('status') ?? session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -280,7 +288,9 @@
 </div>
 </div>
 
-{{-- Image View Modal --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     Image View Modal
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div id="imageViewModal" class="modal fade bill-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -297,7 +307,9 @@
     </div>
 </div>
 
-{{-- Column Selection Modal --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     Column Selection Modal
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div class="modal fade bill-modal" id="columnSelectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -439,8 +451,8 @@
     </div>
 </div>
 
-<script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js)"></script>
-<script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/sweetalert2@11)"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     console.log("Script loaded at", new Date().toISOString());
@@ -483,7 +495,7 @@
         updateSelectionAlert();
     }
 
-    // Only controls term dropdown visibility — never touches print button
+    // Only controls term dropdown visibility
     function updateTermSelectVisibility() {
         const studentCount = parseInt(document.getElementById("studentcount").innerText) || 0;
         document.getElementById("termSelectContainer").style.display =
@@ -546,9 +558,6 @@
             setupPaginationLinks();
             setupCheckboxListeners();
             updateTermSelectVisibility();
-            // Do NOT call updatePrintButtonVisibility here —
-            // newly loaded rows have no checkboxes ticked yet,
-            // so the print button should stay hidden until the user checks some.
             updatePrintButtonVisibility();
 
             if (!response.data.tableBody ||
@@ -574,7 +583,7 @@
         document.getElementById('pagination-container').innerHTML = '';
         document.getElementById('studentcount').innerText = '0';
         document.getElementById('statTotal').innerText    = '0';
-        document.getElementById('printAllBtn').style.display     = 'none';
+        document.getElementById('printAllBtn').style.display = 'none';
         document.getElementById('termSelectContainer').style.display = 'none';
         updateSelectionAlert();
     }
@@ -816,7 +825,7 @@
         const checkboxes = document.querySelectorAll('tbody input[name="chk_child"]');
 
         if (checkAll) {
-            // Remove any old listener before adding a fresh one
+            // Rebind fresh to avoid duplicate listeners
             const freshCheckAll = checkAll.cloneNode(true);
             checkAll.parentNode.replaceChild(freshCheckAll, checkAll);
 
@@ -863,7 +872,6 @@
         });
 
         termSelect.addEventListener("change", function () {
-            // When term changes, re-run filter then let checkbox state decide print button
             if (this.value !== 'ALL') {
                 filterData();
             } else {
@@ -878,7 +886,7 @@
                 const btn = event.relatedTarget;
                 document.getElementById('enlargedImage').src =
                     btn.getAttribute('data-image') ||
-                    '{{ asset('storage/student_avatars/unnamed.jpg') }}';
+                    '{{ asset('student_avatars/unnamed.jpg') }}';
             });
         }
     });

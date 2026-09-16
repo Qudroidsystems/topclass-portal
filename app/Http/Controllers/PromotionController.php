@@ -3,23 +3,24 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
-use Illuminate\View\View;
-use App\Models\Schoolclass;
-use App\Models\Studentclass;
-use Illuminate\Http\Request;
-use App\Models\Schoolsession;
-use App\Models\PromotionStatus;
-use App\Models\PromotionSetting;
-use App\Models\CompulsorySubjectClass;
 use App\Models\Broadsheets;
+use App\Models\CompulsorySubjectClass;
+use App\Models\PromotionSetting;
+use App\Models\PromotionStatus;
+use App\Models\Schoolclass;
+use App\Models\Schoolsession;
+use App\Models\Schoolterm;
 use App\Models\Student;
+use App\Models\Studentclass;
+use App\Models\StudentCurrentTerm;
+use App\Services\PromotionEvaluator;
+use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
-use App\Services\PromotionEvaluator;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\View\View;
 
 class PromotionController extends Controller
 {
@@ -27,8 +28,8 @@ class PromotionController extends Controller
 
     public function __construct(PromotionEvaluator $promotionEvaluator)
     {
-        $this->middleware('permission:View promotion',   ['only' => ['index']]);
-        $this->middleware('permission:Update promotion', ['only' => ['update', 'destroy']]);
+        $this->middleware('permission:View promotion',   ['only' => ['index', 'getStudentDetails']]);
+        $this->middleware('permission:Update promotion', ['only' => ['update', 'destroy', 'bulkPromote']]);
         $this->promotionEvaluator = $promotionEvaluator;
     }
 
@@ -51,32 +52,20 @@ class PromotionController extends Controller
             $sessionId     = (int) $request->input('sessionid');
             $termId        = (int) $request->input('termid', 3);
 
-            // ── Pre-flight: can we skip the evaluator entirely? ───────────────
-            //
-            // We short-circuit to awaitingResult() when:
-            //   (a) no active settings exist for this class at all, OR
-            //   (b) active settings exist but NONE of them cover this
-            //       session+term combination.
-            //
-            // This mirrors exactly what PromotionEvaluator::evaluate() does
-            // internally, but avoids paying the cost of fetching scores and
-            // spinning up the evaluator for every student when the answer
-            // is already known to be "awaiting".
-            //
-            // We do NOT short-circuit when settings DO match — the evaluator
-            // must run so it can apply rules and produce a real verdict.
+            // Pre-flight: skip the evaluator entirely when no active setting
+            // applies to this class+session+term combination.
             $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                 $schoolclassId, $sessionId, $termId
             );
 
             $query = Studentclass::query()
                 ->where('studentclass.schoolclassid', $schoolclassId)
-                ->where('studentclass.sessionid', $sessionId)
+                ->where('studentclass.sessionid',     $sessionId)
                 ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
-                ->leftJoin('studentpicture',       'studentpicture.studentid', '=', 'studentRegistration.id')
-                ->leftJoin('schoolclass',          'schoolclass.id',           '=', 'studentclass.schoolclassid')
-                ->leftJoin('schoolarm',            'schoolarm.id',             '=', 'schoolclass.arm')
-                ->leftJoin('schoolsession',        'schoolsession.id',         '=', 'studentclass.sessionid');
+                ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
+                ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
+                ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
+                ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
 
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
@@ -89,7 +78,7 @@ class PromotionController extends Controller
 
             try {
                 $allstudents = $query->select([
-                    'studentRegistration.id          as stid',
+                    'studentRegistration.id           as stid',
                     'studentRegistration.admissionNo  as admissionno',
                     'studentRegistration.firstname    as firstname',
                     'studentRegistration.lastname     as lastname',
@@ -114,39 +103,37 @@ class PromotionController extends Controller
                         $overallAverage = $this->calculateOverallAverage($scores);
 
                         if ($shouldSkipEvaluator) {
-                            // No applicable setting for this class+session+term —
-                            // skip evaluation entirely, return awaiting directly.
                             $student->promotion_recommendation =
                                 $this->promotionEvaluator->awaitingResult($overallAverage);
                         } else {
                             $student->promotion_recommendation =
                                 $this->promotionEvaluator->evaluate(
-                                    studentId:     $student->stid,
-                                    schoolclassid: $schoolclassId,
-                                    termid:        $termId,
-                                    sessionid:     $sessionId,
-                                    scores:        $scores,
+                                    studentId:      $student->stid,
+                                    schoolclassid:  $schoolclassId,
+                                    termid:         $termId,
+                                    sessionid:      $sessionId,
+                                    scores:         $scores,
                                     overallAverage: $overallAverage
                                 );
                         }
 
                         $student->overall_average = $overallAverage;
 
-                        $existingStatus = PromotionStatus::where('studentId',     $student->stid)
+                        $existing = PromotionStatus::where('studentId',     $student->stid)
                             ->where('schoolclassid', $schoolclassId)
                             ->where('sessionid',     $sessionId)
                             ->where('termid',        $termId)
                             ->first();
 
-                        $student->promotion_status = $existingStatus?->promotionStatus;
-                        $student->promotion_id     = $existingStatus?->id;
+                        $student->promotion_status = $existing?->promotionStatus;
+                        $student->promotion_id     = $existing?->id;
 
                         return $student;
                     }
                 );
 
             } catch (Exception $e) {
-                Log::error('Promotion query failed', [
+                Log::error('Promotion index query failed', [
                     'request' => $request->all(),
                     'error'   => $e->getMessage(),
                 ]);
@@ -157,7 +144,7 @@ class PromotionController extends Controller
         $schoolsessions = Schoolsession::get();
         $schoolclasses  = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm']);
-        $terms = \App\Models\Schoolterm::orderBy('term')->get();
+        $terms          = Schoolterm::orderBy('term')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -173,7 +160,7 @@ class PromotionController extends Controller
     }
 
     // =========================================================================
-    // STUDENT DETAILS (modal)
+    // STUDENT DETAILS (modal payload)
     // =========================================================================
 
     public function getStudentDetails($studentId, $schoolclassId, $sessionId, $termId): JsonResponse
@@ -182,7 +169,7 @@ class PromotionController extends Controller
             $student = Student::where('studentRegistration.id', $studentId)
                 ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
                 ->select([
-                    'studentRegistration.id          as stid',
+                    'studentRegistration.id           as stid',
                     'studentRegistration.admissionNo  as admissionno',
                     'studentRegistration.firstname    as firstname',
                     'studentRegistration.lastname     as lastname',
@@ -199,7 +186,6 @@ class PromotionController extends Controller
             $scores         = $this->getStudentScores($studentId, $schoolclassId, $sessionId, $termId);
             $overallAverage = $this->calculateOverallAverage($scores);
 
-            // Same term-aware short-circuit as index()
             $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                 $schoolclassId, $sessionId, $termId
             );
@@ -207,15 +193,15 @@ class PromotionController extends Controller
             $promotionResult = $shouldSkipEvaluator
                 ? $this->promotionEvaluator->awaitingResult($overallAverage)
                 : $this->promotionEvaluator->evaluate(
-                    studentId:     $studentId,
-                    schoolclassid: $schoolclassId,
-                    termid:        $termId,
-                    sessionid:     $sessionId,
-                    scores:        $scores,
+                    studentId:      $studentId,
+                    schoolclassid:  $schoolclassId,
+                    termid:         $termId,
+                    sessionid:      $sessionId,
+                    scores:         $scores,
                     overallAverage: $overallAverage
                 );
 
-            // Compulsory subjects for this class/term/session
+            // ── Compulsory subjects for this class ────────────────────────
             $compulsoryQuery = CompulsorySubjectClass::where('schoolclassid', $schoolclassId)
                 ->where(function ($q) use ($termId, $sessionId) {
                     $q->where(function ($q2) use ($termId, $sessionId) {
@@ -231,14 +217,14 @@ class PromotionController extends Controller
 
             $compulsorySubjectIds = $compulsoryQuery->pluck('subjectId')->toArray();
 
-            // Per-subject min-grade overrides from the matched rule (if any)
+            // ── Per-subject min-grade overrides from the matched rule ─────
             $appliedRule  = $promotionResult['applied_rule'] ?? null;
             $ruleSubjects = [];
             if ($appliedRule && isset($promotionResult['settings_id'])) {
                 $settings = PromotionSetting::find($promotionResult['settings_id']);
-                if ($settings && $settings->promotion_rules) {
+                if ($settings && is_array($settings->promotion_rules)) {
                     foreach ($settings->promotion_rules as $rule) {
-                        if ($rule['rule_name'] === $appliedRule['name']) {
+                        if (($rule['rule_name'] ?? null) === $appliedRule['name']) {
                             foreach ($rule['compulsory_section']['subjects'] ?? [] as $subject) {
                                 $ruleSubjects[$subject['subject_id']] = $subject['min_grade'] ?? null;
                             }
@@ -248,7 +234,7 @@ class PromotionController extends Controller
                 }
             }
 
-            // ── Build ALL subjects list ───────────────────────────────────────
+            // ── Build ALL subjects list ───────────────────────────────────
             $allSubjects = [];
 
             foreach ($scores as $score) {
@@ -257,7 +243,9 @@ class PromotionController extends Controller
                 $minGradeFromComp = $compulsoryQuery->firstWhere('subjectId', $score->subject_id)?->min_grade;
                 $requiredMinGrade = $minGradeFromRule ?? $minGradeFromComp ?? null;
 
-                $passStatus = $this->determinePassStatus($score->grade, $requiredMinGrade, $isCompulsory);
+                $passStatus = $this->determinePassStatus(
+                    $score->grade, $requiredMinGrade, $isCompulsory
+                );
 
                 $allSubjects[] = [
                     'subject_id'         => $score->subject_id,
@@ -295,7 +283,6 @@ class PromotionController extends Controller
                 }
             }
 
-            // Sort: compulsory first, then alphabetically
             usort($allSubjects, function ($a, $b) {
                 if ($a['is_compulsory'] !== $b['is_compulsory']) {
                     return $b['is_compulsory'] - $a['is_compulsory'];
@@ -303,7 +290,7 @@ class PromotionController extends Controller
                 return strcmp($a['subject_name'], $b['subject_name']);
             });
 
-            // ── Compulsory subjects summary ───────────────────────────────────
+            // ── Compulsory subjects summary ───────────────────────────────
             $compulsorySubjectsWithStatus = $compulsoryQuery->map(
                 function ($cs) use ($scores, $ruleSubjects) {
                     $scoreEntry       = $scores->firstWhere('subject_id', $cs->subjectId);
@@ -312,36 +299,37 @@ class PromotionController extends Controller
                     $minGradeFromRule = $ruleSubjects[$cs->subjectId] ?? null;
                     $requiredMinGrade = $minGradeFromRule ?? $cs->min_grade;
 
-                    $passStatus      = $scoreEntry === null
+                    $passStatus = $scoreEntry === null
                         ? 'not_sat'
                         : ($this->gradePassFail($studentGrade, $requiredMinGrade) ? 'pass' : 'fail');
+
                     $ruleRequirement = $minGradeFromRule
                         ? "Rule requires: ≥ {$minGradeFromRule}"
                         : ($cs->min_grade ? "Default: ≥ {$cs->min_grade}" : 'No requirement');
 
                     return [
-                        'csc_id'            => $cs->id,
-                        'subject_id'        => $cs->subjectId,
-                        'subject'           => $cs->subject?->subject ?? 'N/A',
-                        'subject_code'      => $cs->subject?->subject_code ?? '',
-                        'required_min_grade'=> $requiredMinGrade,
-                        'rule_requirement'  => $ruleRequirement,
-                        'student_grade'     => $studentGrade,
-                        'student_total'     => $studentTotal,
-                        'pass_status'       => $passStatus,
-                        'pass_status_label' => $this->getPassStatusLabel($passStatus),
-                        'pass_status_class' => $this->getPassStatusClass($passStatus),
+                        'csc_id'             => $cs->id,
+                        'subject_id'         => $cs->subjectId,
+                        'subject'            => $cs->subject?->subject ?? 'N/A',
+                        'subject_code'       => $cs->subject?->subject_code ?? '',
+                        'required_min_grade' => $requiredMinGrade,
+                        'rule_requirement'   => $ruleRequirement,
+                        'student_grade'      => $studentGrade,
+                        'student_total'      => $studentTotal,
+                        'pass_status'        => $passStatus,
+                        'pass_status_label'  => $this->getPassStatusLabel($passStatus),
+                        'pass_status_class'  => $this->getPassStatusClass($passStatus),
                     ];
                 }
             );
 
-            // ── Statistics ────────────────────────────────────────────────────
+            // ── Statistics ────────────────────────────────────────────────
             $passedCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'pass')->count();
             $failedCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'fail')->count();
             $notSatCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'not_sat')->count();
 
             $creditGrades = $this->getCreditGrades($schoolclassId);
-            $creditCount  = $scores->filter(fn($s) => in_array($s->grade, $creditGrades))->count();
+            $creditCount  = $scores->filter(fn ($s) => in_array($s->grade, $creditGrades))->count();
 
             return response()->json([
                 'success'             => true,
@@ -361,10 +349,11 @@ class PromotionController extends Controller
                 'scores_count'        => $scores->count(),
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Error getting student details', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+        } catch (Exception $e) {
+            Log::error('getStudentDetails failed', [
+                'student_id' => $studentId,
+                'error'      => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'success' => false,
@@ -437,6 +426,7 @@ class PromotionController extends Controller
                         'promotionStatus' => $promotionStatus,
                         'classstatus'     => 'CURRENT',
                         'position'        => null,
+                        'evaluated_at'    => now(),
                     ]
                 );
 
@@ -444,7 +434,7 @@ class PromotionController extends Controller
                     ->where('studentId', $studentId)
                     ->update(['is_current' => false]);
 
-                \App\Models\StudentCurrentTerm::updateOrCreate(
+                StudentCurrentTerm::updateOrCreate(
                     [
                         'studentId'     => $studentId,
                         'schoolclassId' => $newClassId,
@@ -565,6 +555,7 @@ class PromotionController extends Controller
                             'promotionStatus' => $promotionStatus,
                             'classstatus'     => 'CURRENT',
                             'position'        => null,
+                            'evaluated_at'    => now(),
                         ]
                     );
                 });
@@ -591,15 +582,8 @@ class PromotionController extends Controller
     // =========================================================================
 
     /**
-     * Determine whether to skip the promotion evaluator entirely.
-     *
-     * Returns TRUE (skip) when:
-     *   - No active settings exist for this class at all, OR
-     *   - Active settings exist but none of them match this session+term.
-     *
-     * This mirrors the logic inside PromotionEvaluator::evaluate() so the
-     * controller can avoid evaluating all 52 students when the answer is
-     * trivially "awaiting" for every one of them.
+     * Skip the evaluator entirely when no active setting matches
+     * this class+session+term combination.
      */
     private function classHasNoApplicableSetting(
         int $schoolclassId,
@@ -611,60 +595,47 @@ class PromotionController extends Controller
             ->get(['id', 'session_id', 'term_id']);
 
         if ($activeSettings->isEmpty()) {
-            return true; // No settings at all → skip
+            return true;
         }
 
-        // Check whether any setting would score > 0 using the same matching
-        // logic as findBestSettings() in the evaluator.
         foreach ($activeSettings as $setting) {
             $sid = $setting->session_id;
             $tid = $setting->term_id;
 
-            // Exact session + term match
-            if ($sid == $sessionId && $tid == $termId) return false;
-
-            // Correct session, term is null = applies to all terms in this session
-            if ($sid == $sessionId && $tid === null) return false;
-
-            // No session constraint, correct term
-            if ($sid === null && $tid == $termId) return false;
-
-            // Global fallback (no session, no term)
-            if ($sid === null && $tid === null) return false;
-
-            // Different session with no term constraint — still a fallback match
+            if ($sid == $sessionId && $tid == $termId)             return false;
+            if ($sid == $sessionId && $tid === null)               return false;
+            if ($sid === null      && $tid == $termId)             return false;
+            if ($sid === null      && $tid === null)               return false;
             if ($sid !== null && $sid != $sessionId && $tid === null) return false;
-
-            // All other combinations score 0 (wrong term, wrong session+term, etc.)
         }
 
-        // No setting matched → skip evaluator
         return true;
     }
 
     /**
-     * Fetch all broadsheet scores for a student in a given class/session/term.
+     * Fetch broadsheet scores for a student (fixed CA structure).
      */
     private function getStudentScores($studentId, $schoolclassId, $sessionId, $termId)
     {
         try {
             return Broadsheets::where('broadsheet_records.student_id', $studentId)
-                ->where('broadsheets.term_id',              $termId)
-                ->where('broadsheet_records.session_id',    $sessionId)
+                ->where('broadsheets.term_id',               $termId)
+                ->where('broadsheet_records.session_id',     $sessionId)
                 ->where('broadsheet_records.schoolclass_id', $schoolclassId)
-                ->join('broadsheet_records', 'broadsheet_records.id',  '=', 'broadsheets.broadsheet_record_id')
+                ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
                 ->join('subject',            'subject.id',             '=', 'broadsheet_records.subject_id')
                 ->select([
-                    'subject.id            as subject_id',
-                    'subject.subject       as subject_name',
-                    'subject.subject_code  as subject_code',
-                    'broadsheets.total     as total',
-                    'broadsheets.grade     as grade',
+                    'subject.id           as subject_id',
+                    'subject.subject      as subject_name',
+                    'subject.subject_code as subject_code',
+                    'broadsheets.total    as total',
+                    'broadsheets.cum      as cum',
+                    'broadsheets.grade    as grade',
                 ])
                 ->get();
 
         } catch (Exception $e) {
-            Log::error('Error getting student scores', [
+            Log::error('getStudentScores failed', [
                 'student_id' => $studentId,
                 'error'      => $e->getMessage(),
             ]);
@@ -672,34 +643,25 @@ class PromotionController extends Controller
         }
     }
 
-    /**
-     * Calculate the percentage average. Each subject is out of 100;
-     * missing totals are skipped (not counted as 0).
-     */
     private function calculateOverallAverage($scores): ?float
     {
         if ($scores->isEmpty()) return null;
 
-        $totalObtained   = 0;
-        $totalObtainable = 0;
+        $obtained   = 0;
+        $obtainable = 0;
 
         foreach ($scores as $score) {
             if ($score->total !== null && is_numeric($score->total)) {
-                $totalObtained   += (float) $score->total;
-                $totalObtainable += 100;
+                $obtained   += (float) $score->total;
+                $obtainable += 100;
             }
         }
 
-        return $totalObtainable > 0
-            ? round(($totalObtained / $totalObtainable) * 100, 1)
+        return $obtainable > 0
+            ? round(($obtained / $obtainable) * 100, 1)
             : 0;
     }
 
-    /**
-     * Determine pass/fail for one subject.
-     * Compulsory → evaluated against configured min_grade.
-     * Optional   → only fail vs general fail threshold (F / F9 / E8).
-     */
     private function determinePassStatus(?string $grade, ?string $requiredMinGrade, bool $isCompulsory): string
     {
         if (!$isCompulsory) {
@@ -719,7 +681,6 @@ class PromotionController extends Controller
             'pass',    'optional_pass'    => 'Passed',
             'fail',    'optional_fail'    => 'Failed',
             'not_sat', 'optional_not_sat' => 'Not Attempted',
-            'optional'                   => 'Optional',
             default                      => 'Unknown',
         };
     }
@@ -730,7 +691,6 @@ class PromotionController extends Controller
             'pass',    'optional_pass'    => 'success',
             'fail',    'optional_fail'    => 'danger',
             'not_sat', 'optional_not_sat' => 'warning',
-            'optional'                   => 'info',
             default                      => 'secondary',
         };
     }
@@ -762,8 +722,7 @@ class PromotionController extends Controller
     private function getCreditGrades($schoolclassId): array
     {
         $classCategory = DB::table('schoolclass_classcategory')
-            ->join('classcategories', 'classcategories.id', '=',
-                'schoolclass_classcategory.classcategory_id')
+            ->join('classcategories', 'classcategories.id', '=', 'schoolclass_classcategory.classcategory_id')
             ->where('schoolclass_classcategory.schoolclass_id', $schoolclassId)
             ->select('classcategories.is_senior')
             ->first();

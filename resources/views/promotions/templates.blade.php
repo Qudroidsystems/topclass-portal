@@ -1,3 +1,4 @@
+{{-- resources/views/promotions/templates.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
@@ -27,26 +28,13 @@
 .ps-hero::before {
     content: '';
     position: absolute;
-    top: -60px;
-    right: -60px;
-    width: 220px;
-    height: 220px;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
     background: rgba(255,255,255,.06);
     border-radius: 50%;
 }
-.ps-hero h1 {
-    font-size: 22px;
-    font-weight: 700;
-    color: #fff;
-    margin: 0 0 6px;
-    position: relative;
-}
-.ps-hero p {
-    font-size: 13px;
-    color: rgba(255,255,255,.75);
-    margin: 0;
-    position: relative;
-}
+.ps-hero h1 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 6px; position: relative; }
+.ps-hero p  { font-size: 13px; color: rgba(255,255,255,.75); margin: 0; position: relative; }
 
 .back-link {
     display: inline-flex;
@@ -67,27 +55,6 @@
     transform: translateX(-2px);
 }
 
-.setting-card {
-    background: #fff;
-    border: 1px solid var(--ps-border);
-    border-radius: var(--ps-radius);
-    padding: 20px;
-    margin-bottom: 20px;
-    transition: all .3s ease;
-    height: 100%;
-}
-.setting-card:hover {
-    box-shadow: var(--ps-shadow);
-    transform: translateY(-2px);
-}
-.setting-card.has-rules {
-    border-left: 4px solid var(--ps-success);
-}
-.setting-card.inactive {
-    border-left: 4px solid var(--ps-muted);
-    opacity: .75;
-}
-
 .active-badge {
     display: inline-flex;
     align-items: center;
@@ -97,14 +64,8 @@
     font-size: 11px;
     font-weight: 700;
 }
-.active-badge.is-active {
-    background: #dcfce7;
-    color: #166534;
-}
-.active-badge.is-inactive {
-    background: #f3f4f6;
-    color: #6b7280;
-}
+.active-badge.is-active   { background: #dcfce7; color: #166534; }
+.active-badge.is-inactive { background: #f3f4f6; color: #6b7280; }
 
 .template-card {
     background: #fff;
@@ -124,38 +85,14 @@
     background: #f9fafb;
 }
 
-.modal-content {
-    border-radius: 16px;
-    overflow: hidden;
-}
-.modal-header {
-    background: linear-gradient(135deg, #1e3a5f, #2563eb);
-    padding: 20px 28px;
-    border-bottom: none;
-}
-.modal-header .modal-title {
-    color: #fff;
-    font-weight: 700;
-}
-.modal-header .btn-close {
-    filter: invert(1);
-}
-.modal-body {
-    padding: 1.5rem;
-    max-height: 78vh;
-    overflow-y: auto;
-}
-.modal-footer {
-    border-top: 1px solid var(--ps-border);
-    padding: 1rem 1.5rem;
-}
+.modal-content { border-radius: 16px; overflow: hidden; }
+.modal-header  { background: linear-gradient(135deg, #1e3a5f, #2563eb); padding: 20px 28px; border-bottom: none; }
+.modal-header .modal-title { color: #fff; font-weight: 700; }
+.modal-header .btn-close   { filter: invert(1); }
+.modal-body    { padding: 1.5rem; max-height: 78vh; overflow-y: auto; }
+.modal-footer  { border-top: 1px solid var(--ps-border); padding: 1rem 1.5rem; }
 
-.form-section {
-    background: var(--ps-bg);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 18px;
-}
+.form-section { background: var(--ps-bg); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
 .form-section-title {
     font-size: 14px;
     font-weight: 700;
@@ -168,196 +105,6 @@
     justify-content: space-between;
 }
 
-.info-banner {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 14px;
-    display: flex;
-    gap: 12px;
-}
-.info-banner i {
-    font-size: 18px;
-    color: #2563eb;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-.info-banner .text {
-    font-size: 12px;
-    color: #1e40af;
-    line-height: 1.5;
-}
-
-.rule-card {
-    background: #fff;
-    border: 2px solid var(--ps-border);
-    border-radius: 12px;
-    margin-bottom: 18px;
-    overflow: hidden;
-    transition: all .2s;
-}
-.rule-card:hover {
-    border-color: var(--ps-accent);
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
-}
-.rule-card-header {
-    background: linear-gradient(90deg, #f8fafc, #fff);
-    border-bottom: 1px solid var(--ps-border);
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.rule-num-badge {
-    background: var(--ps-primary);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 12px;
-    border-radius: 20px;
-    white-space: nowrap;
-}
-.rule-name-input {
-    flex: 1;
-    min-width: 180px;
-    font-size: 13px;
-}
-.rule-card-body {
-    padding: 18px;
-}
-
-.label-selector {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-.label-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 14px;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all .2s;
-}
-.label-pill:hover {
-    transform: translateY(-1px);
-}
-.label-pill.active {
-    box-shadow: 0 0 0 3px rgba(0,0,0,.12);
-    transform: scale(1.03);
-}
-.label-pill.lp-promoted {
-    background: #dcfce7;
-    color: #166534;
-    border-color: #bbf7d0;
-}
-.label-pill.lp-promoted.active {
-    background: #16a34a;
-    color: #fff;
-}
-.label-pill.lp-trial {
-    background: #fef9c3;
-    color: #854d0e;
-    border-color: #fde68a;
-}
-.label-pill.lp-trial.active {
-    background: #ca8a04;
-    color: #fff;
-}
-.label-pill.lp-principal {
-    background: #e0f2fe;
-    color: #075985;
-    border-color: #bae6fd;
-}
-.label-pill.lp-principal.active {
-    background: #0284c7;
-    color: #fff;
-}
-.label-pill.lp-repeat {
-    background: #fee2e2;
-    color: #991b1b;
-    border-color: #fca5a5;
-}
-.label-pill.lp-repeat.active {
-    background: #dc2626;
-    color: #fff;
-}
-
-.rule-section {
-    border: 1px solid var(--ps-border);
-    border-radius: 10px;
-    margin-bottom: 14px;
-    overflow: hidden;
-}
-.rule-section-header {
-    background: linear-gradient(90deg, #f1f5f9, #f8fafc);
-    padding: 10px 16px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ps-primary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--ps-border);
-}
-.rule-section-body {
-    padding: 14px;
-}
-
-.comp-subj-row {
-    display: grid;
-    grid-template-columns: 1fr 130px;
-    gap: 10px;
-    align-items: center;
-    padding: 8px 12px;
-    border-bottom: 1px solid #f1f5f9;
-}
-.comp-subj-row:last-child {
-    border-bottom: none;
-}
-.comp-subj-row .subj-name {
-    font-size: 13px;
-    font-weight: 500;
-}
-.comp-subj-row .subj-code {
-    font-size: 11px;
-    color: var(--ps-muted);
-    font-family: monospace;
-}
-.default-badge {
-    font-size: 10px;
-    color: var(--ps-warning);
-}
-
-.avg-box {
-    background: #f0f9ff;
-    border: 1.5px solid #bae6fd;
-    border-radius: 10px;
-    padding: 14px;
-    margin-top: 12px;
-}
-
-.grade-sel {
-    border: 1.5px solid var(--ps-border);
-    border-radius: 8px;
-    padding: 5px 8px;
-    font-size: 12px;
-    font-weight: 600;
-    background: #fff;
-    width: 100%;
-}
-.grade-sel:focus {
-    border-color: var(--ps-accent);
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(37,99,235,.1);
-}
-
 .loading-spinner {
     display: inline-block;
     width: 14px;
@@ -367,41 +114,7 @@
     border-top-color: #2563eb;
     animation: spin .6s linear infinite;
 }
-.spin {
-    animation: spin 0.7s linear infinite;
-}
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.no-rules-ph {
-    text-align: center;
-    padding: 36px 20px;
-    color: var(--ps-muted);
-    background: var(--ps-bg);
-    border-radius: 12px;
-    border: 2px dashed var(--ps-border);
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-}
-.chip-blue { background: #dbeafe; color: #1e40af; }
-.chip-green { background: #dcfce7; color: #166534; }
-.chip-amber { background: #fef9c3; color: #854d0e; }
-.chip-red { background: #fee2e2; color: #991b1b; }
-
-.btn-icon {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="main-content">
@@ -470,7 +183,7 @@
 
                                 <h6 class="fw-bold mb-1">{{ $template->name }}</h6>
                                 @if($template->description)
-                                    <p class="text-muted small mb-2">{{ Str::limit($template->description, 100) }}</p>
+                                    <p class="text-muted small mb-2">{{ \Illuminate\Support\Str::limit($template->description, 100) }}</p>
                                 @endif
 
                                 <div class="mt-2 mb-3">
@@ -494,7 +207,7 @@
                                         <div class="d-flex justify-content-between align-items-start">
                                             <span class="fw-semibold small">
                                                 <span class="badge bg-light text-dark me-1" style="font-size:10px;">{{ $i+1 }}</span>
-                                                {{ Str::limit($rule['rule_name'] ?? 'Unnamed', 30) }}
+                                                {{ \Illuminate\Support\Str::limit($rule['rule_name'] ?? 'Unnamed', 30) }}
                                             </span>
                                             <span class="badge bg-{{ $stCls }} px-2" style="font-size:10px;">
                                                 {{ ucfirst(str_replace('_',' ',$rule['status_label'] ?? '')) }}
@@ -626,7 +339,6 @@
 <script>
 let currentTemplateId = null;
 
-// Toggle active status
 document.addEventListener('change', async function(e) {
     if (!e.target.classList.contains('toggle-active-switch')) return;
     const toggle = e.target, sid = toggle.dataset.id, isActive = toggle.checked;
@@ -659,7 +371,6 @@ document.addEventListener('change', async function(e) {
     }
 });
 
-// Delete template
 function bindDeleteButtons() {
     document.querySelectorAll('.delete-template').forEach(btn => {
         btn.removeEventListener('click', handleDeleteClick);
@@ -701,7 +412,6 @@ async function handleDeleteClick(e) {
     }
 }
 
-// Use template button
 function bindUseTemplateButtons() {
     document.querySelectorAll('.use-template-btn').forEach(btn => {
         btn.removeEventListener('click', handleUseTemplateClick);
@@ -723,7 +433,6 @@ async function handleUseTemplateClick(e) {
     modal.show();
 }
 
-// Apply template button
 document.getElementById('applyTemplateBtn').addEventListener('click', async function() {
     const classId = document.getElementById('use_class_id').value;
     if (!classId) {
@@ -748,11 +457,12 @@ document.getElementById('applyTemplateBtn').addEventListener('click', async func
         const data = await res.json();
 
         if (data.success) {
-            // Store the loaded rules in session storage or pass to promotion settings
             sessionStorage.setItem('loaded_promotion_rules', JSON.stringify(data.merged_rules));
             sessionStorage.setItem('loaded_template_name', data.template.name);
+            sessionStorage.setItem('loaded_template_class_id', classId);
+            sessionStorage.setItem('loaded_template_session_id', sessionId);
+            sessionStorage.setItem('loaded_template_term_id', termId);
 
-            // Close modal and redirect to promotion settings
             bootstrap.Modal.getInstance(document.getElementById('useTemplateModal')).hide();
 
             Swal.fire({
@@ -774,27 +484,6 @@ document.getElementById('applyTemplateBtn').addEventListener('click', async func
         Swal.fire('Error', 'Network error: ' + err.message, 'error');
     }
 });
-
-// Check for loaded rules on promotion settings page
-if (window.location.pathname === '/promotion-settings' && sessionStorage.getItem('loaded_promotion_rules')) {
-    const loadedRules = sessionStorage.getItem('loaded_promotion_rules');
-    const templateName = sessionStorage.getItem('loaded_template_name');
-    if (loadedRules && typeof promotionRules !== 'undefined') {
-        try {
-            promotionRules = JSON.parse(loadedRules);
-            sessionStorage.removeItem('loaded_promotion_rules');
-            sessionStorage.removeItem('loaded_template_name');
-            Swal.fire({
-                icon: 'success',
-                title: 'Template Applied',
-                html: `Rules from <strong>${escapeHtml(templateName)}</strong> have been loaded.<br>
-                       Please review and click Save to apply them.`,
-                timer: 3000
-            });
-            if (typeof rerenderRules === 'function') rerenderRules();
-        } catch(e) {}
-    }
-}
 
 function escapeHtml(str) {
     if (!str) return '';
