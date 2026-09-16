@@ -3,7 +3,9 @@
 
 @section('content')
 <style>
-/* ── Scoresheet Design System ────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   SCORESHEET DESIGN SYSTEM
+   ══════════════════════════════════════════════════════════════════ */
 :root {
     --ss-primary:   #1e3a5f;
     --ss-accent:    #2563eb;
@@ -21,21 +23,23 @@
 .spin { animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* ══ SCORE INPUT ══ */
 .score-input {
     width: 72px; min-width: 72px;
     height: 36px; padding: 4px 6px;
     border: 1.5px solid var(--ss-border); border-radius: 6px;
     font-size: 13px; text-align: center;
-    background: #fff; transition: border-color .15s, box-shadow .15s;
+    background: #fff; transition: border-color .15s, box-shadow .15s, background .15s;
 }
 .score-input:focus      { outline: none; border-color: var(--ss-accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 .score-input.is-invalid { border-color: var(--ss-danger)  !important; background: #fef2f2; }
 .score-input.is-saved   { border-color: var(--ss-success) !important; background: #f0fdf4; }
 .score-input:disabled   { background: #f3f4f6; cursor: not-allowed; opacity: 0.7; }
 
+/* ══ TABLE ══ */
 #scoresheetTable { font-size: 12.5px; }
 #scoresheetTable thead tr { background: var(--ss-primary); color: #fff; }
-#scoresheetTable thead th { padding: 10px 8px; font-weight: 600; white-space: nowrap; border: none; }
+#scoresheetTable thead th { padding: 10px 8px; font-weight: 600; white-space: nowrap; border: none; vertical-align: middle; }
 #scoresheetTable tbody tr { transition: background .12s; }
 #scoresheetTable tbody td { padding: 6px 8px; vertical-align: middle; border-bottom: 1px solid var(--ss-border); }
 
@@ -44,6 +48,7 @@
 .row-pending    { background: #fffbeb !important; }
 .row-locked     { background: #fef2f2 !important; opacity: 0.85; }
 
+/* ══ STAT CARDS ══ */
 .stat-card { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: var(--ss-radius); padding: 14px 18px; box-shadow: var(--ss-shadow); transition: transform .15s; }
 .stat-card:hover { transform: translateY(-2px); }
 .stat-card .stat-value { font-size: 22px; font-weight: 700; color: var(--ss-primary); }
@@ -52,32 +57,26 @@
 
 .grade-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .grade-pill  { flex: 1; min-width: 80px; text-align: center; border-radius: 8px; padding: 8px 6px; font-weight: 700; font-size: 13px; }
-.assessment-btn { font-size: 12px; }
 .pass-bar      { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin-top: 6px; }
 .pass-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
 .col-group     { border: 1px solid var(--ss-border); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; }
 .col-group h6  { color: var(--ss-primary); font-weight: 600; margin-bottom: 8px; }
 
-/* Grade badges */
+/* ══ GRADE BADGES ══ */
 .grade-badge, .cum-grade-badge {
-    display: inline-block;
-    transition: all .25s ease;
+    display: inline-block; transition: all .25s ease;
     font-weight: 700; font-size: 13px; min-width: 28px; text-align: center;
 }
 .grade-badge.updating, .cum-grade-badge.updating { opacity: 0.5; transform: scale(0.9); }
 .grade-badge.updated,  .cum-grade-badge.updated  { animation: gradeFlash .4s ease; }
-@keyframes gradeFlash {
-    0%   { transform: scale(1.15); }
-    50%  { transform: scale(1.2);  }
-    100% { transform: scale(1);    }
-}
+@keyframes gradeFlash { 0% { transform: scale(1.15); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 .grade-loading {
     display: inline-block; width: 12px; height: 12px;
     border: 2px solid #e2e8f0; border-top-color: var(--ss-accent);
     border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle;
 }
 
-/* Position badges */
+/* ══ POSITION BADGES ══ */
 .position-badge, .position-total-badge, .arm-position-badge, .arm-position-cum-badge {
     transition: transform .22s cubic-bezier(0.34,1.4,0.64,1), opacity .15s ease;
 }
@@ -89,7 +88,7 @@
     100% { transform: scale(1);    opacity: 1; }
 }
 
-/* ROW ENTRANCE & HOVER */
+/* ══ ROW ENTRANCE & HOVER ══ */
 #scoresheetTableBody tr[data-id] {
     opacity: 0; transform: translateY(14px);
     transition: opacity .38s cubic-bezier(.25,.46,.45,.94), transform .38s cubic-bezier(.25,.46,.45,.94), background .18s ease;
@@ -127,59 +126,36 @@
 #scoresheetTableBody tr[data-id]:hover .score-checkbox,
 #scoresheetTableBody tr[data-id] .score-checkbox:checked { opacity: 1; transform: scale(1); }
 
-/* Lock Badge Styles */
-.lock-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
+@media (prefers-reduced-motion: reduce) {
+    #scoresheetTableBody tr[data-id], #scoresheetTableBody tr[data-id]:hover {
+        transition: background .15s ease !important; transform: none !important; opacity: 1 !important;
+    }
 }
-.lock-badge.global { background: #fee2e2; color: #dc2626; }
-.lock-badge.individual { background: #fef3c7; color: #d97706; }
-.lock-badge.disabled { background: #e5e7eb; color: #6b7280; }
 
-/* Lock Status Banner */
-.lock-alert {
-    border-left: 4px solid #d97706;
-    background: #fffbeb;
+/* ══ LOCK BADGES ══ */
+.lock-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    flex-direction: column; text-align: center; line-height: 1.3;
 }
-.lock-alert.global { border-left-color: #dc2626; background: #fef2f2; }
+.lock-badge.global     { background: #fee2e2; color: #dc2626; }
+.lock-badge.individual { background: #fef3c7; color: #d97706; }
+.lock-badge.disabled   { background: #e5e7eb; color: #6b7280; }
+
+.lock-alert { border-left: 4px solid #d97706; background: #fffbeb; }
+.lock-alert.global   { border-left-color: #dc2626; background: #fef2f2; }
 .lock-alert.disabled { border-left-color: #6b7280; background: #f3f4f6; }
 
-/* GPA/CGPA Badges */
-.gpa-badge, .cgpa-badge {
-    font-size: 12px;
-    font-weight: 600;
-}
-
-/* Audit column styles */
-.audit-cell small {
-    font-size: 11px;
-    line-height: 1.3;
-    display: block;
-}
-.audit-cell .audit-date {
-    font-size: 10px;
-    color: var(--ss-muted);
-}
+/* ══ AUDIT CELLS ══ */
+.audit-cell small { font-size: 11px; line-height: 1.3; display: block; }
+.audit-cell .audit-date { font-size: 10px; color: var(--ss-muted); }
 .source-badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    display: inline-block; padding: 2px 7px; border-radius: 12px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    #scoresheetTableBody tr[data-id],
-    #scoresheetTableBody tr[data-id]:hover { transition: background .15s ease !important; transform: none !important; opacity: 1 !important; }
-}
-
-/* SCORE INPUT TOOLTIP */
+/* ══ TOOLTIP ══ */
 #scoreTooltip {
     display: none; position: fixed; z-index: 99990;
     background: #fff; border: 0.5px solid #cbd5e1; border-radius: 10px;
@@ -202,7 +178,7 @@
 .tip-prog-track  { height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; }
 .tip-prog-fill   { height: 100%; border-radius: 2px; background: #2563eb; width: 0%; transition: width .3s ease, background .3s ease; }
 
-/* APPLE-STYLE SAVE MODAL */
+/* ══ APPLE-STYLE SAVE MODAL ══ */
 #ssSaveOverlay {
     display: none; position: fixed; inset: 0; z-index: 99999;
     background: rgba(0,0,0,.30); align-items: center; justify-content: center;
@@ -239,57 +215,44 @@
 .ss-check-path { stroke-dasharray: 18; stroke-dashoffset: 18; transition: stroke-dashoffset .35s cubic-bezier(.4,0,.2,1) .05s; }
 .ss-check-path.drawn { stroke-dashoffset: 0; }
 
-/* Score Entry Modal */
+/* ══ SCORE ENTRY MODAL ══ */
 .score-entry-modal .modal-content {
-    border-radius: 20px;
-    border: none;
+    border-radius: 20px; border: none;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
 }
 .score-entry-modal .modal-header {
-    background: var(--ss-primary);
-    color: white;
-    border-radius: 20px 20px 0 0;
-    padding: 20px 24px;
+    background: var(--ss-primary); color: white;
+    border-radius: 20px 20px 0 0; padding: 20px 24px;
 }
-.score-entry-modal .modal-body {
-    padding: 24px;
-}
+.score-entry-modal .modal-body { padding: 24px; }
 .score-entry-modal .student-avatar-large {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    width: 70px; height: 70px; border-radius: 50%; object-fit: cover;
+    border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .score-entry-modal .assessment-score-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    border-bottom: 1px solid var(--ss-border);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px; border-bottom: 1px solid var(--ss-border);
 }
-.score-entry-modal .assessment-score-row:last-child {
-    border-bottom: none;
-}
+.score-entry-modal .assessment-score-row:last-child { border-bottom: none; }
 .score-entry-modal .score-input-large {
-    width: 100px;
-    height: 40px;
-    text-align: center;
-    font-size: 16px;
-    border: 1.5px solid var(--ss-border);
-    border-radius: 8px;
+    width: 100px; height: 40px; text-align: center; font-size: 16px;
+    border: 1.5px solid var(--ss-border); border-radius: 8px;
 }
 .score-entry-modal .score-input-large:focus {
-    outline: none;
-    border-color: var(--ss-accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    outline: none; border-color: var(--ss-accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15);
 }
-.score-entry-modal .modal-footer {
-    border-top: 1px solid var(--ss-border);
-    padding: 16px 24px;
+.score-entry-modal .modal-footer { border-top: 1px solid var(--ss-border); padding: 16px 24px; }
+
+/* ══ ADMIN BANNER ══ */
+.admin-banner {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border-left: 4px solid #0284c7;
+    border-radius: var(--ss-radius);
+    padding: 14px 20px;
+    margin-bottom: 20px;
 }
 
+/* ══ MOBILE ══ */
 @media (max-width: 768px) {
     .score-input  { width: 64px; min-width: 64px; height: 42px; font-size: 1rem; }
     .stat-card    { padding: 10px 12px; }
@@ -297,10 +260,15 @@
     #ssSaveModal  { width: 280px; padding: 26px 24px 22px; }
     #scoreTooltip { width: calc(100vw - 24px); }
     .score-entry-modal .score-input-large { width: 80px; font-size: 14px; }
+    #scoresheetTable { font-size: 11.5px; }
+    #scoresheetTable thead th { padding: 8px 5px; font-size: 10.5px; }
+    #scoresheetTable tbody td { padding: 5px 5px; }
 }
 </style>
 
-{{-- ══ APPLE-STYLE SAVE MODAL (outside main content) ══════════════ --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     APPLE-STYLE SAVE MODAL
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div id="ssSaveOverlay">
     <div id="ssSaveModal">
         <div class="ss-icon-ring" id="ssIconRing">
@@ -339,7 +307,9 @@
     </div>
 </div>
 
-{{-- ══ SCORE INPUT TOOLTIP ═════════════════════════════════════════ --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     SCORE INPUT TOOLTIP
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div id="scoreTooltip">
     <div class="tip-top">
         <img id="stAvatar" class="tip-avatar" src="" alt=""
@@ -373,13 +343,15 @@
     </div>
 </div>
 
-{{-- ══ MAIN CONTENT ════════════════════════════════════════════════ --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
 
-    {{-- Admin Banner --}}
-    <div class="admin-banner" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border-left: 4px solid #0284c7; border-radius: var(--ss-radius); padding: 14px 20px; margin-bottom: 20px; animation: slideIn 0.4s ease;">
+    {{-- ══ ADMIN BANNER ══ --}}
+    <div class="admin-banner">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div class="d-flex align-items-center gap-3">
                 <i class="ri-shield-user-line fs-2" style="color: #0284c7;"></i>
@@ -387,31 +359,32 @@
                     <strong class="d-block" style="font-size: 15px;">Admin Score Entry Mode</strong>
                     <small class="text-muted">
                         Entering scores on behalf of: <strong>{{ $teacher->name }}</strong> |
-                        Subject: <strong>{{ $subjectClass->subject->subject }}</strong> ({{ $subjectClass->subject->subject_code }}) |
-                        Class: <strong>{{ $schoolclass->schoolclass }} {{ $schoolclass->arm->arm ?? '' }}</strong>
+                        Subject: <strong>{{ $subjectClass->subject->subject ?? '' }}</strong>
+                        ({{ $subjectClass->subject->subject_code ?? '' }}) |
+                        Class: <strong>{{ $schoolclass->schoolclass ?? '' }} {{ $schoolclass->arm->arm ?? '' }}</strong>
                     </small>
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <span class="badge bg-primary"><i class="ri-calendar-line me-1"></i>{{ $term->term }}</span>
-                <span class="badge bg-info"><i class="ri-calendar-event-line me-1"></i>{{ $session->session }}</span>
+                <span class="badge bg-primary"><i class="ri-calendar-line me-1"></i>{{ $term->term ?? '' }}</span>
+                <span class="badge bg-info"><i class="ri-calendar-event-line me-1"></i>{{ $session->session ?? '' }}</span>
             </div>
         </div>
     </div>
 
-    {{-- Lock Status Banner --}}
-    @if(isset($globalLock) || ($lockedCount ?? 0) > 0 || isset($teacherEditingEnabled) && !$teacherEditingEnabled)
-    <div class="alert lock-alert {{ isset($globalLock) && $globalLock ? 'global' : (isset($teacherEditingEnabled) && !$teacherEditingEnabled ? 'disabled' : '') }} mb-3">
+    {{-- ══ LOCK STATUS BANNER ══ --}}
+    @if((isset($globalLock) && $globalLock) || (($lockedCount ?? 0) > 0) || (isset($teacherEditingEnabled) && !$teacherEditingEnabled))
+    <div class="alert lock-alert {{ (isset($globalLock) && $globalLock) ? 'global' : ((isset($teacherEditingEnabled) && !$teacherEditingEnabled) ? 'disabled' : '') }} mb-3">
         <div class="d-flex align-items-center gap-3">
-            <i class="ri-lock-line fs-3 {{ isset($globalLock) && $globalLock ? 'text-danger' : (isset($teacherEditingEnabled) && !$teacherEditingEnabled ? 'text-secondary' : 'text-warning') }}"></i>
+            <i class="ri-lock-line fs-3 {{ (isset($globalLock) && $globalLock) ? 'text-danger' : ((isset($teacherEditingEnabled) && !$teacherEditingEnabled) ? 'text-secondary' : 'text-warning') }}"></i>
             <div class="flex-grow-1">
                 @if(isset($teacherEditingEnabled) && !$teacherEditingEnabled)
                     <strong><i class="ri-alert-line me-1"></i> Teacher Editing Disabled</strong><br>
-                    <small>Teacher editing has been disabled for this subject by an administrator.</small>
+                    <small>Teacher editing has been disabled for this subject by an administrator. You can still edit as admin.</small>
                 @elseif(isset($globalLock) && $globalLock)
                     <strong><i class="ri-global-line me-1"></i> Global Lock Active</strong><br>
                     <small>This entire scoresheet is locked. Reason: {{ $globalLock->reason ?? 'No reason provided' }}</small><br>
-                    <small>Locked by: {{ optional($globalLock->lockedBy)->name }} on {{ $globalLock->locked_at->format('Y-m-d H:i:s') }}</small>
+                    <small>Locked by: {{ optional($globalLock->lockedBy)->name }} on {{ $globalLock->locked_at ? $globalLock->locked_at->format('Y-m-d H:i:s') : '' }}</small>
                 @elseif(($lockedCount ?? 0) > 0)
                     <strong><i class="ri-lock-line me-1"></i> {{ $lockedCount }} of {{ $broadsheets->count() }} scoresheets are locked</strong>
                     <small>Locked records cannot be edited by teachers.</small>
@@ -428,6 +401,7 @@
         </div>
     @endif
 
+    {{-- ══ HEADER + STATS ══ --}}
     @if($broadsheets->isNotEmpty())
     @php
         $first    = $broadsheets->first();
@@ -448,7 +422,6 @@
         ];
     @endphp
 
-    {{-- ══ INFO + STATS ════════════════════════════════════════════════ --}}
     <div class="row g-3 mb-3">
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm h-100" style="border-left:4px solid var(--ss-primary) !important;">
@@ -560,56 +533,61 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header border-0 pb-0 pt-3 px-3">
                     <h6 class="fw-semibold mb-0" style="color:var(--ss-primary)">
-                        <i class="ri-clipboard-line me-1"></i>Assessments
+                        <i class="ri-clipboard-line me-1"></i>Score Structure
                     </h6>
                 </div>
                 <div class="card-body pt-2">
-                    @if($assessments->isNotEmpty())
-                        <div class="d-flex flex-column gap-2">
-                            @foreach($assessments as $assessment)
-                                <div class="d-flex align-items-center justify-between p-2 rounded-3 assessment-btn"
-                                     style="background:#eff6ff;border:1px solid #bfdbfe;color:var(--ss-accent);">
-                                    <span><i class="ri-edit-line me-1"></i>{{ $assessment->name }}</span>
-                                    <span class="badge" style="background:var(--ss-accent);">{{ $assessment->max_score }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-muted small text-center mt-3">
-                            <i class="ri-information-line me-1"></i>No assessments defined.
-                        </p>
-                    @endif
+                    <p class="text-muted small mb-2" style="font-size:11px;">
+                        <i class="ri-information-line me-1"></i>Fixed CA columns (max 100 each)
+                    </p>
+                    <div class="d-flex flex-column gap-2">
+                        @foreach([
+                            ['CA1', 'Continuous Assessment 1'],
+                            ['CA2', 'Continuous Assessment 2'],
+                            ['CA3', 'Continuous Assessment 3'],
+                            ['Exam', 'Examination'],
+                        ] as [$code, $label])
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3"
+                                 style="background:#eff6ff;border:1px solid #bfdbfe;color:var(--ss-accent);font-size:12px;">
+                                <span><i class="ri-edit-line me-1"></i>{{ $code }} <small class="text-muted">· {{ $label }}</small></span>
+                                <span class="badge" style="background:var(--ss-accent);">100</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-2 p-2 rounded-3" style="background:#f0fdf4;border:1px dashed #86efac;font-size:11px;">
+                        <i class="ri-calculator-line me-1 text-success"></i>
+                        <strong>Total</strong> = ((CA1+CA2+CA3)/3 + Exam) ÷ 2<br>
+                        <strong>Cum</strong> = Term 1: Total; Terms 2–3: (BF+Total) ÷ 2
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     @endif
 
-    {{-- ══ POSITION LEGEND + ADMIN CONTROLS ═══════════════════════════ --}}
+    {{-- ══ POSITION LEGEND + RECALC ══ --}}
     <div class="d-flex align-items-start justify-content-between gap-3 mb-2 flex-wrap"
          style="font-size:12px;color:var(--ss-muted);">
         <span>
             <i class="ri-information-line me-1 text-info"></i>
-            <strong>Total Grade</strong> = grade on raw total &nbsp;|&nbsp;
-            <strong>Cum Grade</strong> = grade on cumulative avg &nbsp;|&nbsp;
-            <strong>Class Pos (Cum)</strong> = all arms, ranked by cumulative avg &nbsp;|&nbsp;
-            <strong>Class Pos (Total)</strong> = all arms, ranked by raw total &nbsp;|&nbsp;
-            <strong>Arm Pos (Total)</strong> = this arm only, ranked by raw total &nbsp;|&nbsp;
-            <strong>Arm Pos (Cum)</strong> = this arm only, ranked by cumulative avg
+            <strong>Total</strong> = ((CA1+CA2+CA3)/3 + Exam) ÷ 2 &nbsp;|&nbsp;
+            <strong>Cum</strong> = Term 1: Total; Terms 2–3: (BF+Total) ÷ 2 &nbsp;|&nbsp;
+            <strong>Arm Pos (Total)</strong> = this arm, ranked by Total &nbsp;|&nbsp;
+            <strong>Arm Pos (Cum)</strong> = this arm, ranked by Cum &nbsp;|&nbsp;
+            <strong>Class Pos (Total)</strong> = all arms, ranked by Total &nbsp;|&nbsp;
+            <strong>Class Pos (Cum)</strong> = all arms, ranked by Cum
         </span>
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-primary" id="updateArmPositionsBtn">
-                <i class="ri-refresh-line me-1"></i>Recalculate All Positions
-            </button>
-        </div>
+        <button type="button" class="btn btn-sm btn-primary flex-shrink-0" id="updateArmPositionsBtn">
+            <i class="ri-refresh-line me-1"></i>Recalculate All Positions
+        </button>
     </div>
 
-    {{-- Admin Controls & Lock Management Card --}}
+    {{-- ══ ADMIN CONTROLS ══ --}}
     @if($broadsheets->isNotEmpty())
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid var(--ss-border);">
             <h6 class="mb-0 fw-semibold" style="color: var(--ss-primary);">
-                <i class="ri-settings-4-line me-2"></i>Admin Controls & Lock Management
+                <i class="ri-settings-4-line me-2"></i>Admin Controls &amp; Lock Management
             </h6>
         </div>
         <div class="card-body">
@@ -683,14 +661,13 @@
     </div>
     @endif
 
-    {{-- ══ MAIN SCORESHEET CARD ════════════════════════════════════════ --}}
+    {{-- ══ MAIN SCORESHEET CARD ══ --}}
     <div class="row"><div class="col-12"><div class="card border-0 shadow-sm">
 
-        <div class="card-header d-flex align-items-center flex-wrap gap-2 py-3"
-             style="background:var(--ss-primary);">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2 py-3" style="background:var(--ss-primary);">
             <div class="flex-grow-1">
                 <h5 class="mb-0 text-white fw-semibold">
-                    <i class="ri-file-list-3-line me-2"></i>{{ $pagetitle }}
+                    <i class="ri-file-list-3-line me-2"></i>{{ $pagetitle ?? 'Scoresheet' }}
                     @if($broadsheets->isNotEmpty())
                         <span class="badge bg-white text-primary ms-2" id="scoreCount">{{ $broadsheets->count() }}</span>
                     @endif
@@ -734,7 +711,6 @@
                 <i class="ri-information-line me-2"></i>No scores available.
             </div>
 
-            {{-- Download progress bar --}}
             <div id="downloadProgressContainer" style="display:none;" class="px-3 pt-3">
                 <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background:#fefce8;">
                     <div class="spinner-border spinner-border-sm text-warning"></div>
@@ -759,33 +735,22 @@
                         <th class="col-sn">SN</th>
                         <th class="col-admissionno">Adm. No</th>
                         <th class="col-name">Student Name</th>
-
-                        @forelse($assessments as $assessment)
-                            <th class="col-assessment-{{ $assessment->id }} text-center">
-                                {{ $assessment->name }}<br>
-                                <small class="fw-normal opacity-75">({{ $assessment->max_score }})</small>
-                            </th>
-                        @empty
-                            <th colspan="4" class="col-no-assessments text-center text-white opacity-75">No Assessments Defined</th>
-                        @endforelse
-
+                        <th class="col-ca1 text-center">CA1</th>
+                        <th class="col-ca2 text-center">CA2</th>
+                        <th class="col-ca3 text-center">CA3</th>
+                        <th class="col-exam text-center">Exam</th>
                         <th class="col-total text-center">Total</th>
                         <th class="col-total-grade text-center" title="Grade on raw total (saved)">
                             Total<br><small class="fw-normal opacity-75">Grade</small>
                         </th>
                         <th class="col-bf text-center">BF</th>
-                        <th class="col-cum text-center">Cum</th>
-                        <th class="col-cum-grade text-center" title="Grade on cumulative average (display)">
+                        <th class="col-cum text-center" title="Term 1: Total; Terms 2–3: (BF+Total) ÷ 2">Cum</th>
+                        <th class="col-cum-grade text-center" title="Grade on cumulative">
                             Cum<br><small class="fw-normal opacity-75">Grade</small>
                         </th>
                         <th class="col-avg text-center" title="Subject class average">Class Avg</th>
 
-                        {{-- GPA/CGPA Columns --}}
-                        <th class="col-gpa text-center">GPA</th>
-                        <th class="col-cgpa text-center">CGPA</th>
-
-                        {{-- POSITION COLUMNS --}}
-                        <th class="col-position text-center" title="All arms of this class combined, ranked by cumulative average">
+                        <th class="col-position text-center" title="All arms of this class combined, ranked by cumulative">
                             Class Pos<br><small class="fw-normal opacity-75">(Cum)</small>
                         </th>
                         <th class="col-position-total text-center" title="All arms of this class combined, ranked by raw total">
@@ -794,52 +759,26 @@
                         <th class="col-arm-position text-center" title="This arm only, ranked by raw total">
                             Arm Pos<br><small class="fw-normal opacity-75">(Total)</small>
                         </th>
-                        <th class="col-arm-position-cum text-center" title="This arm only, ranked by cumulative average">
+                        <th class="col-arm-position-cum text-center" title="This arm only, ranked by cumulative">
                             Arm Pos<br><small class="fw-normal opacity-75">(Cum)</small>
                         </th>
 
                         <th class="col-vetted text-center">Status</th>
 
                         {{-- ══ AUDIT & LOCK DETAIL COLUMNS ══ --}}
-                        <th class="col-submitted-by text-center" title="Submitted by">
-                            Submitted<br><small class="fw-normal opacity-75">By</small>
-                        </th>
-                        <th class="col-vetted-by text-center" title="Vetted by">
-                            Vetted<br><small class="fw-normal opacity-75">By</small>
-                        </th>
-                        <th class="col-entered-by text-center" title="Entered by">
-                            Entered<br><small class="fw-normal opacity-75">By</small>
-                        </th>
-                        <th class="col-entered-at text-center" title="Date/time score was first entered">
-                            Entered<br><small class="fw-normal opacity-75">At</small>
-                        </th>
-                        <th class="col-last-modified-by text-center" title="Last modified by">
-                            Modified<br><small class="fw-normal opacity-75">By</small>
-                        </th>
-                        <th class="col-last-modified-at text-center" title="Date/time score was last modified">
-                            Modified<br><small class="fw-normal opacity-75">At</small>
-                        </th>
-                        <th class="col-entry-source text-center" title="Entry source (admin / teacher / import)">
-                            Entry<br><small class="fw-normal opacity-75">Source</small>
-                        </th>
-                        <th class="col-is-locked text-center" title="Lock status">
-                            Locked<br><small class="fw-normal opacity-75">?</small>
-                        </th>
-                        <th class="col-locked-by text-center" title="Locked by">
-                            Locked<br><small class="fw-normal opacity-75">By</small>
-                        </th>
-                        <th class="col-locked-at text-center" title="Date/time locked">
-                            Locked<br><small class="fw-normal opacity-75">At</small>
-                        </th>
-                        <th class="col-lock-reason text-center" title="Lock reason">
-                            Lock<br><small class="fw-normal opacity-75">Reason</small>
-                        </th>
-                        <th class="col-scheduled-unlock text-center" title="Scheduled auto-unlock datetime">
-                            Sched.<br><small class="fw-normal opacity-75">Unlock At</small>
-                        </th>
-                        <th class="col-unlock-scheduled-by text-center" title="Unlock scheduled by">
-                            Unlock<br><small class="fw-normal opacity-75">Sched. By</small>
-                        </th>
+                        <th class="col-submitted-by text-center">Submitted<br><small class="fw-normal opacity-75">By</small></th>
+                        <th class="col-vetted-by text-center">Vetted<br><small class="fw-normal opacity-75">By</small></th>
+                        <th class="col-entered-by text-center">Entered<br><small class="fw-normal opacity-75">By</small></th>
+                        <th class="col-entered-at text-center">Entered<br><small class="fw-normal opacity-75">At</small></th>
+                        <th class="col-last-modified-by text-center">Modified<br><small class="fw-normal opacity-75">By</small></th>
+                        <th class="col-last-modified-at text-center">Modified<br><small class="fw-normal opacity-75">At</small></th>
+                        <th class="col-entry-source text-center">Entry<br><small class="fw-normal opacity-75">Source</small></th>
+                        <th class="col-is-locked text-center">Locked<br><small class="fw-normal opacity-75">?</small></th>
+                        <th class="col-locked-by text-center">Locked<br><small class="fw-normal opacity-75">By</small></th>
+                        <th class="col-locked-at text-center">Locked<br><small class="fw-normal opacity-75">At</small></th>
+                        <th class="col-lock-reason text-center">Lock<br><small class="fw-normal opacity-75">Reason</small></th>
+                        <th class="col-scheduled-unlock text-center">Sched.<br><small class="fw-normal opacity-75">Unlock At</small></th>
+                        <th class="col-unlock-scheduled-by text-center">Unlock<br><small class="fw-normal opacity-75">Sched. By</small></th>
 
                         <th class="col-lock-status text-center" style="width: 100px;">
                             <i class="ri-lock-line"></i><br>
@@ -851,49 +790,51 @@
                     @php $i = 0; @endphp
                     @forelse($broadsheets as $broadsheet)
                         @php
-                            $rowTotal = 0;
-                            foreach ($assessments as $a) {
-                                $so = $broadsheet->assessmentScores->where('assessment_id', $a->id)->first();
-                                $rowTotal += $so ? $so->score : 0;
-                            }
-                            $cum = $broadsheet->cum ?? 0;
+                            $ca1  = (float) ($broadsheet->ca1  ?? 0);
+                            $ca2  = (float) ($broadsheet->ca2  ?? 0);
+                            $ca3  = (float) ($broadsheet->ca3  ?? 0);
+                            $exam = (float) ($broadsheet->exam ?? 0);
+
+                            $caAvg = ($ca1 + $ca2 + $ca3) / 3;
+                            $rowTotal = round(($caAvg + $exam) / 2, 1);
+
+                            $bf  = (float) ($broadsheet->bf  ?? 0);
+                            $cum = (float) ($broadsheet->cum ?? 0);
+
                             $totalGrade = $broadsheet->grade ?? '-';
-                            $cumGrade = $broadsheet->grade ?? '-';
+                            $cumGrade   = $broadsheet->grade ?? '-';
 
                             $totalGradeColor = $gradeColors[$totalGrade] ?? '#6b7280';
-                            $cumGradeColor = $gradeColors[$cumGrade] ?? '#6b7280';
+                            $cumGradeColor   = $gradeColors[$cumGrade]   ?? '#6b7280';
 
                             $totalColor = $rowTotal >= 70 ? 'success' : ($rowTotal >= 50 ? 'info' : ($rowTotal >= 40 ? 'warning' : 'danger'));
-                            $cumColor = $cum >= 70 ? 'success' : ($cum >= 50 ? 'info' : ($cum >= 40 ? 'warning' : 'danger'));
+                            $cumColor   = $cum      >= 70 ? 'success' : ($cum      >= 50 ? 'info' : ($cum      >= 40 ? 'warning' : 'danger'));
 
-                            $isGloballyLocked = isset($globalLock) && $globalLock;
+                            $isGloballyLocked         = isset($globalLock) && $globalLock;
                             $isTeacherEditingDisabled = isset($teacherEditingEnabled) && !$teacherEditingEnabled;
-                            $isLocked = $broadsheet->is_locked || $isGloballyLocked || $isTeacherEditingDisabled;
+                            $isLocked                 = $broadsheet->is_locked || $isGloballyLocked;
+
                             $vClass = match(true) {
-                                $isLocked => 'row-locked',
+                                $isLocked                      => 'row-locked',
                                 $broadsheet->vettedstatus === '1' => 'row-vetted',
                                 $broadsheet->vettedstatus === '0' => 'row-not-vetted',
-                                default => 'row-pending',
+                                default                        => 'row-pending',
                             };
+
                             $avatarUrl = $broadsheet->picture
                                 ? asset('storage/student_avatars/'.basename($broadsheet->picture))
                                 : asset('storage/student_avatars/unnamed.jpg');
 
-                            $enteredByName      = optional($broadsheet->enteredBy)->name ?? '-';
-                            $lastModifiedByName  = optional($broadsheet->lastModifiedBy)->name ?? '-';
-                            $lockedByName        = optional($broadsheet->lockedBy)->name ?? '-';
+                            $enteredByName       = optional($broadsheet->enteredBy)->name       ?? '-';
+                            $lastModifiedByName  = optional($broadsheet->lastModifiedBy)->name  ?? '-';
+                            $lockedByName        = optional($broadsheet->lockedBy)->name        ?? '-';
                             $unlockSchedByName   = optional($broadsheet->unlockScheduledBy)->name ?? '-';
-
-                            $enteredAt       = $broadsheet->entered_at       ? \Carbon\Carbon::parse($broadsheet->entered_at)->format('d/m/y H:i')       : '-';
-                            $lastModifiedAt  = $broadsheet->last_modified_at ? \Carbon\Carbon::parse($broadsheet->last_modified_at)->format('d/m/y H:i') : '-';
-                            $lockedAt        = $broadsheet->locked_at        ? \Carbon\Carbon::parse($broadsheet->locked_at)->format('d/m/y H:i')        : '-';
-                            $scheduledUnlock = $broadsheet->scheduled_unlock_at ? \Carbon\Carbon::parse($broadsheet->scheduled_unlock_at)->format('d/m/y H:i') : '-';
                         @endphp
                         <tr class="{{ $vClass }}"
                             data-id="{{ $broadsheet->id }}"
-                            data-bf="{{ $broadsheet->bf ?? 0 }}"
+                            data-bf="{{ $bf }}"
                             data-termid="{{ $termId }}"
-                            data-schoolclassid="{{ $broadsheet->schoolclass_id ?? $schoolclass->id }}"
+                            data-schoolclassid="{{ $broadsheet->schoolclass_id ?? ($schoolclass->id ?? 0) }}"
                             data-name="{{ $broadsheet->lname ?? '' }}, {{ $broadsheet->fname ?? '' }}"
                             data-admissionno="{{ $broadsheet->admissionno ?? '' }}"
                             data-avatar="{{ $avatarUrl }}"
@@ -925,26 +866,47 @@
                                 </div>
                             </td>
 
-                            @forelse($assessments as $assessment)
-                                @php
-                                    $scoreObj   = $broadsheet->assessmentScores->where('assessment_id', $assessment->id)->first();
-                                    $scoreValue = $scoreObj ? $scoreObj->score : 0;
-                                @endphp
-                                <td class="col-assessment-{{ $assessment->id }} assessment-col text-center">
-                                    <input type="number"
-                                           class="score-input"
-                                           data-field="{{ $assessment->id }}"
-                                           data-max="{{ $assessment->max_score }}"
-                                           data-id="{{ $broadsheet->id }}"
-                                           data-original="{{ $scoreValue }}"
-                                           data-assessment-name="{{ $assessment->name }}"
-                                           value="{{ $scoreValue }}"
-                                           min="0" max="{{ $assessment->max_score }}" step="0.1"
-                                           {{ $isLocked ? 'disabled' : '' }}>
-                                </td>
-                            @empty
-                                <td colspan="4" class="col-no-assessments text-center text-muted">-</td>
-                            @endforelse
+                            {{-- ══ FIXED CA FIELDS ══ --}}
+                            <td class="col-ca1 text-center">
+                                <input type="number" class="score-input"
+                                       data-field="ca1" data-max="100"
+                                       data-id="{{ $broadsheet->id }}"
+                                       data-original="{{ $ca1 }}"
+                                       data-assessment-name="CA1"
+                                       value="{{ $ca1 }}"
+                                       min="0" max="100" step="0.1"
+                                       {{ $isLocked ? 'disabled' : '' }}>
+                            </td>
+                            <td class="col-ca2 text-center">
+                                <input type="number" class="score-input"
+                                       data-field="ca2" data-max="100"
+                                       data-id="{{ $broadsheet->id }}"
+                                       data-original="{{ $ca2 }}"
+                                       data-assessment-name="CA2"
+                                       value="{{ $ca2 }}"
+                                       min="0" max="100" step="0.1"
+                                       {{ $isLocked ? 'disabled' : '' }}>
+                            </td>
+                            <td class="col-ca3 text-center">
+                                <input type="number" class="score-input"
+                                       data-field="ca3" data-max="100"
+                                       data-id="{{ $broadsheet->id }}"
+                                       data-original="{{ $ca3 }}"
+                                       data-assessment-name="CA3"
+                                       value="{{ $ca3 }}"
+                                       min="0" max="100" step="0.1"
+                                       {{ $isLocked ? 'disabled' : '' }}>
+                            </td>
+                            <td class="col-exam text-center">
+                                <input type="number" class="score-input"
+                                       data-field="exam" data-max="100"
+                                       data-id="{{ $broadsheet->id }}"
+                                       data-original="{{ $exam }}"
+                                       data-assessment-name="Exam"
+                                       value="{{ $exam }}"
+                                       min="0" max="100" step="0.1"
+                                       {{ $isLocked ? 'disabled' : '' }}>
+                            </td>
 
                             <td class="col-total text-center">
                                 <span class="badge bg-{{ $totalColor }}-subtle text-{{ $totalColor }} fw-bold total-badge" style="font-size:12px;">
@@ -956,12 +918,12 @@
                             </td>
                             <td class="col-bf text-center">
                                 <span class="badge bg-secondary-subtle text-secondary bf-badge">
-                                    {{ number_format($broadsheet->bf ?? 0, 1) }}
+                                    {{ number_format($bf, 2) }}
                                 </span>
                             </td>
                             <td class="col-cum text-center">
                                 <span class="badge bg-{{ $cumColor }}-subtle text-{{ $cumColor }} fw-bold cum-badge" style="font-size:12px;">
-                                    {{ number_format($cum, 1) }}
+                                    {{ number_format($cum, 2) }}
                                 </span>
                             </td>
                             <td class="col-cum-grade text-center">
@@ -973,37 +935,33 @@
                                 </span>
                             </td>
 
-                            {{-- GPA/CGPA Cells --}}
-                            <td class="col-gpa text-center">
-                                <span class="badge bg-warning-subtle text-warning fw-semibold gpa-badge">
-                                    {{ number_format($broadsheet->gpa ?? 0, 2) }}
-                                </span>
-                            </td>
-                            <td class="col-cgpa text-center">
-                                <span class="badge bg-dark-subtle text-dark cgpa-badge">
-                                    {{ number_format($broadsheet->cgpa ?? 0, 2) }}
-                                </span>
-                            </td>
-
                             {{-- POSITION CELLS --}}
                             <td class="col-position text-center">
                                 <span class="badge position-badge" style="background:var(--ss-primary);">
-                                    {{ $broadsheet->position ? $broadsheet->position . ($broadsheet->position == 1 ? 'st' : ($broadsheet->position == 2 ? 'nd' : ($broadsheet->position == 3 ? 'rd' : 'th'))) : '-' }}
+                                    {{ $broadsheet->position
+                                        ? \App\Helpers\OrdinalHelper::getOrdinalSuffix($broadsheet->position)
+                                        : '-' }}
                                 </span>
                             </td>
                             <td class="col-position-total text-center">
                                 <span class="badge position-total-badge" style="background:#0f766e;">
-                                    {{ $broadsheet->position_total ? $broadsheet->position_total . ($broadsheet->position_total == 1 ? 'st' : ($broadsheet->position_total == 2 ? 'nd' : ($broadsheet->position_total == 3 ? 'rd' : 'th'))) : '-' }}
+                                    {{ $broadsheet->position_total
+                                        ? \App\Helpers\OrdinalHelper::getOrdinalSuffix($broadsheet->position_total)
+                                        : '-' }}
                                 </span>
                             </td>
                             <td class="col-arm-position text-center">
                                 <span class="badge arm-position-badge" style="background:#0891b2;">
-                                    {{ $broadsheet->arm_position ? $broadsheet->arm_position . ($broadsheet->arm_position == 1 ? 'st' : ($broadsheet->arm_position == 2 ? 'nd' : ($broadsheet->arm_position == 3 ? 'rd' : 'th'))) : '-' }}
+                                    {{ $broadsheet->arm_position
+                                        ? \App\Helpers\OrdinalHelper::getOrdinalSuffix($broadsheet->arm_position)
+                                        : '-' }}
                                 </span>
                             </td>
                             <td class="col-arm-position-cum text-center">
                                 <span class="badge arm-position-cum-badge" style="background:#7c3aed;">
-                                    {{ $broadsheet->arm_position_cum ? $broadsheet->arm_position_cum . ($broadsheet->arm_position_cum == 1 ? 'st' : ($broadsheet->arm_position_cum == 2 ? 'nd' : ($broadsheet->arm_position_cum == 3 ? 'rd' : 'th'))) : '-' }}
+                                    {{ $broadsheet->arm_position_cum
+                                        ? \App\Helpers\OrdinalHelper::getOrdinalSuffix($broadsheet->arm_position_cum)
+                                        : '-' }}
                                 </span>
                             </td>
 
@@ -1017,16 +975,10 @@
                                 @endif
                             </td>
 
-                            {{-- ══ AUDIT & LOCK DETAIL CELLS ══ --}}
-                            <td class="col-submitted-by text-center audit-cell">
-                                <small>{{ $broadsheet->submiitedby ?? '-' }}</small>
-                            </td>
-                            <td class="col-vetted-by text-center audit-cell">
-                                <small>{{ $broadsheet->vettedby ?? '-' }}</small>
-                            </td>
-                            <td class="col-entered-by text-center audit-cell">
-                                <small>{{ $enteredByName }}</small>
-                            </td>
+                            {{-- ══ AUDIT & LOCK CELLS ══ --}}
+                            <td class="col-submitted-by text-center audit-cell"><small>{{ $broadsheet->submiitedby ?? '-' }}</small></td>
+                            <td class="col-vetted-by text-center audit-cell"><small>{{ $broadsheet->vettedby ?? '-' }}</small></td>
+                            <td class="col-entered-by text-center audit-cell"><small>{{ $enteredByName }}</small></td>
                             <td class="col-entered-at text-center audit-cell">
                                 @if($broadsheet->entered_at)
                                     <small class="d-block">{{ \Carbon\Carbon::parse($broadsheet->entered_at)->format('d/m/y') }}</small>
@@ -1035,9 +987,7 @@
                                     <small class="text-muted">-</small>
                                 @endif
                             </td>
-                            <td class="col-last-modified-by text-center audit-cell">
-                                <small>{{ $lastModifiedByName }}</small>
-                            </td>
+                            <td class="col-last-modified-by text-center audit-cell"><small>{{ $lastModifiedByName }}</small></td>
                             <td class="col-last-modified-at text-center audit-cell">
                                 @if($broadsheet->last_modified_at)
                                     <small class="d-block">{{ \Carbon\Carbon::parse($broadsheet->last_modified_at)->format('d/m/y') }}</small>
@@ -1050,18 +1000,18 @@
                                 @php
                                     $src = $broadsheet->entry_source ?? '';
                                     $srcStyle = match(strtolower($src)) {
-                                        'admin'               => 'background:#eff6ff;color:#2563eb;',
-                                        'teacher'             => 'background:#f0fdf4;color:#16a34a;',
-                                        'import'              => 'background:#fef9c3;color:#854d0e;',
+                                        'admin'                 => 'background:#eff6ff;color:#2563eb;',
+                                        'teacher'               => 'background:#f0fdf4;color:#16a34a;',
+                                        'import'                => 'background:#fef9c3;color:#854d0e;',
                                         'admin_student_manager' => 'background:#f3e8ff;color:#7c3aed;',
-                                        default               => 'background:#f1f5f9;color:#64748b;',
+                                        default                 => 'background:#f1f5f9;color:#64748b;',
                                     };
                                     $srcLabel = match(strtolower($src)) {
-                                        'admin'               => 'Admin',
-                                        'teacher'             => 'Teacher',
-                                        'import'              => 'Import',
+                                        'admin'                 => 'Admin',
+                                        'teacher'               => 'Teacher',
+                                        'import'                => 'Import',
                                         'admin_student_manager' => 'Mgr',
-                                        default               => $src ?: '-',
+                                        default                 => $src ?: '-',
                                     };
                                 @endphp
                                 @if($src)
@@ -1072,18 +1022,12 @@
                             </td>
                             <td class="col-is-locked text-center">
                                 @if($broadsheet->is_locked)
-                                    <span class="badge bg-danger-subtle text-danger" style="font-size:10px;">
-                                        <i class="ri-lock-line me-1"></i>Yes
-                                    </span>
+                                    <span class="badge bg-danger-subtle text-danger" style="font-size:10px;"><i class="ri-lock-line me-1"></i>Yes</span>
                                 @else
-                                    <span class="badge bg-success-subtle text-success" style="font-size:10px;">
-                                        <i class="ri-lock-unlock-line me-1"></i>No
-                                    </span>
+                                    <span class="badge bg-success-subtle text-success" style="font-size:10px;"><i class="ri-lock-unlock-line me-1"></i>No</span>
                                 @endif
                             </td>
-                            <td class="col-locked-by text-center audit-cell">
-                                <small>{{ $broadsheet->is_locked ? $lockedByName : '-' }}</small>
-                            </td>
+                            <td class="col-locked-by text-center audit-cell"><small>{{ $broadsheet->is_locked ? $lockedByName : '-' }}</small></td>
                             <td class="col-locked-at text-center audit-cell">
                                 @if($broadsheet->is_locked && $broadsheet->locked_at)
                                     <small class="d-block">{{ \Carbon\Carbon::parse($broadsheet->locked_at)->format('d/m/y') }}</small>
@@ -1095,7 +1039,7 @@
                             <td class="col-lock-reason text-center audit-cell" style="max-width:150px;">
                                 @if($broadsheet->lock_reason)
                                     <small class="d-block text-truncate" style="max-width:140px;" title="{{ $broadsheet->lock_reason }}">
-                                        {{ Str::limit($broadsheet->lock_reason, 35) }}
+                                        {{ \Illuminate\Support\Str::limit($broadsheet->lock_reason, 35) }}
                                     </small>
                                 @else
                                     <small class="text-muted">-</small>
@@ -1103,9 +1047,7 @@
                             </td>
                             <td class="col-scheduled-unlock text-center audit-cell">
                                 @if($broadsheet->scheduled_unlock_at)
-                                    <small class="d-block" style="color:#d97706;">
-                                        {{ \Carbon\Carbon::parse($broadsheet->scheduled_unlock_at)->format('d/m/y') }}
-                                    </small>
+                                    <small class="d-block" style="color:#d97706;">{{ \Carbon\Carbon::parse($broadsheet->scheduled_unlock_at)->format('d/m/y') }}</small>
                                     <small class="audit-date">{{ \Carbon\Carbon::parse($broadsheet->scheduled_unlock_at)->format('H:i') }}</small>
                                 @else
                                     <small class="text-muted">-</small>
@@ -1115,11 +1057,10 @@
                                 <small>{{ $broadsheet->scheduled_unlock_at ? $unlockSchedByName : '-' }}</small>
                             </td>
 
-                            {{-- Action / Lock Status --}}
                             <td class="col-lock-status text-center">
                                 @if($isGloballyLocked)
                                     <span class="lock-badge global" title="{{ $globalLock->reason ?? 'Global lock active' }}">
-                                        <i class="ri-global-line me-1"></i>Global Lock
+                                        <i class="ri-global-line me-1"></i>Global
                                     </span>
                                 @elseif($broadsheet->is_locked)
                                     <span class="lock-badge individual" title="{{ $broadsheet->lock_reason ?? 'Locked by admin' }}">
@@ -1135,16 +1076,16 @@
                                             data-name="{{ $broadsheet->lname ?? '' }}, {{ $broadsheet->fname ?? '' }}"
                                             data-admission="{{ $broadsheet->admissionno ?? '' }}"
                                             data-avatar="{{ $avatarUrl }}"
-                                            data-bf="{{ $broadsheet->bf ?? 0 }}"
+                                            data-bf="{{ $bf }}"
                                             style="padding: 2px 8px; font-size: 11px;">
-                                        <i class="ri-edit-line me-1"></i> Edit Scores
+                                        <i class="ri-edit-line me-1"></i> Edit
                                     </button>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr id="noDataRow">
-                            <td colspan="{{ ($assessments->count() ?: 4) + 32 }}" class="text-center py-4 text-muted">
+                            <td colspan="31" class="text-center py-4 text-muted">
                                 <i class="ri-inbox-line ri-2x d-block mb-2"></i>No scores available.
                             </td>
                         </tr>
@@ -1164,7 +1105,7 @@
                             <i class="ri-close-line me-1"></i>Clear All Scores
                         </button>
                         <button class="btn btn-sm btn-outline-warning" id="clearSelectedScoresBtn">
-                            <i class="ri-delete-bin-line me-1"></i>Clear Selected
+                            <i class="ri-eraser-line me-1"></i>Clear Selected
                         </button>
                         <button class="btn btn-sm btn-outline-danger" id="deleteSelectedScoresBtn">
                             <i class="ri-delete-bin-2-line me-1"></i>Delete Selected
@@ -1182,19 +1123,15 @@
         </div>
     </div></div></div>
 
-</div>{{-- /.container-fluid --}}
-</div>{{-- /.page-content --}}
-</div>{{-- /.main-content --}}
+</div>
+</div>
+</div>
 
-{{-- ══════════════════════════════════════════════════════════════════
-     MODALS — placed outside .main-content to avoid stacking context
-     issues caused by transforms/filters on ancestor elements.
-     Bootstrap requires modals to be direct children of <body> (or at
-     least outside any transformed/filtered ancestor) so the backdrop
-     and positioning work correctly.
-═══════════════════════════════════════════════════════════════════════ --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════════ --}}
 
-{{-- ══ SCORE ENTRY MODAL ══════════════════════════════════════════ --}}
+{{-- ══ SCORE ENTRY MODAL ══ --}}
 <div class="modal fade score-entry-modal" id="scoreEntryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -1214,7 +1151,7 @@
                     <div class="col-md-6">
                         <div class="card bg-light border-0">
                             <div class="card-body text-center">
-                                <h6 class="text-muted mb-2">Current Scores</h6>
+                                <h6 class="text-muted mb-2">Current Total</h6>
                                 <div class="row">
                                     <div class="col-6">
                                         <div class="fw-bold fs-3" id="modalCurrentTotal">0.0</div>
@@ -1235,7 +1172,7 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <div class="fw-bold fs-3" id="modalCurrentCum">0.0</div>
-                                        <small class="text-muted">Cumulative</small>
+                                        <small class="text-muted">Cum</small>
                                     </div>
                                     <div class="col-6">
                                         <div class="fw-bold fs-3" id="modalCurrentCumGrade">-</div>
@@ -1246,9 +1183,9 @@
                         </div>
                     </div>
                 </div>
-                <h6 class="fw-semibold mb-3"><i class="ri-edit-line me-2"></i>Assessment Scores</h6>
+                <h6 class="fw-semibold mb-3"><i class="ri-edit-line me-2"></i>Fixed CA Scores</h6>
                 <div id="modalAssessmentsList" class="border rounded-3 overflow-hidden">
-                    <!-- Dynamic assessment inputs will appear here -->
+                    <!-- Dynamic CA inputs will appear here -->
                 </div>
             </div>
             <div class="modal-footer">
@@ -1261,7 +1198,7 @@
     </div>
 </div>
 
-{{-- ══ COLUMN VISIBILITY MODAL ════════════════════════════════════ --}}
+{{-- ══ COLUMN VISIBILITY MODAL ══ --}}
 @if($broadsheets->isNotEmpty())
 <div class="modal fade" id="columnVisibilityModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -1272,7 +1209,6 @@
             </div>
             <div class="modal-body">
                 <div class="row g-3">
-                    {{-- Student Info --}}
                     <div class="col-md-3"><div class="col-group">
                         <h6>Student Info</h6>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-checkbox" checked><label class="form-check-label">Select</label></div>
@@ -1281,20 +1217,14 @@
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-name" checked><label class="form-check-label">Name</label></div>
                     </div></div>
 
-                    {{-- Assessments --}}
-                    @if($assessments->isNotEmpty())
                     <div class="col-md-3"><div class="col-group">
-                        <h6>Assessments</h6>
-                        @foreach($assessments as $a)
-                        <div class="form-check">
-                            <input class="form-check-input col-toggle" type="checkbox" data-col="col-assessment-{{ $a->id }}" checked>
-                            <label class="form-check-label">{{ $a->name }}</label>
-                        </div>
-                        @endforeach
+                        <h6>CA Score Columns</h6>
+                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-ca1" checked><label class="form-check-label">CA1</label></div>
+                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-ca2" checked><label class="form-check-label">CA2</label></div>
+                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-ca3" checked><label class="form-check-label">CA3</label></div>
+                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-exam" checked><label class="form-check-label">Exam</label></div>
                     </div></div>
-                    @endif
 
-                    {{-- Scores & Metrics --}}
                     <div class="col-md-3"><div class="col-group">
                         <h6>Scores &amp; Metrics</h6>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-total" checked><label class="form-check-label">Total</label></div>
@@ -1303,11 +1233,8 @@
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-cum" checked><label class="form-check-label">Cum</label></div>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-cum-grade" checked><label class="form-check-label">Cum Grade</label></div>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-avg" checked><label class="form-check-label">Class Avg</label></div>
-                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-gpa" checked><label class="form-check-label">GPA</label></div>
-                        <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-cgpa" checked><label class="form-check-label">CGPA</label></div>
                     </div></div>
 
-                    {{-- Rankings & Status --}}
                     <div class="col-md-3"><div class="col-group">
                         <h6>Rankings &amp; Status</h6>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-position" checked><label class="form-check-label">Class Pos (Cum)</label></div>
@@ -1318,7 +1245,6 @@
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-lock-status" checked><label class="form-check-label">Action</label></div>
                     </div></div>
 
-                    {{-- Audit Trail --}}
                     <div class="col-md-3"><div class="col-group">
                         <h6><i class="ri-shield-user-line me-1 text-primary"></i>Audit Trail</h6>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-submitted-by"><label class="form-check-label">Submitted By</label></div>
@@ -1330,7 +1256,6 @@
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-entry-source"><label class="form-check-label">Entry Source</label></div>
                     </div></div>
 
-                    {{-- Lock Detail --}}
                     <div class="col-md-3"><div class="col-group">
                         <h6><i class="ri-lock-line me-1 text-danger"></i>Lock Detail</h6>
                         <div class="form-check"><input class="form-check-input col-toggle" type="checkbox" data-col="col-is-locked"><label class="form-check-label">Locked?</label></div>
@@ -1342,7 +1267,6 @@
                     </div></div>
                 </div>
 
-                {{-- Quick toggle buttons --}}
                 <div class="d-flex gap-2 mt-3 pt-2 border-top">
                     <button class="btn btn-sm btn-outline-primary" id="showAuditCols">
                         <i class="ri-shield-user-line me-1"></i>Show All Audit
@@ -1363,7 +1287,7 @@
 </div>
 @endif
 
-{{-- ══ IMPORT MODAL ════════════════════════════════════════════════ --}}
+{{-- ══ IMPORT MODAL ══ --}}
 <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -1375,11 +1299,11 @@
                 <div class="alert alert-info"><i class="ri-information-line me-2"></i>Upload the Excel file exported from this scoresheet.</div>
                 <form method="POST" enctype="multipart/form-data" id="importForm">
                     @csrf
-                    <input type="hidden" name="schoolclass_id" value="{{ $schoolclass->id }}">
-                    <input type="hidden" name="subjectclass_id" value="{{ $subjectclassId }}">
-                    <input type="hidden" name="staff_id" value="{{ $teacherId }}">
-                    <input type="hidden" name="term_id" value="{{ $termId }}">
-                    <input type="hidden" name="session_id" value="{{ $sessionId }}">
+                    <input type="hidden" name="schoolclass_id" value="{{ $schoolclass->id ?? 0 }}">
+                    <input type="hidden" name="subjectclass_id" value="{{ $subjectclassId ?? 0 }}">
+                    <input type="hidden" name="staff_id" value="{{ $teacherId ?? 0 }}">
+                    <input type="hidden" name="term_id" value="{{ $termId ?? 0 }}">
+                    <input type="hidden" name="session_id" value="{{ $sessionId ?? 0 }}">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Excel File (.xlsx)</label>
                         <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
@@ -1408,7 +1332,7 @@
     </div>
 </div>
 
-{{-- ══ IMAGE VIEW MODAL ════════════════════════════════════════════ --}}
+{{-- ══ IMAGE VIEW MODAL ══ --}}
 <div class="modal fade" id="imageViewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -1420,41 +1344,49 @@
     </div>
 </div>
 
-{{-- ══ JAVASCRIPT ══════════════════════════════════════════════════ --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════════════ --}}
 <script>
-// CSRF Token
+// ══ CSRF ══
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
-// Routes
+// ══ Routes ══
 const routes = {
-    singleUpdate: '{{ route("admin.score-entry.single-update") }}',
-    bulkUpdate: '{{ route("admin.score-entry.bulk-update") }}',
-    destroy: '{{ route("admin.score-entry.destroy") }}',
-    export: '{{ route("admin.score-entry.export") }}',
-    import: '{{ route("admin.score-entry.import") }}',
-    downloadMarksSheet: '{{ route("admin.score-entry.download-marks-sheet") }}',
-    downloadScoresPdf: '{{ route("admin.score-entry.download-scores-pdf") }}',
-    updateArmPositions: '{{ route("admin.score-entry.update-arm-positions") }}',
-    lockScoresheet: '{{ route("admin.score-entry.lock-scoresheet") }}',
-    unlockScoresheet: '{{ route("admin.score-entry.unlock-scoresheet") }}',
-    lockBatch: '{{ route("admin.score-entry.lock-batch") }}',
-    unlockBatch: '{{ route("admin.score-entry.unlock-batch") }}',
+    singleUpdate        : '{{ route("admin.score-entry.single-update") }}',
+    bulkUpdate          : '{{ route("admin.score-entry.bulk-update") }}',
+    destroy             : '{{ route("admin.score-entry.destroy") }}',
+    export              : '{{ route("admin.score-entry.export") }}',
+    import              : '{{ route("admin.score-entry.import") }}',
+    downloadMarksSheet  : '{{ route("admin.score-entry.download-marks-sheet") }}',
+    downloadScoresPdf   : '{{ route("admin.score-entry.download-scores-pdf") }}',
+    updateArmPositions  : '{{ route("admin.score-entry.update-arm-positions") }}',
+    lockScoresheet      : '{{ route("admin.score-entry.lock-scoresheet") }}',
+    unlockScoresheet    : '{{ route("admin.score-entry.unlock-scoresheet") }}',
+    lockBatch           : '{{ route("admin.score-entry.lock-batch") }}',
+    unlockBatch         : '{{ route("admin.score-entry.unlock-batch") }}',
     disableTeacherEditing: '{{ route("admin.score-entry.disable-teacher-editing") }}',
-    enableTeacherEditing: '{{ route("admin.score-entry.enable-teacher-editing") }}',
+    enableTeacherEditing : '{{ route("admin.score-entry.enable-teacher-editing") }}',
 };
 
-// Grade colors mapping
+// ══ Context (fixed vars) ══
+const CTX = {
+    termId        : {{ (int) ($termId ?? 0) }},
+    sessionId     : {{ (int) ($sessionId ?? 0) }},
+    subjectclassId: {{ (int) ($subjectclassId ?? 0) }},
+    teacherId     : {{ (int) ($teacherId ?? 0) }},
+    schoolclassId : {{ (int) ($schoolclass->id ?? 0) }},
+};
+
+// ══ Grade colors ══
 const GRADE_COLORS = {
-    'A': '#16a34a', 'A1': '#16a34a',
-    'B': '#2563eb', 'B2': '#2563eb', 'B3': '#3b82f6',
-    'C': '#7c3aed', 'C4': '#7c3aed', 'C5': '#8b5cf6', 'C6': '#a78bfa',
-    'D': '#d97706', 'D7': '#d97706', 'E8': '#f59e0b',
-    'F': '#dc2626', 'F9': '#dc2626',
+    'A':'#16a34a','A1':'#16a34a',
+    'B':'#2563eb','B2':'#2563eb','B3':'#3b82f6',
+    'C':'#7c3aed','C4':'#7c3aed','C5':'#8b5cf6','C6':'#a78bfa',
+    'D':'#d97706','D7':'#d97706','E8':'#f59e0b',
+    'F':'#dc2626','F9':'#dc2626',
 };
-
-function getGradeColor(grade) {
-    return GRADE_COLORS[grade] || '#6b7280';
-}
+function getGradeColor(grade) { return GRADE_COLORS[grade] || '#6b7280'; }
 
 function applyGrade(badge, grade) {
     if (!badge) return;
@@ -1486,41 +1418,47 @@ function showToast(msg, type = 'info') {
 }
 
 function validateInput(inp) {
-    const max = parseFloat(inp.dataset.max) || 0;
+    const max = parseFloat(inp.dataset.max) || 100;
     const val = parseFloat(inp.value) || 0;
-    inp.classList.toggle('is-invalid', val > max);
-    return val <= max;
+    inp.classList.toggle('is-invalid', val > max || val < 0);
+    return val <= max && val >= 0;
 }
 
+// ══ Update row totals from CA fields ══
 function updateRowGrades(row) {
-    let totalRaw = 0;
-    row.querySelectorAll('.score-input').forEach(inp => {
-        totalRaw += parseFloat(inp.value) || 0;
-    });
+    const ca1  = parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0;
+    const ca2  = parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0;
+    const ca3  = parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0;
+    const exam = parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0;
+
+    const caAvg = (ca1 + ca2 + ca3) / 3;
+    const totalRaw = Math.round(((caAvg + exam) / 2) * 10) / 10;
 
     const bf = parseFloat(row.dataset.bf) || 0;
-    const finalCum = bf > 0 ? (totalRaw + bf) / 2 : totalRaw;
+    const termId = parseInt(row.dataset.termid) || 1;
+    const cum = termId === 1 ? totalRaw : Math.round(((bf + totalRaw) / 2) * 100) / 100;
 
     const totalBadge = row.querySelector('.total-badge');
     if (totalBadge) {
         totalBadge.textContent = totalRaw.toFixed(1);
-        const totalColor = totalRaw >= 70 ? 'success' : (totalRaw >= 50 ? 'info' : (totalRaw >= 40 ? 'warning' : 'danger'));
-        totalBadge.className = `badge fw-bold total-badge bg-${totalColor}-subtle text-${totalColor}`;
+        const tc = totalRaw >= 70 ? 'success' : totalRaw >= 50 ? 'info' : totalRaw >= 40 ? 'warning' : 'danger';
+        totalBadge.className = `badge fw-bold total-badge bg-${tc}-subtle text-${tc}`;
         totalBadge.style.fontSize = '12px';
     }
 
     const cumBadge = row.querySelector('.cum-badge');
     if (cumBadge) {
-        cumBadge.textContent = finalCum.toFixed(1);
-        const cumColor = finalCum >= 70 ? 'success' : (finalCum >= 50 ? 'info' : (finalCum >= 40 ? 'warning' : 'danger'));
-        cumBadge.className = `badge fw-bold cum-badge bg-${cumColor}-subtle text-${cumColor}`;
+        cumBadge.textContent = cum.toFixed(2);
+        const cc = cum >= 70 ? 'success' : cum >= 50 ? 'info' : cum >= 40 ? 'warning' : 'danger';
+        cumBadge.className = `badge fw-bold cum-badge bg-${cc}-subtle text-${cc}`;
         cumBadge.style.fontSize = '12px';
     }
 
     applyGrade(row.querySelector('.grade-badge'), clientGrade(totalRaw));
-    applyGrade(row.querySelector('.cum-grade-badge'), clientGrade(finalCum));
+    applyGrade(row.querySelector('.cum-grade-badge'), clientGrade(cum));
 }
 
+// ══ Single CA save ══
 function saveIndividualScore(input) {
     const row = input.closest('tr');
     const originalValue = parseFloat(input.dataset.original) || 0;
@@ -1528,54 +1466,72 @@ function saveIndividualScore(input) {
 
     if (Math.abs(newValue - originalValue) < 0.01) return;
 
+    // Collect ALL 4 CA fields from the row
+    const payload = {
+        broadsheet_id: input.dataset.id,
+        ca1:  parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0,
+        ca2:  parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0,
+        ca3:  parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0,
+        exam: parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0,
+        term_id: CTX.termId,
+        session_id: CTX.sessionId,
+        subjectclass_id: CTX.subjectclassId,
+        schoolclass_id: CTX.schoolclassId,
+        staff_id: CTX.teacherId,
+    };
+
     fetch(routes.singleUpdate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-        body: JSON.stringify({
-            broadsheet_id: input.dataset.id,
-            assessment_id: parseInt(input.dataset.field),
-            score: newValue,
-            is_sub: false,
-            term_id: {{ $termId }},
-            session_id: {{ $sessionId }},
-            subjectclass_id: {{ $subjectclassId }},
-            schoolclass_id: {{ $schoolclass->id ?? 0 }},
-            staff_id: {{ $teacherId }}
-        })
+        body: JSON.stringify(payload),
     })
-    .then(r => r.json())
+    .then(async r => {
+        if (r.status === 423) {
+            const d = await r.json().catch(() => ({}));
+            showToast(d.message || 'This scoresheet is locked.', 'warning');
+            input.value = originalValue;
+            return null;
+        }
+        return r.json();
+    })
     .then(data => {
+        if (!data) return;
         if (data.success) {
             input.classList.add('is-saved');
             setTimeout(() => input.classList.remove('is-saved'), 2000);
             input.dataset.original = input.value;
 
-            if (data.data?.total !== undefined) {
-                const totalBadge = row.querySelector('.total-badge');
-                if (totalBadge) {
-                    totalBadge.textContent = parseFloat(data.data.total).toFixed(1);
-                    const tc = parseFloat(data.data.total) >= 70 ? 'success' : (parseFloat(data.data.total) >= 50 ? 'info' : (parseFloat(data.data.total) >= 40 ? 'warning' : 'danger'));
-                    totalBadge.className = `badge fw-bold total-badge bg-${tc}-subtle text-${tc}`;
+            const d = data.data || {};
+            if (d.total !== undefined) {
+                const tb = row.querySelector('.total-badge');
+                if (tb) {
+                    tb.textContent = parseFloat(d.total).toFixed(1);
+                    const tc = d.total >= 70 ? 'success' : d.total >= 50 ? 'info' : d.total >= 40 ? 'warning' : 'danger';
+                    tb.className = `badge fw-bold total-badge bg-${tc}-subtle text-${tc}`;
+                    tb.style.fontSize = '12px';
                 }
             }
-            if (data.data?.grade) applyGrade(row.querySelector('.grade-badge'), data.data.grade);
-            if (data.data?.cum !== undefined) {
-                const cumBadge = row.querySelector('.cum-badge');
-                if (cumBadge) {
-                    cumBadge.textContent = parseFloat(data.data.cum).toFixed(1);
-                    const cc = parseFloat(data.data.cum) >= 70 ? 'success' : (parseFloat(data.data.cum) >= 50 ? 'info' : (parseFloat(data.data.cum) >= 40 ? 'warning' : 'danger'));
-                    cumBadge.className = `badge fw-bold cum-badge bg-${cc}-subtle text-${cc}`;
+            if (d.bf !== undefined) {
+                const bf = row.querySelector('.bf-badge');
+                if (bf) bf.textContent = parseFloat(d.bf).toFixed(2);
+            }
+            if (d.cum !== undefined) {
+                const cb = row.querySelector('.cum-badge');
+                if (cb) {
+                    cb.textContent = parseFloat(d.cum).toFixed(2);
+                    const cc = d.cum >= 70 ? 'success' : d.cum >= 50 ? 'info' : d.cum >= 40 ? 'warning' : 'danger';
+                    cb.className = `badge fw-bold cum-badge bg-${cc}-subtle text-${cc}`;
+                    cb.style.fontSize = '12px';
                 }
-                applyGrade(row.querySelector('.cum-grade-badge'), clientGrade(parseFloat(data.data.cum)));
             }
-            if (data.data?.gpa !== undefined) {
-                const gpaBadge = row.querySelector('.gpa-badge');
-                if (gpaBadge) gpaBadge.textContent = parseFloat(data.data.gpa).toFixed(2);
+            if (d.grade) applyGrade(row.querySelector('.grade-badge'), d.grade);
+            if (d.cum !== undefined) applyGrade(row.querySelector('.cum-grade-badge'), clientGrade(parseFloat(d.cum)));
+            if (d.avg !== undefined) {
+                const ab = row.querySelector('.avg-badge');
+                if (ab) ab.textContent = parseFloat(d.avg).toFixed(1);
             }
-            if (data.data?.cgpa !== undefined) {
-                const cgpaBadge = row.querySelector('.cgpa-badge');
-                if (cgpaBadge) cgpaBadge.textContent = parseFloat(data.data.cgpa).toFixed(2);
-            }
+
+            refreshAllPositions();
         } else {
             showToast(data.message || 'Error saving score', 'danger');
             input.value = originalValue;
@@ -1588,15 +1544,15 @@ function saveIndividualScore(input) {
     });
 }
 
+// ══ Clear all scores ══
 function clearAllScores() {
     Swal.fire({
         title: 'Clear All Scores?',
-        text: 'This will reset ALL scores to 0 for ALL students. This action cannot be undone.',
+        text: 'This will reset ALL CA/Exam scores to 0 for ALL students. This action cannot be undone.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
         confirmButtonText: 'Yes, clear all',
-        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             document.querySelectorAll('.score-input:not(:disabled)').forEach(input => {
@@ -1610,6 +1566,7 @@ function clearAllScores() {
     });
 }
 
+// ══ Clear selected ══
 function clearSelectedScores() {
     const selectedRows = document.querySelectorAll('.score-checkbox:checked');
     if (selectedRows.length === 0) {
@@ -1624,7 +1581,6 @@ function clearSelectedScores() {
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
         confirmButtonText: 'Yes, clear selected',
-        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             selectedRows.forEach(checkbox => {
@@ -1645,7 +1601,7 @@ function clearSelectedScores() {
     });
 }
 
-// Apple-style save modal
+// ══ Apple-style save modal ══
 const SS_ARC_CIRC = 157.08;
 let ssCloseTimeout = null;
 
@@ -1714,23 +1670,24 @@ function ssClose() {
     setTimeout(() => overlay.classList.remove('ss-visible', 'ss-closing'), 260);
 }
 
+// ══ Bulk save ══
 function bulkSaveScores() {
     const invalid = document.querySelectorAll('.score-input.is-invalid').length;
     if (invalid) {
-        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) exceed their maximum.` });
+        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) are invalid.` });
         return;
     }
 
     const scores = [];
     document.querySelectorAll('#scoresheetTableBody tr[data-id]').forEach(row => {
         if (row.dataset.isLocked === 'true') return;
-        const assessments = {};
-        row.querySelectorAll('.score-input').forEach(inp => {
-            assessments[inp.dataset.field] = parseFloat(inp.value) || 0;
+        scores.push({
+            id: row.dataset.id,
+            ca1:  parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0,
+            ca2:  parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0,
+            ca3:  parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0,
+            exam: parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0,
         });
-        if (Object.keys(assessments).length) {
-            scores.push({ id: row.dataset.id, assessments });
-        }
     });
 
     if (scores.length === 0) {
@@ -1755,14 +1712,13 @@ function bulkSaveScores() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
         body: JSON.stringify({
-            scores: scores,
-            term_id: {{ $termId }},
-            session_id: {{ $sessionId }},
-            subjectclass_id: {{ $subjectclassId }},
-            staff_id: {{ $teacherId }},
-            schoolclass_id: {{ $schoolclass->id ?? 0 }},
-            is_sub: false
-        })
+            scores,
+            term_id: CTX.termId,
+            session_id: CTX.sessionId,
+            subjectclass_id: CTX.subjectclassId,
+            staff_id: CTX.teacherId,
+            schoolclass_id: CTX.schoolclassId,
+        }),
     })
     .then(r => r.json())
     .then(data => {
@@ -1771,51 +1727,46 @@ function bulkSaveScores() {
             ssError(data.message || 'Server error.');
             return;
         }
-
         ssUpdate(total, total, 100);
         setTimeout(() => ssSuccess(total), 220);
 
-        if (data.data?.broadsheets) {
-            data.data.broadsheets.forEach(bs => {
-                const row = document.querySelector(`tr[data-id="${bs.id}"]`);
-                if (!row) return;
+        (data.data?.broadsheets ?? []).forEach(bs => {
+            const row = document.querySelector(`tr[data-id="${bs.id}"]`);
+            if (!row) return;
 
-                const totalBadge = row.querySelector('.total-badge');
-                if (totalBadge) {
-                    totalBadge.textContent = (bs.total || 0).toFixed(1);
-                    const tc = (bs.total || 0) >= 70 ? 'success' : ((bs.total || 0) >= 50 ? 'info' : ((bs.total || 0) >= 40 ? 'warning' : 'danger'));
-                    totalBadge.className = `badge fw-bold total-badge bg-${tc}-subtle text-${tc}`;
-                }
+            const tb = row.querySelector('.total-badge');
+            if (tb) {
+                tb.textContent = (bs.total || 0).toFixed(1);
+                const tc = bs.total >= 70 ? 'success' : bs.total >= 50 ? 'info' : bs.total >= 40 ? 'warning' : 'danger';
+                tb.className = `badge fw-bold total-badge bg-${tc}-subtle text-${tc}`;
+                tb.style.fontSize = '12px';
+            }
 
-                const gradeBadge = row.querySelector('.grade-badge');
-                if (gradeBadge) applyGrade(gradeBadge, bs.grade || '-');
+            const gb = row.querySelector('.grade-badge');
+            if (gb) applyGrade(gb, bs.grade || '-');
 
-                const cumBadge = row.querySelector('.cum-badge');
-                if (cumBadge && bs.cum !== undefined) {
-                    cumBadge.textContent = parseFloat(bs.cum).toFixed(1);
-                    const cc = parseFloat(bs.cum) >= 70 ? 'success' : (parseFloat(bs.cum) >= 50 ? 'info' : (parseFloat(bs.cum) >= 40 ? 'warning' : 'danger'));
-                    cumBadge.className = `badge fw-bold cum-badge bg-${cc}-subtle text-${cc}`;
-                }
+            const bb = row.querySelector('.bf-badge');
+            if (bb) bb.textContent = parseFloat(bs.bf || 0).toFixed(2);
 
-                const cumGradeBadge = row.querySelector('.cum-grade-badge');
-                if (cumGradeBadge && bs.cum !== undefined) applyGrade(cumGradeBadge, clientGrade(parseFloat(bs.cum)));
+            const cb = row.querySelector('.cum-badge');
+            if (cb) {
+                cb.textContent = parseFloat(bs.cum || 0).toFixed(2);
+                const cc = bs.cum >= 70 ? 'success' : bs.cum >= 50 ? 'info' : bs.cum >= 40 ? 'warning' : 'danger';
+                cb.className = `badge fw-bold cum-badge bg-${cc}-subtle text-${cc}`;
+                cb.style.fontSize = '12px';
+            }
 
-                const gpaBadge = row.querySelector('.gpa-badge');
-                const cgpaBadge = row.querySelector('.cgpa-badge');
-                if (gpaBadge && bs.gpa !== undefined) gpaBadge.textContent = parseFloat(bs.gpa).toFixed(2);
-                if (cgpaBadge && bs.cgpa !== undefined) cgpaBadge.textContent = parseFloat(bs.cgpa).toFixed(2);
+            const cgb = row.querySelector('.cum-grade-badge');
+            if (cgb) applyGrade(cgb, clientGrade(parseFloat(bs.cum || 0)));
 
-                row.querySelectorAll('.score-input').forEach(inp => {
-                    const assessmentId = inp.dataset.field;
-                    const newScore = bs.assessment_scores?.find(a => a.assessment_id == assessmentId)?.score;
-                    if (newScore !== undefined) {
-                        inp.dataset.original = newScore;
-                        inp.classList.add('is-saved');
-                        setTimeout(() => inp.classList.remove('is-saved'), 2000);
-                    }
-                });
+            const ab = row.querySelector('.avg-badge');
+            if (ab && bs.avg !== undefined) ab.textContent = parseFloat(bs.avg).toFixed(1);
+
+            row.querySelectorAll('.score-input').forEach(i => {
+                i.classList.add('is-saved');
+                setTimeout(() => i.classList.remove('is-saved'), 2000);
             });
-        }
+        });
 
         refreshAllPositions();
     })
@@ -1829,6 +1780,7 @@ function bulkSaveScores() {
     });
 }
 
+// ══ Delete selected ══
 function deleteSelectedScores() {
     const selectedIds = Array.from(document.querySelectorAll('.score-checkbox:checked')).map(cb => cb.dataset.id);
     if (selectedIds.length === 0) {
@@ -1843,7 +1795,6 @@ function deleteSelectedScores() {
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
         confirmButtonText: 'Yes, delete',
-        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             let deleted = 0;
@@ -1851,7 +1802,7 @@ function deleteSelectedScores() {
                 fetch(routes.destroy, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                    body: JSON.stringify({ id: id, type: 'terminal' })
+                    body: JSON.stringify({ id, type: 'terminal' }),
                 })
                 .then(r => r.json())
                 .then(data => {
@@ -1871,6 +1822,7 @@ function deleteSelectedScores() {
     });
 }
 
+// ══ Refresh positions ══
 let positionRefreshTimer = null;
 function refreshAllPositions() {
     clearTimeout(positionRefreshTimer);
@@ -1879,15 +1831,16 @@ function refreshAllPositions() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
             body: JSON.stringify({
-                schoolclass_id: {{ $schoolclass->id ?? 0 }},
-                term_id: {{ $termId }},
-                session_id: {{ $sessionId }}
-            })
+                schoolclass_id: CTX.schoolclassId,
+                term_id: CTX.termId,
+                session_id: CTX.sessionId,
+            }),
         }).catch(() => {});
     }, 500);
 }
 
-function openScoreEntryModal(broadsheetId, studentName, studentAdmission, studentAvatar, currentScores, assessments, bf) {
+// ══ Modal — CA Entry ══
+function openScoreEntryModal(broadsheetId, studentName, studentAdmission, studentAvatar, currentScores, bf) {
     const modal = new bootstrap.Modal(document.getElementById('scoreEntryModal'));
     const modalBody = document.getElementById('modalAssessmentsList');
 
@@ -1895,114 +1848,113 @@ function openScoreEntryModal(broadsheetId, studentName, studentAdmission, studen
     document.getElementById('modalStudentAdmission').textContent = `Admission No: ${studentAdmission}`;
     document.getElementById('modalStudentAvatar').src = studentAvatar;
 
-    let currentTotal = 0;
-    const scoresMap = {};
-    assessments.forEach(a => {
-        const score = currentScores[a.id] || 0;
-        scoresMap[a.id] = score;
-        currentTotal += score;
-    });
+    // Build CA summary
+    const ca1  = parseFloat(currentScores.ca1)  || 0;
+    const ca2  = parseFloat(currentScores.ca2)  || 0;
+    const ca3  = parseFloat(currentScores.ca3)  || 0;
+    const exam = parseFloat(currentScores.exam) || 0;
 
-    const grade = currentTotal >= 70 ? 'A' : (currentTotal >= 60 ? 'B' : (currentTotal >= 50 ? 'C' : (currentTotal >= 40 ? 'D' : 'F')));
-    const cum = parseFloat(bf) || 0;
-    const cumGrade = cum >= 70 ? 'A' : (cum >= 60 ? 'B' : (cum >= 50 ? 'C' : (cum >= 40 ? 'D' : 'F')));
+    const caAvg = (ca1 + ca2 + ca3) / 3;
+    const total = Math.round(((caAvg + exam) / 2) * 10) / 10;
+    const cum   = parseFloat(bf) > 0 ? Math.round(((parseFloat(bf) + total) / 2) * 100) / 100 : total;
 
-    document.getElementById('modalCurrentTotal').textContent = currentTotal.toFixed(1);
-    document.getElementById('modalCurrentGrade').textContent = grade;
-    document.getElementById('modalCurrentCum').textContent = cum.toFixed(1);
-    document.getElementById('modalCurrentCumGrade').textContent = cumGrade;
+    document.getElementById('modalCurrentTotal').textContent = total.toFixed(1);
+    document.getElementById('modalCurrentGrade').textContent = clientGrade(total);
+    document.getElementById('modalCurrentCum').textContent = cum.toFixed(2);
+    document.getElementById('modalCurrentCumGrade').textContent = clientGrade(cum);
 
     let html = '';
-    assessments.forEach(a => {
-        const scoreValue = scoresMap[a.id] || 0;
+    [
+        { field: 'ca1',  label: 'CA1',  max: 100, value: ca1 },
+        { field: 'ca2',  label: 'CA2',  max: 100, value: ca2 },
+        { field: 'ca3',  label: 'CA3',  max: 100, value: ca3 },
+        { field: 'exam', label: 'Exam', max: 100, value: exam },
+    ].forEach(item => {
         html += `
             <div class="assessment-score-row">
                 <div>
-                    <strong>${a.name}</strong>
-                    <small class="text-muted ms-2">(Max: ${a.max_score})</small>
+                    <strong>${item.label}</strong>
+                    <small class="text-muted ms-2">(Max: ${item.max})</small>
                 </div>
                 <input type="number"
                        class="form-control score-input-large"
-                       data-assessment-id="${a.id}"
-                       data-max="${a.max_score}"
-                       value="${scoreValue}"
-                       min="0" max="${a.max_score}" step="0.1"
+                       data-field="${item.field}"
+                       data-max="${item.max}"
+                       value="${item.value}"
+                       min="0" max="${item.max}" step="0.1"
                        style="width: 100px;">
-            </div>
-        `;
+            </div>`;
     });
+
     modalBody.innerHTML = html;
     modalBody.dataset.broadsheetId = broadsheetId;
     modal.show();
 }
 
+// ══ Save modal scores ══
 function saveModalScores() {
     const modalBody = document.getElementById('modalAssessmentsList');
     const broadsheetId = modalBody.dataset.broadsheetId;
-    const assessmentInputs = modalBody.querySelectorAll('.score-input-large');
+    const inputs = modalBody.querySelectorAll('.score-input-large');
+
+    const payload = { broadsheet_id: broadsheetId, ca1: 0, ca2: 0, ca3: 0, exam: 0 };
 
     let hasError = false;
-    const scores = {};
-
-    assessmentInputs.forEach(input => {
-        const assessmentId = input.dataset.assessmentId;
-        const maxScore = parseFloat(input.dataset.max);
+    inputs.forEach(input => {
+        const field = input.dataset.field;
+        const maxScore = parseFloat(input.dataset.max) || 100;
         let value = parseFloat(input.value) || 0;
-        if (value > maxScore) {
-            Swal.fire({ icon: 'error', title: 'Invalid Score', text: `Score cannot exceed ${maxScore}` });
+        if (value > maxScore || value < 0) {
+            Swal.fire({ icon: 'error', title: 'Invalid Score', text: `Score for ${field} must be between 0 and ${maxScore}.` });
             hasError = true;
             return;
         }
-        scores[assessmentId] = value;
+        payload[field] = value;
     });
 
     if (hasError) return;
 
+    payload.term_id = CTX.termId;
+    payload.session_id = CTX.sessionId;
+    payload.subjectclass_id = CTX.subjectclassId;
+    payload.schoolclass_id = CTX.schoolclassId;
+    payload.staff_id = CTX.teacherId;
+
     Swal.fire({ title: 'Saving Scores...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-    const savePromises = [];
-    for (const [assessmentId, score] of Object.entries(scores)) {
-        savePromises.push(fetch(routes.singleUpdate, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({
-                broadsheet_id: broadsheetId,
-                assessment_id: parseInt(assessmentId),
-                score: score,
-                is_sub: false,
-                term_id: {{ $termId }},
-                session_id: {{ $sessionId }},
-                subjectclass_id: {{ $subjectclassId }},
-                schoolclass_id: {{ $schoolclass->id ?? 0 }},
-                staff_id: {{ $teacherId }}
-            })
-        }));
-    }
+    fetch(routes.singleUpdate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        Swal.close();
+        if (!data.success) {
+            showToast(data.message || 'Error saving scores', 'danger');
+            return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('scoreEntryModal'))?.hide();
+        showToast('Scores saved successfully', 'success');
 
-    Promise.all(savePromises)
-        .then(responses => Promise.all(responses.map(r => r.json())))
-        .then(() => {
-            Swal.close();
-            bootstrap.Modal.getInstance(document.getElementById('scoreEntryModal'))?.hide();
-            showToast('Scores saved successfully', 'success');
-
-            const row = document.querySelector(`tr[data-id="${broadsheetId}"]`);
-            if (row) {
-                for (const [assessmentId, score] of Object.entries(scores)) {
-                    const input = row.querySelector(`.score-input[data-field="${assessmentId}"]`);
-                    if (input) { input.value = score; input.dataset.original = score; }
-                }
-                updateRowGrades(row);
-            }
-            refreshAllPositions();
-        })
-        .catch(err => {
-            Swal.close();
-            showToast('Error saving scores', 'danger');
-            console.error(err);
-        });
+        const row = document.querySelector(`tr[data-id="${broadsheetId}"]`);
+        if (row) {
+            ['ca1','ca2','ca3','exam'].forEach(field => {
+                const inp = row.querySelector(`.score-input[data-field="${field}"]`);
+                if (inp) { inp.value = payload[field]; inp.dataset.original = payload[field]; }
+            });
+            updateRowGrades(row);
+        }
+        refreshAllPositions();
+    })
+    .catch(err => {
+        Swal.close();
+        showToast('Error saving scores', 'danger');
+        console.error(err);
+    });
 }
 
+// ══ Lock controls ══
 function lockAllScoresheets() {
     Swal.fire({
         title: 'Lock all scoresheets?',
@@ -2011,13 +1963,19 @@ function lockAllScoresheets() {
         inputLabel: 'Reason for locking (optional)',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
-        confirmButtonText: 'Yes, lock all'
+        confirmButtonText: 'Yes, lock all',
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(routes.lockBatch, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ subjectclass_ids: [{{ $subjectclassId }}], term_id: {{ $termId }}, session_id: {{ $sessionId }}, lock_type: 'individual', reason: result.value })
+                body: JSON.stringify({
+                    subjectclass_ids: [CTX.subjectclassId],
+                    term_id: CTX.termId,
+                    session_id: CTX.sessionId,
+                    lock_type: 'individual',
+                    reason: result.value,
+                }),
             }).then(r => r.json()).then(data => {
                 if (data.success) { showToast(data.message, 'success'); location.reload(); }
                 else showToast(data.message, 'danger');
@@ -2034,13 +1992,19 @@ function globalLock() {
         inputLabel: 'Reason for global lock',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
-        confirmButtonText: 'Apply Global Lock'
+        confirmButtonText: 'Apply Global Lock',
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(routes.lockBatch, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ subjectclass_ids: [{{ $subjectclassId }}], term_id: {{ $termId }}, session_id: {{ $sessionId }}, lock_type: 'global', reason: result.value })
+                body: JSON.stringify({
+                    subjectclass_ids: [CTX.subjectclassId],
+                    term_id: CTX.termId,
+                    session_id: CTX.sessionId,
+                    lock_type: 'global',
+                    reason: result.value,
+                }),
             }).then(r => r.json()).then(data => {
                 if (data.success) { showToast(data.message, 'success'); location.reload(); }
                 else showToast(data.message, 'danger');
@@ -2055,13 +2019,18 @@ function unlockAllScoresheets() {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#16a34a',
-        confirmButtonText: 'Yes, unlock all'
+        confirmButtonText: 'Yes, unlock all',
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(routes.unlockBatch, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ subjectclass_ids: [{{ $subjectclassId }}], term_id: {{ $termId }}, session_id: {{ $sessionId }}, unlock_type: 'individual' })
+                body: JSON.stringify({
+                    subjectclass_ids: [CTX.subjectclassId],
+                    term_id: CTX.termId,
+                    session_id: CTX.sessionId,
+                    unlock_type: 'individual',
+                }),
             }).then(r => r.json()).then(data => {
                 if (data.success) { showToast(data.message, 'success'); location.reload(); }
                 else showToast(data.message, 'danger');
@@ -2082,13 +2051,13 @@ function toggleTeacherEditing() {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: isEnabled ? '#dc2626' : '#16a34a',
-        confirmButtonText: isEnabled ? 'Disable' : 'Enable'
+        confirmButtonText: isEnabled ? 'Disable' : 'Enable',
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                body: JSON.stringify({ subjectclass_ids: [{{ $subjectclassId }}] })
+                body: JSON.stringify({ subjectclass_ids: [CTX.subjectclassId] }),
             }).then(r => r.json()).then(data => {
                 if (data.success) { showToast(data.message, 'success'); location.reload(); }
                 else showToast(data.message, 'danger');
@@ -2097,13 +2066,84 @@ function toggleTeacherEditing() {
     });
 }
 
-// ─── DOM Ready ───────────────────────────────────────────────────────────────
+// ══ Score Tooltip ══
+let tipInput = null;
+let tipHideTimer = null;
+const tip = document.getElementById('scoreTooltip');
+
+function tipPosition(inp) {
+    const r = inp.getBoundingClientRect(), tw = 230, margin = 8;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - tw - margin));
+    tip.style.left = left + 'px';
+    tip.classList.remove('tip-above', 'tip-below');
+    if (r.top > 155) {
+        tip.style.top = (r.top + window.scrollY - 8) + 'px';
+        tip.classList.add('tip-above');
+    } else {
+        tip.style.top = (r.bottom + window.scrollY + 8) + 'px';
+        tip.classList.add('tip-below');
+    }
+}
+
+function tipRefresh(inp) {
+    if (!inp) return;
+    const row = inp.closest('tr');
+    const val = parseFloat(inp.value) || 0;
+    const max = parseFloat(inp.dataset.max) || 100;
+    const asmtName = inp.dataset.assessmentName || 'Score';
+
+    const ca1  = parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0;
+    const ca2  = parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0;
+    const ca3  = parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0;
+    const exam = parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0;
+
+    const caAvg = (ca1 + ca2 + ca3) / 3;
+    const total = (caAvg + exam) / 2;
+    const grade = clientGrade(total);
+    const pct   = Math.min((total / 100) * 100, 100);
+    const col   = getGradeColor(grade);
+
+    document.getElementById('stAvatar').src = row.dataset.avatar || '{{ asset("storage/student_avatars/unnamed.jpg") }}';
+    document.getElementById('stName').textContent = row.dataset.name || '—';
+    document.getElementById('stMeta').textContent = (row.dataset.admissionno || '—') + ' · ' + asmtName + ' (max ' + max + ')';
+    document.getElementById('stVal').textContent = val % 1 === 0 ? String(val) : val.toFixed(1);
+    document.getElementById('stTotal').textContent = total.toFixed(1);
+    const gEl = document.getElementById('stGrade');
+    gEl.textContent = grade;
+    gEl.style.color = col;
+    document.getElementById('stProgLabel').textContent = total.toFixed(1) + ' / 100 marks';
+    document.getElementById('stProgPct').textContent = Math.round(pct) + '%';
+    const fill = document.getElementById('stProgFill');
+    fill.style.width = pct.toFixed(1) + '%';
+    fill.style.background = pct >= 70 ? '#16a34a' : pct >= 50 ? '#2563eb' : pct >= 40 ? '#d97706' : '#dc2626';
+    tipPosition(inp);
+}
+
+function tipShow(inp) {
+    clearTimeout(tipHideTimer);
+    tipInput = inp;
+    tip.style.position = 'fixed';
+    tip.style.display = 'block';
+    tipRefresh(inp);
+    requestAnimationFrame(() => { tip.style.opacity = '1'; });
+}
+
+function tipHide() {
+    tip.style.opacity = '0';
+    tipHideTimer = setTimeout(() => { if (tip.style.opacity === '0') tip.style.display = 'none'; }, 160);
+    tipInput = null;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  DOM READY
+// ══════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Init grade colors on existing rows
+    // Initialize row grades
     document.querySelectorAll('#scoresheetTableBody tr[data-id]').forEach(row => updateRowGrades(row));
 
-    // Default: hide audit & lock detail columns (opt-in via Columns modal)
+    // Hide audit & lock detail columns by default
     const auditLockCols = [
         'col-submitted-by','col-vetted-by','col-entered-by','col-entered-at',
         'col-last-modified-by','col-last-modified-at','col-entry-source',
@@ -2128,7 +2168,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Quick-toggle: Show All Audit
     document.getElementById('showAuditCols')?.addEventListener('click', function() {
         ['col-submitted-by','col-vetted-by','col-entered-by','col-entered-at',
          'col-last-modified-by','col-last-modified-at','col-entry-source'].forEach(cls => {
@@ -2138,7 +2177,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Quick-toggle: Show All Lock Detail
     document.getElementById('showLockCols')?.addEventListener('click', function() {
         ['col-is-locked','col-locked-by','col-locked-at','col-lock-reason',
          'col-scheduled-unlock','col-unlock-scheduled-by'].forEach(cls => {
@@ -2148,7 +2186,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Quick-toggle: Hide Audit & Lock
     document.getElementById('hideAuditLockCols')?.addEventListener('click', function() {
         auditLockCols.forEach(cls => {
             document.querySelectorAll(`th.${cls}, td.${cls}`).forEach(el => el.style.display = 'none');
@@ -2177,7 +2214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (si) { si.value = ''; si.dispatchEvent(new Event('input')); }
     });
 
-    // Select All
+    // Checkboxes
     document.getElementById('checkAll')?.addEventListener('change', function() {
         document.querySelectorAll('.score-checkbox').forEach(cb => cb.checked = this.checked);
     });
@@ -2198,11 +2235,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('unlockAllBtn')?.addEventListener('click', unlockAllScoresheets);
     document.getElementById('toggleTeacherEditBtn')?.addEventListener('click', toggleTeacherEditing);
 
-    // Assessments data for modal
-    const assessmentsData = @json($assessments->map(function($a) {
-        return ['id' => $a->id, 'name' => $a->name, 'max_score' => $a->max_score];
-    }));
-
     // Edit button handler (event delegation)
     document.getElementById('scoresheetTableBody')?.addEventListener('click', function(e) {
         const editBtn = e.target.closest('.edit-scores-btn');
@@ -2212,11 +2244,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const broadsheetId = editBtn.dataset.id;
         const row = document.querySelector(`tr[data-id="${broadsheetId}"]`);
-        const currentScores = {};
+        const currentScores = { ca1: 0, ca2: 0, ca3: 0, exam: 0 };
         if (row) {
-            row.querySelectorAll('.score-input').forEach(input => {
-                currentScores[input.dataset.field] = parseFloat(input.value) || 0;
-            });
+            currentScores.ca1  = parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0;
+            currentScores.ca2  = parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0;
+            currentScores.ca3  = parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0;
+            currentScores.exam = parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0;
         }
 
         openScoreEntryModal(
@@ -2225,7 +2258,6 @@ document.addEventListener('DOMContentLoaded', function() {
             editBtn.dataset.admission,
             editBtn.dataset.avatar,
             currentScores,
-            assessmentsData,
             editBtn.dataset.bf
         );
     });
@@ -2234,36 +2266,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Individual score inputs
     document.querySelectorAll('.score-input').forEach(inp => {
+        inp.addEventListener('focus', function() { this.select(); tipShow(this); });
         inp.addEventListener('input', function() {
             validateInput(this);
             const row = this.closest('tr');
             if (row) updateRowGrades(row);
+            if (tipInput === this) tipRefresh(this);
         });
         inp.addEventListener('blur', function() {
+            setTimeout(() => { if (tipInput === this) tipHide(); }, 80);
             if (!validateInput(this)) { this.value = this.dataset.original || 0; return; }
             saveIndividualScore(this);
         });
         inp.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+            if (e.key === 'Escape') { e.preventDefault(); tipHide(); this.blur(); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (validateInput(this)) saveIndividualScore(this);
+            const all = Array.from(document.querySelectorAll('.score-input:not(:disabled)'));
+            const idx = all.indexOf(this);
+            if (idx < all.length - 1) all[idx + 1].focus();
         });
     });
 
-    // Ctrl+S shortcut
+    // Ctrl+S
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); bulkSaveScores(); }
     });
 
     // Download buttons
+    const qsParams = `?subjectclass_id=${CTX.subjectclassId}&staff_id=${CTX.teacherId}&term_id=${CTX.termId}&session_id=${CTX.sessionId}&schoolclass_id=${CTX.schoolclassId}`;
+
     document.getElementById('downloadExcel')?.addEventListener('click', function() {
-        window.location.href = routes.export + `?subjectclass_id={{ $subjectclassId }}&staff_id={{ $teacherId }}&term_id={{ $termId }}&session_id={{ $sessionId }}&schoolclass_id={{ $schoolclass->id ?? 0 }}`;
+        window.location.href = routes.export + qsParams;
     });
 
     document.getElementById('downloadMarksSheet')?.addEventListener('click', function() {
-        window.location.href = routes.downloadMarksSheet + `?subjectclass_id={{ $subjectclassId }}&staff_id={{ $teacherId }}&term_id={{ $termId }}&session_id={{ $sessionId }}&schoolclass_id={{ $schoolclass->id ?? 0 }}`;
+        window.location.href = routes.downloadMarksSheet + qsParams;
     });
 
     document.getElementById('downloadScoresPdf')?.addEventListener('click', function() {
-        window.location.href = routes.downloadScoresPdf + `?subjectclass_id={{ $subjectclassId }}&staff_id={{ $teacherId }}&term_id={{ $termId }}&session_id={{ $sessionId }}&schoolclass_id={{ $schoolclass->id ?? 0 }}`;
+        window.location.href = routes.downloadScoresPdf + qsParams;
     });
 
     // Import form
@@ -2307,7 +2350,11 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(routes.updateArmPositions, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ schoolclass_id: {{ $schoolclass->id ?? 0 }}, term_id: {{ $termId }}, session_id: {{ $sessionId }} })
+            body: JSON.stringify({
+                schoolclass_id: CTX.schoolclassId,
+                term_id: CTX.termId,
+                session_id: CTX.sessionId,
+            }),
         })
         .then(r => r.json())
         .then(data => {
@@ -2330,72 +2377,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Staggered row entrance
     document.querySelectorAll('#scoresheetTableBody tr[data-id]').forEach((row, index) => {
         setTimeout(() => row.classList.add('row-visible'), index * 30);
-    });
-
-    // ─── Score Input Tooltip ──────────────────────────────────────────────────
-    let tipInput = null;
-    let tipHideTimer = null;
-    const tip = document.getElementById('scoreTooltip');
-
-    function tipPosition(inp) {
-        const r = inp.getBoundingClientRect(), tw = 230, margin = 8;
-        let left = r.left + r.width / 2 - tw / 2;
-        left = Math.max(margin, Math.min(left, window.innerWidth - tw - margin));
-        tip.style.left = left + 'px';
-        tip.classList.remove('tip-above', 'tip-below');
-        if (r.top > 155) {
-            tip.style.top = (r.top + window.scrollY - 8) + 'px';
-            tip.classList.add('tip-above');
-        } else {
-            tip.style.top = (r.bottom + window.scrollY + 8) + 'px';
-            tip.classList.add('tip-below');
-        }
-    }
-
-    function tipRefresh(inp) {
-        if (!inp) return;
-        const row = inp.closest('tr');
-        const val = parseFloat(inp.value) || 0, max = parseFloat(inp.dataset.max) || 100;
-        const asmtName = inp.dataset.assessmentName || 'Score';
-        let total = 0, totalMax = 0;
-        row.querySelectorAll('.score-input').forEach(i => { total += parseFloat(i.value)||0; totalMax += parseFloat(i.dataset.max)||0; });
-        const grade = clientGrade(total);
-        const pct   = totalMax > 0 ? Math.min(total / totalMax * 100, 100) : 0;
-        const col   = getGradeColor(grade);
-
-        document.getElementById('stAvatar').src = row.dataset.avatar || '{{ asset("storage/student_avatars/unnamed.jpg") }}';
-        document.getElementById('stName').textContent = row.dataset.name || '—';
-        document.getElementById('stMeta').textContent = (row.dataset.admissionno || '—') + ' · ' + asmtName + ' (max ' + max + ')';
-        document.getElementById('stVal').textContent = val % 1 === 0 ? String(val) : val.toFixed(1);
-        document.getElementById('stTotal').textContent = total.toFixed(1);
-        const gEl = document.getElementById('stGrade'); gEl.textContent = grade; gEl.style.color = col;
-        document.getElementById('stProgLabel').textContent = total.toFixed(1) + ' / ' + totalMax + ' marks';
-        document.getElementById('stProgPct').textContent = Math.round(pct) + '%';
-        const fill = document.getElementById('stProgFill');
-        fill.style.width = pct.toFixed(1) + '%';
-        fill.style.background = pct >= 70 ? '#16a34a' : pct >= 50 ? '#2563eb' : pct >= 40 ? '#d97706' : '#dc2626';
-        tipPosition(inp);
-    }
-
-    function tipShow(inp) {
-        clearTimeout(tipHideTimer);
-        tipInput = inp;
-        tip.style.position = 'fixed';
-        tip.style.display = 'block';
-        tipRefresh(inp);
-        requestAnimationFrame(() => { tip.style.opacity = '1'; });
-    }
-
-    function tipHide() {
-        tip.style.opacity = '0';
-        tipHideTimer = setTimeout(() => { if (tip.style.opacity === '0') tip.style.display = 'none'; }, 160);
-        tipInput = null;
-    }
-
-    document.querySelectorAll('.score-input').forEach(inp => {
-        inp.addEventListener('focus', function() { tipShow(this); });
-        inp.addEventListener('blur', function() { setTimeout(() => { if (tipInput === this) tipHide(); }, 80); });
-        inp.addEventListener('input', function() { if (tipInput === this) tipRefresh(this); });
     });
 });
 </script>
