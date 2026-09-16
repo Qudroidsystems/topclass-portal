@@ -286,8 +286,7 @@ body{font-family:var(--rol-font);}
     {{-- Role cards --}}
     @if($roles->count())
     @php
-        // Precompute all role user counts in ONE query instead of N queries
-        // inside the @foreach (was: DB::table('model_has_roles')->count() per role).
+       
         $userCounts = DB::table('model_has_roles')
             ->select('role_id', DB::raw('COUNT(*) as total'))
             ->groupBy('role_id')
