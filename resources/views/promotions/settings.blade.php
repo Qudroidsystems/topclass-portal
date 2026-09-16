@@ -276,7 +276,9 @@
 
 </div></div></div>
 
-{{-- MODAL --}}
+{{-- ═══════════════════════════════════════════════════════════════════
+     MODAL
+     ═══════════════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="settingModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
@@ -293,6 +295,7 @@
       </form>
 
       <div class="modal-body">
+        {{-- Class & Scope --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-book-2-line me-2"></i>Class &amp; Scope</span></div>
           <div class="row g-3">
@@ -333,6 +336,7 @@
           <div id="subjectSummary" class="mt-2" style="display:none;"></div>
         </div>
 
+        {{-- Template loader --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-file-copy-line me-2"></i>Load from Template <small class="text-muted fw-normal">(optional)</small></span></div>
           <div class="d-flex gap-2 align-items-end flex-wrap">
@@ -354,6 +358,7 @@
           </div>
         </div>
 
+        {{-- Evaluation Mode + Active --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-git-branch-line me-2"></i>Evaluation Mode &amp; Status</span></div>
           <div class="row g-3">
@@ -389,6 +394,7 @@
           </div>
         </div>
 
+        {{-- Rules --}}
         <div class="form-section">
           <div class="form-section-title">
             <span><i class="ri-price-tag-3-line me-2"></i>Promotion Rules
@@ -417,6 +423,7 @@
           </div>
         </div>
 
+        {{-- Labels --}}
         <div class="form-section">
           <div class="form-section-title"><span><i class="ri-price-tag-line me-2"></i>Status Labels</span></div>
           <div class="row g-3">
@@ -430,7 +437,7 @@
               <input type="text" class="form-control form-control-sm" id="repeat_label" value="Advice to Repeat"></div>
           </div>
         </div>
-      </div>
+      </div>{{-- /modal-body --}}
 
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -443,28 +450,27 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════════════
-   RULE INTERPRETER (unchanged)
+   RULE INTERPRETER
    ════════════════════════════════════════════════════════════════════════ */
 const RuleInterpreter = (() => {
     const GRADE_LABELS_SENIOR = {
-        A1: 'A1 (Distinction)', B2: 'B2 (Very Good)', B3: 'B3 (Good)',
-        C4: 'C4 (Credit)', C5: 'C5 (Credit)', C6: 'C6 (Credit)',
-        D7: 'D7 (Pass)', E8: 'E8 (Below Pass)', F9: 'F9 (Fail)',
+        A1:'A1 (Distinction)', B2:'B2 (Very Good)', B3:'B3 (Good)',
+        C4:'C4 (Credit)', C5:'C5 (Credit)', C6:'C6 (Credit)',
+        D7:'D7 (Pass)', E8:'E8 (Below Pass)', F9:'F9 (Fail)',
     };
     const GRADE_LABELS_JUNIOR = {
-        A: 'A (Excellent)', B: 'B (Good)', C: 'C (Credit)', D: 'D (Pass)', F: 'F (Fail)',
+        A:'A (Excellent)', B:'B (Good)', C:'C (Credit)', D:'D (Pass)', F:'F (Fail)',
     };
     const GROUP_LABELS_SENIOR = {
-        A: 'distinctions (A1)', B: 'very-good/good grades (B2–B3)',
-        C: 'credit grades (C4–C6)', D: 'pass grades (D7)',
-        E: 'below-pass grades (E8)', F: 'fail grades (F9)',
+        A:'distinctions (A1)', B:'very-good/good grades (B2–B3)',
+        C:'credit grades (C4–C6)', D:'pass grades (D7)',
+        E:'below-pass grades (E8)', F:'fail grades (F9)',
     };
     const GROUP_LABELS_JUNIOR = {
-        A: 'A grades (Excellent)', B: 'B grades (Good)',
-        C: 'C grades (Credit)', D: 'D grades (Pass)', F: 'F grades (Fail)',
+        A:'A grades (Excellent)', B:'B grades (Good)',
+        C:'C grades (Credit)', D:'D grades (Pass)', F:'F grades (Fail)',
     };
     function gradeLabel(g, grouping, senior) {
         g = (g || '').toUpperCase();
@@ -1037,25 +1043,35 @@ function handleContainerInput(e) {
    REFRESH CLASS INFO
    ════════════════════════════════════════════════════════════════════════ */
 async function refreshClassInfo() {
-    const classId   = document.getElementById('schoolclass_id').value;
-    const termId    = document.getElementById('term_id').value;
-    const sessionId = document.getElementById('session_id').value;
+    // ── Defensive: get element, log if missing ──────────────────────
+    const classSelect = document.getElementById('schoolclass_id');
+    if (!classSelect) {
+        console.error('[refreshClassInfo] #schoolclass_id element NOT FOUND in DOM');
+        return;
+    }
+
+    const classId   = classSelect.value;
+    const termId    = document.getElementById('term_id')?.value || '';
+    const sessionId = document.getElementById('session_id')?.value || '';
+
+    console.log('[refreshClassInfo] Called with:', { classId, termId, sessionId });
+
+    // ── Guard: no class → nothing to do ─────────────────────────────
+    if (!classId || classId === '' || classId === '0') {
+        console.warn('[refreshClassInfo] Aborted — classId is empty');
+        document.getElementById('subjectSummary').style.display = 'none';
+        document.getElementById('addRuleBtn').disabled = true;
+        return;
+    }
+
+    // ── Guard: prevent overlapping fetches ──────────────────────────
+    if (refreshInFlight) return;
+    refreshInFlight = true;
+
     const addBtn    = document.getElementById('addRuleBtn');
     const loadEl    = document.getElementById('subjectLoadStatus');
     const summaryEl = document.getElementById('subjectSummary');
     const scopeInfo = document.getElementById('ruleScopeInfo');
-
-    // GUARD: no class → do nothing
-    if (!classId) {
-        scopeInfo.textContent = '';
-        summaryEl.style.display = 'none';
-        addBtn.disabled = true;
-        return;
-    }
-
-    // GUARD: prevent overlapping fetches
-    if (refreshInFlight) return;
-    refreshInFlight = true;
 
     const currentAvg = document.getElementById('promotion_pass_average').value;
     const hasCurrentAvg = currentAvg !== '' && currentAvg !== null && currentAvg !== undefined;
@@ -1068,6 +1084,8 @@ async function refreshClassInfo() {
         let url = `/promotion-settings/class-promotion-data?classid=${encodeURIComponent(classId)}`;
         if (termId && termId !== '')       url += `&termid=${encodeURIComponent(termId)}`;
         if (sessionId && sessionId !== '') url += `&sessionid=${encodeURIComponent(sessionId)}`;
+
+        console.log('[refreshClassInfo] Fetching:', url);
 
         const res = await fetch(url, {
             method: 'GET',
@@ -1103,6 +1121,7 @@ async function refreshClassInfo() {
         }
 
         const data = await res.json();
+        console.log('[refreshClassInfo] Data:', data);
 
         if (!data.success) {
             summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">
@@ -1238,33 +1257,36 @@ function resetModal() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   EDIT
+   EDIT — uses getAttribute() to reliably read data-* attributes
    ════════════════════════════════════════════════════════════════════════ */
 async function handleEditClick(e) {
-    const d = e.currentTarget.dataset;
+    const btn = e.currentTarget;
     resetModal();
 
-    document.getElementById('setting_id').value = d.id || '';
-    document.getElementById('schoolclass_id').value = d.schoolclass_id || '';
-    document.getElementById('session_id').value = d.session_id || '';
-    document.getElementById('term_id').value = d.term_id || '';
-    document.getElementById('promoted_label').value = d.promoted_label || 'Promoted';
-    document.getElementById('trial_label').value = d.trial_label || 'Promoted on Trial';
-    document.getElementById('see_principal_label').value = d.see_principal_label || 'Advised to See Principal';
-    document.getElementById('repeat_label').value = d.repeat_label || 'Advice to Repeat';
+    // Use getAttribute() to read data-* attributes reliably regardless of
+    // underscore vs. hyphen naming. HTML dataset camelCasing doesn't apply
+    // when we read via getAttribute('data-schoolclass_id') directly.
+    document.getElementById('setting_id').value          = btn.getAttribute('data-id') || '';
+    document.getElementById('schoolclass_id').value       = btn.getAttribute('data-schoolclass_id') || '';
+    document.getElementById('session_id').value           = btn.getAttribute('data-session_id') || '';
+    document.getElementById('term_id').value              = btn.getAttribute('data-term_id') || '';
+    document.getElementById('promoted_label').value       = btn.getAttribute('data-promoted_label') || 'Promoted';
+    document.getElementById('trial_label').value          = btn.getAttribute('data-trial_label') || 'Promoted on Trial';
+    document.getElementById('see_principal_label').value  = btn.getAttribute('data-see_principal_label') || 'Advised to See Principal';
+    document.getElementById('repeat_label').value         = btn.getAttribute('data-repeat_label') || 'Advice to Repeat';
 
-    const ruleLogic = d.rule_logic || 'grade_count';
+    const ruleLogic = btn.getAttribute('data-rule_logic') || 'grade_count';
     document.getElementById('rule_logic').value = ruleLogic;
 
-    const avgValue = (d.promotion_pass_average !== undefined && d.promotion_pass_average !== null && d.promotion_pass_average !== '')
-        ? d.promotion_pass_average : '';
+    const avgValue = btn.getAttribute('data-promotion_pass_average') || '';
     document.getElementById('promotion_pass_average').value = avgValue;
     document.getElementById('avg_slider').value = (avgValue !== '' ? avgValue : 50);
 
-    document.getElementById('template_id_input').value = d.template_id || '';
-    if (d.template_id) document.getElementById('templateSelect').value = d.template_id;
+    const templateId = btn.getAttribute('data-template_id') || '';
+    document.getElementById('template_id_input').value = templateId;
+    if (templateId) document.getElementById('templateSelect').value = templateId;
 
-    const isActive = d.is_active === '1';
+    const isActive = btn.getAttribute('data-is_active') === '1';
     document.getElementById('modal_is_active').checked = isActive;
     const badge = document.getElementById('modalActiveBadge');
     if (badge) {
@@ -1275,11 +1297,18 @@ async function handleEditClick(e) {
     document.getElementById('rule_logic').dispatchEvent(new Event('change'));
 
     try {
-        promotionRules = JSON.parse(d.promotion_rules || '[]');
+        promotionRules = JSON.parse(btn.getAttribute('data-promotion_rules') || '[]');
     } catch (err) {
         console.error('Failed to parse promotion_rules:', err);
         promotionRules = [];
     }
+
+    console.log('[handleEditClick] Loaded setting:', {
+        id: btn.getAttribute('data-id'),
+        classId: document.getElementById('schoolclass_id').value,
+        ruleLogic: ruleLogic,
+        rulesCount: promotionRules.length,
+    });
 
     openModal();
     await refreshClassInfo();
@@ -1337,7 +1366,6 @@ function bindDeleteButtons() {
    SAVE
    ════════════════════════════════════════════════════════════════════════ */
 document.getElementById('saveSettingBtn')?.addEventListener('click', async function () {
-    // Prevent double-submission
     if (this.disabled) return;
     this.disabled = true;
     setTimeout(() => { this.disabled = false; }, 3000);
@@ -1407,22 +1435,16 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
     let url = '/promotion-settings';
     if (id) {
         url = `/promotion-settings/${id}`;
-        fd.append('_method', 'PUT');  // Laravel method override
+        fd.append('_method', 'PUT');
     }
 
-    console.log('[SAVE] Submitting:', {
-        url: url,
-        method: 'POST',  // always POST — Laravel interprets _method override
-        hasId: !!id,
-        ruleLogic: ruleLogic,
-        avgValue: avgValue,
-    });
+    console.log('[SAVE] Submitting:', { url, method: 'POST', hasId: !!id, ruleLogic, avgValue });
 
     Swal.fire({ title: 'Saving…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
         const res = await fetch(url, {
-            method: 'POST',  // ⚠️ ALWAYS POST — never GET
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'Accept': 'application/json',
@@ -1434,11 +1456,8 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
         const ct = res.headers.get('content-type') || '';
         if (!ct.includes('application/json')) {
             const txt = await res.text();
-            console.error('[SAVE] Non-JSON response:', {
-                status: res.status,
-                body: txt.substring(0, 500),
-            });
-            Swal.fire('Error', `Server returned ${res.status}. Check console for details.`, 'error');
+            console.error('[SAVE] Non-JSON response:', { status: res.status, body: txt.substring(0, 500) });
+            Swal.fire('Error', `Server returned ${res.status}. Check console.`, 'error');
             this.disabled = false;
             return;
         }
@@ -1596,8 +1615,7 @@ document.getElementById('loadTemplateBtn')?.addEventListener('click', async func
 /* ════════════════════════════════════════════════════════════════════════
    CHANGE LISTENERS — GUARDED
    Only fire when a class is selected AND the modal is currently open.
-   This prevents the "GET /promotion-settings/1" error caused by stray
-   change events during page load.
+   Prevents stray fetches when the page loads.
    ════════════════════════════════════════════════════════════════════════ */
 ['schoolclass_id', 'session_id', 'term_id'].forEach(id => {
     const el = document.getElementById(id);
@@ -1618,6 +1636,4 @@ document.addEventListener('DOMContentLoaded', () => {
     rerenderRules();
 });
 </script>
-
-
 @endsection
