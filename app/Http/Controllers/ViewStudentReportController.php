@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/ViewStudentReportController.php
 
 namespace App\Http\Controllers;
 
@@ -48,7 +47,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // FORMAT HELPERS (unchanged)
+    // FORMAT HELPERS
     // =========================================================================
 
     protected function formatOrdinal($number)
@@ -69,7 +68,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // GRADE HELPERS (unchanged)
+    // GRADE HELPERS
     // =========================================================================
 
     protected function calculateSeniorGrade($score)
@@ -142,7 +141,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // GPA / CGPA FROM CUM (not from TOTAL) — unchanged shape
+    // GPA / CGPA
     // =========================================================================
 
     protected function computeOverallGPAAndCGPAForStudent($studentId, $schoolclass, $termId, $sessionId)
@@ -211,7 +210,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // CLASS POSITIONS — delegates to ClassPositionService
+    // CLASS POSITIONS
     // =========================================================================
 
     protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid, $termid)
@@ -264,7 +263,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // GET STUDENT RESULT DATA — PROJECT 1 STRUCTURE + EVALUATOR
+    // GET STUDENT RESULT DATA
     // =========================================================================
 
     private function getStudentResultData($id, $schoolclassid, $sessionid, $termid)
@@ -302,7 +301,7 @@ class ViewStudentReportController extends Controller
                 ? (bool) ($schoolclass->classcategories->first()->is_senior ?? false)
                 : false;
 
-            // ── Fetch broadsheets — FIXED CA COLUMNS ────────────────────────
+            // ── Fetch broadsheets ───────────────────────────────────────────
             $scores = Broadsheets::where('broadsheet_records.student_id', $id)
                 ->where('broadsheets.term_id',               $termid)
                 ->where('broadsheet_records.session_id',     $sessionid)
@@ -343,7 +342,7 @@ class ViewStudentReportController extends Controller
                     'broadsheets.vettedstatus',
                 ])->get();
 
-            // ── Format positions on each row ────────────────────────────────
+            // ── Format positions ────────────────────────────────────────────
             foreach ($scores as $score) {
                 $score->position_formatted         = ($score->position      && $score->position      > 0) ? $this->formatOrdinal($score->position)      : '-';
                 $score->position_total_formatted   = ($score->position_total && $score->position_total > 0) ? $this->formatOrdinal($score->position_total) : '-';
@@ -400,43 +399,7 @@ class ViewStudentReportController extends Controller
                 $score->is_compulsory = in_array($score->subject_id, $compulsorySubjects);
             }
 
-            // ═══════════════════════════════════════════════════════════════
-            // PROMOTION EVALUATION — replaces ~150 lines of hardcoded logic
-            // ═══════════════════════════════════════════════════════════════
-            //
-            // The old `getStudentResultData()` had a sprawling block:
-            //
-            //   if ($isSenior) {
-            //       if (...) { $principalComment = ...; $promotionStatusValue = 'PROMOTED'; }
-            //       elseif (...) { ... }
-            //       ...
-            //   } else {
-            //       if (...) { ... } elseif (...) { ... }
-            //   }
-            //
-            // All of that is now handled by `PromotionEvaluator::evaluate()`.
-            // The evaluator reads `promotion_settings` (configured by admins)
-            // and applies rules in priority order — first match wins.
-            //
-            // Result shape (unchanged):
-            //   [
-            //     'status'               => 'promoted' | 'trial' | 'see_principal' | 'repeated' | 'awaiting',
-            //     'status_label'         => 'Promoted' | ... (from settings),
-            //     'is_promotional_term'  => bool,
-            //     'failed_compulsory'    => [ ... ],
-            //     'compulsory_subject_detail' => [ ... ],
-            //     'average_failed'       => bool,
-            //     'required_average'     => float|null,
-            //     'actual_average'       => float|null,
-            //     'compulsory_count'     => int,
-            //     'passed_compulsory'    => int,
-            //     'applied_rule'         => ['name' => string, 'description' => string, 'index' => int]|null,
-            //     'settings_id'          => int|null,
-            //     'rule_logic'           => 'grade_count'|'average_only'|'both'|null,
-            //     'settings'             => array|null,
-            //   ]
-            // ═══════════════════════════════════════════════════════════════
-
+            // ── PROMOTION EVALUATION ────────────────────────────────────────
             $promotionResult = $this->promotionEvaluator->evaluate(
                 studentId:      $id,
                 schoolclassid:  $schoolclassid,
@@ -446,7 +409,7 @@ class ViewStudentReportController extends Controller
                 overallAverage: $totalsSummary['percentage']
             );
 
-            // ── Persist to PromotionStatus (audit + admin overrides preserved) ──
+            // ── Persist to PromotionStatus ──────────────────────────────────
             try {
                 $existing = PromotionStatus::where('studentId',     $id)
                     ->where('schoolclassid', $schoolclassid)
@@ -454,9 +417,6 @@ class ViewStudentReportController extends Controller
                     ->where('termid',        $termid)
                     ->first();
 
-                // Do NOT overwrite an admin override. Only persist automatic
-                // evaluation when there is no existing row OR the existing row
-                // was itself auto-generated (rule_applied populated).
                 $canPersist = !$existing || $existing->rule_applied !== null;
 
                 if ($canPersist && $promotionResult['status'] !== 'awaiting') {
@@ -491,7 +451,7 @@ class ViewStudentReportController extends Controller
                 $studentpp = collect();
             }
 
-            // ── Meta: session, term, class size, school info ────────────────
+            // ── Meta ────────────────────────────────────────────────────────
             $schoolsession    = Schoolsession::where('id', $sessionid)->first();
             $schoolterm       = Schoolterm::where('id', $termid)->first();
             $numberOfStudents = Studentclass::where('schoolclassid', $schoolclassid)
@@ -597,7 +557,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // INDEX — paginated student list for the report manager
+    // INDEX
     // =========================================================================
 
     public function index(Request $request): View|JsonResponse
@@ -661,7 +621,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // DRAWER DATA (AJAX for the promotion modal on the report page)
+    // DRAWER DATA
     // =========================================================================
 
     public function drawerData($studentId, $schoolclassId, $sessionId, $termId)
@@ -759,7 +719,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // MOCK SCORES (drawer support)
+    // MOCK SCORES
     // =========================================================================
 
     private function fetchMockScoresForDrawer($studentId, $schoolclassId, $sessionId, $termId): array
@@ -974,7 +934,7 @@ class ViewStudentReportController extends Controller
     }
 
     // =========================================================================
-    // IMAGE HELPERS (unchanged)
+    // IMAGE HELPERS
     // =========================================================================
 
     private function fixImagePaths(&$studentData)

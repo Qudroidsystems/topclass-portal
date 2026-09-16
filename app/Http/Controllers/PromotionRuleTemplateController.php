@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/PromotionRuleTemplateController.php
 
 namespace App\Http\Controllers;
 
@@ -18,7 +17,7 @@ class PromotionRuleTemplateController extends Controller
         $pagetitle = 'Promotion Rule Templates';
 
         $templates     = PromotionRuleTemplate::orderBy('name')->get();
-        $settings      = $templates; // Alias for the view
+        $settings      = $templates;
         $schoolclasses = DB::table('schoolclass')
             ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->select('schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name')
@@ -83,7 +82,7 @@ class PromotionRuleTemplateController extends Controller
                 'name'            => $request->name,
                 'description'     => $request->description,
                 'grade_scale'     => $request->grade_scale,
-                'promotion_rules' => json_decode($request->promotion_rules, true),
+                'rules'           => json_decode($request->promotion_rules, true),
                 'is_active'       => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
                 'created_by'      => auth()->id(),
             ]);
@@ -113,11 +112,11 @@ class PromotionRuleTemplateController extends Controller
         try {
             $template = PromotionRuleTemplate::findOrFail($id);
             $template->update([
-                'name'            => $request->name,
-                'description'     => $request->description,
-                'grade_scale'     => $request->grade_scale,
-                'promotion_rules' => json_decode($request->promotion_rules, true),
-                'is_active'       => filter_var($request->input('is_active', $template->is_active), FILTER_VALIDATE_BOOLEAN),
+                'name'        => $request->name,
+                'description' => $request->description,
+                'grade_scale' => $request->grade_scale,
+                'rules'       => json_decode($request->promotion_rules, true),
+                'is_active'   => filter_var($request->input('is_active', $template->is_active), FILTER_VALIDATE_BOOLEAN),
             ]);
 
             return response()->json(['success' => true, 'message' => 'Template updated successfully.', 'data' => $template]);
@@ -191,7 +190,7 @@ class PromotionRuleTemplateController extends Controller
             return response()->json([
                 'success'      => true,
                 'template'     => $template,
-                'merged_rules' => $template->promotion_rules ?? [],
+                'merged_rules' => $template->rules ?? [],
                 'message'      => 'Template loaded successfully.',
             ]);
 

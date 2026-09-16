@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/PromotionController.php
 
 namespace App\Http\Controllers;
 
@@ -52,8 +51,6 @@ class PromotionController extends Controller
             $sessionId     = (int) $request->input('sessionid');
             $termId        = (int) $request->input('termid', 3);
 
-            // Pre-flight: skip the evaluator entirely when no active setting
-            // applies to this class+session+term combination.
             $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                 $schoolclassId, $sessionId, $termId
             );
@@ -581,10 +578,6 @@ class PromotionController extends Controller
     // PRIVATE HELPERS
     // =========================================================================
 
-    /**
-     * Skip the evaluator entirely when no active setting matches
-     * this class+session+term combination.
-     */
     private function classHasNoApplicableSetting(
         int $schoolclassId,
         int $sessionId,
@@ -612,9 +605,6 @@ class PromotionController extends Controller
         return true;
     }
 
-    /**
-     * Fetch broadsheet scores for a student (fixed CA structure).
-     */
     private function getStudentScores($studentId, $schoolclassId, $sessionId, $termId)
     {
         try {
