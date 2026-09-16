@@ -1,3 +1,4 @@
+{{-- resources/views/classbroadsheet/classbroadsheet.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
@@ -5,9 +6,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
 <style>
-/* ─────────────────────────────────────────────
-   SCREEN STYLES
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════════════ */
 :root {
     --cb-navy:      #0f2342;
     --cb-teal:      #0d9488;
@@ -22,7 +23,6 @@
     --cb-radius:    14px;
     --cb-shadow:    0 4px 16px rgba(15,35,66,.10);
     --cb-shadow-lg: 0 8px 32px rgba(15,35,66,.14);
-    --cumave-color: #7c3aed;
 }
 *, *::before, *::after { box-sizing: border-box; }
 body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
@@ -34,106 +34,66 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 @keyframes fadeInRight { from { opacity:0; transform:translateX(22px); }  to { opacity:1; transform:translateX(0); } }
 @keyframes scaleIn     { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
 @keyframes pulse       { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
-@keyframes shimmer     {
-    0%   { background-position:-800px 0; }
-    100% { background-position:800px 0; }
-}
 @keyframes slideInRight{ from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 @keyframes spin        { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 @keyframes popIn       { 0% { opacity:0; transform:scale(.7) translateY(12px); } 60% { transform:scale(1.04) translateY(-3px); } 100% { opacity:1; transform:scale(1) translateY(0); } }
 @keyframes floatUp     { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
 @keyframes glowPulse   { 0%,100% { box-shadow:0 0 0 0 rgba(13,148,136,.4); } 50% { box-shadow:0 0 0 8px rgba(13,148,136,0); } }
 @keyframes progressFill{ from { width:0; } }
-@keyframes barGrow     { from { transform:scaleX(0); transform-origin:left; } to { transform:scaleX(1); transform-origin:left; } }
 @keyframes countUp     { from { opacity:0; transform:scale(.6); } to { opacity:1; transform:scale(1); } }
 @keyframes rowSlide    { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
 @keyframes backdropIn  { from { opacity:0; } to { opacity:1; } }
 
-/* ── Grade Basis Toggle Bar ── */
+.spin { animation: spin .8s linear infinite; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   GRADE BASIS TOGGLE BAR
+   ═══════════════════════════════════════════════════════════════════ */
 .grade-basis-bar {
-    background: #fff;
-    border: 1px solid var(--cb-border);
-    border-radius: var(--cb-radius);
-    padding: 14px 20px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    box-shadow: var(--cb-shadow);
+    background: #fff; border: 1px solid var(--cb-border); border-radius: var(--cb-radius);
+    padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center;
+    gap: 16px; flex-wrap: wrap; box-shadow: var(--cb-shadow);
     animation: fadeInUp .5s ease .1s both;
 }
 .grade-basis-bar .mode-label { font-size:13px; font-weight:600; color:var(--cb-navy); white-space:nowrap; }
 .grade-basis-toggle {
-    display: flex;
-    background: var(--cb-surface);
-    border: 1.5px solid var(--cb-border);
-    border-radius: 8px;
-    overflow: hidden;
-    flex-shrink: 0;
+    display: flex; background: var(--cb-surface); border: 1.5px solid var(--cb-border);
+    border-radius: 8px; overflow: hidden; flex-shrink: 0;
 }
 .grade-basis-toggle .basis-btn {
-    padding: 7px 18px;
-    font-size: 13px;
-    font-weight: 600;
-    border: none;
-    background: transparent;
-    color: var(--cb-muted);
-    cursor: pointer;
-    transition: all .2s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
+    padding: 7px 18px; font-size: 13px; font-weight: 600; border: none;
+    background: transparent; color: var(--cb-muted); cursor: pointer;
+    transition: all .2s ease; display: flex; align-items: center; gap: 6px; text-decoration: none;
 }
 .grade-basis-toggle .basis-btn:hover { background:#e9ecef; color:var(--cb-navy); }
-.grade-basis-toggle .basis-btn.active-cumave { background:linear-gradient(135deg,var(--cumave-color),#a855f7); color:#fff; }
-.grade-basis-toggle .basis-btn.active-total  { background:linear-gradient(135deg,#0891b2,#06b6d4); color:#fff; }
+.grade-basis-toggle .basis-btn.active-cum     { background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; }
+.grade-basis-toggle .basis-btn.active-total   { background:linear-gradient(135deg,#0891b2,#06b6d4); color:#fff; }
 .basis-hint {
-    font-size:12px; color:var(--cb-muted);
-    background:var(--cb-surface);
-    border:1px dashed var(--cb-border);
-    border-radius:6px; padding:5px 10px;
+    font-size:12px; color:var(--cb-muted); background:var(--cb-surface);
+    border:1px dashed var(--cb-border); border-radius:6px; padding:5px 10px;
 }
 .basis-hint strong { color:var(--cb-navy); }
 
-/* ── Cum Ave Badge ── */
-.cumave-badge {
-    display:inline-block;
-    background:#ede9fe;
-    color:#5b21b6;
-    padding:2px 10px;
-    border-radius:12px;
-    font-size:10px;
-    font-weight:700;
-    border:1px solid #c4b5fd;
-}
-
-/* ── Hero ── */
+/* ═══════════════════════════════════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════════════════════════════════ */
 .cb-hero {
     background: linear-gradient(135deg, var(--cb-navy) 0%, #1e4a7e 55%, #0d9488 100%);
-    border-radius: var(--cb-radius);
-    padding: 32px 36px;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
+    border-radius: var(--cb-radius); padding: 32px 36px; margin-bottom: 28px;
+    position: relative; overflow: hidden;
     animation: fadeInDown .6s cubic-bezier(.22,1,.36,1) both;
 }
 .cb-hero::before {
-    content:'';
-    position:absolute; top:-80px; right:-80px;
+    content:''; position:absolute; top:-80px; right:-80px;
     width:280px; height:280px;
     background:radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 70%);
-    border-radius:50%;
-    animation:floatUp 6s ease-in-out infinite;
+    border-radius:50%; animation:floatUp 6s ease-in-out infinite;
 }
 .cb-hero::after {
-    content:'';
-    position:absolute; bottom:-60px; left:-60px;
+    content:''; position:absolute; bottom:-60px; left:-60px;
     width:150px; height:150px;
     background:radial-gradient(circle,rgba(255,255,255,.05) 0%,transparent 70%);
-    border-radius:50%;
-    animation:floatUp 8s ease-in-out infinite reverse;
+    border-radius:50%; animation:floatUp 8s ease-in-out infinite reverse;
 }
 .cb-hero h1 { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; color:#fff; margin:0 0 8px; }
 .cb-hero p  { font-size:13px; color:rgba(255,255,255,.72); margin:0; }
@@ -141,8 +101,8 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-meta-pill {
     background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
     border-radius:20px; padding:4px 14px; font-size:12px; font-weight:600; color:#fff;
-    display:inline-flex; align-items:center; gap:5px;
-    transition:all .3s ease; animation:fadeInUp .5s ease both;
+    display:inline-flex; align-items:center; gap:5px; transition:all .3s ease;
+    animation:fadeInUp .5s ease both;
 }
 .cb-meta-pill:nth-child(1){animation-delay:.15s}
 .cb-meta-pill:nth-child(2){animation-delay:.25s}
@@ -156,7 +116,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 }
 .btn-back:hover { background:rgba(255,255,255,.22); color:#fff; transform:translateX(-4px); }
 
-/* ── Stats ── */
+/* ═══════════════════════════════════════════════════════════════════
+   STAT CARDS
+   ═══════════════════════════════════════════════════════════════════ */
 .cb-stat {
     background:var(--cb-white); border:1px solid var(--cb-border);
     border-radius:var(--cb-radius); padding:20px 22px;
@@ -174,16 +136,13 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-stat .stat-label  { font-size:12px; color:var(--cb-muted); margin-top:5px; font-weight:500; }
 .cb-stat .stat-ico    { font-size:36px; opacity:.08; position:absolute; right:16px; top:50%; transform:translateY(-50%); }
 .stat-pct-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-.stat-pct-pill {
-    display:inline-flex; align-items:center; gap:4px;
-    font-size:11px; font-weight:700;
-    padding:2px 10px; border-radius:20px;
-}
+.stat-pct-pill { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px; }
 .stat-pct-term { background:rgba(14,165,233,.12); color:#0369a1; }
-.stat-pct-cum  { background:rgba(15,35,66,.08);  color:var(--cb-navy); }
-.stat-pct-cumave { background:rgba(124,58,237,.12); color:#5b21b6; }
+.stat-pct-cum  { background:rgba(124,58,237,.12); color:#5b21b6; }
 
-/* ── Column Toggle Panel ── */
+/* ═══════════════════════════════════════════════════════════════════
+   COLUMN TOGGLE
+   ═══════════════════════════════════════════════════════════════════ */
 .col-toggle-panel {
     background:var(--cb-white); border:1px solid var(--cb-border);
     border-radius:var(--cb-radius); padding:18px 22px; margin-bottom:22px;
@@ -200,12 +159,13 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .toggle-chip:hover { border-color:var(--cb-teal); color:var(--cb-teal); transform:translateY(-2px) scale(1.03); }
 .toggle-chip.active { background:var(--cb-teal); border-color:var(--cb-teal); color:#fff; box-shadow:0 2px 10px rgba(13,148,136,.35); }
 
-/* ── Card & Table ── */
+/* ═══════════════════════════════════════════════════════════════════
+   CARD
+   ═══════════════════════════════════════════════════════════════════ */
 .cb-card {
     background:var(--cb-white); border:1px solid var(--cb-border);
     border-radius:var(--cb-radius); box-shadow:var(--cb-shadow);
-    overflow:visible;
-    animation:fadeInUp .5s ease .2s both;
+    overflow:visible; animation:fadeInUp .5s ease .2s both;
 }
 .cb-card-header {
     padding:18px 24px; border-bottom:1px solid var(--cb-border);
@@ -213,7 +173,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     background:linear-gradient(to right,#f8fafc,#f0fdf9);
     border-radius:var(--cb-radius) var(--cb-radius) 0 0;
 }
-
 .cb-table-scroll { overflow-x:auto; overflow-y:visible; }
 .cb-table { width:100%; border-collapse:collapse; font-size:12.5px; }
 .cb-table thead th {
@@ -225,10 +184,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-table thead th.col-name-hdr { text-align:left; }
 .cb-table tbody td { padding:10px 14px; vertical-align:middle; border-bottom:1px solid var(--cb-border); }
 .cb-table tbody td.td-name { text-align:left; }
-.cb-table tbody tr {
-    transition:all .25s ease;
-    animation:rowSlide .4s ease both;
-}
+.cb-table tbody tr { transition:all .25s ease; animation:rowSlide .4s ease both; }
 .cb-table tbody tr:nth-child(1){animation-delay:.05s}
 .cb-table tbody tr:nth-child(2){animation-delay:.08s}
 .cb-table tbody tr:nth-child(3){animation-delay:.11s}
@@ -237,17 +193,13 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-table tbody tr:nth-child(n+6){animation-delay:.20s}
 .cb-table tbody tr:hover td { background:#f0fdf9; }
 
-/* ── Position Badge ── */
+/* ═══════════════════════════════════════════════════════════════════
+   POSITION BADGE
+   ═══════════════════════════════════════════════════════════════════ */
 .pos-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    font-size: 14px;
-    font-weight: 800;
-    border: 2px solid;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 50%;
+    font-size: 14px; font-weight: 800; border: 2px solid;
     transition: all .3s cubic-bezier(.22,1,.36,1);
 }
 .pos-badge:hover { transform: scale(1.18) rotate(-5deg); }
@@ -256,7 +208,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .pos-3 { background: linear-gradient(135deg,#ffedd5,#fed7aa); border-color: #f97316; color: #9a3412; box-shadow: 0 2px 8px rgba(249,115,22,.25); }
 .pos-other { background: var(--cb-surface); border-color: var(--cb-border); color: var(--cb-muted); font-size: 12px; width: 38px; height: 38px; }
 
-/* ── Score / Grade Cells ── */
+/* ═══════════════════════════════════════════════════════════════════
+   SCORE CELLS
+   ═══════════════════════════════════════════════════════════════════ */
 .score-dual { display:flex; flex-direction:column; gap:2px; min-width:80px; }
 .score-row {
     display:flex; align-items:center; justify-content:center; gap:4px;
@@ -264,8 +218,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     transition:all .2s ease;
 }
 .score-row-term { background:rgba(14,165,233,.08); border-left:2.5px solid #0ea5e9; }
-.score-row-cum  { background:rgba(15,35,66,.06);  border-left:2.5px solid var(--cb-navy); }
-.score-row-cumave { background:rgba(124,58,237,.08); border-left:2.5px solid #7c3aed; }
+.score-row-cum  { background:rgba(124,58,237,.08); border-left:2.5px solid #7c3aed; }
 .score-row:hover { transform:translateX(3px); }
 .score-lbl { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; opacity:.7; }
 
@@ -285,52 +238,41 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .score-green { color:#16a34a !important; }
 .score-purple { color:#7c3aed !important; }
 
-/* ── Analytics Cell ── */
+/* ═══════════════════════════════════════════════════════════════════
+   ANALYTICS CELL
+   ═══════════════════════════════════════════════════════════════════ */
 .analytics-cell { min-width:200px; font-size:11px; line-height:1.4; }
 .analytics-row  { display:flex; justify-content:space-between; align-items:center; padding:3px 0; gap:6px; }
 .analytics-lbl  { color:var(--cb-muted); font-size:10px; font-weight:500; }
 .analytics-val  { font-weight:700; color:var(--cb-navy); font-size:11.5px; }
-
-.analytics-percentage {
-    font-weight:800; font-size:12px;
-    display:inline-block;
-    animation:countUp .6s ease both;
-}
-
+.analytics-percentage { font-weight:800; font-size:12px; display:inline-block; animation:countUp .6s ease both; }
 .pct-bar-wrap { background:#e2e8f0; border-radius:4px; height:6px; margin-top:3px; overflow:hidden; }
 .pct-bar {
-    height:100%; border-radius:4px;
-    background:#f43f5e;
+    height:100%; border-radius:4px; background:#f43f5e;
     transition: background-color 1s ease;
     animation:progressFill .8s ease both;
 }
 
-/* ── Grade Popup Trigger ── */
+/* ═══════════════════════════════════════════════════════════════════
+   GRADE TRIGGER / INPUT / AVATAR
+   ═══════════════════════════════════════════════════════════════════ */
 .grade-trigger-btn {
     background:none; border:none; cursor:pointer;
-    color:var(--cb-sky); font-size:17px;
-    padding:5px 8px; border-radius:8px;
-    transition:all .25s ease;
-    position:relative; z-index:1;
+    color:var(--cb-sky); font-size:17px; padding:5px 8px; border-radius:8px;
+    transition:all .25s ease; position:relative; z-index:1;
 }
 .grade-trigger-btn:hover {
-    color:#fff; background:var(--cb-teal);
-    transform:scale(1.15);
-    box-shadow:0 3px 10px rgba(13,148,136,.4);
-    animation:glowPulse .8s ease infinite;
+    color:#fff; background:var(--cb-teal); transform:scale(1.15);
+    box-shadow:0 3px 10px rgba(13,148,136,.4); animation:glowPulse .8s ease infinite;
 }
-
-/* ── Inputs ── */
 .cb-input {
     border:1.5px solid var(--cb-border); border-radius:8px; padding:6px 10px;
     font-size:12px; width:100%; transition:all .25s ease;
     background:var(--cb-surface); font-family:'DM Sans',sans-serif;
 }
 .cb-input:focus { border-color:var(--cb-teal); outline:none; box-shadow:0 0 0 3px rgba(13,148,136,.12); background:#fff; transform:translateX(2px); }
-.cb-input.has-value { border-left-color:var(--cb-teal); background:#f0fdf9; }
 .absence-input { width:70px !important; text-align:center; margin:0 auto; display:block; }
 
-/* ── Student Name Cell ── */
 .student-name-cell { display:flex; align-items:center; gap:9px; }
 .cb-avatar {
     width:38px; height:38px; border-radius:50%; overflow:hidden;
@@ -344,7 +286,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .student-name-text { font-weight:700; font-size:13px; color:var(--cb-navy); }
 .student-adm { font-size:10.5px; color:var(--cb-muted); margin-top:1px; }
 
-/* ── Autosave Chip ── */
 .autosave-chip {
     display:inline-flex; align-items:center; gap:4px;
     font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px;
@@ -355,7 +296,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .ac-saved   { background:#dcfce7; color:#15803d; }
 .ac-err     { background:#ffe4e6; color:#be123c; }
 
-/* ── Comment Status Dot ── */
 .comment-status-dot {
     display:inline-flex; align-items:center; gap:3px;
     font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px;
@@ -364,7 +304,29 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .dot-saved   { background:#dcfce7; color:#15803d; }
 .dot-unsaved { background:#f1f5f9; color:#94a3b8; }
 
-/* ── Save Bar ── */
+/* ═══════════════════════════════════════════════════════════════════
+   COMMENT DISPLAY
+   ═══════════════════════════════════════════════════════════════════ */
+.comment-display {
+    cursor:pointer; padding:10px 12px; background:#f8fafc;
+    border-radius:8px; border:1px solid var(--cb-border);
+    min-height:60px; white-space:normal; word-wrap:break-word;
+    font-size:12px; line-height:1.5; transition:all .2s ease;
+}
+.comment-display:hover {
+    border-color:var(--cb-teal); background:#f0fdf9;
+    box-shadow:0 2px 8px rgba(13,148,136,.1);
+}
+.comment-field-group { margin-bottom:16px; }
+.comment-field-group label {
+    font-size:11px; font-weight:700; color:var(--cb-navy);
+    text-transform:uppercase; letter-spacing:.4px;
+    margin-bottom:6px; display:block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SAVE BAR
+   ═══════════════════════════════════════════════════════════════════ */
 .save-bar {
     position:sticky; bottom:0; z-index:100;
     background:rgba(15,35,66,.97); backdrop-filter:blur(10px);
@@ -386,9 +348,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     display:flex; align-items:center; gap:8px; font-family:'DM Sans',sans-serif;
 }
 .btn-save-all:hover { background:#0b7c72; transform:translateY(-3px); box-shadow:0 8px 22px rgba(13,148,136,.45); }
-.btn-save-all:active{ transform:translateY(0); }
-
-/* ── Print Button ── */
 .btn-print {
     background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.25);
     border-radius:10px; padding:9px 20px; color:#fff; font-size:13px; font-weight:600;
@@ -397,7 +356,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 }
 .btn-print:hover { background:rgba(255,255,255,.22); transform:translateY(-2px); box-shadow:0 4px 14px rgba(0,0,0,.2); }
 
-/* ── Toast ── */
+/* ═══════════════════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════════════════ */
 .cb-toast {
     position:fixed; bottom:80px; right:24px; min-width:300px; z-index:99999;
     padding:14px 18px; border-radius:12px; display:flex; align-items:center; gap:10px;
@@ -408,7 +369,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-toast-error   { background:#fff1f2; border:1.5px solid #fca5a5; color:#be123c; }
 .cb-toast-info    { background:#eff6ff; border:1.5px solid #93c5fd; color:#1d4ed8; }
 
-/* ── Search ── */
+/* ═══════════════════════════════════════════════════════════════════
+   SEARCH
+   ═══════════════════════════════════════════════════════════════════ */
 .cb-search { position:relative; }
 .cb-search input {
     width:100%; padding:9px 14px 9px 38px; border:1.5px solid var(--cb-border); border-radius:10px;
@@ -417,16 +380,28 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-search input:focus { border-color:var(--cb-teal); outline:none; box-shadow:0 0 0 3px rgba(13,148,136,.1); transform:translateX(2px); }
 .cb-search i { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--cb-muted); pointer-events:none; }
 
-/* ── Image Zoom Modal ── */
+/* ═══════════════════════════════════════════════════════════════════
+   IMAGE ZOOM MODAL
+   ═══════════════════════════════════════════════════════════════════ */
 #cbImgZoomModal .modal-content { background:transparent; border:none; box-shadow:none; }
 #cbImgZoomModal .modal-dialog  { max-width:92vw; }
-.cb-zoomed-img { max-width:88vw; max-height:70vh; border-radius:16px; border:4px solid #fff; box-shadow:0 24px 60px rgba(0,0,0,.4); object-fit:contain; animation:scaleIn .3s ease; }
-.cb-zoom-close { position:absolute; top:16px; right:16px; background:rgba(0,0,0,.5); border:none; color:#fff; width:36px; height:36px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; transition:all .2s ease; }
+.cb-zoomed-img {
+    max-width:88vw; max-height:70vh; border-radius:16px; border:4px solid #fff;
+    box-shadow:0 24px 60px rgba(0,0,0,.4); object-fit:contain; animation:scaleIn .3s ease;
+}
+.cb-zoom-close {
+    position:absolute; top:16px; right:16px;
+    background:rgba(0,0,0,.5); border:none; color:#fff;
+    width:36px; height:36px; border-radius:50%; font-size:20px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; z-index:10; transition:all .2s ease;
+}
 .cb-zoom-close:hover { background:rgba(0,0,0,.8); transform:rotate(90deg) scale(1.1); }
 .cb-zoom-name { margin-top:16px; font-size:18px; font-weight:700; color:#fff; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.5); }
 .cb-zoom-meta { margin-top:6px; font-size:13px; color:rgba(255,255,255,.75); text-align:center; }
 
-/* ── Grade Popup ── */
+/* ═══════════════════════════════════════════════════════════════════
+   GRADE POPUP
+   ═══════════════════════════════════════════════════════════════════ */
 #cbGradePopup {
     display:none; position:fixed; z-index:99999;
     background:var(--cb-white); border:2px solid var(--cb-teal);
@@ -440,29 +415,36 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     font-weight:700; font-size:14px;
     display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
 }
-.gpop-close-btn { background:rgba(255,255,255,.18); border:none; color:#fff; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .25s ease; }
+.gpop-close-btn {
+    background:rgba(255,255,255,.18); border:none; color:#fff; border-radius:50%;
+    width:28px; height:28px; cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center; transition:all .25s ease;
+}
 .gpop-close-btn:hover { background:rgba(255,255,255,.4); transform:rotate(90deg) scale(1.1); }
 .gpop-body { padding:16px; overflow-y:auto; flex:1; }
 .gpop-legend { display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:6px 10px; background:var(--cb-surface); border-radius:8px; border:1px solid var(--cb-border); flex-wrap:wrap; }
 .gpop-legend-item { display:flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:var(--cb-muted); }
 .gpop-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .gpop-legend-dot.t { background:#0ea5e9; }
-.gpop-legend-dot.c { background:var(--cb-navy); }
-.gpop-legend-dot.ca { background:#7c3aed; }
+.gpop-legend-dot.c { background:#7c3aed; }
 .gpop-scroll { max-height:280px; overflow-y:auto; border:1px solid var(--cb-border); border-radius:10px; }
 .gpop-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
-.gpop-table thead th { background:var(--cb-navy); color:#fff; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; padding:9px 8px; border-right:1px solid rgba(255,255,255,.08); text-align:center; position:sticky; top:0; z-index:2; }
-.gpop-table thead th:first-child { text-align:left; padding-left:12px; width:32%; }
-.gpop-table thead th.col-score { width:28%; }
-.gpop-table thead th.col-grade { width:40%; }
+.gpop-table thead th {
+    background:var(--cb-navy); color:#fff; font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.4px; padding:9px 8px;
+    border-right:1px solid rgba(255,255,255,.08); text-align:center;
+    position:sticky; top:0; z-index:2;
+}
+.gpop-table thead th:first-child { text-align:left; padding-left:12px; width:40%; }
+.gpop-table thead th.col-score { width:30%; }
+.gpop-table thead th.col-grade { width:30%; }
 .gpop-table tbody td { padding:8px 6px; border-bottom:1px solid #f1f5f9; font-weight:500; text-align:center; vertical-align:middle; }
 .gpop-table tbody td:first-child { text-align:left; font-weight:600; color:var(--cb-navy); padding-left:12px; }
 .gpop-table tbody tr:hover td { background:#f0fdf9; }
 .score-pair { display:flex; flex-direction:column; gap:2px; }
 .score-cell { display:flex; align-items:center; justify-content:center; gap:3px; padding:2px 4px; border-radius:4px; font-size:11px; font-weight:700; }
 .score-cell.term { background:rgba(14,165,233,.08); border-left:2px solid #0ea5e9; }
-.score-cell.cum  { background:rgba(15,35,66,.06);   border-left:2px solid var(--cb-navy); }
-.score-cell.cumave { background:rgba(124,58,237,.08); border-left:2px solid #7c3aed; }
+.score-cell.cum  { background:rgba(124,58,237,.08); border-left:2px solid #7c3aed; }
 .gpop-summary { background:linear-gradient(135deg,#f8fafc,#f0fdf9); border-radius:12px; padding:12px; margin-top:14px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .gpop-sum-item { text-align:center; padding:10px 6px; border-radius:10px; background:white; transition:all .2s ease; border:1px solid #e2e8f0; }
 .gpop-sum-item:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.09); border-color:var(--cb-teal); }
@@ -471,10 +453,47 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .gpop-sum-val.score-red   { color:#dc2626; }
 .gpop-sum-val.score-amber { color:#d97706; }
 .gpop-sum-val.score-green { color:#16a34a; }
-.gpop-sum-val.score-purple { color:#7c3aed; }
 #cbPopupBackdrop { display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,.3); animation:backdropIn .2s ease; }
 
-/* ── Print ── */
+/* ═══════════════════════════════════════════════════════════════════
+   TEMPLATE PICKER
+   ═══════════════════════════════════════════════════════════════════ */
+#tplBackdrop { display:none; position:fixed; inset:0; z-index:999998; background:rgba(0,0,0,.15); }
+#tplPicker {
+    display:none; position:fixed; z-index:999999;
+    background:#fff; border:2px solid var(--cb-teal); border-radius:14px;
+    box-shadow:0 20px 50px rgba(15,35,66,.25);
+    width:380px; max-height:420px;
+    flex-direction:column; overflow:hidden;
+}
+#tplPicker.is-open { display:flex; animation:popIn .25s cubic-bezier(.22,1,.36,1); }
+.tpl-hdr {
+    background:linear-gradient(135deg,var(--cb-teal),#0f766e);
+    color:#fff; padding:12px 16px; font-weight:700; font-size:13px;
+    display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
+}
+.tpl-close { background:rgba(255,255,255,.2); border:none; color:#fff; width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; }
+.tpl-close:hover { background:rgba(255,255,255,.4); }
+.tpl-search-wrap { padding:10px 12px; border-bottom:1px solid var(--cb-border); flex-shrink:0; }
+.tpl-search-wrap input { width:100%; padding:8px 12px; border:1.5px solid var(--cb-border); border-radius:8px; font-size:12.5px; font-family:'DM Sans',sans-serif; }
+.tpl-search-wrap input:focus { outline:none; border-color:var(--cb-teal); box-shadow:0 0 0 3px rgba(13,148,136,.1); }
+.tpl-cats { padding:8px 12px; border-bottom:1px solid var(--cb-border); display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0; }
+.tpl-cat-btn { padding:4px 12px; border-radius:16px; border:1.5px solid var(--cb-border); background:#f8fafc; color:var(--cb-muted); font-size:11px; font-weight:600; cursor:pointer; transition:all .2s ease; font-family:inherit; }
+.tpl-cat-btn:hover { border-color:var(--cb-teal); color:var(--cb-teal); }
+.tpl-cat-btn.active { background:var(--cb-teal); border-color:var(--cb-teal); color:#fff; }
+.tpl-list { flex:1; overflow-y:auto; padding:8px 12px 12px; }
+.tpl-item {
+    padding:10px 12px; border:1px solid var(--cb-border); border-radius:8px;
+    margin-bottom:8px; cursor:pointer; transition:all .2s ease; background:#f8fafc;
+}
+.tpl-item:hover { border-color:var(--cb-teal); background:#f0fdf9; transform:translateX(3px); box-shadow:0 2px 8px rgba(13,148,136,.12); }
+.tpl-item-label { display:block; font-size:12.5px; font-weight:700; color:var(--cb-navy); margin-bottom:3px; }
+.tpl-item-text { display:block; font-size:11px; color:var(--cb-muted); line-height:1.4; }
+.tpl-no-results { text-align:center; padding:30px 12px; color:var(--cb-muted); font-size:12px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PRINT RULES
+   ═══════════════════════════════════════════════════════════════════ */
 @media print {
     .cb-hero::before, .cb-hero::after,
     .col-toggle-panel, .cb-card-header .cb-search,
@@ -482,6 +501,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     .autosave-chip, .comment-status-dot, .btn-back,
     nav, header, footer, .sidebar, .navbar,
     #cbGradePopup, #cbPopupBackdrop, #cbImgZoomModal,
+    #tplPicker, #tplBackdrop,
     .mobile-only, .ri-eye-line, .pct-bar-wrap,
     .grade-basis-bar .basis-btn, .grade-basis-toggle { display:none !important; }
 
@@ -492,7 +512,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     body { background:#fff !important; font-family:'DM Sans',sans-serif; font-size:10px; }
     .main-content, .page-content, .container-fluid { padding:0 !important; margin:0 !important; }
 
-    .cb-hero { background: linear-gradient(135deg, var(--cb-navy) 0%, #1e4a7e 55%, #0d9488 100%) !important; border-radius:8px !important; padding:14px 18px !important; margin-bottom:14px !important; animation:none !important; page-break-inside: avoid; }
+    .cb-hero {
+        background: linear-gradient(135deg, var(--cb-navy) 0%, #1e4a7e 55%, #0d9488 100%) !important;
+        border-radius:8px !important; padding:14px 18px !important; margin-bottom:14px !important;
+        animation:none !important; page-break-inside: avoid;
+    }
     .cb-hero h1 { font-size:16px !important; }
     .cb-hero p  { font-size:10px !important; }
     .cb-meta-pill { font-size:9px !important; padding:2px 8px !important; animation:none !important; }
@@ -544,18 +568,24 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 <div class="page-content">
 <div class="container-fluid">
 
-{{-- Hero --}}
+{{-- ══ HERO ══ --}}
 <div class="cb-hero">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
         <div>
             <h1><i class="ri-clipboard-line me-2"></i>Class Broadsheet</h1>
             <p>Review student performance, assign comments, and track attendance for your class.</p>
             <div class="meta-pills">
-                <span class="cb-meta-pill"><i class="ri-building-line"></i>{{ $schoolclass ? $schoolclass->schoolclass . ' ' . $schoolclass->arm : 'N/A' }}</span>
-                <span class="cb-meta-pill"><i class="ri-calendar-line"></i>{{ $schoolterm }}</span>
-                <span class="cb-meta-pill"><i class="ri-calendar-event-line"></i>{{ $schoolsession }}</span>
+                <span class="cb-meta-pill">
+                    <i class="ri-building-line"></i>{{ $schoolclass ? $schoolclass->schoolclass . ' ' . $schoolclass->arm : 'N/A' }}
+                </span>
+                <span class="cb-meta-pill">
+                    <i class="ri-calendar-line"></i>{{ $schoolterm }}
+                </span>
+                <span class="cb-meta-pill">
+                    <i class="ri-calendar-event-line"></i>{{ $schoolsession }}
+                </span>
                 <span class="cb-meta-pill" style="background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4);">
-                    <i class="ri-bar-chart-line"></i> Cum Ave: {{ $avgCumAvePercentage ?? 0 }}%
+                    <i class="ri-bar-chart-line"></i> Avg: {{ $avgCumPercentage ?? 0 }}%
                 </span>
             </div>
         </div>
@@ -563,7 +593,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- Stats --}}
+{{-- ══ STATS ══ --}}
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <div class="cb-stat">
@@ -585,12 +615,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         <div class="cb-stat">
             <div class="stat-accent" style="background:linear-gradient(90deg,var(--cb-green),#4ade80);"></div>
             <div class="stat-ico"><i class="ri-percent-line"></i></div>
-            <div class="stat-value text-success" id="statAvgTermPct">{{ $avgTermPercentage ?? 0 }}%</div>
+            <div class="stat-value text-success" id="statAvgPct">{{ $avgCumPercentage ?? 0 }}%</div>
             <div class="stat-label">Average % Obtained</div>
             <div class="stat-pct-row mt-2">
                 <span class="stat-pct-pill stat-pct-term"><i class="ri-time-line me-1"></i>Term: {{ $avgTermPercentage ?? 0 }}%</span>
                 <span class="stat-pct-pill stat-pct-cum"><i class="ri-history-line me-1"></i>Cum: {{ $avgCumPercentage ?? 0 }}%</span>
-                <span class="stat-pct-pill stat-pct-cumave" style="background:rgba(124,58,237,.12);color:#5b21b6;"><i class="ri-bar-chart-line me-1"></i>Cum Ave: {{ $avgCumAvePercentage ?? 0 }}%</span>
             </div>
         </div>
     </div>
@@ -611,40 +640,40 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- ── Grade Basis Toggle ── --}}
+{{-- ══ GRADE BASIS TOGGLE ══ --}}
 <div class="grade-basis-bar">
     <span class="mode-label">
         <i class="ri-scales-3-line me-1"></i>
         Grade Basis:
     </span>
     <div class="grade-basis-toggle">
-        <a href="{{ request()->fullUrlWithQuery(['grade_basis' => 'cum_ave']) }}"
-           class="basis-btn {{ ($gradeBasis ?? 'cum_ave') === 'cum_ave' ? 'active-cumave' : '' }}">
-            <i class="ri-bar-chart-line"></i> Cumulative Average
+        <a href="{{ request()->fullUrlWithQuery(['grade_basis' => 'cum']) }}"
+           class="basis-btn {{ ($gradeBasis ?? 'cum') === 'cum' ? 'active-cum' : '' }}">
+            <i class="ri-bar-chart-line"></i> Cumulative
         </a>
         <a href="{{ request()->fullUrlWithQuery(['grade_basis' => 'total']) }}"
-           class="basis-btn {{ ($gradeBasis ?? 'cum_ave') === 'total' ? 'active-total' : '' }}">
+           class="basis-btn {{ ($gradeBasis ?? 'cum') === 'total' ? 'active-total' : '' }}">
             <i class="ri-calendar-check-line"></i> Term Total
         </a>
     </div>
     <span class="basis-hint">
         <i class="ri-information-line text-primary"></i>
-        @if(($gradeBasis ?? 'cum_ave') === 'cum_ave')
-            Grades based on <strong>Cumulative Average</strong> (BF + Term ÷ term number)
+        @if(($gradeBasis ?? 'cum') === 'cum')
+            Grades based on <strong>Cumulative</strong> — Term 1: Total; Terms 2–3: (BF + Total) ÷ 2
         @else
             Grades based on <strong>Term Total</strong> scores only
         @endif
     </span>
-    <span class="ms-auto badge" style="background:{{ ($gradeBasis ?? 'cum_ave') === 'cum_ave' ? '#7c3aed' : '#0891b2' }};color:#fff;font-size:11px;padding:6px 14px;">
-        @if(($gradeBasis ?? 'cum_ave') === 'cum_ave')
-            <i class="ri-bar-chart-line me-1"></i> Cum Ave
+    <span class="ms-auto badge" style="background:{{ ($gradeBasis ?? 'cum') === 'cum' ? '#7c3aed' : '#0891b2' }};color:#fff;font-size:11px;padding:6px 14px;">
+        @if(($gradeBasis ?? 'cum') === 'cum')
+            <i class="ri-bar-chart-line me-1"></i> Cum
         @else
             <i class="ri-calendar-check-line me-1"></i> Term Total
         @endif
     </span>
 </div>
 
-{{-- Column Toggle --}}
+{{-- ══ COLUMN TOGGLE ══ --}}
 <div class="col-toggle-panel">
     <h6><i class="ri-layout-column-line" style="color:var(--cb-teal)"></i> Show / Hide Columns</h6>
     <div class="toggle-chips">
@@ -666,28 +695,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 @if ($students->isNotEmpty())
 
 @php
+    // Rebuild position map (controller already computed $positionMap, but keep
+    // this block defensively for layout-only logic)
     $rankedBySelected = collect($studentAnalytics)->sortByDesc(function($a) use ($gradeBasis) {
-        return $gradeBasis === 'total' ? ($a['term_percentage'] ?? 0) : ($a['cum_ave_percentage'] ?? 0);
+        return $gradeBasis === 'total' ? ($a['term_percentage'] ?? 0) : ($a['cum_percentage'] ?? 0);
     })->values();
-    $positionMap = [];
-    $prevPct = null;
-    $prevPos = 0;
-    $counter = 0;
-    foreach ($rankedBySelected as $an) {
-        $counter++;
-        $sid = null;
-        foreach ($studentAnalytics as $s => $a) {
-            if ($a === $an) { $sid = $s; break; }
-        }
-        $key = $gradeBasis === 'total' ? 'term_percentage' : 'cum_ave_percentage';
-        if ($prevPct !== null && $an[$key] == $prevPct) {
-            $positionMap[$sid] = $prevPos;
-        } else {
-            $positionMap[$sid] = $counter;
-            $prevPos = $counter;
-        }
-        $prevPct = $an[$key];
-    }
 
     $cbAnalyticsJson = json_encode($studentAnalytics, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
     $positionMapJson = json_encode($positionMap,       JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
@@ -702,6 +714,28 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     <div class="gpop-body" id="gpopBody"></div>
 </div>
 
+<div id="tplBackdrop"></div>
+<div id="tplPicker">
+    <div class="tpl-hdr">
+        <span><i class="ri-magic-line me-1"></i> ✦ Comment Templates</span>
+        <button type="button" class="tpl-close" id="tplCloseBtn">&times;</button>
+    </div>
+    <div class="tpl-search-wrap">
+        <input type="text" id="tplSearchInput" placeholder="Search templates…">
+    </div>
+    <div class="tpl-cats">
+        <button type="button" class="tpl-cat-btn active" data-cat="all">All</button>
+        <button type="button" class="tpl-cat-btn" data-cat="excellent">Excellent</button>
+        <button type="button" class="tpl-cat-btn" data-cat="good">Good</button>
+        <button type="button" class="tpl-cat-btn" data-cat="average">Average</button>
+        <button type="button" class="tpl-cat-btn" data-cat="improvement">Needs Work</button>
+        <button type="button" class="tpl-cat-btn" data-cat="conduct">Conduct</button>
+        <button type="button" class="tpl-cat-btn" data-cat="counselor">Counselor</button>
+        <button type="button" class="tpl-cat-btn" data-cat="activities">Activities</button>
+    </div>
+    <div class="tpl-list" id="tplList"></div>
+</div>
+
 <div class="cb-card">
     <div class="cb-card-header">
         <h5 style="margin:0;font-size:15px;font-weight:700;color:var(--cb-navy);">
@@ -709,7 +743,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             Student Performance &amp; Comments
             <span class="badge ms-2" style="background:var(--cb-teal);color:#fff;font-size:11px;border-radius:20px;padding:3px 10px;">{{ $students->count() }} Students</span>
             <span class="badge ms-2" style="background:#7c3aed;color:#fff;font-size:11px;border-radius:20px;padding:3px 10px;">
-                <i class="ri-bar-chart-line me-1"></i> Cum Ave
+                <i class="ri-bar-chart-line me-1"></i> {{ $gradeBasis === 'total' ? 'Term Total' : 'Cumulative' }}
             </span>
         </h5>
         <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -732,7 +766,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             <input type="hidden" class="canonical-absence"    id="c_absence_{{ $student->id }}"    name="no_of_times_school_absent[{{ $student->id }}]"  value="{{ $profile ? $profile->no_of_times_school_absent : '' }}">
         @endforeach
 
-        {{-- DESKTOP TABLE --}}
+        {{-- ══ DESKTOP TABLE ══ --}}
         <div class="desktop-only cb-table-scroll">
             <table class="cb-table">
                 <thead>
@@ -767,15 +801,13 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             $rowDelay   = 0.3 + ($index * 0.04);
                             $termPct    = $an['term_percentage'] ?? 0;
                             $cumPct     = $an['cum_percentage'] ?? 0;
-                            $cumAvePct  = $an['cum_ave_percentage'] ?? 0;
-                            $cumAveAvg  = $an['cum_ave_average'] ?? 0;
                             $termColor  = $termPct < 40 ? '#f43f5e' : ($termPct < 70 ? '#f59e0b' : '#22c55e');
-                            $cumColor   = $cumPct  < 40 ? '#f43f5e' : ($cumPct  < 70 ? '#f59e0b' : '#22c55e');
-                            $cumAveColor = $cumAvePct < 40 ? '#f43f5e' : ($cumAvePct < 70 ? '#f59e0b' : '#7c3aed');
-
-                            $teacherComment = $profile ? $profile->classteachercomment : '';
-                            $guidanceComment = $profile ? $profile->guidancescomment : '';
-                            $activitiesComment = $profile ? $profile->remark_on_other_activities : '';
+                            $cumColor   = $cumPct  < 40 ? '#f43f5e' : ($cumPct  < 70 ? '#f59e0b' : '#7c3aed');
+                            $teacherComment   = $profile ? $profile->classteachercomment : '';
+                            $guidanceComment  = $profile ? $profile->guidancescomment : '';
+                            $activitiesComment= $profile ? $profile->remark_on_other_activities : '';
+                            $displayPct = $gradeBasis === 'total' ? $termPct : $cumPct;
+                            $displayPctColor = $displayPct < 40 ? 'score-red' : ($displayPct < 70 ? 'score-amber' : ($gradeBasis === 'total' ? 'score-green' : 'score-purple'));
                         @endphp
                         <tr class="cb-student-row {{ $hasComment ? 'row-has-comment' : 'row-no-comment' }}"
                             data-student-id="{{ $sid }}"
@@ -786,10 +818,10 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             data-student-pos="{{ $pos }}"
                             data-searchkey="{{ strtolower($fullName . ' ' . $student->admissionNo) }}">
 
-                            {{-- Serial Number --}}
-                            <td class="sn-cell" style="text-align:center; font-weight:600; font-size:13px;">{{ $index + 1 }}</td>
+                            {{-- SN --}}
+                            <td style="text-align:center; font-weight:600; font-size:13px;">{{ $index + 1 }}</td>
 
-                            {{-- Student Name Column --}}
+                            {{-- Student Name --}}
                             <td class="td-name">
                                 <div class="student-name-cell">
                                     @if($imgUrl)
@@ -812,20 +844,17 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                     <div>
                                         <div class="student-name-text">{{ $fullName }}</div>
                                         <div class="student-adm">{{ $student->admissionNo }} · {{ $student->gender ?? '' }}</div>
-                                        <span class="cumave-badge">
-                                            <i class="ri-bar-chart-line me-1"></i> Cum Ave: {{ number_format($cumAveAvg, 1) }}%
-                                        </span>
                                         <span class="comment-status-dot {{ $hasComment ? 'dot-saved' : 'dot-unsaved' }}" id="status-{{ $sid }}">{{ $hasComment ? '✓ Commented' : '○ No comment' }}</span>
                                         <span class="autosave-chip ac-idle" id="autosave-{{ $sid }}"></span>
                                     </div>
                                 </div>
                             </td>
 
-                            {{-- Position Badge --}}
+                            {{-- Position --}}
                             <td class="cbcol-position" style="text-align:center; vertical-align:middle;">
                                 <div style="display:flex; justify-content:center; align-items:center;">
                                     <div class="pos-badge {{ $posClass }}"
-                                         data-tooltip="{{ $pos }}{{ $pos === 1 ? 'st' : ($pos === 2 ? 'nd' : ($pos === 3 ? 'rd' : 'th')) }} position ({{ $gradeBasis === 'total' ? 'Term' : 'Cum Ave' }})"
+                                         data-tooltip="{{ $pos }}{{ $pos === 1 ? 'st' : ($pos === 2 ? 'nd' : ($pos === 3 ? 'rd' : 'th')) }} position ({{ $gradeBasis === 'total' ? 'Term' : 'Cum' }})"
                                          style="cursor:pointer;">
                                         {{ $posIcon }}
                                     </div>
@@ -837,24 +866,22 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 @php
                                     $tScore = $termScoreMap[$sid][$subject->subject] ?? 0;
                                     $cScore = $cumScoreMap[$sid][$subject->subject]  ?? 0;
-                                    $caScore = $cumAveMap[$sid][$subject->subject]   ?? 0;
-                                    $bf = $bfMap[$sid][$subject->subject] ?? 0;
-                                    $displayScore = $gradeBasis === 'total' ? $tScore : $caScore;
-                                    
-                                    $tGrade = $cGrade = $caGrade = '-';
+                                    $bf     = $bfMap[$sid][$subject->subject]        ?? 0;
+
+                                    [$tGrade] = $this->IsNotAvailable ?? [null];
+                                @endphp
+                                @php
+                                    // Compute grades on the fly (view doesn't have access to controller helpers)
                                     if ($isSenior) {
-                                        if ($tScore >= 75) $tGrade='A1'; elseif ($tScore >= 70) $tGrade='B2'; elseif ($tScore >= 65) $tGrade='B3'; elseif ($tScore >= 60) $tGrade='C4'; elseif ($tScore >= 55) $tGrade='C5'; elseif ($tScore >= 50) $tGrade='C6'; elseif ($tScore >= 45) $tGrade='D7'; elseif ($tScore >= 40) $tGrade='E8'; elseif ($tScore > 0) $tGrade='F9';
-                                        if ($cScore >= 75) $cGrade='A1'; elseif ($cScore >= 70) $cGrade='B2'; elseif ($cScore >= 65) $cGrade='B3'; elseif ($cScore >= 60) $cGrade='C4'; elseif ($cScore >= 55) $cGrade='C5'; elseif ($cScore >= 50) $cGrade='C6'; elseif ($cScore >= 45) $cGrade='D7'; elseif ($cScore >= 40) $cGrade='E8'; elseif ($cScore > 0) $cGrade='F9';
-                                        if ($caScore >= 75) $caGrade='A1'; elseif ($caScore >= 70) $caGrade='B2'; elseif ($caScore >= 65) $caGrade='B3'; elseif ($caScore >= 60) $caGrade='C4'; elseif ($caScore >= 55) $caGrade='C5'; elseif ($caScore >= 50) $caGrade='C6'; elseif ($caScore >= 45) $caGrade='D7'; elseif ($caScore >= 40) $caGrade='E8'; elseif ($caScore > 0) $caGrade='F9';
+                                        $tGrade = $tScore >= 75 ? 'A1' : ($tScore >= 70 ? 'B2' : ($tScore >= 65 ? 'B3' : ($tScore >= 60 ? 'C4' : ($tScore >= 55 ? 'C5' : ($tScore >= 50 ? 'C6' : ($tScore >= 45 ? 'D7' : ($tScore >= 40 ? 'E8' : ($tScore > 0 ? 'F9' : '-'))))))));
+                                        $cGrade = $cScore >= 75 ? 'A1' : ($cScore >= 70 ? 'B2' : ($cScore >= 65 ? 'B3' : ($cScore >= 60 ? 'C4' : ($cScore >= 55 ? 'C5' : ($cScore >= 50 ? 'C6' : ($cScore >= 45 ? 'D7' : ($cScore >= 40 ? 'E8' : ($cScore > 0 ? 'F9' : '-'))))))));
                                     } else {
-                                        if ($tScore >= 70) $tGrade='A'; elseif ($tScore >= 60) $tGrade='B'; elseif ($tScore >= 50) $tGrade='C'; elseif ($tScore >= 40) $tGrade='D'; elseif ($tScore > 0) $tGrade='F';
-                                        if ($cScore >= 70) $cGrade='A'; elseif ($cScore >= 60) $cGrade='B'; elseif ($cScore >= 50) $cGrade='C'; elseif ($cScore >= 40) $cGrade='D'; elseif ($cScore > 0) $cGrade='F';
-                                        if ($caScore >= 70) $caGrade='A'; elseif ($caScore >= 60) $caGrade='B'; elseif ($caScore >= 50) $caGrade='C'; elseif ($caScore >= 40) $caGrade='D'; elseif ($caScore > 0) $caGrade='F';
+                                        $tGrade = $tScore >= 70 ? 'A' : ($tScore >= 60 ? 'B' : ($tScore >= 50 ? 'C' : ($tScore >= 40 ? 'D' : ($tScore > 0 ? 'F' : '-'))));
+                                        $cGrade = $cScore >= 70 ? 'A' : ($cScore >= 60 ? 'B' : ($cScore >= 50 ? 'C' : ($cScore >= 40 ? 'D' : ($cScore > 0 ? 'F' : '-'))));
                                     }
+
                                     $tC = $tScore < 40 ? 'score-red' : ($tScore < 50 ? 'score-amber' : 'score-green');
-                                    $cC = $cScore < 40 ? 'score-red' : ($cScore < 50 ? 'score-amber' : 'score-green');
-                                    $caC = $caScore < 40 ? 'score-red' : ($caScore < 50 ? 'score-amber' : 'score-purple');
-                                    $displayColor = $displayScore < 40 ? 'score-red' : ($displayScore < 50 ? 'score-amber' : ($gradeBasis === 'total' ? 'score-green' : 'score-purple'));
+                                    $cC = $cScore < 40 ? 'score-red' : ($cScore < 50 ? 'score-amber' : 'score-purple');
                                 @endphp
                                 <td class="cbcol-scores">
                                     <div class="score-dual">
@@ -864,24 +891,18 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                             @if($tGrade !== '-')<span class="grade-badge g-{{ strtolower($tGrade) }}">{{ $tGrade }}</span>@endif
                                         </div>
                                         <div class="score-row score-row-cum">
-                                            <span class="score-lbl" style="color:var(--cb-navy);">C</span>
+                                            <span class="score-lbl" style="color:#7c3aed;">C</span>
                                             <span class="{{ $cC }}">{{ $cScore ? number_format($cScore, 1) : '—' }}</span>
                                             @if($cGrade !== '-')<span class="grade-badge g-{{ strtolower($cGrade) }}">{{ $cGrade }}</span>@endif
                                         </div>
-                                        <div class="score-row score-row-cumave">
-                                            <span class="score-lbl" style="color:#7c3aed;">CA</span>
-                                            <span class="{{ $caC }}">{{ $caScore ? number_format($caScore, 1) : '—' }}</span>
-                                            @if($caGrade !== '-')<span class="grade-badge g-{{ strtolower($caGrade) }}" style="background:#7c3aed;color:#fff;">{{ $caGrade }}</span>@endif
-                                            @if($gradeBasis === 'cum_ave')<span style="font-size:8px;color:#7c3aed;">★</span>@endif
-                                        </div>
                                         @if($bf > 0)
-                                        <div style="font-size:8px;color:var(--cb-muted);text-align:left;padding:0 4px;">BF: {{ $bf }}</div>
+                                            <div style="font-size:8px;color:var(--cb-muted);text-align:left;padding:0 4px;">BF: {{ number_format($bf, 1) }}</div>
                                         @endif
                                     </div>
                                 </td>
                             @endforeach
 
-                            {{-- Summary / Analytics cell --}}
+                            {{-- Summary --}}
                             <td class="cbcol-summary analytics-cell">
                                 <div class="analytics-row">
                                     <span class="analytics-lbl">Obtained (Term)</span>
@@ -891,17 +912,17 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                     <span class="analytics-lbl">Obtained (Cum)</span>
                                     <span class="analytics-val">{{ number_format($an['cum_total'] ?? 0, 1) }}</span>
                                 </div>
-                                <div class="analytics-row" style="background:#ede9fe;border-radius:4px;padding:2px 6px;">
-                                    <span class="analytics-lbl" style="color:#5b21b6;"><i class="ri-bar-chart-line me-1"></i> Cum Ave ★</span>
-                                    <span class="analytics-val" style="color:#7c3aed;">
-                                        {{ number_format($an['cum_ave_average'] ?? 0, 1) }}
-                                    </span>
+                                <div class="analytics-row">
+                                    <span class="analytics-lbl">% (Term)</span>
+                                    <span class="analytics-val">{{ number_format($termPct, 1) }}%</span>
                                 </div>
                                 <div class="analytics-row">
-                                    <span class="analytics-lbl">% ({{ $gradeBasis === 'total' ? 'Term' : 'Cum Ave' }})</span>
-                                    <span class="analytics-val analytics-percentage {{ $displayScore < 50 ? 'score-red' : ($displayScore < 70 ? 'score-amber' : ($gradeBasis === 'total' ? 'score-green' : 'score-purple')) }}"
-                                          data-target="{{ number_format($gradeBasis === 'total' ? $termPct : $cumAvePct, 1) }}"
-                                          data-type="pct">0%</span>
+                                    <span class="analytics-lbl">% (Cum)</span>
+                                    <span class="analytics-val">{{ number_format($cumPct, 1) }}%</span>
+                                </div>
+                                <div class="analytics-row">
+                                    <span class="analytics-lbl">Subject Count</span>
+                                    <span class="analytics-val">{{ $an['subject_count'] ?? 0 }}</span>
                                 </div>
 
                                 <div style="margin-top:5px;">
@@ -917,14 +938,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                              data-final-color="{{ $cumColor }}"
                                              style="width:{{ $cumPct }}%;animation-delay:{{ $rowDelay + 0.1 }}s;"></div>
                                     </div>
-                                    <div style="font-size:9px;color:var(--cb-muted);margin:3px 0 2px;background:#ede9fe;padding:0 4px;border-radius:4px;">
-                                        Cum Ave ★
-                                    </div>
-                                    <div class="pct-bar-wrap">
-                                        <div class="pct-bar"
-                                             data-final-color="{{ $cumAveColor }}"
-                                             style="width:{{ $cumAvePct }}%;animation-delay:{{ $rowDelay + 0.2 }}s;"></div>
-                                    </div>
                                 </div>
                                 <div class="text-center mt-2">
                                     <button type="button"
@@ -938,7 +951,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 </div>
                             </td>
 
-                            {{-- Teacher's Comment Display --}}
+                            {{-- Teacher's Comment --}}
                             <td class="cbcol-teacher">
                                 <div class="comment-display"
                                      data-sid="{{ $sid }}"
@@ -950,7 +963,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 </div>
                             </td>
 
-                            {{-- Counselor's Comment Display --}}
+                            {{-- Counselor's Comment --}}
                             <td class="cbcol-guidance">
                                 <div class="comment-display"
                                      data-sid="{{ $sid }}"
@@ -962,7 +975,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 </div>
                             </td>
 
-                            {{-- Remark on Activities Display --}}
+                            {{-- Remark on Activities --}}
                             <td class="cbcol-activities">
                                 <div class="comment-display"
                                      data-sid="{{ $sid }}"
@@ -988,7 +1001,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             </table>
         </div>
 
-        {{-- MOBILE CARDS --}}
+        {{-- ══ MOBILE CARDS ══ --}}
         <div class="mobile-only" style="padding:16px;">
             @foreach ($students as $index => $student)
                 @php
@@ -999,20 +1012,14 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                     $fullName = trim(($student->lastname ?? '') . ' ' . ($student->fname ?? '') . ' ' . ($student->othername ?? ''));
                     $profile = $personalityProfiles->where('studentid', $sid)->first();
                     $an = $studentAnalytics[$sid] ?? [];
-                    $hasComment = $profile && !empty(trim($profile->classteachercomment ?? ''));
                     $pos = $positionMap[$sid] ?? 0;
                     $posClass = $pos === 1 ? 'pos-1' : ($pos === 2 ? 'pos-2' : ($pos === 3 ? 'pos-3' : 'pos-other'));
-                    $termPct = $an['term_percentage'] ?? 0;
-                    $cumPct = $an['cum_percentage'] ?? 0;
-                    $cumAvePct = $an['cum_ave_percentage'] ?? 0;
-                    $cumAveAvg = $an['cum_ave_average'] ?? 0;
-
                     $teacherComment = $profile ? $profile->classteachercomment : '';
                     $guidanceComment = $profile ? $profile->guidancescomment : '';
                     $activitiesComment = $profile ? $profile->remark_on_other_activities : '';
                 @endphp
                 <div class="cb-student-card" data-student-id="{{ $sid }}" data-searchkey="{{ strtolower($fullName . ' ' . $student->admissionNo) }}">
-                    <div class="card-top">
+                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;">
                         @if($imgUrl)
                             <div class="cb-avatar" style="width:48px;height:48px;">
                                 <img src="{{ $imgUrl }}" alt="{{ $fullName }}" style="width:100%;height:100%;object-fit:cover;">
@@ -1023,24 +1030,21 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         <div style="flex:1;">
                             <div style="font-weight:700;font-size:14px;color:var(--cb-navy);">{{ $fullName }}</div>
                             <div style="font-size:11px;color:var(--cb-muted);">{{ $student->admissionNo }}</div>
-                            <div style="font-size:10px;color:#7c3aed;background:#ede9fe;padding:2px 8px;border-radius:12px;display:inline-block;margin-top:2px;">
-                                <i class="ri-bar-chart-line me-1"></i> Cum Ave: {{ number_format($cumAveAvg, 1) }}%
-                            </div>
                         </div>
                         <div class="pos-badge {{ $posClass }}">{{ $pos }}</div>
                     </div>
-                    <div class="card-body-pad">
-                        <!-- Subject scores compact -->
+                    <div style="padding:0;">
                         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:14px;">
                             @foreach ($subjects as $subject)
                                 @php
                                     $tScore = $termScoreMap[$sid][$subject->subject] ?? 0;
-                                    $caScore = $cumAveMap[$sid][$subject->subject] ?? 0;
-                                    $displayScore = $gradeBasis === 'total' ? $tScore : $caScore;
-                                    $displayGrade = $displayScore ? ($isSenior ? 
-                                        ($displayScore >= 75 ? 'A1' : ($displayScore >= 70 ? 'B2' : ($displayScore >= 65 ? 'B3' : ($displayScore >= 60 ? 'C4' : ($displayScore >= 55 ? 'C5' : ($displayScore >= 50 ? 'C6' : ($displayScore >= 45 ? 'D7' : ($displayScore >= 40 ? 'E8' : 'F9')))))))) :
-                                        ($displayScore >= 70 ? 'A' : ($displayScore >= 60 ? 'B' : ($displayScore >= 50 ? 'C' : ($displayScore >= 40 ? 'D' : 'F'))))
-                                    ) : '-';
+                                    $cScore = $cumScoreMap[$sid][$subject->subject]  ?? 0;
+                                    $displayScore = $gradeBasis === 'total' ? $tScore : $cScore;
+                                    if ($isSenior) {
+                                        $displayGrade = $displayScore >= 75 ? 'A1' : ($displayScore >= 70 ? 'B2' : ($displayScore >= 65 ? 'B3' : ($displayScore >= 60 ? 'C4' : ($displayScore >= 55 ? 'C5' : ($displayScore >= 50 ? 'C6' : ($displayScore >= 45 ? 'D7' : ($displayScore >= 40 ? 'E8' : ($displayScore > 0 ? 'F9' : '-'))))))));
+                                    } else {
+                                        $displayGrade = $displayScore >= 70 ? 'A' : ($displayScore >= 60 ? 'B' : ($displayScore >= 50 ? 'C' : ($displayScore >= 40 ? 'D' : ($displayScore > 0 ? 'F' : '-'))));
+                                    }
                                     $displayColor = $displayScore < 40 ? 'score-red' : ($displayScore < 50 ? 'score-amber' : ($gradeBasis === 'total' ? 'score-green' : 'score-purple'));
                                 @endphp
                                 <div style="background:var(--cb-surface);border-radius:8px;padding:6px;text-align:center;border:1px solid var(--cb-border);">
@@ -1050,32 +1054,30 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 </div>
                             @endforeach
                         </div>
-                        
-                        <!-- Mobile comment sections -->
                         <div class="comment-field-group">
                             <label>Teacher's Comment</label>
-                            <div class="comment-display-mobile"
+                            <div class="comment-display"
                                  data-sid="{{ $sid }}" data-field="teacher"
                                  onclick="openCommentModal('{{ $sid }}', 'teacher', '{{ addslashes($fullName) }}', '{{ $student->admissionNo }}', '{{ $imgUrl }}', {{ json_encode($an) }})"
-                                 style="cursor:pointer; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
+                                 style="padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
                                 {!! $teacherComment ? nl2br(e($teacherComment)) : '<span style="color:#94a3b8;">— Click to add comment —</span>' !!}
                             </div>
                         </div>
                         <div class="comment-field-group">
                             <label>Counselor's Comment</label>
-                            <div class="comment-display-mobile"
+                            <div class="comment-display"
                                  data-sid="{{ $sid }}" data-field="guidance"
                                  onclick="openCommentModal('{{ $sid }}', 'guidance', '{{ addslashes($fullName) }}', '{{ $student->admissionNo }}', '{{ $imgUrl }}', {{ json_encode($an) }})"
-                                 style="cursor:pointer; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
+                                 style="padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
                                 {!! $guidanceComment ? nl2br(e($guidanceComment)) : '<span style="color:#94a3b8;">— Click to add comment —</span>' !!}
                             </div>
                         </div>
                         <div class="comment-field-group">
                             <label>Remark on Activities</label>
-                            <div class="comment-display-mobile"
+                            <div class="comment-display"
                                  data-sid="{{ $sid }}" data-field="activities"
                                  onclick="openCommentModal('{{ $sid }}', 'activities', '{{ addslashes($fullName) }}', '{{ $student->admissionNo }}', '{{ $imgUrl }}', {{ json_encode($an) }})"
-                                 style="cursor:pointer; padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
+                                 style="padding:10px; background:#f8fafc; border-radius:8px; border:1px solid var(--cb-border);">
                                 {!! $activitiesComment ? nl2br(e($activitiesComment)) : '<span style="color:#94a3b8;">— Click to add comment —</span>' !!}
                             </div>
                         </div>
@@ -1091,20 +1093,26 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             @endforeach
         </div>
 
+        {{-- ══ SAVE BAR ══ --}}
         <div class="save-bar">
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                 <label style="margin:0;"><i class="ri-pen-nib-line me-1"></i>Signature (optional)</label>
                 <input type="file" id="signatureFile" accept=".jpg,.jpeg,.png,.pdf" class="file-input-styled">
             </div>
-            <div class="save-counter">
-                <span class="sc-pill-done"><i class="ri-checkbox-circle-line"></i><span id="counterDoneNum">0</span> commented</span>
-                <span class="sc-pill-pending"><i class="ri-time-line"></i><span id="counterPendingNum">0</span> pending</span>
+            <div>
+                <span style="color:#fff;font-size:12px;font-weight:600;">
+                    <i class="ri-checkbox-circle-line me-1" style="color:#4ade80;"></i><span id="counterDoneNum">0</span> commented
+                    &nbsp;·&nbsp;
+                    <i class="ri-time-line me-1" style="color:#fbbf24;"></i><span id="counterPendingNum">0</span> pending
+                </span>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
                 <button type="button" class="btn-print" onclick="triggerPrint()" title="Print Broadsheet">
                     <i class="ri-printer-line"></i> Print
                 </button>
-                <span id="savingText" style="display:none;color:rgba(255,255,255,.75);font-size:13px;align-items:center;gap:6px;"><i class="spin ri-loader-4-line"></i> Saving…</span>
+                <span id="savingText" style="display:none;color:rgba(255,255,255,.75);font-size:13px;align-items:center;gap:6px;">
+                    <i class="ri-loader-4-line spin"></i> Saving…
+                </span>
                 <button type="button" id="saveBtn" class="btn-save-all"><i class="ri-save-3-line"></i> Save All Changes</button>
             </div>
         </div>
@@ -1121,7 +1129,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
 </div></div></div>
 
-{{-- Image Zoom Modal --}}
+{{-- ══ IMAGE ZOOM MODAL ══ --}}
 <div class="modal fade" id="cbImgZoomModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="background:transparent;border:none;box-shadow:none;">
@@ -1135,7 +1143,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- Comment Modal --}}
+{{-- ══ COMMENT MODAL ══ --}}
 <div class="modal fade" id="cbCommentModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius:var(--cb-radius);overflow:hidden;">
@@ -1161,9 +1169,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             <div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;">Cum</div>
                             <div id="modalCumTotal" style="font-size:20px;font-weight:700;margin-top:5px;">0.0</div>
                         </div>
-                        <div style="text-align:center;background:rgba(124,58,237,.2);border-radius:10px;padding:10px;">
-                            <div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;color:#c4b5fd;">Cum Ave ★</div>
-                            <div id="modalCumAveTotal" style="font-size:20px;font-weight:700;margin-top:5px;color:#c4b5fd;">0.0</div>
+                        <div style="text-align:center;background:rgba(255,255,255,.12);border-radius:10px;padding:10px;">
+                            <div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;">%</div>
+                            <div id="modalPercent" style="font-size:20px;font-weight:700;margin-top:5px;">0.0</div>
                         </div>
                         <div style="text-align:center;background:rgba(255,255,255,.12);border-radius:10px;padding:10px;">
                             <div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;">Position</div>
@@ -1171,7 +1179,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         </div>
                     </div>
                     <div class="mt-2 pt-1" style="border-top:1px solid rgba(255,255,255,.15);">
-                        <div class="small text-center opacity-75">Basis: <span id="modalGradeBasis">{{ $gradeBasis === 'total' ? 'Term Total' : 'Cumulative Average' }}</span> | Subjects: <span id="modalSubjects">0</span></div>
+                        <div class="small text-center opacity-75">Basis: <span id="modalGradeBasis">{{ $gradeBasis === 'total' ? 'Term Total' : 'Cumulative' }}</span> | Subjects: <span id="modalSubjects">0</span></div>
                     </div>
                 </div>
 
@@ -1225,10 +1233,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     var PM          = {!! $positionMapJson !!};
     var SAVE_URL    = '{{ route("classbroadsheet.updateComments", [$schoolclassid, $sessionid, $termid]) }}';
     var CSRF        = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
-    var CLASS_NAME  = '{{ $schoolclass ? $schoolclass->schoolclass . " " . $schoolclass->arm : "" }}';
-    var TERM_NAME   = '{{ $schoolterm }}';
-    var SESSION_NAME= '{{ $schoolsession }}';
-    var GRADE_BASIS = '{{ $gradeBasis ?? "cum_ave" }}';
+    var GRADE_BASIS = '{{ $gradeBasis ?? "cum" }}';
 
     var FIELD_MAP = { teacher:'c_teacher_', guidance:'c_guidance_', activities:'c_activities_', absence:'c_absence_' };
     var debounceTimers = {};
@@ -1279,28 +1284,15 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     }
 
     function setChipState(sid, state, text) {
-        ['autosave-' + sid, 'autosave-m-' + sid].forEach(function(id){
-            var chip = document.getElementById(id);
-            if (!chip) return;
-            chip.className = 'autosave-chip ' + state;
-            chip.textContent = text || '';
-        });
+        var chip = document.getElementById('autosave-' + sid);
+        if (!chip) return;
+        chip.className = 'autosave-chip ' + state;
+        chip.textContent = text || '';
     }
 
     function refreshCommentDisplay(sid, field, value) {
         var displayValue = value && value.trim() !== '' ? value : '';
-
         document.querySelectorAll('.comment-display[data-sid="' + sid + '"][data-field="' + field + '"]').forEach(function(el) {
-            if (displayValue) {
-                el.innerHTML = nl2br(escapeHtml(displayValue));
-                el.setAttribute('data-value', displayValue);
-            } else {
-                el.innerHTML = '<span style="color:#94a3b8;">— Click to add comment —</span>';
-                el.setAttribute('data-value', '');
-            }
-        });
-
-        document.querySelectorAll('.comment-display-mobile[data-sid="' + sid + '"][data-field="' + field + '"]').forEach(function(el) {
             if (displayValue) {
                 el.innerHTML = nl2br(escapeHtml(displayValue));
                 el.setAttribute('data-value', displayValue);
@@ -1321,7 +1313,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         fd.append('no_of_times_school_absent[' + sid + ']',     getCanonical(sid, 'absence'));
         var sigFile = document.getElementById('signatureFile');
         if (sigFile && sigFile.files && sigFile.files[0]) fd.append('signature', sigFile.files[0]);
+
         setChipState(sid, 'ac-saving', '⏳ Saving…');
+
         fetch(SAVE_URL, {
             method:'POST',
             headers:{
@@ -1331,17 +1325,17 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             },
             body:fd
         })
-            .then(function(res){ return res.json().then(function(data){ if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status)); return data; }); })
-            .then(function(data){
-                if (data.success){
-                    setChipState(sid,'ac-saved','✓ Saved');
-                    refreshCommentStatusForStudent(sid);
-                    setTimeout(function(){ setChipState(sid,'ac-idle',''); }, 3000);
-                } else {
-                    setChipState(sid,'ac-err','✗ Failed');
-                }
-            })
-            .catch(function(err){ console.error('Autosave error sid=' + sid, err); setChipState(sid,'ac-err','✗ Error'); });
+        .then(function(res){ return res.json().then(function(data){ if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status)); return data; }); })
+        .then(function(data){
+            if (data.success){
+                setChipState(sid,'ac-saved','✓ Saved');
+                refreshCommentStatusForStudent(sid);
+                setTimeout(function(){ setChipState(sid,'ac-idle',''); }, 3000);
+            } else {
+                setChipState(sid,'ac-err','✗ Failed');
+            }
+        })
+        .catch(function(err){ console.error('Autosave error sid=' + sid, err); setChipState(sid,'ac-err','✗ Error'); });
     }
 
     function scheduleAutosave(sid) {
@@ -1351,12 +1345,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
     function refreshCommentStatusForStudent(sid) {
         var hasVal = getCanonical(sid, 'teacher').trim() !== '';
-        ['status-' + sid, 'status-m-' + sid].forEach(function(id){
-            var badge = document.getElementById(id);
-            if (!badge) return;
+        var badge = document.getElementById('status-' + sid);
+        if (badge) {
             badge.textContent = hasVal ? '✓ Commented' : '○ No comment';
             badge.className = 'comment-status-dot ' + (hasVal ? 'dot-saved' : 'dot-unsaved');
-        });
+        }
     }
 
     function refreshCommentStatus() {
@@ -1387,9 +1380,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         ta.focus();
     };
 
-    // Make openCommentModal available globally
     window.openCommentModal = function(sid, field, studentName, studentAdm, studentImg, analytics) {
-        console.log('openCommentModal called:', sid, field, studentName);
         currentModalSid = sid;
         currentModalField = field;
 
@@ -1418,9 +1409,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
         document.getElementById('modalTermTotal').textContent = parseFloat(analyticsData.term_total || 0).toFixed(1);
         document.getElementById('modalCumTotal').textContent  = parseFloat(analyticsData.cum_total || 0).toFixed(1);
-        document.getElementById('modalCumAveTotal').textContent = parseFloat(analyticsData.cum_ave_average || 0).toFixed(1);
-        document.getElementById('modalSubjects').textContent   = analyticsData.subject_count || 0;
-        document.getElementById('modalGradeBasis').textContent = GRADE_BASIS === 'total' ? 'Term Total' : 'Cumulative Average';
+        document.getElementById('modalPercent').textContent   = parseFloat(GRADE_BASIS === 'total' ? (analyticsData.term_percentage || 0) : (analyticsData.cum_percentage || 0)).toFixed(1) + '%';
+        document.getElementById('modalSubjects').textContent  = analyticsData.subject_count || 0;
+        document.getElementById('modalGradeBasis').textContent = GRADE_BASIS === 'total' ? 'Term Total' : 'Cumulative';
 
         var posEl = document.getElementById('modalPosition');
         if (posEl) {
@@ -1443,7 +1434,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     async function loadPastComments() {
         if (!currentModalSid) return;
         var listEl = document.getElementById('pastCommentsList');
-        listEl.innerHTML = '<div class="text-center py-4"><i class="ri-loader-4-line ri-spin" style="font-size:24px;color:var(--cb-teal);"></i><br><span class="text-muted mt-2 d-block">Loading past comments…</span></div>';
+        listEl.innerHTML = '<div class="text-center py-4"><i class="ri-loader-4-line spin" style="font-size:24px;color:var(--cb-teal);"></i><br><span class="text-muted mt-2 d-block">Loading past comments…</span></div>';
         document.getElementById('pastCommentsPanel').style.display = 'block';
         try {
             var res = await fetch('/classbroadsheet/past-comments/' + currentModalSid, {
@@ -1534,50 +1525,47 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         if (grades.length) {
             for (var i = 0; i < grades.length; i++) {
                 var g = grades[i];
-                var tgl = gradeClass(g.term_grade), cgl = gradeClass(g.cum_grade), cal = gradeClass(g.cum_ave_grade || g.cum_grade);
+                var tgl = gradeClass(g.term_grade), cgl = gradeClass(g.cum_grade);
                 var tC = (g.term_score > 0 && g.term_score < 50) ? 'score-red' : (g.term_score >= 70 ? 'score-green' : 'score-amber');
-                var cC = (g.cum_score  > 0 && g.cum_score  < 50) ? 'score-red' : (g.cum_score  >= 70 ? 'score-green' : 'score-amber');
-                var caC = (g.cum_ave_score > 0 && g.cum_ave_score < 50) ? 'score-red' : (g.cum_ave_score >= 70 ? 'score-purple' : 'score-amber');
+                var cC = (g.cum_score  > 0 && g.cum_score  < 50) ? 'score-red' : (g.cum_score  >= 70 ? 'score-purple' : 'score-amber');
                 if (!g.term_score || g.term_score <= 0) tC = '';
                 if (!g.cum_score  || g.cum_score  <= 0) cC = '';
-                if (!g.cum_ave_score || g.cum_ave_score <= 0) caC = '';
                 var tsDisplay = (g.term_score && g.term_score > 0) ? parseFloat(g.term_score).toFixed(1) : '—';
                 var csDisplay = (g.cum_score  && g.cum_score  > 0) ? parseFloat(g.cum_score).toFixed(1)  : '—';
-                var casDisplay = (g.cum_ave_score && g.cum_ave_score > 0) ? parseFloat(g.cum_ave_score).toFixed(1) : '—';
                 var termGradeBadge = (g.term_grade && g.term_grade !== '-') ? '<span class="grade-badge g-' + tgl + '">' + esc(g.term_grade) + '</span>' : '<span style="color:#94a3b8;font-size:11px;">—</span>';
                 var cumGradeBadge  = (g.cum_grade  && g.cum_grade  !== '-') ? '<span class="grade-badge g-' + cgl + '">' + esc(g.cum_grade)  + '</span>' : '<span style="color:#94a3b8;font-size:11px;">—</span>';
-                var cumAveGradeBadge = (g.cum_ave_grade && g.cum_ave_grade !== '-') ? '<span class="grade-badge g-' + cal + '" style="background:#7c3aed;color:#fff;">' + esc(g.cum_ave_grade)  + '</span>' : '<span style="color:#94a3b8;font-size:11px;">—</span>';
                 rows += '<tr><td style="text-align:left;font-weight:600;">' + esc(g.subject) + '</td>' +
                         '<td><div class="score-pair">' +
                         '<div class="score-cell term"><span class="score-lbl" style="color:#0891b2;">T</span><span class="' + tC + '">' + tsDisplay + '</span></div>' +
-                        '<div class="score-cell cum"><span class="score-lbl" style="color:var(--cb-navy);">C</span><span class="' + cC + '">' + csDisplay + '</span></div>' +
-                        '<div class="score-cell cumave"><span class="score-lbl" style="color:#7c3aed;">CA</span><span class="' + caC + '">' + casDisplay + '</span></div>' +
+                        '<div class="score-cell cum"><span class="score-lbl" style="color:#7c3aed;">C</span><span class="' + cC + '">' + csDisplay + '</span></div>' +
                         '</div></td>' +
-                        '<td><div style="display:flex;flex-direction:column;align-items:center;gap:3px;">' + termGradeBadge + cumGradeBadge + cumAveGradeBadge + '</div></td></tr>';
+                        '<td><div style="display:flex;flex-direction:column;align-items:center;gap:3px;">' + termGradeBadge + cumGradeBadge + '</div></td></tr>';
             }
         } else {
-            rows = '<tr><td colspan="3" class="text-center text-muted py-3">No subject records available</td><td></td><td></td></tr>';
+            rows = '<tr><td colspan="3" class="text-center text-muted py-3">No subject records available</td></tr>';
         }
-        var tPct = parseFloat(an.term_percentage || 0), cPct = parseFloat(an.cum_percentage || 0), caPct = parseFloat(an.cum_ave_percentage || 0);
+
+        var tPct = parseFloat(an.term_percentage || 0);
+        var cPct = parseFloat(an.cum_percentage || 0);
         var pos = PM[sid] || 0;
         var suffix = pos === 1 ? 'st' : pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th';
-        var basisLabel = GRADE_BASIS === 'total' ? 'Term Total' : 'Cumulative Average';
+        var basisLabel = GRADE_BASIS === 'total' ? 'Term Total' : 'Cumulative';
+
         gpopBody.innerHTML =
             '<div class="gpop-legend">' +
             '<span style="font-size:10px;font-weight:700;color:var(--cb-muted);">Legend:</span>' +
             '<span class="gpop-legend-item"><span class="gpop-legend-dot t"></span>Term</span>' +
-            '<span class="gpop-legend-item"><span class="gpop-legend-dot c"></span>Cum (raw)</span>' +
-            '<span class="gpop-legend-item"><span class="gpop-legend-dot ca"></span>Cum Ave ★</span>' +
+            '<span class="gpop-legend-item"><span class="gpop-legend-dot c"></span>Cum</span>' +
             '<span style="margin-left:auto;font-size:10px;color:var(--cb-muted);">Basis: <strong>' + basisLabel + '</strong></span>' +
             '</div>' +
-            '<div class="gpop-scroll"><table class="gpop-table"><thead><tr><th style="text-align:left;padding-left:12px;">Subject</th><th class="col-score">Score<br><small style="opacity:.65;font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;">T / C / CA</small></th><th class="col-grade">Grade<br><small style="opacity:.65;font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;">T / C / CA</small></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+            '<div class="gpop-scroll"><table class="gpop-table"><thead><tr><th style="text-align:left;padding-left:12px;">Subject</th><th class="col-score">Score<br><small style="opacity:.65;font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;">T / C</small></th><th class="col-grade">Grade<br><small style="opacity:.65;font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;">T / C</small></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
             '<div class="gpop-summary">' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Obtained (Term)</div><div class="gpop-sum-val">' + parseFloat(an.term_total || 0).toFixed(1) + '</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Obtained (Cum)</div><div class="gpop-sum-val">' + parseFloat(an.cum_total || 0).toFixed(1) + '</div></div>' +
-            '<div class="gpop-sum-item" style="border-color:#7c3aed;background:#ede9fe;"><div class="gpop-sum-lbl" style="color:#5b21b6;">Cum Ave ★</div><div class="gpop-sum-val score-purple">' + parseFloat(an.cum_ave_average || 0).toFixed(1) + '</div></div>' +
+            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Subjects</div><div class="gpop-sum-val">' + (an.subject_count || 0) + '</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">% (Term)</div><div class="gpop-sum-val ' + getPctClass(tPct) + '">' + tPct.toFixed(1) + '%</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">% (Cum)</div><div class="gpop-sum-val ' + getPctClass(cPct) + '">' + cPct.toFixed(1) + '%</div></div>' +
-            '<div class="gpop-sum-item" style="border-color:#7c3aed;background:#ede9fe;"><div class="gpop-sum-lbl" style="color:#5b21b6;">% (Cum Ave ★)</div><div class="gpop-sum-val score-purple">' + caPct.toFixed(1) + '%</div></div>' +
+            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Position</div><div class="gpop-sum-val">' + (pos ? (pos + suffix) : '—') + '</div></div>' +
             '</div>';
 
         var rect = triggerEl.getBoundingClientRect();
@@ -1600,10 +1588,15 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         fd.append('_method', 'PATCH');
         var sigFile = document.getElementById('signatureFile');
         if (sigFile && sigFile.files && sigFile.files[0]) fd.append('signature', sigFile.files[0]);
-        var saveBtn = document.getElementById('saveBtn'), savingText = document.getElementById('savingText'), origHtml = saveBtn.innerHTML;
+
+        var saveBtn = document.getElementById('saveBtn');
+        var savingText = document.getElementById('savingText');
+        var origHtml = saveBtn.innerHTML;
+
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="ri-loader-4-line spin"></i> Saving…';
         if (savingText) savingText.style.display = 'inline-flex';
+
         fetch(SAVE_URL, {
             method:'POST',
             headers:{
@@ -1613,21 +1606,21 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             },
             body:fd
         })
-            .then(function(res){ return res.json(); })
-            .then(function(data){
-                if (data.success){
-                    toast(data.message || 'Saved successfully!', 'success');
-                    refreshCommentStatus();
-                } else {
-                    toast(data.message || 'Save failed.', 'error');
-                }
-            })
-            .catch(function(err){ console.error(err); toast('Error: ' + err.message, 'error'); })
-            .finally(function(){
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = origHtml;
-                if (savingText) savingText.style.display = 'none';
-            });
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+            if (data.success){
+                toast(data.message || 'Saved successfully!', 'success');
+                refreshCommentStatus();
+            } else {
+                toast(data.message || 'Save failed.', 'error');
+            }
+        })
+        .catch(function(err){ console.error(err); toast('Error: ' + err.message, 'error'); })
+        .finally(function(){
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHtml;
+            if (savingText) savingText.style.display = 'none';
+        });
     }
 
     function applyBarFinalColors() {
@@ -1640,34 +1633,15 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         });
     }
 
-    function runCounters() {
-        var duration = 700;
-        var fps = 60;
-        var steps = Math.round(duration / (1000 / fps));
-
-        document.querySelectorAll('[data-target][data-type="pct"]').forEach(function(el) {
-            var target = parseFloat(el.getAttribute('data-target') || '0');
-            var current = 0;
-            var increment = target / steps;
-            var step = 0;
-            var timer = setInterval(function() {
-                step++;
-                current += increment;
-                if (step >= steps) { current = target; clearInterval(timer); }
-                el.textContent = current.toFixed(1) + '%';
-            }, 1000 / fps);
-        });
-    }
-
     var TEMPLATES = [
-        { cat:'excellent', label:'Outstanding Performer', text:'%%NAME%% has demonstrated exceptional academic performance this term, consistently achieving outstanding results across all subjects. A truly gifted student whose dedication and hard work serve as an inspiration to peers.' },
-        { cat:'excellent', label:'Top of Class', text:'%%NAME%% has continued to excel academically, maintaining a top position in the class. With excellent study habits and a keen intellect, this student is well on track for great achievements ahead.' },
-        { cat:'good', label:'Good Performance', text:'%%NAME%% has performed well this term, showing a solid grasp of the subjects studied. With continued focus and dedication, even higher results are achievable next term.' },
-        { cat:'average', label:'Satisfactory Performance', text:'%%NAME%% has shown satisfactory performance this term. There is room for improvement, and we encourage more consistent effort and study habits going forward.' },
-        { cat:'improvement', label:'Needs Improvement', text:'%%NAME%% needs to put in significantly more effort to achieve their potential. We encourage this student to revise regularly, pay close attention in class, and seek assistance when faced with difficulties.' },
-        { cat:'conduct', label:'Excellent Conduct', text:'%%NAME%% has exhibited exemplary conduct and character throughout this term. A respectful, disciplined, and well-mannered student who is a positive influence in the classroom.' },
-        { cat:'counselor', label:'Positive Wellbeing', text:'%%NAME%% demonstrates a healthy sense of self-esteem and interacts positively with peers and teachers. Continue to nurture this positive outlook and engage in open communication whenever challenges arise.' },
-        { cat:'activities', label:'Active Participation', text:'%%NAME%% actively participates in school extracurricular activities and has demonstrated excellent sportsmanship and teamwork. A well-rounded student who contributes positively to the school community.' },
+        { cat:'excellent',   label:'Outstanding Performer',   text:'%%NAME%% has demonstrated exceptional academic performance this term, consistently achieving outstanding results across all subjects. A truly gifted student whose dedication and hard work serve as an inspiration to peers.' },
+        { cat:'excellent',   label:'Top of Class',            text:'%%NAME%% has continued to excel academically, maintaining a top position in the class. With excellent study habits and a keen intellect, this student is well on track for great achievements ahead.' },
+        { cat:'good',        label:'Good Performance',        text:'%%NAME%% has performed well this term, showing a solid grasp of the subjects studied. With continued focus and dedication, even higher results are achievable next term.' },
+        { cat:'average',     label:'Satisfactory Performance',text:'%%NAME%% has shown satisfactory performance this term. There is room for improvement, and we encourage more consistent effort and study habits going forward.' },
+        { cat:'improvement', label:'Needs Improvement',       text:'%%NAME%% needs to put in significantly more effort to achieve their potential. We encourage this student to revise regularly, pay close attention in class, and seek assistance when faced with difficulties.' },
+        { cat:'conduct',     label:'Excellent Conduct',       text:'%%NAME%% has exhibited exemplary conduct and character throughout this term. A respectful, disciplined, and well-mannered student who is a positive influence in the classroom.' },
+        { cat:'counselor',   label:'Positive Wellbeing',      text:'%%NAME%% demonstrates a healthy sense of self-esteem and interacts positively with peers and teachers. Continue to nurture this positive outlook and engage in open communication whenever challenges arise.' },
+        { cat:'activities',  label:'Active Participation',    text:'%%NAME%% actively participates in school extracurricular activities and has demonstrated excellent sportsmanship and teamwork. A well-rounded student who contributes positively to the school community.' },
     ];
 
     var tplActiveCategory = 'all';
@@ -1724,7 +1698,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             picker.style.top = top + 'px';
             picker.style.left = left + 'px';
             picker.style.maxHeight = ph + 'px';
-            picker.style.zIndex = '999999';
         }
     }
 
@@ -1744,7 +1717,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Move popups to body
         var gpop = document.getElementById('cbGradePopup'), backdrop = document.getElementById('cbPopupBackdrop');
         if (gpop && gpop.parentNode !== document.body) document.body.appendChild(gpop);
         if (backdrop && backdrop.parentNode !== document.body) document.body.appendChild(backdrop);
@@ -1752,7 +1724,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         if (tplPicker && tplPicker.parentNode !== document.body) document.body.appendChild(tplPicker);
         if (tplBd && tplBd.parentNode !== document.body) document.body.appendChild(tplBd);
 
-        runCounters();
         applyBarFinalColors();
 
         // Column toggles
@@ -1761,10 +1732,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                 var key = this.getAttribute('data-colkey');
                 var show = this.classList.toggle('active') ? '' : 'none';
                 document.querySelectorAll('.cbcol-' + key).forEach(function(el) {
-                    if (el) el.style.display = show;
-                });
-                var mobileClass = { guidance:'.mobile-col-guidance', activities:'.mobile-col-activities', absence:'.mobile-col-absence' }[key];
-                if (mobileClass) document.querySelectorAll(mobileClass).forEach(function(el) {
                     if (el) el.style.display = show;
                 });
             });
@@ -1828,10 +1795,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             if (bd && e.target === bd) closeGradePop();
         });
         document.addEventListener('keydown', function(e){
-            if (e.key === 'Escape') {
-                closeGradePop();
-                closeTplPicker();
-            }
+            if (e.key === 'Escape') { closeGradePop(); closeTplPicker(); }
         });
 
         // Grade trigger button
@@ -1892,8 +1856,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         if (saveBtn) saveBtn.addEventListener('click', doSaveAll);
 
         refreshCommentStatus();
-
-        console.log('DOM fully loaded and modals initialized');
     });
 })();
 </script>
