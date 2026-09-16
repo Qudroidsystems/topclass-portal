@@ -718,15 +718,20 @@
                                 </div>
                             </td>
 
-                            {{-- FIXED CA FIELDS --}}
+                            {{-- ✅ FIXED CA FIELDS — read directly from the row --}}
                             @foreach (['ca1','ca2','ca3','exam'] as $field)
+                                @php
+                                    $rawVal     = $broadsheet->$field ?? null;
+                                    $displayVal = $rawVal === null ? '' : (float) $rawVal;
+                                @endphp
                                 <td class="col-{{ $field }} text-center">
                                     <input type="number" class="score-input"
                                            data-field="{{ $field }}"
                                            data-max="100"
                                            data-id="{{ $broadsheet->id }}"
-                                           data-original="{{ $broadsheet->$field ?? 0 }}"
-                                           value="{{ $broadsheet->$field ?? 0 }}"
+                                           data-original="{{ $displayVal }}"
+                                           data-raw="{{ $rawVal === null ? 'NULL' : $rawVal }}"
+                                           value="{{ $displayVal }}"
                                            min="0" max="100" step="0.1"
                                            {{ $isRowLocked ? 'disabled' : '' }}>
                                 </td>
