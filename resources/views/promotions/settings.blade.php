@@ -444,6 +444,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// ============================================================================
+// RULE INTERPRETER
+// ============================================================================
 const RuleInterpreter = (() => {
     const GRADE_LABELS_SENIOR = {
         A1: 'A1 (Distinction)', B2: 'B2 (Very Good)', B3: 'B3 (Good)',
@@ -643,6 +646,9 @@ const RuleInterpreter = (() => {
     return { interpret, interpretAll, renderPanel };
 })();
 
+// ============================================================================
+// GLOBAL STATE
+// ============================================================================
 let promotionRules = [];
 let gradeScale = ['A1','B2','B3','C4','C5','C6','D7','E8','F9'];
 let isSenior = true;
@@ -677,6 +683,11 @@ function getGroupedGrades() { return isSenior ? Object.keys(GROUPED_SENIOR) : Ob
 function getExactGrades() { return gradeScale; }
 function getGradesForGrouping(grouping) { return grouping === 'grouped' ? getGroupedGrades() : getExactGrades(); }
 
+function escH(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function _getConds(ruleIdx, sec) {
     if (!promotionRules[ruleIdx]) return [];
     return sec === 'comp'
@@ -684,6 +695,9 @@ function _getConds(ruleIdx, sec) {
         : promotionRules[ruleIdx].other_section.count_conditions;
 }
 
+// ============================================================================
+// RULE HTML BUILDER
+// ============================================================================
 function buildCondRows(conds, ruleIdx, section, availGrades) {
     if (!conds.length) return '';
     return conds.map((cond, ci) => {
@@ -827,11 +841,17 @@ function buildRuleHTML(rule, idx) {
     </div>`;
 }
 
+// ============================================================================
+// RENDER
+// ============================================================================
 function rerenderRules() {
     const container = document.getElementById('rulesContainer');
     const noMsg = document.getElementById('noRulesMsg');
     if (!promotionRules.length) {
-        if (container) { container.innerHTML = ''; if (noMsg) { container.appendChild(noMsg); noMsg.style.display = 'block'; } }
+        if (container) {
+            container.innerHTML = '';
+            if (noMsg) { container.appendChild(noMsg); noMsg.style.display = 'block'; }
+        }
         updateGlobalInterpPanel();
         return;
     }
@@ -894,6 +914,9 @@ function updateGlobalInterpPanel() {
     panel.innerHTML = html;
 }
 
+// ============================================================================
+// EVENT DELEGATION
+// ============================================================================
 function setupEventDelegation() {
     const container = document.getElementById('rulesContainer');
     if (!container) return;
@@ -1060,17 +1083,15 @@ function handleContainerInput(e) {
     }
 }
 
-function escH(s) {
-    if (s === null || s === undefined) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
+// ============================================================================
+// REFRESH CLASS INFO — FIXED
+// ============================================================================
 async function refreshClassInfo() {
-    const classId = document.getElementById('schoolclass_id').value;
-    const termId = document.getElementById('term_id').value;
+    const classId   = document.getElementById('schoolclass_id').value;
+    const termId    = document.getElementById('term_id').value;
     const sessionId = document.getElementById('session_id').value;
-    const addBtn = document.getElementById('addRuleBtn');
-    const loadEl = document.getElementById('subjectLoadStatus');
+    const addBtn    = document.getElementById('addRuleBtn');
+    const loadEl    = document.getElementById('subjectLoadStatus');
     const summaryEl = document.getElementById('subjectSummary');
     const scopeInfo = document.getElementById('ruleScopeInfo');
 
@@ -1079,86 +1100,188 @@ async function refreshClassInfo() {
 
     addBtn.disabled = true;
     summaryEl.style.display = 'none';
-    if (!classId) { scopeInfo.textContent = ''; rerenderRules(); return; }
+
+    if (!classId) {
+        scopeInfo.textContent = '';
+        rerenderRules();
+        return;
+    }
+
     loadEl.style.display = 'block';
+
     try {
-        let url = `/promotion-settings/class-promotion-data?classid=${classId}`;
-        if (termId && termId !== '') url += `&termid=${termId}`;
-        if (sessionId && sessionId !== '') url += `&sessionid=${sessionId}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        // ── Build URL ────────────────────────────────────────────────────
+        let url = `/promotion-settings/class-promotion-data?classid=${encodeURIComponent(classId)}`;
+        if (termId && termId !== '')       url += `&termid=${encodeURIComponent(termId)}`;
+        if (sessionId && sessionId !== '') url += `&sessionid=${encodeURIComponent(sessionId)}`;
+
+        console.log('[refreshClassInfo] Fetching:', url);
+
+        // ── Fetch with strict JSON expectation ───────────────────────────
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            credentials: 'same-origin',
+        });
+
         loadEl.style.display = 'none';
-        if (data.success) {
-            isSenior = data.is_senior;
-            totalSubjects = data.total_subjects ?? 0;
-            compulsoryCount = data.compulsory_count ?? 0;
-            otherCount = data.other_count ?? 0;
-            classPassAvg = data.pass_average ?? null;
-            gradeScale = (data.grade_scale && data.grade_scale.length) ? data.grade_scale : GRADE_SCALES[isSenior ? 'senior' : 'junior'];
 
-            compulsorySubjects = (data.compulsory_subjects ?? []).map(cs => ({
-                subject_id: cs.id,
-                subject_name: cs.subject,
-                subject_code: cs.subject_code,
-                default_min_grade: cs.default_min_grade || '',
-                min_grade: cs.default_min_grade || '',
-                override: false
-            }));
+        console.log('[refreshClassInfo] Response:', res.status, res.headers.get('content-type'));
 
-            if (classPassAvg !== null && !hasCurrentAvg) {
-                document.getElementById('promotion_pass_average').value = classPassAvg;
-                document.getElementById('avg_slider').value = classPassAvg;
-            } else if (hasCurrentAvg) {
-                document.getElementById('promotion_pass_average').value = currentAvg;
-                document.getElementById('avg_slider').value = currentAvg;
+        // ── Handle non-JSON responses (HTML error pages, redirects) ──────
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await res.text();
+            console.error('[refreshClassInfo] Non-JSON response:', {
+                status: res.status,
+                contentType: contentType,
+                body: text.substring(0, 800),
+            });
+
+            let hint = '';
+            if (res.status === 302 || res.status === 401) {
+                hint = 'Your session may have expired. Please refresh the page and log in again.';
+            } else if (res.status === 404) {
+                hint = 'Endpoint /promotion-settings/class-promotion-data was not found. Check your routes.';
+            } else if (res.status === 500) {
+                hint = 'Server error. Check storage/logs/laravel.log for details.';
+            } else if (res.status === 403) {
+                hint = 'You do not have permission to view promotion settings.';
+            } else {
+                hint = `HTTP ${res.status} — ${res.statusText || 'Unknown error'}`;
             }
 
-            const scaleLabel = isSenior ? 'Senior (A1–F9)' : 'Junior (A–F)';
-            scopeInfo.textContent = `${totalSubjects} total | ${compulsoryCount} compulsory | ${otherCount} other | ${scaleLabel}`;
-
-            let summaryHtml = `<div class="alert alert-success py-2 mb-0"><i class="ri-checkbox-circle-line me-1"></i><strong>${totalSubjects}</strong> total subjects &nbsp;|&nbsp;<strong>${compulsoryCount}</strong> compulsory &nbsp;|&nbsp;<strong>${otherCount}</strong> other &nbsp;|&nbsp;Grade scale: <strong>${scaleLabel}</strong>`;
-            if (compulsoryCount > 0) summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-star-fill text-warning me-1"></i>${compulsoryCount} compulsory subject${compulsoryCount > 1 ? 's' : ''} loaded.</small>`;
-            else summaryHtml += `<br><small class="text-muted mt-1 d-block"><i class="ri-information-line me-1"></i>No compulsory subjects assigned to this class.</small>`;
-            summaryHtml += `</div>`;
-            summaryEl.innerHTML = summaryHtml;
+            summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">
+                <i class="ri-error-warning-line me-1"></i><strong>${escH(hint)}</strong>
+                <details class="mt-2" style="font-size:11px;">
+                    <summary style="cursor:pointer;">Show raw response (first 800 chars)</summary>
+                    <pre style="white-space:pre-wrap;word-break:break-all;margin-top:6px;max-height:200px;overflow:auto;">${escH(text.substring(0, 800))}</pre>
+                </details>
+            </div>`;
             summaryEl.style.display = 'block';
-            addBtn.disabled = false;
-
-            if (promotionRules.length > 0) {
-                promotionRules = promotionRules.map(rule => {
-                    if (!rule.compulsory_section) rule.compulsory_section = { subjects: [], count_conditions: [] };
-                    if (!rule.other_section) rule.other_section = { count_conditions: [] };
-                    const existing = (rule.compulsory_section.subjects || []).reduce((m, s) => {
-                        if (s.subject_id) m[String(s.subject_id)] = s;
-                        return m;
-                    }, {});
-                    rule.compulsory_section.subjects = compulsorySubjects.map(cs => ({
-                        subject_id: cs.subject_id,
-                        subject_name: cs.subject_name,
-                        subject_code: cs.subject_code,
-                        default_min_grade: cs.default_min_grade ?? '',
-                        min_grade: existing[String(cs.subject_id)]?.min_grade ?? cs.default_min_grade ?? '',
-                        override: !!(existing[String(cs.subject_id)]?.min_grade),
-                    }));
-                    return rule;
-                });
-            }
-            rerenderRules();
-        } else {
-            summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="ri-error-warning-line me-1"></i>${data.message || 'Failed to load class data.'}</div>`;
-            summaryEl.style.display = 'block';
+            return;
         }
+
+        // ── Parse JSON ───────────────────────────────────────────────────
+        const data = await res.json();
+        console.log('[refreshClassInfo] Data:', data);
+
+        if (!data.success) {
+            summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">
+                <i class="ri-error-warning-line me-1"></i>${escH(data.message || 'Failed to load class data.')}
+            </div>`;
+            summaryEl.style.display = 'block';
+            return;
+        }
+
+        // ── Populate state ───────────────────────────────────────────────
+        isSenior          = !!data.is_senior;
+        totalSubjects     = data.total_subjects ?? 0;
+        compulsoryCount   = data.compulsory_count ?? 0;
+        otherCount        = data.other_count ?? 0;
+        classPassAvg      = data.pass_average ?? null;
+        gradeScale        = (data.grade_scale && data.grade_scale.length)
+                                ? data.grade_scale
+                                : GRADE_SCALES[isSenior ? 'senior' : 'junior'];
+
+        compulsorySubjects = (data.compulsory_subjects ?? []).map(cs => ({
+            subject_id:        cs.id,
+            subject_name:      cs.subject,
+            subject_code:      cs.subject_code,
+            default_min_grade: cs.default_min_grade || '',
+            min_grade:         cs.default_min_grade || '',
+            override:          false,
+        }));
+
+        // ── Populate avg field ───────────────────────────────────────────
+        if (classPassAvg !== null && !hasCurrentAvg) {
+            document.getElementById('promotion_pass_average').value = classPassAvg;
+            document.getElementById('avg_slider').value = classPassAvg;
+        } else if (hasCurrentAvg) {
+            document.getElementById('promotion_pass_average').value = currentAvg;
+            document.getElementById('avg_slider').value = currentAvg;
+        }
+
+        // ── Update scope info + summary ──────────────────────────────────
+        const scaleLabel = isSenior ? 'Senior (A1–F9)' : 'Junior (A–F)';
+        scopeInfo.textContent = `${totalSubjects} total | ${compulsoryCount} compulsory | ${otherCount} other | ${scaleLabel}`;
+
+        let summaryHtml = `<div class="alert alert-success py-2 mb-0">
+            <i class="ri-checkbox-circle-line me-1"></i>
+            <strong>${totalSubjects}</strong> total subjects &nbsp;|&nbsp;
+            <strong>${compulsoryCount}</strong> compulsory &nbsp;|&nbsp;
+            <strong>${otherCount}</strong> other &nbsp;|&nbsp;
+            Grade scale: <strong>${scaleLabel}</strong>`;
+
+        if (compulsoryCount > 0) {
+            summaryHtml += `<br><small class="text-muted mt-1 d-block">
+                <i class="ri-star-fill text-warning me-1"></i>
+                ${compulsoryCount} compulsory subject${compulsoryCount > 1 ? 's' : ''} loaded.
+            </small>`;
+        } else {
+            summaryHtml += `<br><small class="text-muted mt-1 d-block">
+                <i class="ri-information-line me-1"></i>
+                No compulsory subjects assigned to this class.
+            </small>`;
+        }
+        summaryHtml += `</div>`;
+
+        summaryEl.innerHTML = summaryHtml;
+        summaryEl.style.display = 'block';
+        addBtn.disabled = false;
+
+        // ── Re-sync existing rules with fresh subject list ───────────────
+        if (promotionRules.length > 0) {
+            promotionRules = promotionRules.map(rule => {
+                if (!rule.compulsory_section) rule.compulsory_section = { subjects: [], count_conditions: [] };
+                if (!rule.other_section)      rule.other_section      = { count_conditions: [] };
+
+                const existing = (rule.compulsory_section.subjects || []).reduce((m, s) => {
+                    if (s.subject_id) m[String(s.subject_id)] = s;
+                    return m;
+                }, {});
+
+                rule.compulsory_section.subjects = compulsorySubjects.map(cs => ({
+                    subject_id:        cs.subject_id,
+                    subject_name:      cs.subject_name,
+                    subject_code:      cs.subject_code,
+                    default_min_grade: cs.default_min_grade ?? '',
+                    min_grade:         existing[String(cs.subject_id)]?.min_grade ?? cs.default_min_grade ?? '',
+                    override:          !!(existing[String(cs.subject_id)]?.min_grade),
+                }));
+                return rule;
+            });
+        }
+
+        rerenderRules();
+
     } catch (err) {
         loadEl.style.display = 'none';
-        summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="ri-error-warning-line me-1"></i>Error: ${err.message}</div>`;
+        console.error('[refreshClassInfo] Exception:', err);
+        summaryEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">
+            <i class="ri-error-warning-line me-1"></i>
+            <strong>Network / parse error:</strong> ${escH(err.message)}
+        </div>`;
         summaryEl.style.display = 'block';
     }
 }
 
-function openModal() { new bootstrap.Modal(document.getElementById('settingModal')).show(); }
+// ============================================================================
+// MODAL OPEN / RESET
+// ============================================================================
+function openModal() {
+    new bootstrap.Modal(document.getElementById('settingModal')).show();
+}
 
 function resetModal() {
-    ['setting_id','session_id','term_id','template_id_input','promotion_pass_average'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['setting_id','session_id','term_id','template_id_input','promotion_pass_average'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     document.getElementById('schoolclass_id').value = '';
     document.getElementById('promoted_label').value = 'Promoted';
     document.getElementById('trial_label').value = 'Promoted on Trial';
@@ -1189,6 +1312,9 @@ function resetModal() {
     rerenderRules();
 }
 
+// ============================================================================
+// EDIT
+// ============================================================================
 async function handleEditClick(e) {
     const d = e.currentTarget.dataset;
     resetModal();
@@ -1222,10 +1348,15 @@ async function handleEditClick(e) {
     }
 
     const ruleLogicSelect = document.getElementById('rule_logic');
-    const changeEvent = new Event('change');
-    ruleLogicSelect.dispatchEvent(changeEvent);
+    ruleLogicSelect.dispatchEvent(new Event('change'));
 
-    try { promotionRules = JSON.parse(d.promotion_rules || '[]'); } catch { promotionRules = []; }
+    try {
+        promotionRules = JSON.parse(d.promotion_rules || '[]');
+    } catch (err) {
+        console.error('Failed to parse promotion_rules:', err);
+        promotionRules = [];
+    }
+
     openModal();
     await refreshClassInfo();
 }
@@ -1237,17 +1368,43 @@ function bindEditButtons() {
     });
 }
 
+// ============================================================================
+// DELETE
+// ============================================================================
 async function handleDeleteClick(e) {
     const btn = e.currentTarget;
-    const result = await Swal.fire({ title: 'Confirm Delete', icon: 'warning', html: `Delete rules for <strong>${escH(btn.dataset.name)}</strong>?`, showCancelButton: true, confirmButtonColor: '#dc2626', confirmButtonText: 'Yes, Delete' });
+    const result = await Swal.fire({
+        title: 'Confirm Delete',
+        icon: 'warning',
+        html: `Delete rules for <strong>${escH(btn.dataset.name)}</strong>?`,
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Yes, Delete',
+    });
     if (!result.isConfirmed) return;
+
     Swal.fire({ title: 'Deleting…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
     try {
-        const res = await fetch(`/promotion-settings/${btn.dataset.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json', 'Content-Type': 'application/json' } });
+        const res = await fetch(`/promotion-settings/${btn.dataset.id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        });
         const data = await res.json();
-        if (data.success) Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
-        else Swal.fire('Error', data.message || 'Failed.', 'error');
-    } catch { Swal.fire('Error', 'Network error.', 'error'); }
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 1500, showConfirmButton: false })
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Error', data.message || 'Failed.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'Network error.', 'error');
+    }
 }
 
 function bindDeleteButtons() {
@@ -1257,7 +1414,10 @@ function bindDeleteButtons() {
     });
 }
 
-document.getElementById('saveSettingBtn')?.addEventListener('click', async function() {
+// ============================================================================
+// SAVE
+// ============================================================================
+document.getElementById('saveSettingBtn')?.addEventListener('click', async function () {
     const classId = document.getElementById('schoolclass_id').value;
     if (!classId) { Swal.fire('Validation', 'Please select a class.', 'warning'); return; }
 
@@ -1312,69 +1472,117 @@ document.getElementById('saveSettingBtn')?.addEventListener('click', async funct
     if (id) { url = `/promotion-settings/${id}`; fd.append('_method', 'PUT'); }
 
     Swal.fire({ title: 'Saving…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
     try {
         const res = await fetch(url, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
             },
-            body: fd
+            body: fd,
         });
         const data = await res.json();
-        if (data.success) Swal.fire({ icon: 'success', title: 'Saved!', text: data.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
-        else Swal.fire('Error', data.message || 'Failed.', 'error');
-    } catch { Swal.fire('Error', 'An error occurred.', 'error'); }
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: 'Saved!', text: data.message, timer: 1500, showConfirmButton: false })
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Error', data.message || 'Failed.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'An error occurred.', 'error');
+    }
 });
 
-document.addEventListener('change', async function(e) {
+// ============================================================================
+// TOGGLE ACTIVE (per card)
+// ============================================================================
+document.addEventListener('change', async function (e) {
     if (!e.target.classList.contains('toggle-active-switch')) return;
-    const toggle = e.target, sid = toggle.dataset.id, isActive = toggle.checked;
+    const toggle = e.target;
+    const sid = toggle.dataset.id;
+    const isActive = toggle.checked;
     const badge = document.getElementById('ab' + sid);
     const card = toggle.closest('.setting-card');
     try {
-        const res = await fetch(`/promotion-settings/${sid}/toggle-active`, { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: isActive }) });
+        const res = await fetch(`/promotion-settings/${sid}/toggle-active`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ is_active: isActive }),
+        });
         const data = await res.json();
         if (data.success) {
-            if (badge) { badge.className = isActive ? 'active-badge is-active' : 'active-badge is-inactive'; badge.innerHTML = isActive ? '<i class="ri-checkbox-circle-line"></i> Active' : '<i class="ri-close-circle-line"></i> Inactive'; }
+            if (badge) {
+                badge.className = isActive ? 'active-badge is-active' : 'active-badge is-inactive';
+                badge.innerHTML = isActive
+                    ? '<i class="ri-checkbox-circle-line"></i> Active'
+                    : '<i class="ri-close-circle-line"></i> Inactive';
+            }
             card?.classList.toggle('inactive', !isActive);
-        } else { toggle.checked = !isActive; Swal.fire('Error', data.message, 'error'); }
-    } catch { toggle.checked = !isActive; Swal.fire('Error', 'Network error.', 'error'); }
+        } else {
+            toggle.checked = !isActive;
+            Swal.fire('Error', data.message, 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        toggle.checked = !isActive;
+        Swal.fire('Error', 'Network error.', 'error');
+    }
 });
 
+// ============================================================================
+// INITIAL WIRING
+// ============================================================================
 document.getElementById('openAddBtn')?.addEventListener('click', openModal);
 document.getElementById('openAddBtn2')?.addEventListener('click', openModal);
 document.getElementById('settingModal')?.addEventListener('hidden.bs.modal', resetModal);
-document.getElementById('modal_is_active')?.addEventListener('change', function() {
+
+document.getElementById('modal_is_active')?.addEventListener('change', function () {
     const b = document.getElementById('modalActiveBadge');
-    if (b) { b.className = this.checked ? 'active-badge is-active' : 'active-badge is-inactive'; b.innerHTML = this.checked ? '<i class="ri-checkbox-circle-line"></i> Active' : '<i class="ri-close-circle-line"></i> Inactive'; }
+    if (b) {
+        b.className = this.checked ? 'active-badge is-active' : 'active-badge is-inactive';
+        b.innerHTML = this.checked
+            ? '<i class="ri-checkbox-circle-line"></i> Active'
+            : '<i class="ri-close-circle-line"></i> Inactive';
+    }
 });
-document.getElementById('rule_logic')?.addEventListener('change', function() {
+
+document.getElementById('rule_logic')?.addEventListener('change', function () {
     const showAvg = this.value === 'average_only' || this.value === 'both';
     document.getElementById('globalAvgSection').style.display = showAvg ? 'block' : 'none';
     updateGlobalInterpPanel();
 });
+
 document.getElementById('avg_slider')?.addEventListener('input', e => {
     document.getElementById('promotion_pass_average').value = e.target.value;
     updateGlobalInterpPanel();
 });
+
 document.getElementById('promotion_pass_average')?.addEventListener('input', e => {
     document.getElementById('avg_slider').value = e.target.value;
     updateGlobalInterpPanel();
 });
+
 document.getElementById('addRuleBtn')?.addEventListener('click', () => {
     promotionRules.push({
-        rule_name: '', status_label: 'promoted', priority: promotionRules.length + 1,
+        rule_name: '',
+        status_label: 'promoted',
+        priority: promotionRules.length + 1,
         grade_grouping: 'grouped',
         compulsory_section: {
             subjects: compulsorySubjects.map(cs => ({
-                subject_id: cs.subject_id,
-                subject_name: cs.subject_name,
-                subject_code: cs.subject_code,
+                subject_id:        cs.subject_id,
+                subject_name:      cs.subject_name,
+                subject_code:      cs.subject_code,
                 default_min_grade: cs.default_min_grade ?? '',
-                min_grade: cs.default_min_grade ?? '',
-                override: false,
+                min_grade:         cs.default_min_grade ?? '',
+                override:          false,
             })),
             count_conditions: [],
         },
@@ -1383,24 +1591,44 @@ document.getElementById('addRuleBtn')?.addEventListener('click', () => {
     });
     rerenderRules();
 });
-document.getElementById('templateSelect')?.addEventListener('change', function() {
+
+document.getElementById('templateSelect')?.addEventListener('change', function () {
     document.getElementById('loadTemplateBtn').disabled = !this.value;
     document.getElementById('template_id_input').value = this.value;
 });
-document.getElementById('loadTemplateBtn')?.addEventListener('click', async function() {
+
+document.getElementById('loadTemplateBtn')?.addEventListener('click', async function () {
     const tplId = document.getElementById('templateSelect').value;
     const classId = document.getElementById('schoolclass_id').value;
     if (!tplId) { Swal.fire('', 'Select a template first.', 'info'); return; }
     if (!classId) { Swal.fire('', 'Select a class first.', 'info'); return; }
+
     const termId = document.getElementById('term_id').value;
     const sessionId = document.getElementById('session_id').value;
     const status = document.getElementById('templateStatus');
     status.textContent = 'Loading…';
+
     try {
-        let url = `/promotion-templates/${tplId}/load-for-class?classid=${classId}`;
-        if (termId) url += `&termid=${termId}`;
-        if (sessionId) url += `&sessionid=${sessionId}`;
-        const res = await fetch(url);
+        let url = `/promotion-templates/${tplId}/load-for-class?classid=${encodeURIComponent(classId)}`;
+        if (termId)    url += `&termid=${encodeURIComponent(termId)}`;
+        if (sessionId) url += `&sessionid=${encodeURIComponent(sessionId)}`;
+
+        const res = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await res.text();
+            console.error('Template load non-JSON:', text.substring(0, 500));
+            status.textContent = '✗ Server returned non-JSON. Check console.';
+            status.style.color = '#dc2626';
+            return;
+        }
+
         const data = await res.json();
         if (data.success) {
             promotionRules = data.merged_rules ?? [];
@@ -1411,17 +1639,22 @@ document.getElementById('loadTemplateBtn')?.addEventListener('click', async func
             status.textContent = '✗ ' + (data.message || 'Failed');
             status.style.color = '#dc2626';
         }
-    } catch (err) { status.textContent = '✗ Error: ' + err.message; status.style.color = '#dc2626'; }
+    } catch (err) {
+        console.error(err);
+        status.textContent = '✗ Error: ' + err.message;
+        status.style.color = '#dc2626';
+    }
 });
-['schoolclass_id','session_id','term_id'].forEach(id => document.getElementById(id)?.addEventListener('change', refreshClassInfo));
+
+['schoolclass_id', 'session_id', 'term_id'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', refreshClassInfo);
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventDelegation();
     bindEditButtons();
     bindDeleteButtons();
-    const originalRerender = rerenderRules;
-    window.rerenderRules = function() { originalRerender(); setupEventDelegation(); };
-    rerenderRules = window.rerenderRules;
+    rerenderRules();
 });
 </script>
 @endsection

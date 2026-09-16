@@ -516,7 +516,7 @@ Route::group(['middleware' => ['auth']], function () {
     });
 
 
-    
+
 
     // Student assessments
     Route::get('/studentassessments', [StudentAssessmentController::class, 'index'])->name('assessments');
@@ -1197,10 +1197,11 @@ Route::group(['middleware' => ['auth']], function () {
         Route::post('/{holiday}/apply', [HolidayController::class, 'applyToTimetable'])->name('apply');
     });
 
-    // ===================================================================
-    // PROMOTIONS
-    // ===================================================================
-    Route::prefix('promotions')->name('promotions.')->group(function () {
+ 
+
+
+    // ── Promotions ──────────────────────────────────────────────────────────────
+    Route::prefix('promotions')->name('promotions.')->middleware('auth')->group(function () {
         Route::get('/', [PromotionController::class, 'index'])->name('index');
         Route::get('/student-details/{studentId}/{schoolclassId}/{sessionId}/{termId}', [PromotionController::class, 'getStudentDetails'])->name('student.details');
         Route::put('/{studentId}', [PromotionController::class, 'update'])->name('update');
@@ -1208,27 +1209,31 @@ Route::group(['middleware' => ['auth']], function () {
         Route::post('/bulk/promote', [PromotionController::class, 'bulkPromote'])->name('bulk.promote');
     });
 
-    Route::prefix('promotion-settings')->group(function () {
-        Route::get('/', [PromotionSettingController::class, 'index'])->name('promotion-settings.index');
-        Route::post('/', [PromotionSettingController::class, 'store'])->name('promotion-settings.store');
-        Route::put('/{id}', [PromotionSettingController::class, 'update'])->name('promotion-settings.update');
-        Route::delete('/{id}', [PromotionSettingController::class, 'destroy'])->name('promotion-settings.destroy');
-        Route::post('/{id}/toggle-active', [PromotionSettingController::class, 'toggleActive'])->name('promotion-settings.toggle-active');
-        Route::get('/class-promotion-data', [PromotionSettingController::class, 'getClassPromotionData'])->name('promotion-settings.class-data');
-        Route::get('/subjects-by-class', [PromotionSettingController::class, 'subjectsByClass'])->name('promotion-settings.subjects-by-class');
-        Route::get('/compulsory-by-class', [PromotionSettingController::class, 'compulsoryByClass'])->name('promotion-settings.compulsory-by-class');
+    // ── Promotion Settings ──────────────────────────────────────────────────────
+    Route::prefix('promotion-settings')->name('promotion-settings.')->middleware('auth')->group(function () {
+        Route::get('/', [PromotionSettingController::class, 'index'])->name('index');
+        Route::post('/', [PromotionSettingController::class, 'store'])->name('store');
+        Route::put('/{id}', [PromotionSettingController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PromotionSettingController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/toggle-active', [PromotionSettingController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/class-promotion-data', [PromotionSettingController::class, 'getClassPromotionData'])->name('class-data');
+        Route::get('/subjects-by-class', [PromotionSettingController::class, 'subjectsByClass'])->name('subjects-by-class');
+        Route::get('/compulsory-by-class', [PromotionSettingController::class, 'compulsoryByClass'])->name('compulsory-by-class');
     });
 
-    Route::prefix('promotion-templates')->group(function () {
-        Route::get('/', [PromotionRuleTemplateController::class, 'index'])->name('promotion.templates.index');
-        Route::get('/create', [PromotionRuleTemplateController::class, 'create'])->name('promotion.templates.create');
-        Route::post('/', [PromotionRuleTemplateController::class, 'store'])->name('promotion.templates.store');
-        Route::get('/{id}/edit', [PromotionRuleTemplateController::class, 'edit'])->name('promotion.templates.edit');
-        Route::put('/{id}', [PromotionRuleTemplateController::class, 'update'])->name('promotion.templates.update');
-        Route::delete('/{id}', [PromotionRuleTemplateController::class, 'destroy'])->name('promotion.templates.destroy');
-        Route::post('/{id}/toggle-active', [PromotionRuleTemplateController::class, 'toggleActive'])->name('promotion.templates.toggle-active');
-        Route::get('/{id}/load-for-class', [PromotionRuleTemplateController::class, 'loadForClass'])->name('promotion.templates.load-for-class');
+    // ── Promotion Templates ─────────────────────────────────────────────────────
+    Route::prefix('promotion-templates')->name('promotion.templates.')->middleware('auth')->group(function () {
+        Route::get('/', [PromotionRuleTemplateController::class, 'index'])->name('index');
+        Route::get('/create', [PromotionRuleTemplateController::class, 'create'])->name('create');
+        Route::post('/', [PromotionRuleTemplateController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [PromotionRuleTemplateController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [PromotionRuleTemplateController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PromotionRuleTemplateController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/toggle-active', [PromotionRuleTemplateController::class, 'toggleActive'])->name('toggle-active');
+        Route::get('/{id}/load-for-class', [PromotionRuleTemplateController::class, 'loadForClass'])->name('load-for-class');
     });
+
+
 
     // ===================================================================
     // ATTENDANCE
