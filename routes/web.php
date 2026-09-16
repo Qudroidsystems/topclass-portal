@@ -477,46 +477,46 @@ Route::group(['middleware' => ['auth']], function () {
 
     Route::resource('studentresults', StudentResultsController::class);
 
-    // ===================================================================
-    // SCORESHEET
-    // ===================================================================
-    Route::get('scoresheet/download-marks-sheet', [MyScoreSheetController::class, 'downloadMarksSheet'])->name('scoresheet.download-marks-sheet');
-    Route::post('subjectscoresheet/update-arm-positions-all', [MyScoreSheetController::class, 'updateAllArmPositions'])->name('update.arm.positions.all');
-    Route::get('/subjectscoresheet/import-progress', [MyScoreSheetController::class, 'importProgress'])->name('subjectscoresheet.import_progress');
-    Route::post('/subjectscoresheet/clear-progress', [MyScoreSheetController::class, 'clearImportProgress'])->name('subjectscoresheet.clear_progress');
+   // Main scoresheet
+    Route::get('/my-scoresheets',                                              [MyScoreSheetController::class, 'index'])->name('subjectscoresheet.index');
+    Route::get('/subjectscoresheet/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}', [MyScoreSheetController::class, 'subjectscoresheet'])->name('subjectscoresheet.view');
 
-    Route::get('subjectscoresheet/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}', [MyScoreSheetController::class, 'subjectscoresheet'])->name('subjectscoresheet');
-    Route::get('subjectscoresheet/edit/{id}', [MyScoreSheetController::class, 'edit'])->name('subjectscoresheet.edit');
-    Route::put('subjectscoresheet/update/{id}', [MyScoreSheetController::class, 'update'])->name('subjectscoresheet.update');
-    Route::delete('subjectscoresheet/delete/{id}', [MyScoreSheetController::class, 'destroy'])->name('subjectscoresheet.destroy');
-    Route::get('subjectscoresheet/export', [MyScoreSheetController::class, 'export'])->name('subjectscoresheet.export');
-    Route::post('subjectscoresheet/import', [MyScoreSheetController::class, 'import'])->name('subjectscoresheet.import');
-    Route::get('subjectscoresheet/results', [MyScoreSheetController::class, 'results'])->name('subjectscoresheet.results');
-    Route::post('subjectscoresheet/grade-preview', [MyScoreSheetController::class, 'calculateGradePreview'])->name('subjectscoresheet.grade-preview');
-    Route::post('subjectscoresheet/bulk-update', [MyScoreSheetController::class, 'bulkUpdateScores'])->name('subjectscoresheet.bulk-update');
-    Route::post('subjectscoresheet/single-update', [MyScoreSheetController::class, 'singleUpdateScore'])->name('subjectscoresheet.single-update');
-    Route::get('scoresheet/download-scores-pdf', [MyScoreSheetController::class, 'downloadScoresPdf'])->name('scoresheet.download-scores-pdf');
-    Route::post('subjectscoresheet/grade-for-score', [MyScoreSheetController::class, 'calculateGradeForScore'])->name('subjectscoresheet.grade-for-score');
+    // Mutations
+    Route::post('/my-scoresheets/{id}/update',      [MyScoreSheetController::class, 'update'])->name('subjectscoresheet.update');
+    Route::post('/my-scoresheets/bulk-update',      [MyScoreSheetController::class, 'bulkUpdateScores'])->name('subjectscoresheet.bulk-update');
+    Route::delete('/my-scoresheets/destroy',        [MyScoreSheetController::class, 'destroy'])->name('subjectscoresheet.destroy');
+    Route::get('/my-scoresheets/results',           [MyScoreSheetController::class, 'results'])->name('subjectscoresheet.results');
 
-    Route::post('/studentreports/column-options', [ViewStudentReportController::class, 'getColumnOptions'])->name('studentreports.column-options');
-    Route::get('/studentreport/drawer-data/{studentId}/{schoolclassId}/{sessionId}/{termId}', [ViewStudentReportController::class, 'drawerData'])->name('studentreport.drawer-data');
+    // Import/Export
+    Route::post('/my-scoresheets/import',           [MyScoreSheetController::class, 'import'])->name('subjectscoresheet.import');
+    Route::get('/my-scoresheets/import-progress',   [MyScoreSheetController::class, 'importProgress'])->name('subjectscoresheet.import-progress');
+    Route::get('/my-scoresheets/export',            [MyScoreSheetController::class, 'export'])->name('subjectscoresheet.export');
 
-    // Mock scoresheet
-    Route::get('subjectscoresheet-mock', [MyScoreSheetController::class, 'mockIndex'])->name('subjectscoresheet-mock.index');
-    Route::get('subjectscoresheet-mock/export', [MyScoreSheetController::class, 'mockExport'])->name('subjectscoresheet-mock.export');
-    Route::get('subjectscoresheet-mock/results', [MyScoreSheetController::class, 'mockResults'])->name('subjectscoresheet-mock.results');
-    Route::get('subjectscoresheet-mock/download-marksheet', [MyScoreSheetController::class, 'mockDownloadMarkSheet'])->name('subjectscoresheet-mock.download-marksheet');
-    Route::get('subjectscoresheet-mock/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}', [MyScoreSheetController::class, 'mockSubjectscoresheet'])->name('subjectscoresheet-mock.show');
-    Route::post('subjectscoresheet-mock/import', [MyScoreSheetController::class, 'mockImport'])->name('subjectscoresheet-mock.import');
-    Route::get('subjectscoresheet-mock/{id}/edit', [MyScoreSheetController::class, 'mockEdit'])->name('subjectscoresheet-mock.edit');
-    Route::put('subjectscoresheet-mock/{id}', [MyScoreSheetController::class, 'mockUpdate'])->name('subjectscoresheet-mock.update');
-    Route::post('scoresheet-mock/destroy', [MyScoreSheetController::class, 'mockDestroy'])->name('scoresheet-mock.destroy');
-    Route::post('scoresheet-mock/bulk-update', [MyScoreSheetController::class, 'mockBulkUpdateScores'])->name('scoresheet-mock.bulk-update');
-    Route::post('subjectscoresheet-mock/calculate-grade', [MyScoreSheetController::class, 'calculateGradeForScore'])->name('subjectscoresheet-mock.calculate-grade');
-    Route::post('scoresheet-mock/single-update', [MyScoreSheetController::class, 'mockSingleUpdateScore'])->name('scoresheet-mock.single-update');
+    // PDF
+    Route::get('/my-scoresheets/download-marks-sheet', [MyScoreSheetController::class, 'downloadMarksSheet'])->name('scoresheet.download-marks-sheet');
+    Route::get('/my-scoresheets/download-scores-pdf',  [MyScoreSheetController::class, 'downloadScoresPdf'])->name('scoresheet.download-scores-pdf');
 
-    Route::get('/subassessment/scoresheet/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}/{subassessmentid}', [MyScoreSheetController::class, 'subassessmentScoresheet'])->name('subassessment.scoresheet');
-    Route::get('/assessment/scoresheet/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}/{assessmentid}', [MyScoreSheetController::class, 'assessmentScoresheet'])->name('assessment.scoresheet');
+    // Positions
+    Route::post('/my-scoresheets/update-arm-positions', [MyScoreSheetController::class, 'updateAllArmPositions'])->name('update.arm.positions.all');
+
+    // Grade preview
+    Route::post('/my-scoresheets/grade-preview',    [MyScoreSheetController::class, 'calculateGradePreview'])->name('subjectscoresheet.grade-preview');
+
+    // Mock
+    Route::prefix('my-mock-scoresheets')->group(function () {
+        Route::get('/',                                                                    [MyScoreSheetController::class, 'mockIndex'])->name('subjectscoresheet-mock.index');
+        Route::get('/{schoolclassid}/{subjectclassid}/{staffid}/{termid}/{sessionid}',     [MyScoreSheetController::class, 'mockSubjectscoresheet'])->name('subjectscoresheet-mock.view');
+        Route::post('/{id}/update',                                                        [MyScoreSheetController::class, 'mockUpdate'])->name('scoresheet-mock.update');
+        Route::post('/bulk-update',                                                        [MyScoreSheetController::class, 'mockBulkUpdateScores'])->name('scoresheet-mock.bulk-update');
+        Route::delete('/destroy',                                                          [MyScoreSheetController::class, 'mockDestroy'])->name('scoresheet-mock.destroy');
+        Route::get('/download-marksheet',                                                  [MyScoreSheetController::class, 'mockDownloadMarkSheet'])->name('subjectscoresheet-mock.download-marksheet');
+        Route::get('/export',                                                              [MyScoreSheetController::class, 'mockExport'])->name('subjectscoresheet-mock.export');
+        Route::post('/import',                                                             [MyScoreSheetController::class, 'mockImport'])->name('subjectscoresheet-mock.import');
+        Route::get('/results',                                                             [MyScoreSheetController::class, 'mockResults'])->name('subjectscoresheet-mock.results');
+    });
+
+
+    
 
     // Student assessments
     Route::get('/studentassessments', [StudentAssessmentController::class, 'index'])->name('assessments');
