@@ -1,3 +1,448 @@
+{{-- resources/views/promotions/settings.blade.php --}}
+@extends('layouts.master')
+@section('content')
+<style>
+:root {
+    --ps-primary:#1e3a5f; --ps-accent:#2563eb; --ps-success:#16a34a;
+    --ps-warning:#d97706; --ps-danger:#dc2626; --ps-info:#0891b2;
+    --ps-muted:#6b7280; --ps-border:#e2e8f0; --ps-bg:#f8fafc;
+    --ps-radius:12px; --ps-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.ps-hero { background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 60%,#4f46e5 100%);
+    border-radius:var(--ps-radius); padding:28px 32px; margin-bottom:24px; position:relative; overflow:hidden; }
+.ps-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:220px; height:220px;
+    background:rgba(255,255,255,.06); border-radius:50%; }
+.ps-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
+.ps-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
+
+.setting-card { background:#fff; border:1px solid var(--ps-border); border-radius:var(--ps-radius);
+    padding:20px; margin-bottom:20px; transition:all .3s; height:100%; }
+.setting-card:hover   { box-shadow:var(--ps-shadow); transform:translateY(-2px); }
+.setting-card.has-rules  { border-left:4px solid var(--ps-success); }
+.setting-card.inactive   { border-left:4px solid var(--ps-muted); opacity:.75; }
+
+.active-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px;
+    border-radius:20px; font-size:11px; font-weight:700; }
+.active-badge.is-active   { background:#dcfce7; color:#166534; }
+.active-badge.is-inactive { background:#f3f4f6; color:#6b7280; }
+
+.modal-content { border-radius:16px; overflow:hidden; }
+.modal-header  { background:linear-gradient(135deg,#1e3a5f,#2563eb); padding:20px 28px; border-bottom:none; }
+.modal-header .modal-title { color:#fff; font-weight:700; }
+.modal-header .btn-close   { filter:invert(1); }
+.modal-body   { padding:1.5rem; max-height:78vh; overflow-y:auto; }
+.modal-footer { border-top:1px solid var(--ps-border); padding:1rem 1.5rem; }
+
+.form-section { background:var(--ps-bg); border-radius:12px; padding:20px; margin-bottom:18px; }
+.form-section-title { font-size:14px; font-weight:700; color:var(--ps-primary);
+    margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid var(--ps-border);
+    display:flex; align-items:center; justify-content:space-between; }
+
+.info-banner { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;
+    padding:12px 16px; margin-bottom:14px; display:flex; gap:12px; }
+.info-banner i { font-size:18px; color:#2563eb; flex-shrink:0; margin-top:2px; }
+.info-banner .text { font-size:12px; color:#1e40af; line-height:1.5; }
+
+.rule-card { background:#fff; border:2px solid var(--ps-border); border-radius:12px;
+    margin-bottom:18px; overflow:hidden; transition:all .2s; }
+.rule-card:hover { border-color:var(--ps-accent); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+.rule-card-header { background:linear-gradient(90deg,#f8fafc,#fff); border-bottom:1px solid var(--ps-border);
+    padding:12px 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.rule-num-badge { background:var(--ps-primary); color:#fff; font-size:11px; font-weight:700;
+    padding:3px 12px; border-radius:20px; white-space:nowrap; }
+.rule-name-input { flex:1; min-width:180px; font-size:13px; }
+.rule-card-body  { padding:18px; }
+
+.label-selector { display:flex; gap:8px; flex-wrap:wrap; }
+.label-pill { display:inline-flex; align-items:center; gap:5px; padding:6px 14px;
+    border-radius:30px; font-size:12px; font-weight:600; border:2px solid transparent;
+    cursor:pointer; transition:all .2s; user-select:none; }
+.label-pill:hover { transform:translateY(-1px); }
+.label-pill.active { box-shadow:0 0 0 3px rgba(0,0,0,.12); transform:scale(1.03); }
+.label-pill.lp-promoted  { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
+.label-pill.lp-promoted.active   { background:#16a34a; color:#fff; }
+.label-pill.lp-trial     { background:#fef9c3; color:#854d0e; border-color:#fde68a; }
+.label-pill.lp-trial.active      { background:#ca8a04; color:#fff; }
+.label-pill.lp-principal { background:#e0f2fe; color:#075985; border-color:#bae6fd; }
+.label-pill.lp-principal.active  { background:#0284c7; color:#fff; }
+.label-pill.lp-repeat    { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+.label-pill.lp-repeat.active     { background:#dc2626; color:#fff; }
+
+.rule-section { border:1px solid var(--ps-border); border-radius:10px; margin-bottom:14px; overflow:hidden; }
+.rule-section-header { background:linear-gradient(90deg,#f1f5f9,#f8fafc); padding:10px 16px;
+    font-size:13px; font-weight:700; color:var(--ps-primary);
+    display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--ps-border); }
+.rule-section-body { padding:14px; }
+
+.comp-subj-row { display:grid; grid-template-columns:1fr 140px; gap:10px; align-items:center;
+    padding:8px 12px; border-bottom:1px solid #f1f5f9; }
+.comp-subj-row:last-child { border-bottom:none; }
+.comp-subj-row .subj-name { font-size:13px; font-weight:500; }
+.comp-subj-row .subj-code { font-size:11px; color:var(--ps-muted); font-family:monospace; }
+.default-badge { font-size:10px; color:var(--ps-warning); }
+
+.cond-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:8px 12px; border-bottom:1px solid #f1f5f9; }
+.cond-row:last-child { border-bottom:none; }
+.grade-pill { display:inline-flex; align-items:center; justify-content:center;
+    width:36px; height:36px; border-radius:8px; font-size:14px; font-weight:800; flex-shrink:0; }
+.gp-A,.gp-A1 { background:#dcfce7; color:#166534; }
+.gp-B,.gp-B2,.gp-B3 { background:#dbeafe; color:#1e40af; }
+.gp-C,.gp-C4,.gp-C5,.gp-C6 { background:#fef9c3; color:#854d0e; }
+.gp-D,.gp-D7 { background:#ffedd5; color:#9a3412; }
+.gp-E,.gp-E8 { background:#f3e8ff; color:#6b21a8; }
+.gp-F,.gp-F9 { background:#fee2e2; color:#991b1b; }
+.cond-text { font-size:12px; color:var(--ps-muted); white-space:nowrap; }
+
+.avg-box { background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:14px; margin-top:12px; }
+
+.grade-sel { border:1.5px solid var(--ps-border); border-radius:8px; padding:5px 8px;
+    font-size:12px; font-weight:600; background:#fff; width:100%; }
+.grade-sel:focus { border-color:var(--ps-accent); outline:none; box-shadow:0 0 0 2px rgba(37,99,235,.1); }
+
+.loading-spinner { display:inline-block; width:14px; height:14px; border:2px solid #e2e8f0;
+    border-radius:50%; border-top-color:#2563eb; animation:spin .6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.no-rules-ph { text-align:center; padding:36px 20px; color:var(--ps-muted);
+    background:var(--ps-bg); border-radius:12px; border:2px dashed var(--ps-border); }
+
+.chip { display:inline-flex; align-items:center; gap:3px; padding:2px 8px;
+    border-radius:12px; font-size:10px; font-weight:600; }
+.chip-blue  { background:#dbeafe; color:#1e40af; }
+.chip-green { background:#dcfce7; color:#166534; }
+.chip-amber { background:#fef9c3; color:#854d0e; }
+.chip-red   { background:#fee2e2; color:#991b1b; }
+
+.template-badge { background:#ede9fe; color:#5b21b6; border-radius:8px;
+    padding:2px 10px; font-size:10px; font-weight:700; }
+
+.rule-interp-panel strong { font-weight:700; }
+.rule-interp-panel em     { font-style:italic; }
+.ri-interp-and { font-style:normal; font-weight:700; color:#64748b;
+    padding:0 4px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+</style>
+
+<div class="main-content"><div class="page-content"><div class="container-fluid">
+
+<div class="ps-hero">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="ri-settings-4-line me-2"></i>Promotion Settings</h1>
+            <p>Define flexible grade-count based promotion rules per class. Rules are evaluated by priority — first match wins.</p>
+        </div>
+        <a href="{{ route('promotion.templates.index') }}" class="btn btn-light btn-sm">
+            <i class="ri-file-copy-line me-1"></i>Rule Templates
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap"
+         style="padding:16px 20px;background:#fff;border-bottom:2px solid var(--ps-border);">
+        <h5 class="mb-0 fw-semibold" style="color:var(--ps-primary);">
+            <i class="ri-list-check me-2"></i>Promotion Rules
+            <span class="badge bg-primary ms-2">{{ $settings->count() }}</span>
+            <span class="badge bg-success ms-1">{{ $settings->where('is_active',true)->count() }} Active</span>
+            <span class="badge bg-secondary ms-1">{{ $settings->where('is_active',false)->count() }} Inactive</span>
+        </h5>
+        <button type="button" class="btn btn-primary" id="openAddBtn">
+            <i class="ri-add-line me-1"></i>Add New Setting
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            @forelse ($settings as $setting)
+            @php
+                $armData  = $setting->schoolclass?->arm ? DB::table('schoolarm')->where('id',$setting->schoolclass->arm)->first() : null;
+                $armName  = $armData?->arm ?? '';
+                $fullName = trim($setting->schoolclass?->schoolclass . ' ' . $armName);
+                $isActive = (bool)$setting->is_active;
+                $rules    = $setting->promotion_rules ?? [];
+                $logicLabel = match($setting->rule_logic ?? 'grade_count') {
+                    'average_only' => '📈 Average Only',
+                    'both'         => '🎯 Grades + Average',
+                    default        => '📊 Grade Count',
+                };
+            @endphp
+            <div class="col-md-6 col-lg-4">
+                <div class="setting-card {{ !empty($rules) ? 'has-rules' : '' }} {{ !$isActive ? 'inactive' : '' }}">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input toggle-active-switch" type="checkbox" role="switch"
+                                   id="sw{{ $setting->id }}" data-id="{{ $setting->id }}" {{ $isActive ? 'checked' : '' }}>
+                            <label class="form-check-label" for="sw{{ $setting->id }}">
+                                <span class="active-badge {{ $isActive ? 'is-active' : 'is-inactive' }}" id="ab{{ $setting->id }}">
+                                    <i class="{{ $isActive ? 'ri-checkbox-circle-line' : 'ri-close-circle-line' }}"></i>
+                                    {{ $isActive ? 'Active' : 'Inactive' }}
+                                </span>
+                            </label>
+                        </div>
+                        @if($setting->template)
+                            <span class="template-badge"><i class="ri-file-copy-line me-1"></i>{{ $setting->template->name }}</span>
+                        @endif
+                    </div>
+
+                    <h6 class="fw-bold mb-0">{{ $fullName }}</h6>
+                    <small class="text-muted">
+                        {{ $setting->session?->session ?? 'All Sessions' }} &mdash; {{ $setting->term?->term ?? 'All Terms' }}
+                    </small>
+                    <div class="mt-1 mb-3">
+                        <span class="badge bg-info">{{ $logicLabel }}</span>
+                        @if($setting->promotion_pass_average !== null && $setting->promotion_pass_average !== '')
+                            <span class="badge bg-secondary ms-1">≥{{ $setting->promotion_pass_average }}% avg</span>
+                        @endif
+                    </div>
+
+                    @if(!empty($rules))
+                    <div style="max-height:200px;overflow-y:auto;">
+                        @foreach($rules as $i => $rule)
+                        @php
+                            $stCls = match($rule['status_label'] ?? 'repeat') {
+                                'promoted'=>'success','trial'=>'warning','see_principal'=>'info',default=>'danger'
+                            };
+                            $compSubjCount  = count($rule['compulsory_section']['subjects'] ?? []);
+                            $compCondCount  = count($rule['compulsory_section']['count_conditions'] ?? []);
+                            $otherCondCount = count($rule['other_section']['count_conditions'] ?? []);
+                        @endphp
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="fw-semibold small">
+                                    <span class="badge bg-light text-dark me-1" style="font-size:10px;">{{ $i+1 }}</span>
+                                    {{ $rule['rule_name'] ?? 'Unnamed' }}
+                                </span>
+                                <span class="badge bg-{{ $stCls }} px-2" style="font-size:10px;">
+                                    {{ ucfirst(str_replace('_',' ',$rule['status_label'] ?? '')) }}
+                                </span>
+                            </div>
+                            <div class="mt-1" style="font-size:10px;">
+                                @if($compSubjCount)  <span class="chip chip-blue  me-1">{{ $compSubjCount }} comp subj</span>  @endif
+                                @if($compCondCount)  <span class="chip chip-green me-1">{{ $compCondCount }} comp cond</span>  @endif
+                                @if($otherCondCount) <span class="chip chip-amber me-1">{{ $otherCondCount }} other cond</span>@endif
+                                @if(!empty($rule['average_condition']['enabled']))
+                                    <span class="chip chip-red">Avg ≥{{ $rule['average_condition']['min_average'] }}%</span>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @else
+                    <div class="alert alert-warning py-2 px-3 mb-0 small"><i class="ri-alert-line me-1"></i>No rules yet.</div>
+                    @endif
+
+                    <div class="border-top pt-3 mt-3">
+                        <div class="row g-1" style="font-size:11px;">
+                            <div class="col-6"><span class="text-muted">Promoted:</span> {{ $setting->promoted_label }}</div>
+                            <div class="col-6"><span class="text-muted">Trial:</span> {{ $setting->trial_label }}</div>
+                            <div class="col-6"><span class="text-muted">Principal:</span> {{ $setting->see_principal_label }}</div>
+                            <div class="col-6"><span class="text-muted">Repeat:</span> {{ $setting->repeat_label }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary edit-setting flex-fill"
+                            data-id="{{ $setting->id }}"
+                            data-schoolclass_id="{{ $setting->schoolclass_id }}"
+                            data-session_id="{{ $setting->session_id ?? '' }}"
+                            data-term_id="{{ $setting->term_id ?? '' }}"
+                            data-promoted_label="{{ $setting->promoted_label }}"
+                            data-trial_label="{{ $setting->trial_label }}"
+                            data-see_principal_label="{{ $setting->see_principal_label }}"
+                            data-repeat_label="{{ $setting->repeat_label }}"
+                            data-rule_logic="{{ $setting->rule_logic ?? 'grade_count' }}"
+                            data-promotion_pass_average="{{ $setting->promotion_pass_average !== null ? $setting->promotion_pass_average : '' }}"
+                            data-is_active="{{ $isActive ? '1' : '0' }}"
+                            data-template_id="{{ $setting->template_id ?? '' }}"
+                            data-promotion_rules="{{ json_encode($rules) }}">
+                            <i class="ri-pencil-line"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-setting"
+                            data-id="{{ $setting->id }}" data-name="{{ $fullName }}">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="col-12 text-center py-5">
+                <i class="ri-settings-4-line" style="font-size:48px;opacity:.3;"></i>
+                <p class="mt-3 text-muted">No promotion rules configured yet.</p>
+                <button class="btn btn-primary" id="openAddBtn2">Create first rule</button>
+            </div>
+            @endforelse
+        </div>
+    </div>
+</div>
+
+</div></div></div>
+
+{{-- MODAL --}}
+<div class="modal fade" id="settingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="ri-settings-4-line me-2"></i>Promotion Rule Settings</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form id="settingForm" hidden>
+        @csrf
+        <input type="hidden" name="id"              id="setting_id">
+        <input type="hidden" name="promotion_rules" id="promotion_rules_input">
+        <input type="hidden" name="template_id"     id="template_id_input">
+      </form>
+
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-title"><span><i class="ri-book-2-line me-2"></i>Class &amp; Scope</span></div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Class <span class="text-danger">*</span></label>
+              <select class="form-select" id="schoolclass_id" required>
+                <option value="">-- Select Class --</option>
+                @foreach ($schoolclasses as $class)
+                <option value="{{ $class->id }}">{{ trim($class->schoolclass . ' ' . ($class->arm_name ?? '')) }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Session <small class="text-muted">(optional)</small></label>
+              <select class="form-select" id="session_id">
+                <option value="">-- All Sessions --</option>
+                @foreach ($sessions as $s)
+                <option value="{{ $s->id }}">{{ $s->session }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Term <small class="text-muted">(optional)</small></label>
+              <select class="form-select" id="term_id">
+                <option value="">-- All Terms --</option>
+                @foreach ($terms as $t)
+                <option value="{{ $t->id }}">{{ $t->term }}</option>
+                @endforeach
+              </select>
+            </div>
+          </div>
+
+          <div id="subjectLoadStatus" class="mt-3" style="display:none;">
+            <div class="d-flex align-items-center gap-2 text-muted">
+              <div class="loading-spinner"></div><small>Loading class info…</small>
+            </div>
+          </div>
+          <div id="subjectSummary" class="mt-2" style="display:none;"></div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title"><span><i class="ri-file-copy-line me-2"></i>Load from Template <small class="text-muted fw-normal">(optional)</small></span></div>
+          <div class="d-flex gap-2 align-items-end flex-wrap">
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label fw-semibold small mb-1">Select Template</label>
+              <select class="form-select" id="templateSelect">
+                <option value="">-- None --</option>
+                @foreach($templates as $tpl)
+                <option value="{{ $tpl->id }}" data-scale="{{ $tpl->grade_scale }}">
+                  {{ $tpl->name }} ({{ $tpl->grade_scale }})
+                </option>
+                @endforeach
+              </select>
+            </div>
+            <button type="button" class="btn btn-outline-primary" id="loadTemplateBtn" disabled>
+              <i class="ri-download-line me-1"></i>Load Template
+            </button>
+            <div id="templateStatus" class="small text-muted align-self-center"></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title"><span><i class="ri-git-branch-line me-2"></i>Evaluation Mode &amp; Status</span></div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Evaluation Mode</label>
+              <select class="form-select" id="rule_logic">
+                <option value="grade_count">📊 Grade Count Rules Only</option>
+                <option value="average_only">📈 Minimum Average Only</option>
+                <option value="both">🎯 Grade Count AND/OR Average</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="globalAvgSection" style="display:none;">
+              <label class="form-label fw-semibold">Global Minimum Average (%)</label>
+              <div class="d-flex gap-2 align-items-center">
+                <input type="range" class="form-range flex-fill" id="avg_slider" min="0" max="100" step="1" value="50">
+                <input type="number" class="form-control" id="promotion_pass_average" style="width:80px;" min="0" max="100" step="0.5">
+              </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div>
+                <label class="form-label fw-semibold d-block">Active Status</label>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="modal_is_active" checked>
+                    <label class="form-check-label fw-semibold" for="modal_is_active">Active</label>
+                  </div>
+                  <span id="modalActiveBadge" class="active-badge is-active">
+                    <i class="ri-checkbox-circle-line"></i> Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <span><i class="ri-price-tag-3-line me-2"></i>Promotion Rules
+              <small class="text-muted fw-normal ms-2" id="ruleScopeInfo"></small>
+            </span>
+            <button type="button" class="btn btn-sm btn-primary" id="addRuleBtn" disabled>
+              <i class="ri-add-line me-1"></i>Add Rule
+            </button>
+          </div>
+          <div class="info-banner">
+            <i class="ri-lightbulb-line"></i>
+            <div class="text">
+              <strong>Rule priority order</strong>
+              Rules are checked top-to-bottom. The <strong>first rule where ALL conditions pass</strong> wins.
+              If no rule matches → Advice to Repeat.
+            </div>
+          </div>
+
+          <div id="globalInterpPanel"></div>
+
+          <div id="rulesContainer">
+            <div class="no-rules-ph" id="noRulesMsg">
+              <i class="ri-clipboard-line d-block mb-2" style="font-size:2rem;opacity:.3;"></i>
+              Select a class first, then click <strong>Add Rule</strong>.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title"><span><i class="ri-price-tag-line me-2"></i>Status Labels</span></div>
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label fw-semibold small">Promoted</label>
+              <input type="text" class="form-control form-control-sm" id="promoted_label" value="Promoted"></div>
+            <div class="col-md-3"><label class="form-label fw-semibold small">Trial</label>
+              <input type="text" class="form-control form-control-sm" id="trial_label" value="Promoted on Trial"></div>
+            <div class="col-md-3"><label class="form-label fw-semibold small">See Principal</label>
+              <input type="text" class="form-control form-control-sm" id="see_principal_label" value="Advised to See Principal"></div>
+            <div class="col-md-3"><label class="form-label fw-semibold small">Repeat</label>
+              <input type="text" class="form-control form-control-sm" id="repeat_label" value="Advice to Repeat"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveSettingBtn">
+          <i class="ri-save-line me-1"></i>Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════════════
@@ -1173,3 +1618,6 @@ document.addEventListener('DOMContentLoaded', () => {
     rerenderRules();
 });
 </script>
+
+
+@endsection
