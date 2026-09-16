@@ -1,3 +1,4 @@
+{{-- resources/views/broadsheet/pdf.blade.php --}}
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,7 +11,7 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 
 @page {
-    size: {{ $pdf_paper_size ?? 'A2' }} landscape;
+    size: {{ $pdf_paper_size ?? 'A3' }} landscape;
     margin: 10mm 8mm;
 }
 
@@ -36,12 +37,14 @@ body {
 .school-header-top {
     background: #0f2342;
     padding: 8px 14px;
-    display: table;
+}
+
+.school-header-top table {
     width: 100%;
+    border-collapse: collapse;
 }
 
 .school-logo-cell {
-    display: table-cell;
     width: 70px;
     vertical-align: middle;
     text-align: center;
@@ -57,7 +60,6 @@ body {
 }
 
 .school-name-cell {
-    display: table-cell;
     vertical-align: middle;
     text-align: center;
     color: #fff;
@@ -101,7 +103,6 @@ body {
    META INFO STRIP
 ═══════════════════════════════════════════════════ */
 .meta-strip {
-    display: table;
     width: 100%;
     border: 1px solid #cbd5e1;
     border-radius: 3px;
@@ -111,7 +112,6 @@ body {
 }
 
 .meta-strip .meta-cell {
-    display: table-cell;
     padding: 5px 10px;
     border-right: 1px solid #cbd5e1;
     vertical-align: middle;
@@ -126,7 +126,6 @@ body {
    GRADE KEY
 ═══════════════════════════════════════════════════ */
 .grade-key {
-    display: table;
     width: 100%;
     margin-bottom: 5px;
     border: 1px solid #e2e8f0;
@@ -204,12 +203,6 @@ table.bst thead tr.row-subjects th.th-subj {
     min-width: 40px;
 }
 
-table.bst thead tr.row-subjects th.th-gpa {
-    background: #0a1e38;
-    border-left: 1.5px solid #3b82f6;
-    font-size: 7px;
-}
-
 /* ── Sub-column headers ── */
 table.bst thead tr.row-subs th {
     background: #1a3d6a;
@@ -235,12 +228,6 @@ table.bst thead tr.row-subs th.th-pos-arm {
     background: #0a1e38;
     color: #bfdbfe;
     font-size: 6px;
-}
-
-table.bst thead tr.row-subs th.th-gpa-sub {
-    background: #0a1e38;
-    color: #93c5fd;
-    border-left: 1px solid #3b82f6;
 }
 
 /* ── Body rows ── */
@@ -285,10 +272,7 @@ table.bst tbody td.td-pos {
     text-align: center;
 }
 
-.pos-pair {
-    display: inline-block;
-    text-align: center;
-}
+.pos-pair { display: inline-block; text-align: center; }
 
 .pos-t {
     display: block;
@@ -313,7 +297,14 @@ table.bst tbody td.td-pos {
     white-space: nowrap;
 }
 
-/* ── Grade colour cells ── */
+/* ── Grade colour cells — Junior (A–F) ── */
+.g-a { background: #dcfce7 !important; color: #166534; font-weight: 700; }
+.g-b { background: #dbeafe !important; color: #1e40af; }
+.g-c { background: #fef9c3 !important; color: #854d0e; }
+.g-d { background: #ffedd5 !important; color: #9a3412; }
+.g-f { background: #fee2e2 !important; color: #991b1b; font-weight: 700; }
+
+/* ── Grade colour cells — Senior (A1–F9) ── */
 .g-a1 { background: #dcfce7 !important; color: #166534; font-weight: 700; }
 .g-b2 { background: #dbeafe !important; color: #1e40af; }
 .g-b3 { background: #e0eeff !important; color: #1e40af; }
@@ -334,9 +325,6 @@ table.bst tbody td.td-pos {
 .td-bf-has  { color: #0369a1; font-weight: 700; }
 .td-bf-none { color: #94a3b8; }
 
-/* ── GPA cells ── */
-.td-gpa { background: #eff6ff !important; color: #1e3a8a; font-weight: 700; border-left: 1px solid #3b82f6 !important; font-size: 7px; }
-
 /* ── Stats rows ── */
 table.bst tbody tr.stats-avg td { background: #0f2342 !important; color: #fff; font-weight: 700; border-color: #163785; }
 table.bst tbody tr.stats-hi  td { background: #0a2240 !important; color: #fff; font-weight: 700; border-color: #163785; }
@@ -350,7 +338,43 @@ table.bst tbody tr.stats-lo  td.stats-lbl {
 }
 
 /* ═══════════════════════════════════════════════════
-   SUBJECT PERFORMANCE SUMMARY TABLE
+   PROMOTION COLUMNS
+═══════════════════════════════════════════════════ */
+table.bst thead tr.row-subjects th.th-promo {
+    background: #3b0764;
+    border-left: 2px solid #7c3aed;
+    font-size: 7px;
+}
+
+table.bst thead tr.row-subs th.promo-sub {
+    background: #3b0764;
+    color: #d8b4fe;
+    border-left: 2px solid #7c3aed;
+    font-size: 6px;
+}
+
+table.bst tbody td.td-promo {
+    border-left: 2px solid #7c3aed;
+    font-size: 6.5px;
+    text-align: center;
+}
+
+.promo-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 6px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.promo-promoted      { background: #d1fae5; color: #065f46; }
+.promo-trial         { background: #fef3c7; color: #92400e; }
+.promo-see_principal { background: #dbeafe; color: #1e40af; }
+.promo-repeated      { background: #fee2e2; color: #991b1b; }
+.promo-awaiting      { background: #f1f5f9; color: #475569; }
+
+/* ═══════════════════════════════════════════════════
+   SUBJECT PERFORMANCE SUMMARY
 ═══════════════════════════════════════════════════ */
 .subj-summary {
     width: 100%;
@@ -405,7 +429,6 @@ table.subj-tbl tbody td:first-child { text-align: left; font-weight: 600; color:
 ═══════════════════════════════════════════════════ */
 .sig-block {
     margin-top: 14px;
-    display: table;
     width: 100%;
     border: 1px solid #e2e8f0;
     border-radius: 3px;
@@ -413,8 +436,12 @@ table.subj-tbl tbody td:first-child { text-align: left; font-weight: 600; color:
     page-break-inside: avoid;
 }
 
-.sig-cell {
-    display: table-cell;
+.sig-block table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sig-block td {
     width: 25%;
     text-align: center;
     padding: 0 10px;
@@ -436,27 +463,32 @@ table.subj-tbl tbody td:first-child { text-align: left; font-weight: 600; color:
 @php
 /*
  * ─────────────────────────────────────────────────────────────────
- *  PHP HELPERS (available inside this view only)
+ *  PHP HELPERS — local to this view
  * ─────────────────────────────────────────────────────────────────
  */
 
-/** Ordinal suffix: 1→1st, 2→2nd, etc. Returns '—' for falsy. */
-function bsOrdinal($n) {
-    if (!$n) return '—';
-    $n = (int)$n;
-    $s = ['th','st','nd','rd'];
-    $v = $n % 100;
-    return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+/** Ordinal suffix: 1→1st, 2→2nd, etc. */
+if (!function_exists('bsOrdinal')) {
+    function bsOrdinal($n) {
+        if (!$n) return '—';
+        $n = (int) $n;
+        $s = ['th','st','nd','rd'];
+        $v = $n % 100;
+        return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+    }
 }
 
-/** Map grade string to CSS class. */
-function bsGradeClass($g) {
-    return match($g) {
-        'A1'=>'g-a1','B2'=>'g-b2','B3'=>'g-b3',
-        'C4'=>'g-c4','C5'=>'g-c5','C6'=>'g-c6',
-        'D7'=>'g-d7','E8'=>'g-e8','F9'=>'g-f9',
-        default=>''
-    };
+/** Map grade string to CSS class — handles BOTH junior and senior scales. */
+if (!function_exists('bsGradeClass')) {
+    function bsGradeClass($g) {
+        return match($g) {
+            'A'  => 'g-a',  'B'  => 'g-b',  'C'  => 'g-c',  'D'  => 'g-d',  'F'  => 'g-f',
+            'A1' => 'g-a1', 'B2' => 'g-b2', 'B3' => 'g-b3',
+            'C4' => 'g-c4', 'C5' => 'g-c5', 'C6' => 'g-c6',
+            'D7' => 'g-d7', 'E8' => 'g-e8', 'F9' => 'g-f9',
+            default => '',
+        };
+    }
 }
 
 /*
@@ -467,55 +499,78 @@ function bsGradeClass($g) {
 $sel     = $selectedColumns ?? [];
 $showAll = empty($sel);
 
-$showAdmNo            = $showAll || in_array('admission_no',   $sel);
-$showTotal            = $showAll || in_array('total',          $sel);
-$showBF               = $showAll || in_array('bf',             $sel);
-$showCum              = $showAll || in_array('cum',            $sel);
-$showGrade            = $showAll || in_array('grade',          $sel);
-$showPosTerm          = $showAll || in_array('position_term',  $sel);
-$showPosCum           = $showAll || in_array('position_cum',   $sel);
-$showSubPosCC         = $showAll || in_array('pos_class_cum',   $sel);
-$showSubPosCT         = $showAll || in_array('pos_class_total', $sel);
-$showSubPosAT         = $showAll || in_array('pos_arm_total',   $sel);
-$showSubPosAK         = $showAll || in_array('pos_arm_cum',     $sel);
-$showAvg              = $showAll || in_array('class_average',  $sel);
-$showGPA              = $showAll || in_array('gpa',            $sel);
-$showGender           = in_array('gender',             $sel);
-$showRemark           = in_array('remark',             $sel);
-$showCGPA             = in_array('cgpa',               $sel);
-$showGPAGrade         = in_array('gpa_grade',          $sel);
-$showNumSub           = in_array('num_subjects',       $sel);
-$showTotalGP          = in_array('total_grade_points', $sel);
+// Student Info
+$showAdmNo  = $showAll || in_array('admission_no', $sel);
+$showGender = in_array('gender', $sel);
 
-$activeAssessments = $assessments->filter(fn($a) =>
-    empty($sel) || in_array('assessment_' . $a->id, $sel)
-);
+// Fixed CA columns
+$showCA1  = $showAll || in_array('ca1',  $sel);
+$showCA2  = $showAll || in_array('ca2',  $sel);
+$showCA3  = $showAll || in_array('ca3',  $sel);
+$showExam = $showAll || in_array('exam', $sel);
+
+// Score metrics
+$showTotal  = $showAll || in_array('total',         $sel);
+$showBF     = $showAll || in_array('bf',            $sel);
+$showCum    = $showAll || in_array('cum',           $sel);
+$showGrade  = $showAll || in_array('grade',         $sel);
+$showAvg    = $showAll || in_array('class_average', $sel);
+$showRemark = in_array('remark', $sel);
+
+// Overall positions
+$showPosTerm = $showAll || in_array('position_term', $sel);
+$showPosCum  = $showAll || in_array('position_cum',  $sel);
+
+// Per-subject positions
+$showSubPosCC = $showAll || in_array('pos_class_cum',   $sel);
+$showSubPosCT = $showAll || in_array('pos_class_total', $sel);
+$showSubPosAT = $showAll || in_array('pos_arm_total',   $sel);
+$showSubPosAK = $showAll || in_array('pos_arm_cum',     $sel);
+
+// Promotion
+$showPromoStatus = $showAll || in_array('promotion_status',       $sel);
+$showPromoLabel  = in_array('promotion_label', $sel);
+$showPromoRule   = $showAll || in_array('promotion_rule_applied', $sel);
+
+$promoColspan = ($showPromoStatus ? 1 : 0)
+              + ($showPromoLabel  ? 1 : 0)
+              + ($showPromoRule   ? 1 : 0);
 
 /*
- * Colspan per subject block (all sub-columns for ONE subject)
+ * Sub-columns per subject block
  */
-$subColspan = $activeAssessments->count();
-if($showTotal)    $subColspan++;
-if($showBF)       $subColspan++;
-if($showCum)      $subColspan++;
-if($showGrade)    $subColspan++;
-if($showSubPosCC) $subColspan++;
-if($showSubPosCT) $subColspan++;
-if($showSubPosAT) $subColspan++;
-if($showSubPosAK) $subColspan++;
-if($showAvg)      $subColspan++;
-if($showRemark)   $subColspan++;
+$subColspan = 0;
+if ($showCA1)  $subColspan++;
+if ($showCA2)  $subColspan++;
+if ($showCA3)  $subColspan++;
+if ($showExam) $subColspan++;
+if ($showTotal) $subColspan++;
+if ($showBF)    $subColspan++;
+if ($showCum)   $subColspan++;
+if ($showGrade) $subColspan++;
+if ($showSubPosCC) $subColspan++;
+if ($showSubPosCT) $subColspan++;
+if ($showSubPosAT) $subColspan++;
+if ($showSubPosAK) $subColspan++;
+if ($showAvg)    $subColspan++;
+if ($showRemark) $subColspan++;
 $subColspan = max(1, $subColspan);
 
 /*
- * Number of frozen (student-info) columns — used for stats-row colspan
+ * Frozen student-info columns
  */
-$frozenCols = 2   // # + Position
-    + ($showAdmNo  ? 1 : 0)
-    + 1            // Student Name
+$frozenCols = 1
+    + (($showPosTerm || $showPosCum) ? 1 : 0)
+    + ($showAdmNo ? 1 : 0)
+    + 1
     + ($showGender ? 1 : 0);
 
-$gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:0)+($showTotalGP?1:0);
+/*
+ * Is this class a senior class? Drives which grade-key is displayed.
+ */
+$isSeniorClass = $schoolclass && $schoolclass->classcategory
+    ? $schoolclass->classcategory->is_senior
+    : false;
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════════
@@ -527,23 +582,16 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
             <tr>
                 <td style="width:70px;text-align:center;vertical-align:middle;">
                     @if(!empty($school_logo_base64))
-                        <img src="{{ $school_logo_base64 }}" alt="Logo"
-                             style="width:58px;height:58px;border-radius:50%;border:2px solid rgba(255,255,255,.3);object-fit:contain;background:#fff;">
+                        <img src="{{ $school_logo_base64 }}" alt="Logo">
                     @endif
                 </td>
                 <td style="text-align:center;vertical-align:middle;">
-                    <div style="font-size:16px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px;line-height:1.2;">
-                        {{ $schoolInfo->school_name ?? 'SCHOOL NAME' }}
-                    </div>
+                    <div class="s-name">{{ $schoolInfo->school_name ?? 'SCHOOL NAME' }}</div>
                     @if(!empty($schoolInfo->school_address))
-                        <div style="font-size:7.5px;color:rgba(255,255,255,.8);margin-top:3px;">
-                            {{ $schoolInfo->school_address }}
-                        </div>
+                        <div class="s-address">{{ $schoolInfo->school_address }}</div>
                     @endif
                     @if(!empty($schoolInfo->school_motto))
-                        <div style="font-size:7px;color:rgba(255,255,255,.7);font-style:italic;margin-top:2px;">
-                            "{{ $schoolInfo->school_motto }}"
-                        </div>
+                        <div class="s-motto">"{{ $schoolInfo->school_motto }}"</div>
                     @endif
                 </td>
                 <td style="width:70px;"></td>
@@ -552,55 +600,67 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
     </div>
     <div class="school-header-bottom">
         CLASS ACADEMIC BROADSHEET
-        @if(!empty($is_combined))<span style="font-size:7px;opacity:.7;font-weight:400;margin-left:10px;">— Combined Arms</span>@endif
+        @if(!empty($is_combined))
+            <span style="font-size:7px;opacity:.7;font-weight:400;margin-left:10px;">— Combined Arms</span>
+        @endif
     </div>
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
      META INFO STRIP
 ══════════════════════════════════════════════════════════════ --}}
-<div class="meta-strip">
-    <div class="meta-cell" style="width:25%;">
-        <span class="m-lbl">Class</span>
-        <span class="m-val">{{ ($schoolclass->schoolclass ?? '-') . ' ' . ($schoolclass->arm_name ?? '') }}</span>
-    </div>
-    <div class="meta-cell" style="width:25%;">
-        <span class="m-lbl">Session</span>
-        <span class="m-val">{{ $schoolsession->session ?? '-' }}</span>
-    </div>
-    <div class="meta-cell" style="width:20%;">
-        <span class="m-lbl">Term</span>
-        <span class="m-val">{{ $schoolterm->term ?? '-' }}</span>
-    </div>
-    <div class="meta-cell" style="width:15%;">
-        <span class="m-lbl">Students</span>
-        <span class="m-val">{{ $totalStudents }}</span>
-    </div>
-    <div class="meta-cell" style="width:15%;">
-        <span class="m-lbl">Generated</span>
-        <span class="m-val" style="font-size:7px;">{{ $generatedAt }}</span>
-    </div>
-</div>
+<table class="meta-strip">
+    <tr>
+        <td class="meta-cell" style="width:25%;">
+            <span class="m-lbl">Class</span>
+            <span class="m-val">{{ ($schoolclass->schoolclass ?? '-') . ' ' . ($schoolclass->arm_name ?? '') }}</span>
+        </td>
+        <td class="meta-cell" style="width:25%;">
+            <span class="m-lbl">Session</span>
+            <span class="m-val">{{ $schoolsession->session ?? '-' }}</span>
+        </td>
+        <td class="meta-cell" style="width:20%;">
+            <span class="m-lbl">Term</span>
+            <span class="m-val">{{ $schoolterm->term ?? '-' }}</span>
+        </td>
+        <td class="meta-cell" style="width:15%;">
+            <span class="m-lbl">Students</span>
+            <span class="m-val">{{ $totalStudents }}</span>
+        </td>
+        <td class="meta-cell" style="width:15%;">
+            <span class="m-lbl">Generated</span>
+            <span class="m-val" style="font-size:7px;">{{ $generatedAt }}</span>
+        </td>
+    </tr>
+</table>
 
 {{-- ══════════════════════════════════════════════════════════════
      GRADE KEY
 ══════════════════════════════════════════════════════════════ --}}
 <div class="grade-key">
     <div class="grade-key-inner">
-        <strong>GRADING:</strong>
+        <strong>GRADING SCALE ({{ $isSeniorClass ? 'Senior' : 'Junior' }}):</strong>
         @php
-        $gkItems = [
-            ['A1','75-100','#16a34a'],['B2','70-74','#1d4ed8'],['B3','65-69','#2563eb'],
-            ['C4','60-64','#d97706'],['C5','55-59','#b45309'],['C6','50-54','#92400e'],
-            ['D7','45-49','#ea580c'],['E8','40-44','#c2410c'],['F9','0-39','#dc2626'],
-        ];
+        if ($isSeniorClass) {
+            $gkItems = [
+                ['A1','75-100','#16a34a'],['B2','70-74','#1d4ed8'],['B3','65-69','#2563eb'],
+                ['C4','60-64','#d97706'],['C5','55-59','#b45309'],['C6','50-54','#92400e'],
+                ['D7','45-49','#ea580c'],['E8','40-44','#c2410c'],['F9','0-39','#dc2626'],
+            ];
+        } else {
+            $gkItems = [
+                ['A','70-100','#16a34a'],['B','60-69','#1d4ed8'],['C','50-59','#7c3aed'],
+                ['D','40-49','#d97706'],['F','0-39','#dc2626'],
+            ];
+        }
         @endphp
         @foreach($gkItems as $gki)
             <span class="gk-badge" style="background:{{ $gki[2] }};">{{ $gki[0] }}({{ $gki[1] }})</span>
         @endforeach
         &nbsp;&nbsp;
+        <strong>Total</strong>=((CA1+CA2+CA3)÷3 + Exam)÷2 &nbsp;
         <strong>BF</strong>=Brought Forward &nbsp;
-        <strong>CUM</strong>=(BF+Total)÷2 &nbsp;
+        <strong>Cum</strong>=Term 1: Total; Terms 2–3: (BF+Total)÷2 &nbsp;
         <span class="gk-legend" style="background:#fef3c7;color:#92400e;">T-POS</span>=Overall Term Pos &nbsp;
         <span class="gk-legend" style="background:#dbeafe;color:#1e40af;">C-POS</span>=Overall Cum Pos &nbsp;
         <span class="gk-legend" style="background:#f0fdf4;color:#166534;">CC</span>=Class Pos (Cum) &nbsp;
@@ -617,10 +677,12 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
 <table class="bst">
     <thead>
 
-        {{-- ── Row 1: Subject group headers ── --}}
+        {{-- ══ Row 1: Subject group headers ══ --}}
         <tr class="row-subjects">
             <th class="th-fixed" rowspan="2" style="width:20px;">#</th>
-            <th class="th-fixed" rowspan="2" style="width:46px;">Position</th>
+            @if($showPosTerm || $showPosCum)
+                <th class="th-fixed" rowspan="2" style="width:46px;">Position</th>
+            @endif
             @if($showAdmNo)
                 <th class="th-fixed" rowspan="2" style="min-width:60px;">Adm. No</th>
             @endif
@@ -632,40 +694,73 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
             @foreach($subjects as $subId => $subInfo)
                 <th class="th-subj" colspan="{{ $subColspan }}">
                     {{ $subInfo['subject_name'] }}
-                    @if(!empty($subInfo['subject_code']))<br><span style="font-size:6px;opacity:.75;">({{ $subInfo['subject_code'] }})</span>@endif
+                    @if(!empty($subInfo['subject_code']))
+                        <br><span style="font-size:6px;opacity:.75;">({{ $subInfo['subject_code'] }})</span>
+                    @endif
                 </th>
             @endforeach
 
-            @if($gpaColspan > 0)
-                <th class="th-gpa" colspan="{{ $gpaColspan }}">GPA METRICS</th>
+            @if($promoColspan > 0)
+                <th class="th-promo" colspan="{{ $promoColspan }}">🎓 PROMOTION</th>
             @endif
         </tr>
 
-        {{-- ── Row 2: Sub-column headers for each subject ── --}}
+        {{-- ══ Row 2: Sub-column headers ══ --}}
         <tr class="row-subs">
             @foreach($subjects as $subId => $subInfo)
-                @foreach($activeAssessments as $aIdx => $a)
-                    <th class="{{ $aIdx === 0 ? 'sub-boundary' : '' }}" style="min-width:26px;">
-                        {{ $a->name }}<br><span style="opacity:.7;">/{{ $a->max_score }}</span>
-                    </th>
-                @endforeach
-                @if($showTotal)    <th style="min-width:26px;">Total</th>  @endif
-                @if($showBF)       <th style="min-width:22px;">BF</th>     @endif
-                @if($showCum)      <th style="min-width:26px;">Cum</th>    @endif
-                @if($showGrade)    <th style="min-width:22px;">Grd</th>    @endif
-                @if($showSubPosCC) <th class="th-pos-class" style="min-width:24px;" title="Class-wide, cumulative">CC</th>   @endif
-                @if($showSubPosCT) <th class="th-pos-class" style="min-width:24px;" title="Class-wide, term total">CT</th>   @endif
-                @if($showSubPosAT) <th class="th-pos-arm"   style="min-width:24px;" title="Arm-only, term total">AC</th>     @endif
-                @if($showSubPosAK) <th class="th-pos-arm"   style="min-width:24px;" title="Arm-only, cumulative">AK</th>     @endif
-                @if($showAvg)      <th style="min-width:24px;">Avg</th>    @endif
-                @if($showRemark)   <th style="min-width:34px;">Rmk</th>    @endif
+                @if($showCA1)
+                    <th class="sub-boundary" style="min-width:26px;">CA1</th>
+                @endif
+                @if($showCA2)
+                    <th style="min-width:26px;">CA2</th>
+                @endif
+                @if($showCA3)
+                    <th style="min-width:26px;">CA3</th>
+                @endif
+                @if($showExam)
+                    <th style="min-width:28px;">Exam</th>
+                @endif
+                @if($showTotal)
+                    <th style="min-width:28px;">Total</th>
+                @endif
+                @if($showBF)
+                    <th style="min-width:22px;">BF</th>
+                @endif
+                @if($showCum)
+                    <th style="min-width:30px;">Cum</th>
+                @endif
+                @if($showGrade)
+                    <th style="min-width:22px;">Grd</th>
+                @endif
+                @if($showSubPosCC)
+                    <th class="th-pos-class" style="min-width:24px;" title="Class-wide, cum">CC</th>
+                @endif
+                @if($showSubPosCT)
+                    <th class="th-pos-class" style="min-width:24px;" title="Class-wide, total">CT</th>
+                @endif
+                @if($showSubPosAT)
+                    <th class="th-pos-arm" style="min-width:24px;" title="Arm, total">AC</th>
+                @endif
+                @if($showSubPosAK)
+                    <th class="th-pos-arm" style="min-width:24px;" title="Arm, cum">AK</th>
+                @endif
+                @if($showAvg)
+                    <th style="min-width:24px;">Avg</th>
+                @endif
+                @if($showRemark)
+                    <th style="min-width:34px;">Rmk</th>
+                @endif
             @endforeach
 
-            @if($showGPA)      <th class="th-gpa-sub" style="min-width:28px;">GPA</th>   @endif
-            @if($showCGPA)     <th class="th-gpa-sub" style="min-width:28px;">CGPA</th>  @endif
-            @if($showGPAGrade) <th class="th-gpa-sub" style="min-width:22px;">GGrd</th>  @endif
-            @if($showNumSub)   <th class="th-gpa-sub" style="min-width:22px;">NS</th>    @endif
-            @if($showTotalGP)  <th class="th-gpa-sub" style="min-width:26px;">TGP</th>   @endif
+            @if($showPromoStatus)
+                <th class="promo-sub" style="min-width:90px;">Status</th>
+            @endif
+            @if($showPromoLabel)
+                <th class="promo-sub" style="min-width:110px;">Label</th>
+            @endif
+            @if($showPromoRule)
+                <th class="promo-sub" style="min-width:80px;">Rule</th>
+            @endif
         </tr>
 
     </thead>
@@ -677,43 +772,54 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
                 $sid      = $stu['id'];
                 $posCum   = $stu['position_cum']  ?? 0;
                 $posTerm  = $stu['position_term'] ?? 0;
-                $fullName = strtoupper($stu['lastname']??'') . ', ' . ($stu['firstname']??'');
+                $fullName = strtoupper($stu['lastname'] ?? '') . ', ' . ($stu['firstname'] ?? '');
             @endphp
             <tr>
                 {{-- Fixed columns --}}
                 <td class="td-sn">{{ $idx + 1 }}</td>
-                <td class="td-pos">
-                    <div class="pos-pair">
-                        @if($showPosTerm)
-                            <span class="pos-t">T:{{ bsOrdinal($posTerm) }}</span>
-                        @endif
-                        @if($showPosCum)
-                            <span class="pos-c">C:{{ bsOrdinal($posCum) }}</span>
-                        @endif
-                    </div>
-                </td>
+
+                @if($showPosTerm || $showPosCum)
+                    <td class="td-pos">
+                        <div class="pos-pair">
+                            @if($showPosTerm)
+                                <span class="pos-t">T:{{ bsOrdinal($posTerm) }}</span>
+                            @endif
+                            @if($showPosCum)
+                                <span class="pos-c">C:{{ bsOrdinal($posCum) }}</span>
+                            @endif
+                        </div>
+                    </td>
+                @endif
+
                 @if($showAdmNo)
                     <td class="td-adm">{{ $stu['admissionno'] }}</td>
                 @endif
+
                 <td class="td-student">
                     {{ $fullName }}
                     @if(!empty($stu['arm']))
                         <span style="font-size:5.5px;color:#64748b;"> ({{ $stu['arm'] }})</span>
                     @endif
                 </td>
+
                 @if($showGender)
-                    <td style="font-size:6.5px;">{{ substr($stu['gender']??'',0,1) }}</td>
+                    <td style="font-size:6.5px;">{{ substr($stu['gender'] ?? '', 0, 1) }}</td>
                 @endif
 
-                {{-- Subject score columns --}}
+                {{-- Per-subject columns --}}
                 @foreach($subjects as $subId => $subInfo)
                     @php
-                        $sd  = $stu['subjects'][$subId] ?? [];
+                        $sd = $stu['subjects'][$subId] ?? [];
                         $g   = $sd['grade'] ?? '-';
                         $gc  = bsGradeClass($g);
-                        $cum = (float)($sd['cum']   ?? 0);
-                        $bf  = (float)($sd['bf']    ?? 0);
-                        $tot = (float)($sd['total'] ?? 0);
+                        $bf  = (float) ($sd['bf']    ?? 0);
+                        $tot = (float) ($sd['total'] ?? 0);
+                        $cum = (float) ($sd['cum']   ?? 0);
+
+                        $ca1  = (float) ($sd['ca1']  ?? 0);
+                        $ca2  = (float) ($sd['ca2']  ?? 0);
+                        $ca3  = (float) ($sd['ca3']  ?? 0);
+                        $exam = (float) ($sd['exam'] ?? 0);
 
                         $spCC = $sd['pos_class_cum']   ?? null;
                         $spCT = $sd['pos_class_total'] ?? null;
@@ -721,32 +827,41 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
                         $spAK = $sd['pos_arm_cum']     ?? null;
                     @endphp
 
-                    {{-- Assessment scores --}}
-                    @foreach($activeAssessments as $aIdx => $a)
-                        @php $as = $sd['assessments'][$a->id] ?? 0; @endphp
-                        <td class="{{ $aIdx === 0 ? 'sub-boundary' : '' }}"
-                            style="{{ $aIdx === 0 ? 'border-left:1.5px solid #2563eb;' : '' }}">
-                            {{ $as > 0 ? number_format($as,1) : '—' }}
+                    {{-- CA1/CA2/CA3/Exam --}}
+                    @if($showCA1)
+                        <td class="sub-boundary" style="border-left:1.5px solid #2563eb;">
+                            {{ $ca1 > 0 ? number_format($ca1, 1) : '—' }}
                         </td>
-                    @endforeach
+                    @endif
+                    @if($showCA2)
+                        <td>{{ $ca2 > 0 ? number_format($ca2, 1) : '—' }}</td>
+                    @endif
+                    @if($showCA3)
+                        <td>{{ $ca3 > 0 ? number_format($ca3, 1) : '—' }}</td>
+                    @endif
+                    @if($showExam)
+                        <td>{{ $exam > 0 ? number_format($exam, 1) : '—' }}</td>
+                    @endif
 
-                    {{-- Term total --}}
+                    {{-- Total --}}
                     @if($showTotal)
-                        <td class="{{ $gc }}">{{ $tot > 0 ? number_format($tot,1) : '—' }}</td>
+                        <td class="{{ $gc }}">{{ $tot > 0 ? number_format($tot, 1) : '—' }}</td>
                     @endif
 
                     {{-- BF --}}
                     @if($showBF)
                         <td class="{{ $bf > 0 ? 'td-bf-has' : 'td-bf-none' }}">
-                            {{ $bf > 0 ? number_format($bf,1) : '—' }}
+                            {{ $bf > 0 ? number_format($bf, 1) : '—' }}
                         </td>
                     @endif
 
-                    {{-- Cumulative --}}
+                    {{-- Cum --}}
                     @if($showCum)
                         <td class="{{ $gc }}" style="font-weight:700;"
-                            title="{{ $bf > 0 ? '(BF '.number_format($bf,1).' + Total '.number_format($tot,1).') ÷ 2 = '.number_format($cum,1) : 'No BF — Cum = Total' }}">
-                            {{ $cum > 0 ? number_format($cum,1) : '—' }}
+                            title="{{ $bf > 0
+                                ? '('.number_format($bf,1).' + '.number_format($tot,1).') ÷ 2 = '.number_format($cum,2)
+                                : 'Term 1 — Cum = Total' }}">
+                            {{ $cum > 0 ? number_format($cum, 2) : '—' }}
                         </td>
                     @endif
 
@@ -755,35 +870,27 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
                         <td class="{{ $gc }}" style="font-weight:700;">{{ $g }}</td>
                     @endif
 
-                    {{-- Per-subject class-wide position (cumulative) --}}
+                    {{-- Class Pos (Cum) --}}
                     @if($showSubPosCC)
-                        <td class="sp-cc" title="Class Pos (Cumulative — all arms)">
-                            {{ bsOrdinal($spCC) }}
-                        </td>
+                        <td class="sp-cc" title="Class Pos (Cum)">{{ bsOrdinal($spCC) }}</td>
                     @endif
 
-                    {{-- Per-subject class-wide position (term total) --}}
+                    {{-- Class Pos (Total) --}}
                     @if($showSubPosCT)
-                        <td class="sp-ct" title="Class Pos (Term Total — all arms)">
-                            {{ bsOrdinal($spCT) }}
-                        </td>
+                        <td class="sp-ct" title="Class Pos (Total)">{{ bsOrdinal($spCT) }}</td>
                     @endif
 
-                    {{-- Per-subject arm-only position (term total) --}}
+                    {{-- Arm Pos (Total) --}}
                     @if($showSubPosAT)
-                        <td class="sp-at" title="Arm Pos (Term Total — this arm)">
-                            {{ bsOrdinal($spAT) }}
-                        </td>
+                        <td class="sp-at" title="Arm Pos (Total)">{{ bsOrdinal($spAT) }}</td>
                     @endif
 
-                    {{-- Per-subject arm-only position (cumulative) --}}
+                    {{-- Arm Pos (Cum) --}}
                     @if($showSubPosAK)
-                        <td class="sp-ak" title="Arm Pos (Cumulative — this arm)">
-                            {{ bsOrdinal($spAK) }}
-                        </td>
+                        <td class="sp-ak" title="Arm Pos (Cum)">{{ bsOrdinal($spAK) }}</td>
                     @endif
 
-                    {{-- Class average --}}
+                    {{-- Class Avg --}}
                     @if($showAvg)
                         <td style="color:#64748b;font-size:6.5px;">{{ $subjectStats[$subId]['avg'] ?? '—' }}</td>
                     @endif
@@ -794,17 +901,41 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
                     @endif
                 @endforeach
 
-                {{-- GPA metrics --}}
-                @if($showGPA)      <td class="td-gpa">{{ number_format($stu['gpa'],2) }}</td>                                @endif
-                @if($showCGPA)     <td class="td-gpa" style="background:#f0fdf4!important;color:#166534;">{{ number_format($stu['cgpa'],2) }}</td> @endif
-                @if($showGPAGrade) @php $ggc = bsGradeClass($stu['gpa_grade']??'-'); @endphp
-                                   <td class="td-gpa {{ $ggc }}" style="font-weight:700;">{{ $stu['gpa_grade'] ?? '—' }}</td> @endif
-                @if($showNumSub)   <td class="td-gpa">{{ $stu['num_subjects'] ?? '—' }}</td>                                  @endif
-                @if($showTotalGP)  <td class="td-gpa">{{ number_format($stu['total_grade_points'],1) }}</td>                   @endif
+                {{-- Promotion --}}
+                @if($showPromoStatus)
+                    @php
+                        $pStatus = $stu['promotion_status'] ?? 'awaiting';
+                        $pLabel  = $stu['promotion_label']  ?? 'Awaiting';
+                        $pIcon   = match($pStatus) {
+                            'promoted'      => '✅',
+                            'trial'         => '⚠️',
+                            'see_principal' => '👤',
+                            'repeated'      => '🔁',
+                            default         => '⏳',
+                        };
+                    @endphp
+                    <td class="td-promo">
+                        <span class="promo-pill promo-{{ $pStatus }}" title="{{ $pLabel }}">
+                            {{ $pIcon }} {{ ucfirst(str_replace('_', ' ', $pStatus)) }}
+                        </span>
+                    </td>
+                @endif
+
+                @if($showPromoLabel)
+                    <td class="td-promo" style="font-weight:600;color:#5b21b6;">
+                        {{ $stu['promotion_label'] ?? '—' }}
+                    </td>
+                @endif
+
+                @if($showPromoRule)
+                    <td class="td-promo" style="color:#64748b;">
+                        {{ $stu['promotion_rule_applied'] ? \Illuminate\Support\Str::limit($stu['promotion_rule_applied'], 20) : '—' }}
+                    </td>
+                @endif
             </tr>
         @endforeach
 
-        {{-- ══ Stats rows (Avg / Highest / Lowest) ══ --}}
+        {{-- ══ Stats rows ══ --}}
         @php
         $statDefs = [
             ['stats-avg','CLASS AVG','avg'],
@@ -817,23 +948,24 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
                 <td class="stats-lbl" colspan="{{ $frozenCols }}">{{ $label }}</td>
                 @foreach($subjects as $subId => $subInfo)
                     @php $st = $subjectStats[$subId] ?? []; @endphp
-                    @foreach($activeAssessments as $a) <td>—</td> @endforeach
+                    @if($showCA1) <td>—</td> @endif
+                    @if($showCA2) <td>—</td> @endif
+                    @if($showCA3) <td>—</td> @endif
+                    @if($showExam) <td>—</td> @endif
                     @if($showTotal)    <td>{{ $st[$key] ?? '—' }}</td> @endif
-                    @if($showBF)       <td>—</td>                      @endif
-                    @if($showCum)      <td>—</td>                      @endif
-                    @if($showGrade)    <td>—</td>                      @endif
-                    @if($showSubPosCC) <td>—</td>                      @endif
-                    @if($showSubPosCT) <td>—</td>                      @endif
-                    @if($showSubPosAT) <td>—</td>                      @endif
-                    @if($showSubPosAK) <td>—</td>                      @endif
-                    @if($showAvg)      <td>{{ $key==='avg' ? ($st['avg']??'—') : '—' }}</td> @endif
-                    @if($showRemark)   <td>—</td>                      @endif
+                    @if($showBF)       <td>—</td> @endif
+                    @if($showCum)      <td>—</td> @endif
+                    @if($showGrade)    <td>—</td> @endif
+                    @if($showSubPosCC) <td>—</td> @endif
+                    @if($showSubPosCT) <td>—</td> @endif
+                    @if($showSubPosAT) <td>—</td> @endif
+                    @if($showSubPosAK) <td>—</td> @endif
+                    @if($showAvg)      <td>{{ $key === 'avg' ? ($st['avg'] ?? '—') : '—' }}</td> @endif
+                    @if($showRemark)   <td>—</td> @endif
                 @endforeach
-                @if($showGPA)      <td>—</td> @endif
-                @if($showCGPA)     <td>—</td> @endif
-                @if($showGPAGrade) <td>—</td> @endif
-                @if($showNumSub)   <td>—</td> @endif
-                @if($showTotalGP)  <td>—</td> @endif
+                @if($showPromoStatus) <td>—</td> @endif
+                @if($showPromoLabel)  <td>—</td> @endif
+                @if($showPromoRule)   <td>—</td> @endif
             </tr>
         @endforeach
 
@@ -845,7 +977,7 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
      SUBJECT PERFORMANCE SUMMARY
 ══════════════════════════════════════════════════════════════ --}}
 <div class="subj-summary">
-    <h3><i>&#9642;</i> Subject Performance Summary</h3>
+    <h3>■ Subject Performance Summary</h3>
     <table class="subj-tbl">
         <thead>
             <tr>
@@ -892,10 +1024,10 @@ $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:
      SIGNATURE BLOCK
 ══════════════════════════════════════════════════════════════ --}}
 <div class="sig-block">
-    <table style="width:100%;border-collapse:collapse;">
+    <table>
         <tr>
             @foreach(['Class Teacher','Head of Department','Vice Principal','Principal'] as $sig)
-                <td style="width:25%;text-align:center;padding:0 10px;vertical-align:bottom;">
+                <td>
                     <div class="sig-line">{{ $sig }}</div>
                 </td>
             @endforeach

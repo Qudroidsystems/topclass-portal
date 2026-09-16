@@ -1,3 +1,4 @@
+{{-- resources/views/broadsheet/web.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
@@ -5,9 +6,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
 <style>
-/* ─────────────────────────────────────────────
-   CSS VARIABLES
-───────────────────────────────────────────── */
 :root {
     --cb-navy:      #0f2342;
     --cb-teal:      #0d9488;
@@ -26,55 +24,42 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
-/* ── Keyframes ── */
-@keyframes fadeInUp    { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
-@keyframes fadeInDown  { from { opacity:0; transform:translateY(-22px); } to { opacity:1; transform:translateY(0); } }
-@keyframes fadeInLeft  { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
-@keyframes fadeInRight { from { opacity:0; transform:translateX(22px); }  to { opacity:1; transform:translateX(0); } }
-@keyframes scaleIn     { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
-@keyframes pulse       { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
-@keyframes shimmer     { 0% { background-position:-800px 0; } 100% { background-position:800px 0; } }
-@keyframes slideInRight{ from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-@keyframes spin        { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-@keyframes popIn       { 0% { opacity:0; transform:scale(.7) translateY(12px); } 60% { transform:scale(1.04) translateY(-3px); } 100% { opacity:1; transform:scale(1) translateY(0); } }
-@keyframes floatUp     { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
-@keyframes glowPulse   { 0%,100% { box-shadow:0 0 0 0 rgba(13,148,136,.4); } 50% { box-shadow:0 0 0 8px rgba(13,148,136,0); } }
-@keyframes progressFill{ from { width:0; } }
-@keyframes rowSlide    { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
-@keyframes countUp     { from { opacity:0; transform:scale(.6); } to { opacity:1; transform:scale(1); } }
-@keyframes backdropIn  { from { opacity:0; } to { opacity:1; } }
-@keyframes barGrow     { from { transform:scaleX(0); transform-origin:left; } to { transform:scaleX(1); transform-origin:left; } }
-
-.spin { animation:spin .8s linear infinite; }
+/* ── Animations ── */
+@keyframes fadeInUp     { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeInDown   { from { opacity:0; transform:translateY(-22px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeInLeft   { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
+@keyframes fadeInRight  { from { opacity:0; transform:translateX(22px); } to { opacity:1; transform:translateX(0); } }
+@keyframes scaleIn      { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
+@keyframes floatUp      { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+@keyframes slideInRight { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+@keyframes popIn        { 0% { opacity:0; transform:scale(.7) translateY(12px); } 60% { transform:scale(1.04) translateY(-3px); } 100% { opacity:1; transform:scale(1) translateY(0); } }
+@keyframes rowSlide     { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+@keyframes countUp      { from { opacity:0; transform:scale(.6); } to { opacity:1; transform:scale(1); } }
+@keyframes backdropIn   { from { opacity:0; } to { opacity:1; } }
+@keyframes progressFill { from { width:0; } }
+@keyframes glowPulse    { 0%,100% { box-shadow:0 0 0 0 rgba(13,148,136,.4); } 50% { box-shadow:0 0 0 8px rgba(13,148,136,0); } }
 
 /* ── Grade Basis Toggle ── */
-.gb-toggle { 
-    display:inline-flex; 
-    background:#e6fffa; 
-    border:1px solid #99f6e4; 
-    border-radius:20px; 
-    padding:2px; 
+.gb-toggle {
+    display: inline-flex;
+    background: #e6fffa;
+    border: 1px solid #99f6e4;
+    border-radius: 20px;
+    padding: 2px;
 }
-.gb-toggle-btn { 
-    border:none; 
-    background:transparent; 
-    padding:6px 16px; 
-    font-size:12px; 
-    font-weight:700; 
-    border-radius:18px; 
-    cursor:pointer; 
-    color:var(--cb-muted); 
-    transition:all .25s ease; 
+.gb-toggle-btn {
+    border: none; background: transparent;
+    padding: 6px 16px; font-size: 12px; font-weight: 700;
+    border-radius: 18px; cursor: pointer;
+    color: var(--cb-muted); transition: all .25s ease;
 }
-.gb-toggle-btn.active { 
-    background:var(--cb-teal); 
-    color:#fff; 
-    box-shadow:0 2px 6px rgba(13,148,136,.35); 
+.gb-toggle-btn.active {
+    background: var(--cb-teal);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(13,148,136,.35);
 }
-.gb-toggle-btn:hover:not(.active) { 
-    color:var(--cb-teal); 
-}
-#printGradeBasisNote { display:none; }
+.gb-toggle-btn:hover:not(.active) { color: var(--cb-teal); }
+#printGradeBasisNote { display: none; }
 
 /* ── Hero ── */
 .cb-hero {
@@ -233,7 +218,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
 /* ── Promotion status cells ── */
 .promo-cell { text-align: center; border-left: 2px solid #7c3aed !important; }
-
 .promo-badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 10px; border-radius: 20px;
@@ -241,46 +225,26 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     transition: all .2s ease; cursor: default;
 }
 .promo-badge:hover { transform: scale(1.06); }
-
 .promo-promoted     { background: #d1fae5; color: #065f46; }
 .promo-trial        { background: #fef3c7; color: #92400e; }
 .promo-see_principal{ background: #dbeafe; color: #1e40af; }
 .promo-repeated     { background: #fee2e2; color: #991b1b; }
 .promo-awaiting     { background: #f1f5f9; color: #475569; }
-
 .promo-header-th {
     background: #3b0764 !important;
     border-left: 2px solid #7c3aed !important;
     min-width: 110px;
 }
 
-/* ── Position cells: term vs cum styling ── */
-.pos-term-cell {
-    background:#fef3c7 !important; color:#92400e; font-weight:700;
-    border-left:1.5px solid #f59e0b !important; font-size:11px;
-}
-.pos-cum-cell {
-    background:#dbeafe !important; color:#1e40af; font-weight:700;
-    border-left:1.5px solid #3b82f6 !important; font-size:11px;
-}
+/* ── Position cells ── */
+.pos-term-cell { background:#fef3c7 !important; color:#92400e; font-weight:700; border-left:1.5px solid #f59e0b !important; font-size:11px; }
+.pos-cum-cell  { background:#dbeafe !important; color:#1e40af; font-weight:700; border-left:1.5px solid #3b82f6 !important; font-size:11px; }
 
-/* ── Per-subject position cell styles ── */
-.sub-pos-class-cum-cell {
-    background:#f0fdf4 !important; color:#166534; font-weight:700;
-    border-left:1px solid #86efac !important; font-size:10px;
-}
-.sub-pos-class-total-cell {
-    background:#fefce8 !important; color:#854d0e; font-weight:700;
-    font-size:10px;
-}
-.sub-pos-arm-total-cell {
-    background:#eff6ff !important; color:#1e40af; font-weight:700;
-    border-left:1px solid #93c5fd !important; font-size:10px;
-}
-.sub-pos-arm-cum-cell {
-    background:#f5f3ff !important; color:#5b21b6; font-weight:700;
-    font-size:10px;
-}
+/* Per-subject position cell styles */
+.sub-pos-class-cum-cell   { background:#f0fdf4 !important; color:#166534; font-weight:700; border-left:1px solid #86efac !important; font-size:10px; }
+.sub-pos-class-total-cell { background:#fefce8 !important; color:#854d0e; font-weight:700; font-size:10px; }
+.sub-pos-arm-total-cell   { background:#eff6ff !important; color:#1e40af; font-weight:700; border-left:1px solid #93c5fd !important; font-size:10px; }
+.sub-pos-arm-cum-cell     { background:#f5f3ff !important; color:#5b21b6; font-weight:700; font-size:10px; }
 
 /* ── Grade colors ── */
 .grade-a1 { background:#dcfce7 !important; color:#166534; font-weight:700; }
@@ -292,15 +256,16 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .grade-d7 { background:#ffedd5 !important; color:#9a3412; }
 .grade-e8 { background:#fed7aa !important; color:#9a3412; }
 .grade-f9 { background:#fee2e2 !important; color:#991b1b; font-weight:700; }
+.grade-a  { background:#dcfce7 !important; color:#166534; font-weight:700; }
+.grade-b  { background:#dbeafe !important; color:#1e40af; }
+.grade-c  { background:#fef9c3 !important; color:#854d0e; }
+.grade-d  { background:#ffedd5 !important; color:#9a3412; }
+.grade-f  { background:#fee2e2 !important; color:#991b1b; font-weight:700; }
 
 /* ── Score colors ── */
 .score-red   { color:#dc2626 !important; font-weight:700; }
 .score-amber { color:#d97706 !important; font-weight:700; }
 .score-green { color:#16a34a !important; font-weight:700; }
-
-/* ── GPA cells ── */
-.gpa-cell { background:#eff6ff !important; color:#1e3a8a; font-weight:700; border-left:1.5px solid #3b82f6 !important; transition:all .2s ease; }
-.gpa-cell:hover { background:#dbeafe !important; transform:scale(1.02); }
 
 /* ── Position Badge ── */
 .pos-badge {
@@ -315,7 +280,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .pos-3 { background:linear-gradient(135deg,#ffedd5,#fed7aa); border-color:#f97316; color:#9a3412; }
 .pos-other { background:var(--cb-surface); border-color:var(--cb-border); color:var(--cb-muted); font-size:11px; }
 
-/* ── Dual position badge (term + cum) ── */
+/* Dual position badge (term + cum) */
 .pos-dual {
     display:inline-flex; flex-direction:column; align-items:center;
     gap:2px; cursor:pointer;
@@ -334,7 +299,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .cb-avatar img { width:100%; height:100%; object-fit:cover; }
 .cb-avatar-initials { background:linear-gradient(135deg,var(--cb-teal),var(--cb-sky)); color:#fff; font-size:11px; font-weight:700; }
 
-/* ── Eye / Grade trigger button ── */
+/* ── Eye button ── */
 .grade-trigger-btn {
     background:none; border:none; cursor:pointer;
     color:var(--cb-sky); font-size:17px; padding:5px 8px; border-radius:8px;
@@ -381,7 +346,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     animation: backdropIn .2s ease;
 }
 .slist-modal-overlay.open { display: flex; }
-
 .slist-modal {
     background: white; border-radius: 16px;
     width: 620px; max-width: calc(100vw - 32px);
@@ -390,7 +354,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     box-shadow: 0 24px 64px rgba(0,0,0,.25);
     animation: popIn .28s cubic-bezier(.22,1,.36,1);
 }
-
 .slist-modal-header {
     background: linear-gradient(135deg, #3b0764, #7c3aed);
     color: white; padding: 18px 22px;
@@ -405,15 +368,12 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     transition: all .2s ease;
 }
 .slist-modal-close:hover { background: rgba(255,255,255,.35); transform: rotate(90deg); }
-
 .slist-modal-body { padding: 20px 22px; overflow-y: auto; flex: 1; }
 .slist-modal-footer {
     padding: 14px 22px; border-top: 1px solid #e2e8f0;
     display: flex; justify-content: flex-end; gap: 10px;
     flex-shrink: 0; background: #f8fafc;
 }
-
-/* Drag-and-drop list */
 .promo-order-list { list-style: none; padding: 0; margin: 0; }
 .promo-order-item {
     display: flex; align-items: center; gap: 10px;
@@ -426,9 +386,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .promo-order-item.dragging { opacity: .45; transform: scale(.98); cursor: grabbing; }
 .promo-order-item.drag-over { border-color: #7c3aed; background: #f5f3ff; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(124,58,237,.2); }
 .drag-handle { color: #94a3b8; font-size: 18px; cursor: grab; line-height: 1; }
-.drag-handle:active { cursor: grabbing; }
-
-/* Field checkboxes grid */
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .field-checkbox-item {
     display: flex; align-items: center; gap: 8px;
@@ -439,7 +396,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .field-checkbox-item:hover { border-color: #7c3aed; background: #f5f3ff; }
 .field-checkbox-item input[type=checkbox] { accent-color: #7c3aed; width: 15px; height: 15px; }
 .field-checkbox-item.checked { border-color: #7c3aed; background: #f5f3ff; }
-
 .slist-section-title {
     font-size: 12px; font-weight: 700; color: #3b0764;
     text-transform: uppercase; letter-spacing: .5px;
@@ -463,8 +419,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .gpop-close-btn { background:rgba(255,255,255,.18); border:none; color:#fff; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .25s ease; }
 .gpop-close-btn:hover { background:rgba(255,255,255,.4); transform:rotate(90deg) scale(1.1); }
 .gpop-body { padding:16px; overflow-y:auto; flex:1; }
-
-/* ── Performance summary card inside popup ── */
 .gpop-perf-strip {
     background:linear-gradient(135deg,var(--cb-navy),#1e5f74);
     border-radius:10px; padding:12px 16px; color:#fff; margin-bottom:14px;
@@ -474,14 +428,12 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .gpop-perf-item:hover { background:rgba(255,255,255,.2); transform:scale(1.03); }
 .gpop-perf-lbl { font-size:9px; opacity:.8; text-transform:uppercase; letter-spacing:.4px; }
 .gpop-perf-val { font-size:15px; font-weight:700; margin-top:2px; }
-
 .gpop-legend { display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:6px 10px; background:var(--cb-surface); border-radius:8px; border:1px solid var(--cb-border); flex-wrap:wrap; }
 .gpop-legend-item { display:flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:var(--cb-muted); }
 .gpop-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .gpop-legend-dot.t { background:#0ea5e9; }
 .gpop-legend-dot.c { background:var(--cb-navy); }
 .gpop-legend-dot.ca { background:#7c3aed; }
-
 .gpop-scroll { max-height:260px; overflow-y:auto; border:1px solid var(--cb-border); border-radius:10px; }
 .gpop-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
 .gpop-table thead th { background:var(--cb-navy); color:#fff; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; padding:9px 8px; border-right:1px solid rgba(255,255,255,.08); text-align:center; position:sticky; top:0; z-index:2; }
@@ -489,13 +441,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .gpop-table tbody td { padding:8px 6px; border-bottom:1px solid #f1f5f9; font-weight:500; text-align:center; vertical-align:middle; }
 .gpop-table tbody td:first-child { text-align:left; font-weight:600; color:var(--cb-navy); padding-left:12px; }
 .gpop-table tbody tr:hover td { background:#f0fdf9; }
-
 .score-pair { display:flex; flex-direction:column; gap:2px; }
 .score-cell-inner { display:flex; align-items:center; justify-content:center; gap:3px; padding:2px 4px; border-radius:4px; font-size:11px; font-weight:700; }
 .score-cell-inner.term { background:rgba(14,165,233,.08); border-left:2px solid #0ea5e9; }
 .score-cell-inner.cum  { background:rgba(15,35,66,.06);   border-left:2px solid var(--cb-navy); }
 .score-cell-inner.cumave { background:rgba(124,58,237,.08); border-left:2px solid #7c3aed; }
-
 .gpop-summary { background:linear-gradient(135deg,#f8fafc,#f0fdf9); border-radius:12px; padding:12px; margin-top:14px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .gpop-sum-item { text-align:center; padding:10px 6px; border-radius:10px; background:white; transition:all .2s ease; border:1px solid #e2e8f0; }
 .gpop-sum-item:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.09); border-color:var(--cb-teal); }
@@ -504,11 +454,8 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 .gpop-sum-val.score-red   { color:#dc2626; }
 .gpop-sum-val.score-amber { color:#d97706; }
 .gpop-sum-val.score-green { color:#16a34a; }
-
-/* ── Progress bars inside popup ── */
 .pct-bar-wrap { background:rgba(255,255,255,.15); border-radius:4px; height:6px; overflow:hidden; }
 .pct-bar { height:100%; border-radius:4px; background:#22c55e; transition:background .8s ease; animation:progressFill .8s ease both; }
-
 #cbPopupBackdrop { display:none; position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,.3); animation:backdropIn .2s ease; }
 
 /* ── Tooltips ── */
@@ -522,7 +469,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 }
 [data-tooltip]:hover:before { opacity:1; visibility:visible; transform:translateX(-50%) translateY(-5px); }
 
-/* ── Subject performance summary card ── */
+/* ── Subject summary card ── */
 .subj-summary-card {
     background:var(--cb-white); border:1px solid var(--cb-border);
     border-radius:var(--cb-radius); box-shadow:var(--cb-shadow);
@@ -540,12 +487,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     border-radius:10px; padding:18px 24px; margin-bottom:16px; color:white;
     animation:fadeInUp .6s ease;
 }
-
-/* ── BF note badge ── */
-.bf-note {
-    font-size:9px; opacity:.65; display:block;
-    font-weight:400; margin-top:2px; line-height:1.3;
-}
+.bf-note { font-size:9px; opacity:.65; display:block; font-weight:400; margin-top:2px; line-height:1.3; }
 
 /* ── Print ── */
 @media print {
@@ -585,7 +527,26 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- ── Stats Cards ── --}}
+{{-- ── Stats ── --}}
+@php
+    $allRowsForStats = $studentRows ?? [];
+    $totalSubjects   = count($subjects ?? []);
+    $obtainable      = $totalSubjects * 100;
+    $sumCum          = 0;
+    $topName         = '—';
+    $topCum          = -1;
+    foreach ($allRowsForStats as $r) {
+        $sumCum += (float) ($r['total_cum'] ?? 0);
+        if (($r['total_cum'] ?? 0) > $topCum) {
+            $topCum  = $r['total_cum'];
+            $topName = trim(($r['lastname'] ?? '') . ' ' . ($r['firstname'] ?? ''));
+        }
+    }
+    $avgPct = (count($allRowsForStats) > 0 && $obtainable > 0)
+        ? round(($sumCum / (count($allRowsForStats) * $obtainable)) * 100, 1)
+        : 0;
+@endphp
+
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <div class="cb-stat">
@@ -599,7 +560,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         <div class="cb-stat">
             <div class="stat-accent" style="background:linear-gradient(90deg,var(--cb-sky),#38bdf8);"></div>
             <div class="stat-ico"><i class="ri-book-open-line"></i></div>
-            <div class="stat-value text-info" id="statTotalSubjects">{{ count($subjects) }}</div>
+            <div class="stat-value text-info" id="statTotalSubjects">{{ $totalSubjects }}</div>
             <div class="stat-label">Subjects</div>
         </div>
     </div>
@@ -607,7 +568,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         <div class="cb-stat">
             <div class="stat-accent" style="background:linear-gradient(90deg,var(--cb-green),#4ade80);"></div>
             <div class="stat-ico"><i class="ri-percent-line"></i></div>
-            <div class="stat-value text-success" id="statAvgPct">0%</div>
+            <div class="stat-value text-success" id="statAvgPct">{{ $avgPct }}%</div>
             <div class="stat-label">Avg % (Cumulative)</div>
         </div>
     </div>
@@ -615,7 +576,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         <div class="cb-stat">
             <div class="stat-accent" style="background:linear-gradient(90deg,var(--cb-amber),#fcd34d);"></div>
             <div class="stat-ico"><i class="ri-award-line"></i></div>
-            <div class="stat-value text-warning" id="statTopPerformer" style="font-size:16px;">—</div>
+            <div class="stat-value text-warning" id="statTopPerformer" style="font-size:16px;">{{ $topName }}</div>
             <div class="stat-label">Top Performer (Cum)</div>
         </div>
     </div>
@@ -648,21 +609,21 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
 {{-- ── Grade Basis Toggle ── --}}
 <div class="grade-basis-strip no-print" style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:10px 16px;">
-    <span style="font-weight:500;"><i class="ri-scales-3-line me-1"></i>Grades, GPA &amp; rankings based on:</span>
+    <span style="font-weight:500;"><i class="ri-scales-3-line me-1"></i>Grades &amp; rankings based on:</span>
     <div class="gb-toggle" role="group" aria-label="Grade basis toggle">
         <button type="button"
-                class="gb-toggle-btn {{ ($grade_basis ?? 'cum_ave') === 'cum_ave' ? 'active' : '' }}"
-                onclick="switchGradeBasis('cum_ave')">Cumulative Average</button>
+                class="gb-toggle-btn {{ ($grade_basis ?? 'cum') === 'cum' ? 'active' : '' }}"
+                onclick="switchGradeBasis('cum')">Cumulative</button>
         <button type="button"
-                class="gb-toggle-btn {{ ($grade_basis ?? 'cum_ave') === 'total' ? 'active' : '' }}"
+                class="gb-toggle-btn {{ ($grade_basis ?? 'cum') === 'total' ? 'active' : '' }}"
                 onclick="switchGradeBasis('total')">Term Total</button>
     </div>
 </div>
 
 {{-- Print-only static version --}}
 <div class="grade-basis-strip" id="printGradeBasisNote">
-    <i class="ri-scales-3-line me-1"></i>Grades, GPA &amp; rankings on this sheet are based on:
-    <strong>{{ ($grade_basis ?? 'cum_ave') === 'total' ? 'Term Total' : 'Cumulative Average' }}</strong>
+    <i class="ri-scales-3-line me-1"></i>Grades &amp; rankings on this sheet are based on:
+    <strong>{{ ($grade_basis ?? 'cum') === 'total' ? 'Term Total' : 'Cumulative' }}</strong>
 </div>
 
 {{-- Hidden form for resubmission --}}
@@ -675,7 +636,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     @endif
     <input type="hidden" name="sessionid" value="{{ request('sessionid') }}">
     <input type="hidden" name="termid" value="{{ request('termid') }}">
-    <input type="hidden" name="grade_basis" id="gb_input" value="{{ $grade_basis ?? 'cum_ave' }}">
+    <input type="hidden" name="grade_basis" id="gb_input" value="{{ $grade_basis ?? 'cum' }}">
     @foreach(request('selectedColumns', []) as $i => $col)
         <input type="hidden" name="selectedColumns[{{ $i }}]" value="{{ $col }}">
     @endforeach
@@ -709,15 +670,22 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         'A1'=>['75-100','#16a34a'],'B2'=>['70-74','#1d4ed8'],'B3'=>['65-69','#2563eb'],
         'C4'=>['60-64','#d97706'],'C5'=>['55-59','#b45309'],'C6'=>['50-54','#92400e'],
         'D7'=>['45-49','#ea580c'],'E8'=>['40-44','#c2410c'],'F9'=>['0-39','#dc2626'],
+        'A'=>['70-100','#16a34a'],'B'=>['60-69','#2563eb'],'C'=>['50-59','#7c3aed'],
+        'D'=>['40-49','#d97706'],'F'=>['0-39','#dc2626'],
     ];
+    $isSenior = $schoolclass && $schoolclass->classcategory ? $schoolclass->classcategory->is_senior : false;
+    $displayKeys = $isSenior
+        ? ['A1','B2','B3','C4','C5','C6','D7','E8','F9']
+        : ['A','B','C','D','F'];
     @endphp
-    @foreach($gradeKey as $grade => $info)
+    @foreach($displayKeys as $grade)
+        @php $info = $gradeKey[$grade]; @endphp
         <span style="animation:scaleIn .4s ease {{ $loop->index * 0.03 }}s both;display:inline-block;">
             <span class="badge" style="background:{{ $info[1] }};font-size:11px;border-radius:12px;padding:3px 9px;">{{ $grade }} ({{ $info[0] }})</span>
         </span>
     @endforeach
     <span class="text-muted ms-2" style="font-size:11px;">
-        <strong>BF</strong>=Brought Forward &nbsp; <strong>CUM</strong>=Raw Sum (BF+Total) &nbsp; <strong>CUM AVE</strong>=Cum ÷ Term No. &nbsp;
+        <strong>BF</strong>=Brought Forward &nbsp; <strong>CUM</strong>=Term 1: Total; Terms 2–3: (BF+Total)÷2 &nbsp;
         <span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700;">T-POS</span>=Overall Term Pos &nbsp;
         <span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 5px;font-weight:700;">C-POS</span>=Overall Cum Pos &nbsp;
         <span style="background:#f0fdf4;color:#166534;border-radius:4px;padding:1px 5px;font-weight:700;">CC</span>=Class Pos (Cum) &nbsp;
@@ -739,7 +707,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                 <option value="">🔍 Quick Locate…</option>
                 <option value="top5">🏆 Top 5 (by Cum)</option>
                 <option value="top10">⭐ Top 10</option>
-                <option value="failures">⚠️ Students with F9</option>
+                <option value="failures">⚠️ Students with F9 / F</option>
                 <option value="below_avg">📉 Below Class Average</option>
                 <option disabled>──────────</option>
                 <option value="promoted">✅ Promoted Students</option>
@@ -782,37 +750,35 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     $selected = $selectedColumns ?? [];
     $showAll  = empty($selected);
 
-    // Student info columns
+    // ── Student Info ──
     $showAdmNo   = $showAll || in_array('admission_no',   $selected);
     $showGender  = in_array('gender', $selected);
 
-    // Score columns
+    // ── Fixed CA columns ──
+    $showCA1     = $showAll || in_array('ca1',   $selected);
+    $showCA2     = $showAll || in_array('ca2',   $selected);
+    $showCA3     = $showAll || in_array('ca3',   $selected);
+    $showExam    = $showAll || in_array('exam',  $selected);
+
+    // ── Score metrics ──
     $showTotal   = $showAll || in_array('total',          $selected);
     $showBF      = $showAll || in_array('bf',             $selected);
     $showCum     = $showAll || in_array('cum',            $selected);
-    $showCumAve  = $showAll || in_array('cum_ave',         $selected);
     $showGrade   = $showAll || in_array('grade',          $selected);
     $showAvg     = $showAll || in_array('class_average',  $selected);
     $showRemark  = in_array('remark', $selected);
 
-    // Overall student positions
+    // ── Overall student positions ──
     $showPosTerm = $showAll || in_array('position_term',  $selected);
     $showPosCum  = $showAll || in_array('position_cum',   $selected);
 
-    // Per-subject position flags
+    // ── Per-subject positions ──
     $showSubPosClassCum   = $showAll || in_array('pos_class_cum',   $selected);
     $showSubPosClassTotal = $showAll || in_array('pos_class_total', $selected);
     $showSubPosArmTotal   = $showAll || in_array('pos_arm_total',   $selected);
     $showSubPosArmCum     = $showAll || in_array('pos_arm_cum',     $selected);
 
-    // GPA columns
-    $showGPA     = $showAll || in_array('gpa',            $selected);
-    $showCGPA    = in_array('cgpa', $selected);
-    $showGPAGrade = in_array('gpa_grade', $selected);
-    $showNumSub  = in_array('num_subjects', $selected);
-    $showTotalGP = in_array('total_grade_points', $selected);
-
-    // Promotion columns - include rule by default
+    // ── Promotion ──
     $showPromoStatus = $showAll || in_array('promotion_status', $selected);
     $showPromoLabel  = in_array('promotion_label', $selected);
     $showPromoRule   = $showAll || in_array('promotion_rule_applied', $selected);
@@ -821,25 +787,24 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                   + ($showPromoLabel  ? 1 : 0)
                   + ($showPromoRule   ? 1 : 0);
 
-    $activeAssessments = $assessments->filter(fn($a) =>
-        empty($selected) || in_array('assessment_' . $a->id, $selected)
-    );
-
+    // Grade colors map
     $gradeColors = [
         'A1'=>'grade-a1','B2'=>'grade-b2','B3'=>'grade-b3',
         'C4'=>'grade-c4','C5'=>'grade-c5','C6'=>'grade-c6',
-        'D7'=>'grade-d7','E8'=>'grade-e8','F9'=>'grade-f9','-'=>'',
+        'D7'=>'grade-d7','E8'=>'grade-e8','F9'=>'grade-f9',
+        'A'=>'grade-a','B'=>'grade-b','C'=>'grade-c','D'=>'grade-d','F'=>'grade-f',
+        '-'=>'',
     ];
 
-    $frozenCols = 2 + ($showAdmNo ? 1 : 0) + 1 + ($showGender ? 1 : 0);
-    $gpaColspan = ($showGPA?1:0)+($showCGPA?1:0)+($showGPAGrade?1:0)+($showNumSub?1:0)+($showTotalGP?1:0);
-
-    // Calculate per-subject colspan
-    $subColspan = $activeAssessments->count();
+    // Sub-column count per subject
+    $subColspan = 0;
+    if($showCA1) $subColspan++;
+    if($showCA2) $subColspan++;
+    if($showCA3) $subColspan++;
+    if($showExam) $subColspan++;
     if($showTotal) $subColspan++;
     if($showBF) $subColspan++;
     if($showCum) $subColspan++;
-    if($showCumAve) $subColspan++;
     if($showGrade) $subColspan++;
     if($showSubPosClassCum) $subColspan++;
     if($showSubPosClassTotal) $subColspan++;
@@ -848,6 +813,12 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     if($showAvg) $subColspan++;
     if($showRemark) $subColspan++;
     $subColspan = max(1, $subColspan);
+
+    // Frozen student-info columns
+    $frozenCols = 2
+        + ($showAdmNo ? 1 : 0)
+        + 1
+        + ($showGender ? 1 : 0);
 @endphp
 
 {{-- ── Main Broadsheet Table ── --}}
@@ -862,7 +833,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     <div style="overflow-x:auto;">
         <table class="broadsheet-table" id="broadsheetTable">
             <thead>
-                {{-- Row 1: Subject name header + frozen student cols --}}
+                {{-- ══ Row 1: Subject group headers + frozen student columns ══ --}}
                 <tr class="subject-header">
                     <th class="student-col" rowspan="2" style="width:36px;">#</th>
                     @if($showPosTerm || $showPosCum)
@@ -876,7 +847,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         <th class="student-col" rowspan="2" style="width:38px;">Sex</th>
                     @endif
 
-                    {{-- One header cell per subject spanning all its sub-columns --}}
                     @foreach($subjects as $subId => $subInfo)
                         <th class="subj-name-hdr" colspan="{{ $subColspan }}">
                             {{ $subInfo['subject_name'] }}
@@ -886,85 +856,77 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         </th>
                     @endforeach
 
-                    {{-- Analytics (eye) column header --}}
+                    {{-- Analytics eye column --}}
                     <th class="subj-name-hdr" colspan="1" style="background:#0a2240;border-left:2px solid var(--cb-teal);min-width:46px;">
                         <i class="ri-eye-line" style="font-size:13px;"></i>
                     </th>
 
-                    @if($gpaColspan > 0)
-                        <th colspan="{{ $gpaColspan }}" style="background:#0a1e38;border-left:2px solid #3b82f6;font-size:10px;">GPA METRICS</th>
-                    @endif
-
                     @if($promoColspan > 0)
-                        <th colspan="{{ $promoColspan }}" class="promo-header-th"
-                            style="font-size:10px;letter-spacing:.4px;">
+                        <th colspan="{{ $promoColspan }}" class="promo-header-th" style="font-size:10px;letter-spacing:.4px;">
                             <span style="font-size:13px; margin-right:4px;">🎓</span> PROMOTION
                         </th>
                     @endif
                 </tr>
 
-                {{-- Row 2: Assessment / score sub-headers --}}
+                {{-- ══ Row 2: Sub-column headers ══ --}}
                 <tr class="assessment-header">
                     @foreach($subjects as $subId => $subInfo)
-                        {{-- Assessment score columns --}}
-                        @foreach($activeAssessments as $aIdx => $a)
-                            <th class="{{ $aIdx === 0 ? 'sub-boundary' : '' }}" style="min-width:38px;">
-                                {{ $a->name }}<br><span style="font-size:9px;opacity:.75;">/{{ $a->max_score }}</span>
-                            </th>
-                        @endforeach
-                        {{-- Score summary columns --}}
+                        @if($showCA1)
+                            <th class="sub-boundary" style="min-width:30px;" title="Continuous Assessment 1">CA1</th>
+                        @endif
+                        @if($showCA2)
+                            <th style="min-width:30px;" title="Continuous Assessment 2">CA2</th>
+                        @endif
+                        @if($showCA3)
+                            <th style="min-width:30px;" title="Continuous Assessment 3">CA3</th>
+                        @endif
+                        @if($showExam)
+                            <th style="min-width:34px;" title="Examination">Exam</th>
+                        @endif
                         @if($showTotal)
-                            <th style="min-width:36px;">Total</th>
+                            <th style="min-width:36px;" title="Total = ((CA1+CA2+CA3)/3 + Exam) ÷ 2">Total</th>
                         @endif
                         @if($showBF)
-                            <th style="min-width:30px;">BF</th>
+                            <th style="min-width:30px;" title="Brought Forward from previous term">BF</th>
                         @endif
                         @if($showCum)
-                            <th style="min-width:36px;">Cum<br><small style="font-size:8px;opacity:.75;">Raw Sum</small></th>
-                        @endif
-                        @if($showCumAve)
-                            <th style="min-width:36px;">Cum<br><small style="font-size:8px;opacity:.75;">Ave</small></th>
+                            <th style="min-width:36px;" title="Term 1: Total; Terms 2–3: (BF + Total) ÷ 2">
+                                Cum<br><small style="font-size:8px;opacity:.75;">(cum)</small>
+                            </th>
                         @endif
                         @if($showGrade)
                             <th style="min-width:30px;">Grd</th>
                         @endif
-                        {{-- Per-subject position columns --}}
                         @if($showSubPosClassCum)
-                            <th class="pos-class-hdr" style="min-width:32px;" title="Class-wide position ranked by cumulative average">
+                            <th class="pos-class-hdr" style="min-width:32px;" title="Class-wide position ranked by cum">
                                 CC<br><small style="font-size:8px;opacity:.8;">Cls✦Cum</small>
                             </th>
                         @endif
                         @if($showSubPosClassTotal)
-                            <th class="pos-class-hdr" style="min-width:32px;" title="Class-wide position ranked by term total">
+                            <th class="pos-class-hdr" style="min-width:32px;" title="Class-wide position ranked by total">
                                 CT<br><small style="font-size:8px;opacity:.8;">Cls✦Tot</small>
                             </th>
                         @endif
                         @if($showSubPosArmTotal)
-                            <th class="pos-arm-hdr" style="min-width:32px;" title="Arm-only position ranked by term total">
+                            <th class="pos-arm-hdr" style="min-width:32px;" title="Arm-only position ranked by total">
                                 AC<br><small style="font-size:8px;opacity:.8;">Arm✦Tot</small>
                             </th>
                         @endif
                         @if($showSubPosArmCum)
-                            <th class="pos-arm-hdr" style="min-width:32px;" title="Arm-only position ranked by cumulative average">
+                            <th class="pos-arm-hdr" style="min-width:32px;" title="Arm-only position ranked by cum">
                                 AK<br><small style="font-size:8px;opacity:.8;">Arm✦Cum</small>
                             </th>
                         @endif
                         @if($showAvg)
-                            <th style="min-width:32px;">Avg</th>
+                            <th style="min-width:32px;" title="Class average for this subject">Avg</th>
                         @endif
                         @if($showRemark)
                             <th style="min-width:44px;">Rmk</th>
                         @endif
                     @endforeach
 
-                    {{-- Analytics col sub-header --}}
+                    {{-- Eye sub-header --}}
                     <th style="min-width:44px;background:#0a2240;border-left:2px solid var(--cb-teal);">View</th>
-
-                    @if($showGPA)      <th style="background:#0a1e38;color:#93c5fd;min-width:36px;border-left:2px solid #3b82f6;">GPA</th>   @endif
-                    @if($showCGPA)     <th style="background:#0a1e38;color:#86efac;min-width:36px;">CGPA</th>  @endif
-                    @if($showGPAGrade) <th style="background:#0a1e38;color:#fcd34d;min-width:30px;">GGrd</th>  @endif
-                    @if($showNumSub)   <th style="background:#0a1e38;color:#a8d4ef;min-width:30px;">NS</th>    @endif
-                    @if($showTotalGP)  <th style="background:#0a1e38;color:#a8d4ef;min-width:36px;">TGP</th>   @endif
 
                     @if($showPromoStatus)
                         <th style="background:#3b0764;color:#d8b4fe;min-width:110px;border-left:2px solid #7c3aed;white-space:nowrap;">Status</th>
@@ -986,7 +948,8 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
                         $hasFailure = false;
                         foreach($stu['subjects'] as $sd) {
-                            if(($sd['grade']??'') === 'F9') { $hasFailure = true; break; }
+                            $g = $sd['grade'] ?? '';
+                            if (in_array($g, ['F9','F'])) { $hasFailure = true; break; }
                         }
                         $hasPic   = !empty($stu['picture']) && $stu['picture'] !== 'unnamed.jpg';
                         $imgSrc   = $hasPic ? asset('storage/student_avatars/' . basename($stu['picture'])) : null;
@@ -1007,19 +970,20 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         $cumPct  = $totalObtainable > 0 ? round(($totalObtained / $totalObtainable) * 100, 1) : 0;
                         $posTotal = count($studentRows);
 
-                        // Build grades array for popup - now includes both term and cum grades
+                        // Build popup payload
                         $gradesForPopup = [];
                         foreach ($subjects as $subId => $subInfo) {
                             $sd = $stu['subjects'][$subId] ?? [];
                             $gradesForPopup[] = [
                                 'subject'         => $subInfo['subject_name'],
-                                'term_score'      => $sd['total']   ?? 0,
-                                'cum_score'       => $sd['cum']     ?? 0,
-                                'cum_ave_score'   => $sd['cum_ave'] ?? 0,
-                                'bf_score'        => $sd['bf']      ?? 0,
-                                'grade'           => $sd['grade']   ?? '-',
-                                'term_grade'      => $sd['total_grade'] ?? '-',
-                                'cum_grade'       => $sd['cum_grade']   ?? '-',
+                                'ca1'             => $sd['ca1']    ?? 0,
+                                'ca2'             => $sd['ca2']    ?? 0,
+                                'ca3'             => $sd['ca3']    ?? 0,
+                                'exam'            => $sd['exam']   ?? 0,
+                                'term_score'      => $sd['total']  ?? 0,
+                                'cum_score'       => $sd['cum']    ?? 0,
+                                'bf_score'        => $sd['bf']     ?? 0,
+                                'grade'           => $sd['grade']  ?? '-',
                                 'pos_class_cum'   => $sd['pos_class_cum']   ?? null,
                                 'pos_class_total' => $sd['pos_class_total'] ?? null,
                                 'pos_arm_total'   => $sd['pos_arm_total']   ?? null,
@@ -1030,7 +994,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                     <tr data-student-id="{{ $sid }}"
                         data-student-name="{{ strtolower($fullName) }}"
                         data-admission="{{ strtolower($stu['admissionno']) }}"
-                        data-gpa="{{ $stu['gpa'] }}"
                         data-total-cum="{{ $totalObtained }}"
                         data-total-term="{{ $termObtained }}"
                         data-has-failure="{{ $hasFailure ? 'true' : 'false' }}"
@@ -1051,7 +1014,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         @endif
 
                         @if($showAdmNo)
-                            <td class="adm-cell">{{ $stu['admissionno'] }}</td>
+                            <td>{{ $stu['admissionno'] }}</td>
                         @endif
 
                         <td class="student-info-cell">
@@ -1077,64 +1040,65 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             <td style="font-size:10px;">{{ substr($stu['gender']??'',0,1) }}</td>
                         @endif
 
-                        {{-- Per-subject score cells --}}
+                        {{-- ══ Per-subject columns ══ --}}
                         @foreach($subjects as $subId => $subInfo)
                             @php
                                 $sd = $stu['subjects'][$subId] ?? [];
-                                $g = $sd['grade'] ?? '-';
+                                $g  = $sd['grade'] ?? '-';
                                 $gc = $gradeColors[$g] ?? '';
-                                $bfVal = (float)($sd['bf'] ?? 0);
-                                $cumAveVal = (float)($sd['cum_ave'] ?? 0);
+                                $bfVal = (float) ($sd['bf'] ?? 0);
 
-                                // Per-subject positions
-                                $spCC = $sd['pos_class_cum'] ?? null;
+                                $spCC = $sd['pos_class_cum']   ?? null;
                                 $spCT = $sd['pos_class_total'] ?? null;
-                                $spAT = $sd['pos_arm_total'] ?? null;
-                                $spAK = $sd['pos_arm_cum'] ?? null;
+                                $spAT = $sd['pos_arm_total']   ?? null;
+                                $spAK = $sd['pos_arm_cum']     ?? null;
 
                                 $ord = function($n) {
                                     if (!$n) return '—';
-                                    $n = (int)$n;
+                                    $n = (int) $n;
                                     $s = ['th','st','nd','rd'];
                                     $v = $n % 100;
                                     return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
                                 };
                             @endphp
 
-                            {{-- Assessment raw scores --}}
-                            @foreach($activeAssessments as $aIdx => $a)
-                                @php $as = $sd['assessments'][$a->id] ?? 0; @endphp
-                                <td class="score-cell {{ $aIdx === 0 ? 'sub-boundary' : '' }}"
-                                    style="{{ $aIdx === 0 ? 'border-left:1.5px solid #2563eb;' : '' }}">
-                                    {{ $as > 0 ? number_format($as,1) : '—' }}
+                            {{-- Fixed CA columns --}}
+                            @if($showCA1)
+                                <td class="score-cell sub-boundary" style="border-left:1.5px solid #2563eb;">
+                                    {{ ($sd['ca1'] ?? 0) > 0 ? number_format($sd['ca1'],1) : '—' }}
                                 </td>
-                            @endforeach
+                            @endif
+                            @if($showCA2)
+                                <td class="score-cell">{{ ($sd['ca2'] ?? 0) > 0 ? number_format($sd['ca2'],1) : '—' }}</td>
+                            @endif
+                            @if($showCA3)
+                                <td class="score-cell">{{ ($sd['ca3'] ?? 0) > 0 ? number_format($sd['ca3'],1) : '—' }}</td>
+                            @endif
+                            @if($showExam)
+                                <td class="score-cell">{{ ($sd['exam'] ?? 0) > 0 ? number_format($sd['exam'],1) : '—' }}</td>
+                            @endif
 
-                            {{-- Term total --}}
+                            {{-- Total --}}
                             @if($showTotal)
                                 <td class="score-cell {{ $gc }}">
-                                    {{ ($sd['total']??0) > 0 ? number_format($sd['total'],1) : '—' }}
+                                    {{ ($sd['total'] ?? 0) > 0 ? number_format($sd['total'],1) : '—' }}
                                 </td>
                             @endif
 
-                            {{-- Brought Forward --}}
+                            {{-- BF --}}
                             @if($showBF)
                                 <td class="score-cell" style="{{ $bfVal > 0 ? 'color:#0369a1;font-weight:700;' : 'color:#94a3b8;' }}">
                                     {{ $bfVal > 0 ? number_format($bfVal,1) : '—' }}
                                 </td>
                             @endif
 
-                            {{-- Cumulative — raw running sum (BF + Total) --}}
+                            {{-- Cum --}}
                             @if($showCum)
-                                <td class="score-cell" style="font-weight:700;">
-                                    {{ ($sd['cum']??0) > 0 ? number_format($sd['cum'],1) : '—' }}
-                                </td>
-                            @endif
-
-                            {{-- Cumulative Average --}}
-                            @if($showCumAve)
-                                <td class="score-cell {{ $gc }}" style="font-weight:700;">
-                                    {{ $cumAveVal > 0 ? number_format($cumAveVal,1) : '—' }}
+                                <td class="score-cell {{ $gc }}" style="font-weight:700;"
+                                    title="{{ $bfVal > 0
+                                        ? '(BF '.number_format($bfVal,1).' + Total '.number_format($sd['total'] ?? 0,1).') ÷ 2 = '.number_format($sd['cum'] ?? 0,2)
+                                        : 'Term 1 — Cum = Total' }}">
+                                    {{ ($sd['cum'] ?? 0) > 0 ? number_format($sd['cum'],2) : '—' }}
                                 </td>
                             @endif
 
@@ -1143,35 +1107,35 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 <td class="score-cell {{ $gc }}" style="font-weight:700;">{{ $g }}</td>
                             @endif
 
-                            {{-- Per-subject class-wide position (cum) --}}
+                            {{-- Class Pos (Cum) --}}
                             @if($showSubPosClassCum)
-                                <td class="score-cell sub-pos-class-cum-cell" data-tooltip="Class position (all arms) by cumulative average">
+                                <td class="score-cell sub-pos-class-cum-cell" data-tooltip="Class position (all arms) by cum">
                                     {{ $ord($spCC) }}
                                 </td>
                             @endif
 
-                            {{-- Per-subject class-wide position (total) --}}
+                            {{-- Class Pos (Total) --}}
                             @if($showSubPosClassTotal)
-                                <td class="score-cell sub-pos-class-total-cell" data-tooltip="Class position (all arms) by term total">
+                                <td class="score-cell sub-pos-class-total-cell" data-tooltip="Class position (all arms) by total">
                                     {{ $ord($spCT) }}
                                 </td>
                             @endif
 
-                            {{-- Per-subject arm-only position (total) --}}
+                            {{-- Arm Pos (Total) --}}
                             @if($showSubPosArmTotal)
-                                <td class="score-cell sub-pos-arm-total-cell" data-tooltip="Arm position (this arm only) by term total">
+                                <td class="score-cell sub-pos-arm-total-cell" data-tooltip="Arm position (this arm only) by total">
                                     {{ $ord($spAT) }}
                                 </td>
                             @endif
 
-                            {{-- Per-subject arm-only position (cum) --}}
+                            {{-- Arm Pos (Cum) --}}
                             @if($showSubPosArmCum)
-                                <td class="score-cell sub-pos-arm-cum-cell" data-tooltip="Arm position (this arm only) by cumulative average">
+                                <td class="score-cell sub-pos-arm-cum-cell" data-tooltip="Arm position (this arm only) by cum">
                                     {{ $ord($spAK) }}
                                 </td>
                             @endif
 
-                            {{-- Class average --}}
+                            {{-- Class Avg --}}
                             @if($showAvg)
                                 <td class="score-cell" style="font-size:10px;color:var(--cb-muted);">{{ $subjectStats[$subId]['avg'] ?? '—' }}</td>
                             @endif
@@ -1182,7 +1146,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             @endif
                         @endforeach
 
-                        {{-- Eye button for popup --}}
+                        {{-- Eye button --}}
                         <td style="text-align:center;border-left:2px solid var(--cb-teal);background:#f0fdf9;">
                             <button type="button"
                                     class="grade-trigger-btn"
@@ -1194,13 +1158,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                     data-obtainable="{{ $totalObtainable }}"
                                     data-term-pct="{{ $termPct }}"
                                     data-cum-pct="{{ $cumPct }}"
-                                    data-gpa="{{ $stu['gpa'] }}"
-                                    data-gpa-grade="{{ $stu['gpa_grade'] ?? '-' }}"
                                     data-pos-cum="{{ $posCum }}"
                                     data-pos-term="{{ $posTerm }}"
                                     data-pos-total="{{ $posTotal }}"
                                     data-has-bf="{{ $hasBF ? 'true' : 'false' }}"
-                                    data-grade-basis="{{ $grade_basis ?? 'cum_ave' }}"
+                                    data-grade-basis="{{ $grade_basis ?? 'cum' }}"
                                     data-grades='@json($gradesForPopup)'
                                     data-tooltip="View Performance Summary"
                                     title="View Performance Summary">
@@ -1208,15 +1170,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                             </button>
                         </td>
 
-                        {{-- GPA Metrics --}}
-                        @if($showGPA)      <td class="gpa-cell">{{ number_format($stu['gpa'],2) }}</td>            @endif
-                        @if($showCGPA)     <td class="gpa-cell" style="background:#f0fdf4!important;color:#166534;">{{ number_format($stu['cgpa'],2) }}</td> @endif
-                        @if($showGPAGrade) @php $ggc = $gradeColors[$stu['gpa_grade']??'-'] ?? ''; @endphp
-                                           <td class="gpa-cell {{ $ggc }}" style="font-weight:700;">{{ $stu['gpa_grade'] ?? '—' }}</td> @endif
-                        @if($showNumSub)   <td>{{ $stu['num_subjects'] ?? '—' }}</td> @endif
-                        @if($showTotalGP)  <td>{{ number_format($stu['total_grade_points'],1) }}</td> @endif
-
-                        {{-- Promotion Status Cells --}}
+                        {{-- Promotion --}}
                         @if($showPromoStatus)
                             @php
                                 $pStatus    = $stu['promotion_status'] ?? 'awaiting';
@@ -1252,41 +1206,38 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         @if($showPromoRule)
                             <td class="promo-cell" style="font-size:10px;color:#64748b;max-width:120px;overflow:hidden;text-overflow:ellipsis;"
                                 title="{{ $stu['promotion_rule_applied'] ?? '' }}">
-                                {{ $stu['promotion_rule_applied'] ? Str::limit($stu['promotion_rule_applied'], 20) : '—' }}
+                                {{ $stu['promotion_rule_applied'] ? \Illuminate\Support\Str::limit($stu['promotion_rule_applied'], 20) : '—' }}
                             </td>
                         @endif
                     </tr>
                 @endforeach
 
-                {{-- Stats rows (Avg / Highest / Lowest) --}}
+                {{-- ══ Stats rows ══ --}}
                 @php
                     $statRows = [['CLASS AVG','avg'],['HIGHEST','highest'],['LOWEST','lowest']];
                     $statStyles = ['avg'=>'','highest'=>'stats-hi','lowest'=>'stats-lo'];
                 @endphp
                 @foreach($statRows as [$label, $key])
                     <tr class="stats-row {{ $statStyles[$key] }}">
-                        <td class="stats-label" colspan="{{ $frozenCols + ($showPosTerm || $showPosCum ? 0 : -1) }}">{{ $label }}</td>
+                        <td class="stats-label" colspan="{{ $frozenCols + (($showPosTerm || $showPosCum) ? 0 : 0) }}">{{ $label }}</td>
                         @foreach($subjects as $subId => $subInfo)
                             @php $st = $subjectStats[$subId] ?? []; @endphp
-                            @foreach($activeAssessments as $a)  <td>—</td> @endforeach
+                            @if($showCA1) <td>—</td> @endif
+                            @if($showCA2) <td>—</td> @endif
+                            @if($showCA3) <td>—</td> @endif
+                            @if($showExam) <td>—</td> @endif
                             @if($showTotal)             <td>{{ $st[$key] ?? '—' }}</td> @endif
                             @if($showBF)                <td>—</td> @endif
                             @if($showCum)               <td>—</td> @endif
-                            @if($showCumAve)            <td>—</td> @endif
                             @if($showGrade)             <td>—</td> @endif
                             @if($showSubPosClassCum)    <td>—</td> @endif
                             @if($showSubPosClassTotal)  <td>—</td> @endif
                             @if($showSubPosArmTotal)    <td>—</td> @endif
                             @if($showSubPosArmCum)      <td>—</td> @endif
-                            @if($showAvg)               <td>{{ $key==='avg' ? ($st['avg']??'—') : '—' }}</td> @endif
+                            @if($showAvg)               <td>{{ $key === 'avg' ? ($st['avg'] ?? '—') : '—' }}</td> @endif
                             @if($showRemark)            <td>—</td> @endif
                         @endforeach
-                        <td>—</td> {{-- Analytics column --}}
-                        @if($showGPA)        <td>—</td> @endif
-                        @if($showCGPA)       <td>—</td> @endif
-                        @if($showGPAGrade)   <td>—</td> @endif
-                        @if($showNumSub)     <td>—</td> @endif
-                        @if($showTotalGP)    <td>—</td> @endif
+                        <td>—</td>
                         @if($showPromoStatus) <td>—</td> @endif
                         @if($showPromoLabel)  <td>—</td> @endif
                         @if($showPromoRule)   <td>—</td> @endif
@@ -1297,7 +1248,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- Subject Performance Summary --}}
+{{-- ── Subject Performance Summary ── --}}
 <div class="subj-summary-card mb-4">
     <div class="card-header-custom">
         <i class="ri-bar-chart-2-line me-2"></i>Subject Performance Summary
@@ -1346,10 +1297,12 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
-{{-- Signature Block --}}
+{{-- ── Signature Block ── --}}
 <div class="cb-card mb-4 no-print" style="animation:fadeInUp .5s ease .5s both;">
     <div class="cb-card-header">
-        <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--cb-navy);;"><i class="ri-pen-nib-line me-1" style="color:var(--cb-teal)"></i>Authorisation Signatures</h6>
+        <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--cb-navy);">
+            <i class="ri-pen-nib-line me-1" style="color:var(--cb-teal)"></i>Authorisation Signatures
+        </h6>
     </div>
     <div class="card-body p-4">
         <div class="row">
@@ -1393,19 +1346,17 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                 <div class="field-grid" id="slistFieldGrid">
                     @php
                     $fieldOptions = [
-                        ['key' => 'admissionno',   'label' => 'Admission Number', 'default' => true],
-                        ['key' => 'lastname',      'label' => 'Last Name',        'default' => true],
-                        ['key' => 'firstname',     'label' => 'First Name',       'default' => true],
-                        ['key' => 'gender',        'label' => 'Gender',           'default' => false],
-                        ['key' => 'dateofbirth',   'label' => 'Date of Birth',    'default' => false],
-                        ['key' => 'arm',           'label' => 'Arm / Class',      'default' => true],
-                        ['key' => 'total_cum',     'label' => 'Cum Total Score',  'default' => true],
-                        ['key' => 'total_term',    'label' => 'Term Total Score', 'default' => false],
+                        ['key' => 'admissionno',   'label' => 'Admission Number',  'default' => true],
+                        ['key' => 'lastname',      'label' => 'Last Name',         'default' => true],
+                        ['key' => 'firstname',     'label' => 'First Name',        'default' => true],
+                        ['key' => 'gender',        'label' => 'Gender',            'default' => false],
+                        ['key' => 'dateofbirth',   'label' => 'Date of Birth',     'default' => false],
+                        ['key' => 'arm',           'label' => 'Arm / Class',       'default' => true],
+                        ['key' => 'total_cum',     'label' => 'Cum Total Score',   'default' => true],
+                        ['key' => 'total_term',    'label' => 'Term Total Score',  'default' => false],
                         ['key' => 'cum_ave',       'label' => 'Cumulative Average','default' => true],
-                        ['key' => 'position_cum',  'label' => 'Overall Pos (Cum)','default' => true],
-                        ['key' => 'position_term', 'label' => 'Overall Pos (Term)','default'=> false],
-                        ['key' => 'gpa',           'label' => 'GPA',              'default' => false],
-                        ['key' => 'gpa_grade',     'label' => 'GPA Grade (Cum)',  'default' => true],
+                        ['key' => 'position_cum',  'label' => 'Overall Pos (Cum)', 'default' => true],
+                        ['key' => 'position_term', 'label' => 'Overall Pos (Term)','default' => false],
                     ];
                     @endphp
                     @foreach($fieldOptions as $fo)
@@ -1463,10 +1414,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         </li>
                     @endforeach
                 </ul>
-                <p style="font-size:11px;color:#94a3b8;margin-top:8px;">
-                    <i class="ri-information-line me-1"></i>
-                    Groups with zero students or unchecked groups will be omitted from the printed list.
-                </p>
             </div>
         </div>
         <div class="slist-modal-footer">
@@ -1486,16 +1433,16 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     <input type="hidden" name="schoolclassid" value="{{ request('schoolclassid') }}">
     <input type="hidden" name="sessionid"     value="{{ request('sessionid') }}">
     <input type="hidden" name="termid"        value="{{ request('termid') }}">
-    <input type="hidden" name="grade_basis"   value="{{ $grade_basis ?? 'cum_ave' }}">
+    <input type="hidden" name="grade_basis"   value="{{ $grade_basis ?? 'cum' }}">
     <input type="hidden" name="show_photos"   id="sf_show_photos" value="0">
     <input type="hidden" name="show_sn"       id="sf_show_sn"     value="1">
     <div id="sf_fields"></div>
     <div id="sf_order"></div>
 </form>
 
-</div>{{-- /container --}}
-</div>{{-- /page-content --}}
-</div>{{-- /main-content --}}
+</div>
+</div>
+</div>
 
 <script>
 (function () {
@@ -1504,26 +1451,13 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     var GRADE_COLORS = {
         'A1': 'grade-a1', 'B2': 'grade-b2', 'B3': 'grade-b3',
         'C4': 'grade-c4', 'C5': 'grade-c5', 'C6': 'grade-c6',
-        'D7': 'grade-d7', 'E8': 'grade-e8', 'F9': 'grade-f9', '-': ''
+        'D7': 'grade-d7', 'E8': 'grade-e8', 'F9': 'grade-f9',
+        'A': 'grade-a', 'B': 'grade-b', 'C': 'grade-c', 'D': 'grade-d', 'F': 'grade-f', '-': ''
     };
 
-    function esc(str) {
-        var d = document.createElement('div');
-        d.textContent = str || '';
-        return d.innerHTML;
-    }
-
-    function ordinal(n) {
-        n = parseInt(n, 10);
-        if (!n) return '—';
-        var s = ['th','st','nd','rd'];
-        var v = n % 100;
-        return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    }
-
-    function getPctClass(p) {
-        return p < 40 ? 'score-red' : (p < 70 ? 'score-amber' : 'score-green');
-    }
+    function esc(str) { var d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+    function ordinal(n) { n = parseInt(n, 10); if (!n) return '—'; var s = ['th','st','nd','rd']; var v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    function getPctClass(p) { return p < 40 ? 'score-red' : (p < 70 ? 'score-amber' : 'score-green'); }
 
     function toast(msg, type) {
         document.querySelectorAll('.cb-toast').forEach(function (t) { t.remove(); });
@@ -1533,17 +1467,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         el.innerHTML = '<i class="ri-' + (icons[type] || icons.info) + '" style="font-size:18px;flex-shrink:0;"></i> ' + esc(msg);
         document.body.appendChild(el);
         setTimeout(function () { el.remove(); }, 4000);
-    }
-
-    function animateNumber(elId, target, suffix, decimals) {
-        var el = document.getElementById(elId);
-        if (!el) return;
-        var steps = 60, step = 0, current = 0, inc = target / steps;
-        var timer = setInterval(function () {
-            step++; current += inc;
-            if (step >= steps) { current = target; clearInterval(timer); }
-            el.textContent = current.toFixed(decimals || 0) + (suffix || '');
-        }, 800 / steps);
     }
 
     function closeGradePop() {
@@ -1571,13 +1494,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         var obtainable = parseFloat(btn.getAttribute('data-obtainable') || 0);
         var termPct = parseFloat(btn.getAttribute('data-term-pct') || 0);
         var cumPct = parseFloat(btn.getAttribute('data-cum-pct') || 0);
-        var gpa = parseFloat(btn.getAttribute('data-gpa') || 0);
-        var gpaGrade = btn.getAttribute('data-gpa-grade') || '—';
         var posCum = parseInt(btn.getAttribute('data-pos-cum') || 0, 10);
         var posTerm = parseInt(btn.getAttribute('data-pos-term') || 0, 10);
         var posTotal = parseInt(btn.getAttribute('data-pos-total') || 0, 10);
         var hasBF = btn.getAttribute('data-has-bf') === 'true';
-        var gradeBasis = btn.getAttribute('data-grade-basis') || 'cum_ave';
+        var gradeBasis = btn.getAttribute('data-grade-basis') || 'cum';
         var grades = [];
         try { grades = JSON.parse(btn.getAttribute('data-grades') || '[]'); } catch (e) {}
 
@@ -1590,21 +1511,23 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
         var noBFNote = !hasBF ? '<span style="font-size:9px;opacity:.65;display:block;font-weight:400;margin-top:2px;">no BF yet</span>' : '';
         var noBFBanner = !hasBF ? '<span style="font-size:10px;color:#92400e;font-weight:600;margin-left:auto;background:#fef3c7;padding:2px 8px;border-radius:6px;">First term — no BF on record</span>' : '';
-        var basisNote = '<span style="font-size:10px;color:#5b21b6;font-weight:600;margin-left:auto;background:#f5f3ff;padding:2px 8px;border-radius:6px;">Grading basis: ' + (gradeBasis === 'total' ? 'Term Total' : 'Cumulative Average') + '</span>';
+        var basisNote = '<span style="font-size:10px;color:#5b21b6;font-weight:600;margin-left:auto;background:#f5f3ff;padding:2px 8px;border-radius:6px;">Grading basis: ' + (gradeBasis === 'total' ? 'Term Total' : 'Cumulative') + '</span>';
 
         var rows = '';
         if (grades.length) {
             grades.forEach(function (g) {
                 var tC = g.term_score > 0 ? (g.term_score < 50 ? 'score-red' : (g.term_score >= 70 ? 'score-green' : 'score-amber')) : '';
-                var caC = g.cum_ave_score > 0 ? (g.cum_ave_score < 50 ? 'score-red' : (g.cum_ave_score >= 70 ? 'score-green' : 'score-amber')) : '';
-                
-                var termGrBadge = gradeBadge(g.term_grade || g.grade);
-                var cumGrBadge = gradeBadge(g.cum_grade || g.grade);
-                
-                var tS  = g.term_score    > 0 ? parseFloat(g.term_score).toFixed(1)    : '—';
-                var cS  = g.cum_score     > 0 ? parseFloat(g.cum_score).toFixed(1)     : '—';
-                var caS = g.cum_ave_score > 0 ? parseFloat(g.cum_ave_score).toFixed(1) : '—';
-                var bS  = g.bf_score      > 0 ? parseFloat(g.bf_score).toFixed(1)      : '—';
+                var cC = g.cum_score > 0 ? (g.cum_score < 40 ? 'score-red' : (g.cum_score >= 70 ? 'score-green' : 'score-amber')) : '';
+
+                var termGrBadge = gradeBadge(g.grade);
+                var tS  = g.term_score > 0 ? parseFloat(g.term_score).toFixed(1) : '—';
+                var cS  = g.cum_score  > 0 ? parseFloat(g.cum_score).toFixed(2)  : '—';
+                var bS  = g.bf_score   > 0 ? parseFloat(g.bf_score).toFixed(1)   : '—';
+
+                var ca1 = parseFloat(g.ca1 || 0).toFixed(0);
+                var ca2 = parseFloat(g.ca2 || 0).toFixed(0);
+                var ca3 = parseFloat(g.ca3 || 0).toFixed(0);
+                var ex  = parseFloat(g.exam || 0).toFixed(0);
 
                 function posPill(val, bg, col, label) {
                     if (!val) return '';
@@ -1621,19 +1544,20 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
                 rows += '<tr>' +
                         '<td style="text-align:left;font-weight:600;padding-left:12px;">' + esc(g.subject) + '</td>' +
+                        '<td><div style="font-size:9px;color:#64748b;line-height:1.3;">' +
+                            'CA1 ' + ca1 + ' · CA2 ' + ca2 + ' · CA3 ' + ca3 + ' · EX ' + ex +
+                        '</div></td>' +
                         '<td><div class="score-pair">' +
                         '<div class="score-cell-inner term"><span style="font-size:8px;opacity:.7;">T</span><span class="' + tC + '">' + tS + '</span></div>' +
                         '<div class="score-cell-inner cum"><span style="font-size:8px;opacity:.7;">BF</span><span>' + bS + '</span></div>' +
                         '</div></td>' +
-                        '<td><div class="score-cell-inner cum" style="justify-content:center;"><span style="font-size:8px;opacity:.7;">C</span><span>' + cS + '</span></div></td>' +
-                        '<td><div class="score-cell-inner cumave" style="justify-content:center;"><span style="font-size:8px;opacity:.7;">CA</span><span class="' + caC + '">' + caS + '</span></div></td>' +
+                        '<td><div class="score-cell-inner cum" style="justify-content:center;"><span style="font-size:8px;opacity:.7;">C</span><span class="' + cC + '">' + cS + '</span></div></td>' +
                         '<td>' + termGrBadge + '</td>' +
-                        '<td>' + cumGrBadge + '</td>' +
                         '<td>' + subPos + '</td>' +
                         '</tr>';
             });
         } else {
-            rows = '<tr><td colspan="7" style="text-align:center;padding:16px;color:#94a3b8;">No subject records</td></tr>';
+            rows = '<tr><td colspan="6" style="text-align:center;padding:16px;color:#94a3b8;">No subject records</td></tr>';
         }
 
         var body = document.getElementById('gpopBody');
@@ -1663,7 +1587,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             '<span style="font-size:10px;font-weight:700;color:var(--cb-muted);">Legend:</span>' +
             '<span class="gpop-legend-item"><span class="gpop-legend-dot t"></span>Term score</span>' +
             '<span class="gpop-legend-item"><span class="gpop-legend-dot c"></span>BF / Cum (raw sum)</span>' +
-            '<span class="gpop-legend-item"><span class="gpop-legend-dot ca"></span>Cum Ave</span>' +
             '<span style="font-size:9px;color:#64748b;margin-left:4px;"><b>CC</b>=Cls Cum &nbsp;<b>CT</b>=Cls Tot &nbsp;<b>AC</b>=Arm Tot &nbsp;<b>AK</b>=Arm Cum</span>' +
             basisNote +
             noBFBanner +
@@ -1671,25 +1594,24 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             '<div class="gpop-scroll">' +
             '<table class="gpop-table"><thead><tr>' +
             '<th style="text-align:left;padding-left:12px;width:22%;">Subject</th>' +
+            '<th style="width:22%;">CA Breakdown</th>' +
             '<th style="width:14%;">Term / BF</th>' +
-            '<th style="width:12%;">Cum</th>' +
-            '<th style="width:12%;">Cum Ave</th>' +
-            '<th style="width:10%;">T.Grd</th>' +
-            '<th style="width:10%;">C.Grd</th>' +
-            '<th style="width:20%;">Positions<br><small style="opacity:.65;font-weight:400;font-size:8px;">CC · CT · AC · AK</small></th>' +
+            '<th style="width:14%;">Cum</th>' +
+            '<th style="width:10%;">Grade</th>' +
+            '<th style="width:18%;">Positions<br><small style="opacity:.65;font-weight:400;font-size:8px;">CC · CT · AC · AK</small></th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table>' +
             '</div>' +
             '<div class="gpop-summary">' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Term Total</div><div class="gpop-sum-val">' + termObtained.toFixed(1) + '</div></div>' +
-            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Cum Total</div><div class="gpop-sum-val ' + (hasBF ? 'score-green' : '') + '">' + cumObtained.toFixed(1) + (!hasBF ? '<span class="bf-note">= Term (no BF)</span>' : '') + '</div></div>' +
+            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Cum Total</div><div class="gpop-sum-val ' + (hasBF ? 'score-green' : '') + '">' + cumObtained.toFixed(2) + (!hasBF ? '<span class="bf-note">= Term (no BF)</span>' : '') + '</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Obtainable</div><div class="gpop-sum-val">' + obtainable.toFixed(0) + '</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">% (Term)</div><div class="gpop-sum-val ' + getPctClass(termPct) + '">' + termPct.toFixed(1) + '%</div></div>' +
             '<div class="gpop-sum-item"><div class="gpop-sum-lbl">% (Cum)</div><div class="gpop-sum-val ' + getPctClass(cumPct) + '">' + cumPct.toFixed(1) + '%</div></div>' +
-            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">GPA</div><div class="gpop-sum-val ' + getPctClass(gpa * 20) + '">' + gpa.toFixed(2) + ' <span style="font-size:11px;">' + esc(gpaGrade) + '</span></div></div>' +
+            '<div class="gpop-sum-item"><div class="gpop-sum-lbl">Overall C-Pos</div><div class="gpop-sum-val">' + (posCum ? ordinal(posCum) : '—') + '</div></div>' +
             '</div>';
 
-        var pw = 600;
-        var ph = Math.min(660, window.innerHeight - 40);
+        var pw = 640;
+        var ph = Math.min(680, window.innerHeight - 40);
         var rect = btn.getBoundingClientRect();
         var vw = window.innerWidth;
         var vh = window.innerHeight;
@@ -1723,7 +1645,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             animPct(cumEl, cumPct);
 
             if (termBar) { termBar.style.transition = 'width .8s ease, background-color .8s ease'; termBar.style.width = termPct + '%'; termBar.style.backgroundColor = termColor; }
-            if (cumBar) { cumBar.style.transition = 'width .8s ease, background-color .8s ease'; cumBar.style.width = cumPct + '%'; cumBar.style.backgroundColor = cumColor; }
+            if (cumBar) { termBar.style.transition = 'width .8s ease, background-color .8s ease'; cumBar.style.width = cumPct + '%'; cumBar.style.backgroundColor = cumColor; }
         }, 60);
     }
 
@@ -1760,7 +1682,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         tableRows.forEach(function (r) {
             if (r.getAttribute('data-has-failure') === 'true') { r.style.backgroundColor = '#fee2e2'; r.style.outline = '2px solid #dc2626'; c++; }
         });
-        toast(c + ' student(s) with F9 highlighted', 'warning');
+        toast(c + ' student(s) with failing grade highlighted', 'warning');
     }
 
     function highlightBelowAvg() {
@@ -1872,15 +1794,15 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     }
 
     window.scrollToTop = function () { window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    window.closeSlistModal = function() { document.getElementById('slistModalOverlay').classList.remove('open'); };
-    window.openStudentListModal = function() { document.getElementById('slistModalOverlay').classList.add('open'); };
-    
+    window.closeSlistModal = function () { document.getElementById('slistModalOverlay').classList.remove('open'); };
+    window.openStudentListModal = function () { document.getElementById('slistModalOverlay').classList.add('open'); };
+
     window.switchGradeBasis = function (basis) {
         document.getElementById('gb_input').value = basis;
         document.getElementById('gradeBasisForm').submit();
     };
 
-    window.generateStudentList = function() {
+    window.generateStudentList = function () {
         var btn = document.getElementById('generateListBtn');
         if (!btn) return;
         btn.disabled = true;
@@ -1889,7 +1811,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         var fieldDivEl = document.getElementById('sf_fields');
         if (fieldDivEl) {
             fieldDivEl.innerHTML = '';
-            document.querySelectorAll('#slistFieldGrid input[name="list_fields[]"]:checked').forEach(function(cb, i) {
+            document.querySelectorAll('#slistFieldGrid input[name="list_fields[]"]:checked').forEach(function (cb, i) {
                 var inp = document.createElement('input');
                 inp.type = 'hidden';
                 inp.name = 'list_fields[' + i + ']';
@@ -1901,7 +1823,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         var orderDivEl = document.getElementById('sf_order');
         if (orderDivEl) {
             orderDivEl.innerHTML = '';
-            document.querySelectorAll('#promoOrderList .promo-order-item').forEach(function(item, i) {
+            document.querySelectorAll('#promoOrderList .promo-order-item').forEach(function (item, i) {
                 var checkbox = item.querySelector('.promo-group-checkbox');
                 if (checkbox && checkbox.checked) {
                     var inp = document.createElement('input');
@@ -1923,7 +1845,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         var slistForm = document.getElementById('slistForm');
         if (slistForm) slistForm.submit();
 
-        setTimeout(function() {
+        setTimeout(function () {
             btn.disabled = false;
             btn.innerHTML = '<i class="ri-file-list-line me-1"></i>Generate List';
             var modal = document.getElementById('slistModalOverlay');
@@ -1931,54 +1853,39 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         }, 1500);
     };
 
-    // Drag-and-drop for promo order list
+    // Drag-and-drop
     (function initDnD() {
         var list = document.getElementById('promoOrderList');
         if (!list) return;
         var draggingEl = null;
-        list.addEventListener('dragstart', function(e) {
+        list.addEventListener('dragstart', function (e) {
             draggingEl = e.target.closest('.promo-order-item');
             if (!draggingEl) return;
             draggingEl.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
         });
-        list.addEventListener('dragend', function() {
+        list.addEventListener('dragend', function () {
             if (draggingEl) draggingEl.classList.remove('dragging');
-            if (list) list.querySelectorAll('.promo-order-item').forEach(function(i) { i.classList.remove('drag-over'); });
+            if (list) list.querySelectorAll('.promo-order-item').forEach(function (i) { i.classList.remove('drag-over'); });
             draggingEl = null;
         });
-        list.addEventListener('dragover', function(e) {
+        list.addEventListener('dragover', function (e) {
             e.preventDefault();
             var target = e.target.closest('.promo-order-item');
             if (!target || target === draggingEl || !list) return;
-            list.querySelectorAll('.promo-order-item').forEach(function(i) { i.classList.remove('drag-over'); });
+            list.querySelectorAll('.promo-order-item').forEach(function (i) { i.classList.remove('drag-over'); });
             target.classList.add('drag-over');
             var rect = target.getBoundingClientRect();
             var midY = rect.top + rect.height / 2;
             if (e.clientY < midY) list.insertBefore(draggingEl, target);
             else list.insertBefore(draggingEl, target.nextSibling);
         });
-        list.addEventListener('drop', function(e) { e.preventDefault(); });
+        list.addEventListener('drop', function (e) { e.preventDefault(); });
     })();
 
     var modalOverlay = document.getElementById('slistModalOverlay');
-    if (modalOverlay) modalOverlay.addEventListener('click', function(e) { if (e.target === this) window.closeSlistModal(); });
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { window.closeSlistModal(); closeGradePop(); } });
-
-    function animateStats() {
-        var rows = Array.from(document.querySelectorAll('#broadsheetTable tbody tr[data-student-id]'));
-        if (!rows.length) return;
-        var totalPct = 0, topCum = -1, topName = '—';
-        rows.forEach(function (r) {
-            totalPct += parseFloat(r.getAttribute('data-cum-pct') || 0);
-            var cum = parseFloat(r.getAttribute('data-total-cum') || 0);
-            if (cum > topCum) { topCum = cum; topName = r.getAttribute('data-student-name') || '—'; }
-        });
-        var avg = rows.length ? totalPct / rows.length : 0;
-        animateNumber('statAvgPct', avg, '%', 1);
-        var topEl = document.getElementById('statTopPerformer');
-        if (topEl) topEl.textContent = topName.split(' ').map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
-    }
+    if (modalOverlay) modalOverlay.addEventListener('click', function (e) { if (e.target === this) window.closeSlistModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { window.closeSlistModal(); closeGradePop(); } });
 
     document.addEventListener('DOMContentLoaded', function () {
         ['cbGradePopup', 'cbPopupBackdrop'].forEach(function (id) {
@@ -1999,7 +1906,6 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         document.addEventListener('click', function (e) { if (e.target && e.target.id === 'cbPopupBackdrop') closeGradePop(); });
         initSearch();
         initLocate();
-        animateStats();
     });
 })();
 </script>

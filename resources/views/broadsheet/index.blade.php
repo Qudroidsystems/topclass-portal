@@ -1,10 +1,4 @@
-{{--
-    broadsheet/index.blade.php (updated)
-    Key changes:
-      1. Added Promotion column group to the column modal
-      2. Updated renderColumnForm to include promotion columns
-      3. Fixed web view display issues
---}}
+{{-- resources/views/broadsheet/index.blade.php --}}
 @extends('layouts.master')
 
 @section('content')
@@ -23,6 +17,7 @@
     --bs-shadow: 0 2px 8px rgba(0,0,0,.09);
 }
 
+/* ── Hero ── */
 .bsg-hero {
     background: linear-gradient(135deg, var(--bs-pri) 0%, #2563eb 60%, #4f46e5 100%);
     border-radius: var(--bs-radius);
@@ -32,16 +27,14 @@
     overflow: hidden;
 }
 .bsg-hero::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
+    content: ''; position: absolute; top: -60px; right: -60px;
     width: 220px; height: 220px;
-    background: rgba(255,255,255,.06);
-    border-radius: 50%;
+    background: rgba(255,255,255,.06); border-radius: 50%;
 }
 .bsg-hero h1 { font-size: 22px; font-weight: 700; color: white; margin: 0 0 6px; }
 .bsg-hero p  { font-size: 13px; color: rgba(255,255,255,.75); margin: 0; }
 
+/* ── Step Card ── */
 .step-card {
     background: var(--bs-card);
     border: 1px solid var(--bs-border);
@@ -65,11 +58,8 @@
 .step-card .step-title .step-subtitle {
     font-size: 12px; font-weight: 400; color: var(--bs-muted); margin-left: 8px;
 }
-.step-card.active {
-    border-color: var(--bs-acc);
-    box-shadow: 0 0 0 3px rgba(37,99,235,.1), var(--bs-shadow);
-}
 
+/* ── Selects ── */
 .bsg-select {
     border: 1.5px solid var(--bs-border);
     border-radius: 8px; padding: 10px 14px; font-size: 13px;
@@ -81,6 +71,7 @@
 }
 .bsg-select:focus { outline: none; border-color: var(--bs-acc); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
 
+/* ── Preview Card ── */
 .student-preview-card {
     background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
     border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px; display: none;
@@ -90,6 +81,7 @@
 .preview-stat .val { font-size: 28px; font-weight: 700; color: var(--bs-pri); display: block; }
 .preview-stat .lbl { font-size: 11px; color: var(--bs-muted); text-transform: uppercase; letter-spacing: .5px; }
 
+/* ── Column Groups ── */
 .col-group { border: 1px solid var(--bs-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; }
 .col-group-header {
     font-size: 12px; font-weight: 600; color: var(--bs-pri); margin-bottom: 10px;
@@ -97,7 +89,9 @@
 }
 .col-item { display: flex; align-items: center; padding: 4px 0; font-size: 12.5px; color: #374151; }
 .col-item input[type=checkbox] { width: 15px; height: 15px; margin-right: 8px; accent-color: var(--bs-acc); flex-shrink: 0; cursor: pointer; }
+.col-item label { cursor: pointer; margin: 0; }
 
+/* ── Export Buttons ── */
 .export-btn {
     display: flex; align-items: center; justify-content: center; gap: 10px;
     padding: 13px 24px; border-radius: 10px; font-size: 14px; font-weight: 600;
@@ -106,8 +100,10 @@
 .export-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
 .export-btn.pdf   { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; }
 .export-btn.excel { background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; }
+.export-btn.web   { background: linear-gradient(135deg, #1d6fa4, #2a8fc9); color: white; }
 .export-btn i     { font-size: 20px; }
 
+/* ── Paper size buttons ── */
 .paper-btn {
     border: 2px solid var(--bs-border); border-radius: 8px; padding: 8px 14px;
     font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s;
@@ -115,6 +111,7 @@
 }
 .paper-btn.active { border-color: var(--bs-acc); background: #eff6ff; color: var(--bs-acc); }
 
+/* ── Loading overlay ── */
 #loadingOverlay {
     display: none; position: fixed; inset: 0;
     background: rgba(0,0,0,.45); z-index: 9999;
@@ -152,7 +149,7 @@
 
     <div class="row g-4">
 
-        {{-- LEFT --}}
+        {{-- ── LEFT ── --}}
         <div class="col-lg-4">
 
             <div class="step-card" id="step1Card">
@@ -202,17 +199,13 @@
 
                 <div class="student-preview-card" id="studentPreview">
                     <div class="row g-0">
-                        <div class="col-4 preview-stat">
+                        <div class="col-6 preview-stat">
                             <span class="val" id="previewCount">0</span>
                             <span class="lbl">Students</span>
                         </div>
-                        <div class="col-4 preview-stat" style="border-left:1px solid #bfdbfe;border-right:1px solid #bfdbfe;">
+                        <div class="col-6 preview-stat" style="border-left:1px solid #bfdbfe;">
                             <span class="val text-success" id="previewSubjects">-</span>
                             <span class="lbl">Subjects</span>
-                        </div>
-                        <div class="col-4 preview-stat">
-                            <span class="val text-warning" id="previewAssessments">-</span>
-                            <span class="lbl">Assessments</span>
                         </div>
                     </div>
                 </div>
@@ -223,16 +216,15 @@
                 </button>
             </div>
 
-
             {{-- All Classes Broadsheet --}}
-            <div class="step-card mt-3" id="allClassesCard">
+            <div class="step-card" id="allClassesCard">
                 <div class="step-title">
                     <span class="step-badge" style="background:#7c3aed;">★</span>
                     All Classes Broadsheet
                     <span class="step-subtitle">Combined arms</span>
                 </div>
                 <p style="font-size:12px;color:#6b7280;margin-bottom:14px;">
-                    Generate a single broadsheet combining all arms of a class level (e.g. all JSS 1 arms), sorted alphabetically by student name.
+                    Generate a single broadsheet combining all arms of a class level (e.g. all JSS 1 arms).
                 </p>
 
                 <div class="mb-3">
@@ -323,12 +315,14 @@
 
         </div>
 
-        {{-- RIGHT --}}
+        {{-- ── RIGHT ── --}}
         <div class="col-lg-8">
 
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge" style="background:#16a34a;"><i class="ri-information-line" style="font-size:15px;"></i></span>
+                    <span class="step-badge" style="background:#16a34a;">
+                        <i class="ri-information-line" style="font-size:15px;"></i>
+                    </span>
                     What's in the Broadsheet
                 </div>
                 <div class="row g-3">
@@ -336,10 +330,9 @@
                     $features = [
                         ['ri-school-line','#2563eb','School Header','School name, address, logo, motto and contact details.'],
                         ['ri-user-line','#16a34a','Student Details','Admission number, full name and optional gender column.'],
-                        ['ri-clipboard-line','#d97706','Dynamic Assessments','All assessments (CA1, CA2, Exam…) pulled from class config.'],
+                        ['ri-clipboard-line','#d97706','Fixed CA Columns','CA1, CA2, CA3 and Exam — the project standard structure.'],
                         ['ri-bar-chart-line','#7c3aed','Subject Scores','Total, BF, Cum, Grade, Position and Class Average per subject.'],
                         ['ri-trophy-line','#dc2626','Class Statistics','Per-subject class average, highest, lowest, pass/fail count.'],
-                        ['ri-calculator-line','#0891b2','GPA / CGPA','Optional GPA and CGPA columns from current term grade points.'],
                         ['ri-global-line','#1d6fa4','Web View','Interactive scrollable view with smart locate/filter toolbar.'],
                         ['ri-pen-line','#374151','Signatures','Class teacher, HOD, VP and Principal signature rows.'],
                         ['ri-medal-line','#7c3aed','Promotion Status','Student promotion recommendations based on performance.'],
@@ -361,7 +354,9 @@
 
             <div class="step-card">
                 <div class="step-title">
-                    <span class="step-badge" style="background:#d97706;"><i class="ri-lightbulb-line" style="font-size:15px;"></i></span>
+                    <span class="step-badge" style="background:#d97706;">
+                        <i class="ri-lightbulb-line" style="font-size:15px;"></i>
+                    </span>
                     Quick Tips
                 </div>
                 <div class="row g-3">
@@ -388,7 +383,7 @@
                             <span style="font-size:20px;">🎯</span>
                             <div>
                                 <strong style="font-size:12.5px;color:#1e3a5f;">Smart Locate</strong>
-                                <p style="font-size:11.5px;color:#6b7280;margin-top:3px;">In web view, use the Locate dropdown to highlight: top 5/10 students, failures, below-average, missing scores, by subject and more.</p>
+                                <p style="font-size:11.5px;color:#6b7280;margin-top:3px;">In web view, use the Locate dropdown to highlight: top 5/10, failures, below-average, missing scores, by subject and more.</p>
                             </div>
                         </div>
                     </div>
@@ -407,7 +402,9 @@
         </div>
     </div>
 
-    {{-- COLUMN MODAL --}}
+    {{-- ══════════════════════════════════════════════════════════════════
+         COLUMN MODAL — now with FIXED CA columns
+    ══════════════════════════════════════════════════════════════════ --}}
     <div class="modal fade" id="columnModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -435,10 +432,11 @@
                             <span class="badge bg-success-subtle text-success px-3 py-2" id="pillSession">Session: —</span>
                             <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-2" id="pillTerm">Term: —</span>
                             <span class="badge bg-info-subtle text-info px-3 py-2" id="pillStudents">0 students</span>
+                            <span class="badge bg-secondary-subtle text-secondary px-3 py-2" id="pillSubjects">0 subjects</span>
                         </div>
 
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="col-group">
                                     <div class="col-group-header">
                                         <span>Student Info</span>
@@ -447,36 +445,27 @@
                                     <div id="studentInfoCols"></div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-5">
                                 <div class="col-group">
                                     <div class="col-group-header">
-                                        <span>Assessments</span>
-                                        <a href="#" class="text-primary text-decoration-none" style="font-size:11px;" onclick="toggleGroup('assessmentCols');return false;">Toggle</a>
-                                    </div>
-                                    <div id="assessmentCols"><p class="text-muted small">Loading…</p></div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="col-group">
-                                    <div class="col-group-header">
-                                        <span>Scores &amp; Metrics</span>
+                                        <span>Subject Score Columns (CA1/CA2/CA3/Exam + metrics)</span>
                                         <a href="#" class="text-primary text-decoration-none" style="font-size:11px;" onclick="toggleGroup('scoreCols');return false;">Toggle</a>
                                     </div>
                                     <div id="scoreCols"></div>
                                 </div>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <div class="col-group">
                                     <div class="col-group-header">
-                                        <span>GPA</span>
-                                        <a href="#" class="text-primary text-decoration-none" style="font-size:11px;" onclick="toggleGroup('gpaCols');return false;">Toggle</a>
+                                        <span>Summary</span>
+                                        <a href="#" class="text-primary text-decoration-none" style="font-size:11px;" onclick="toggleGroup('summaryCols');return false;">Toggle</a>
                                     </div>
-                                    <div id="gpaCols"></div>
+                                    <div id="summaryCols"></div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- NEW: Promotion Column Group --}}
+                        {{-- Promotion Columns --}}
                         <div class="row g-3 mt-1">
                             <div class="col-md-12">
                                 <div class="col-group" style="border-color:#7c3aed;">
@@ -489,12 +478,29 @@
                             </div>
                         </div>
 
+                        {{-- Grade basis toggle --}}
+                        <div class="mt-4 p-3 rounded-3" style="background:#f0fdf9;border:1px solid #99f6e4;">
+                            <h6 class="fw-bold mb-3" style="color:#1e3a5f;">
+                                <i class="ri-scales-3-line me-2"></i>Grade Basis
+                            </h6>
+                            <p class="text-muted small mb-2">Choose which score drives the displayed grade column:</p>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="paper-btn active" id="gbBtnCum" onclick="selectGradeBasis('cum')">
+                                    <i class="ri-line-chart-line me-1"></i>Cumulative
+                                </button>
+                                <button type="button" class="paper-btn" id="gbBtnTotal" onclick="selectGradeBasis('total')">
+                                    <i class="ri-file-chart-line me-1"></i>Term Total
+                                </button>
+                            </div>
+                            <input type="hidden" id="gradeBasis" value="cum">
+                        </div>
+
                         <div class="mt-4 p-3 rounded-3" style="background:#f8fafc;border:1px solid var(--bs-border);">
                             <h6 class="fw-bold mb-3" style="color:#1e3a5f;"><i class="ri-download-line me-2"></i>Export Format</h6>
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <button class="export-btn" style="background:linear-gradient(135deg,#1d6fa4,#2a8fc9);color:white;" onclick="doExport('web');">
-                                        <i class="ri-global-line" style="font-size:20px;"></i>
+                                    <button class="export-btn web" onclick="doExport('web');">
+                                        <i class="ri-global-line"></i>
                                         <div class="text-start">
                                             <div>Open Web View</div>
                                             <div style="font-size:11px;opacity:.8;font-weight:400;">Interactive · Scroll · Zoom · Locate</div>
@@ -544,6 +550,7 @@
         <input type="hidden" name="termid"        id="ef_term">
         <input type="hidden" name="paper_size"    id="ef_paper">
         <input type="hidden" name="orientation"   id="ef_orient">
+        <input type="hidden" name="grade_basis"   id="ef_grade_basis" value="cum">
         <div id="ef_columns"></div>
     </form>
 
@@ -574,9 +581,10 @@ const ROUTES = {
     classGroups    : '{{ route("broadsheet.class-groups") }}',
 };
 
-let columnData   = null;
-let studentCount = 0;
-let debounceTimer= null;
+let columnData    = null;
+let studentCount  = 0;
+let subjectCount  = 0;
+let debounceTimer = null;
 
 /* ── Paper size & orientation ── */
 function selectPaperSize(btn) {
@@ -598,7 +606,14 @@ function updatePdfLabel() {
     if (lbl) lbl.textContent = size + ' · ' + (orient === 'landscape' ? 'Landscape' : 'Portrait');
 }
 
-/* ── Auto-refresh preview on select change ── */
+/* ── Grade basis ── */
+function selectGradeBasis(basis) {
+    document.getElementById('gradeBasis').value = basis;
+    document.getElementById('gbBtnCum').classList.toggle('active', basis === 'cum');
+    document.getElementById('gbBtnTotal').classList.toggle('active', basis === 'total');
+}
+
+/* ── Auto-refresh preview ── */
 ['classSelect','sessionSelect','termSelect'].forEach(id => {
     document.getElementById(id).addEventListener('change', function() {
         clearTimeout(debounceTimer);
@@ -615,9 +630,8 @@ function checkAndLoadPreview() {
     if (!classId || !sessionId || !termId) {
         document.getElementById('studentPreview').classList.remove('visible');
         loadBtn.disabled = true;
-        document.getElementById('previewCount').textContent       = '0';
-        document.getElementById('previewSubjects').textContent    = '-';
-        document.getElementById('previewAssessments').textContent = '-';
+        document.getElementById('previewCount').textContent    = '0';
+        document.getElementById('previewSubjects').textContent = '-';
         return;
     }
 
@@ -630,16 +644,14 @@ function checkAndLoadPreview() {
     .then(data => {
         if (data.success) {
             studentCount = data.count;
-            document.getElementById('previewCount').textContent       = data.count;
-            document.getElementById('previewSubjects').textContent    = data.subject_count    ?? '-';
-            document.getElementById('previewAssessments').textContent = data.assessment_count ?? '-';
+            subjectCount = data.subject_count ?? 0;
+            document.getElementById('previewCount').textContent    = data.count;
+            document.getElementById('previewSubjects').textContent = subjectCount;
             document.getElementById('studentPreview').classList.add('visible');
             loadBtn.disabled = data.count === 0;
         }
     })
-    .catch(err => {
-        console.error('Preview error:', err);
-    });
+    .catch(err => console.error('Preview error:', err));
 }
 
 /* ── Open column modal ── */
@@ -661,6 +673,7 @@ function openColumnModal() {
     document.getElementById('pillSession').textContent  = sessionText;
     document.getElementById('pillTerm').textContent     = termText;
     document.getElementById('pillStudents').textContent = studentCount + ' students';
+    document.getElementById('pillSubjects').textContent = subjectCount + ' subjects';
 
     const modal = new bootstrap.Modal(document.getElementById('columnModal'));
     modal.show();
@@ -681,9 +694,6 @@ function openColumnModal() {
         document.getElementById('colModalLoader').style.display = 'none';
         document.getElementById('colModalForm').style.display   = 'block';
         updatePdfLabel();
-
-        const asmCount = Object.keys(data.columns.assessments || {}).length;
-        document.getElementById('previewAssessments').textContent = asmCount;
     })
     .catch(err => {
         Swal.fire({ icon: 'error', title: 'Error', text: err.message });
@@ -691,14 +701,11 @@ function openColumnModal() {
     });
 }
 
-/* ── Render column checkboxes (UPDATED with promotion group) ── */
+/* ── Render column checkboxes ── */
 function renderColumnForm(columns) {
     renderGroup('studentInfoCols', columns.student_info ?? {});
-    renderGroup('assessmentCols',  columns.assessments  ?? {});
     renderGroup('scoreCols',       columns.scores       ?? {});
-    renderGroup('gpaCols',         columns.gpa_metrics  ?? {});
-
-    // NEW: Render promotion columns
+    renderGroup('summaryCols',     columns.summary      ?? {});
     if (columns.promotion) {
         renderGroup('promoCols', columns.promotion);
     }
@@ -713,9 +720,8 @@ function renderGroup(containerId, items) {
         div.className = 'col-item';
         div.innerHTML = `
             <input type="checkbox" class="col-checkbox" data-key="${key}" id="chk_${key}" ${cfg.default ? 'checked' : ''}>
-            <label for="chk_${key}" style="cursor:pointer;">
+            <label for="chk_${key}">
                 ${cfg.label}
-                ${cfg.max_score ? '<small style="color:#9ca3af;"> (' + cfg.max_score + ')</small>' : ''}
                 ${cfg.note ? '<small style="color:#f59e0b;"> (' + cfg.note + ')</small>' : ''}
             </label>`;
         container.appendChild(div);
@@ -728,10 +734,7 @@ function toggleGroup(containerId) {
     checkboxes.forEach(cb => cb.checked = !allChecked);
 }
 
-/* ══════════════════════════════════════════
-   DO EXPORT
-   type = 'pdf' | 'excel' | 'web'
-══════════════════════════════════════════ */
+/* ── Export ── */
 function doExport(type) {
     const classId   = document.getElementById('classSelect').value;
     const sessionId = document.getElementById('sessionSelect').value;
@@ -750,23 +753,17 @@ function doExport(type) {
     }
 
     const form = document.getElementById('exportForm');
-
-    // Route map
-    const actionMap = {
-        pdf   : ROUTES.exportPdf,
-        excel : ROUTES.exportExcel,
-        web   : ROUTES.webView,
-    };
+    const actionMap = { pdf: ROUTES.exportPdf, excel: ROUTES.exportExcel, web: ROUTES.webView };
     form.action = actionMap[type];
-    form.target = '_blank';   // always open in new tab
+    form.target = '_blank';
 
-    document.getElementById('ef_class').value   = classId;
-    document.getElementById('ef_session').value = sessionId;
-    document.getElementById('ef_term').value    = termId;
-    document.getElementById('ef_paper').value   = document.getElementById('paperSize').value;
-    document.getElementById('ef_orient').value  = document.getElementById('orientation').value;
+    document.getElementById('ef_class').value        = classId;
+    document.getElementById('ef_session').value      = sessionId;
+    document.getElementById('ef_term').value         = termId;
+    document.getElementById('ef_paper').value        = document.getElementById('paperSize').value;
+    document.getElementById('ef_orient').value       = document.getElementById('orientation').value;
+    document.getElementById('ef_grade_basis').value  = document.getElementById('gradeBasis').value;
 
-    // Selected columns
     const colDiv = document.getElementById('ef_columns');
     colDiv.innerHTML = '';
     selectedCols.forEach((col, i) => {
@@ -777,7 +774,6 @@ function doExport(type) {
         colDiv.appendChild(inp);
     });
 
-    // Loading overlay (only for pdf/excel, web view opens new tab quickly)
     if (type !== 'web') {
         const overlay = document.getElementById('loadingOverlay');
         document.getElementById('loadingMsg').textContent =
@@ -790,8 +786,7 @@ function doExport(type) {
     bootstrap.Modal.getInstance(document.getElementById('columnModal'))?.hide();
 }
 
-// ── All Classes Broadsheet ────────────────────────────────────────────
-// Load class groups on page load
+/* ── All Classes Broadsheet ── */
 fetch(ROUTES.classGroups)
     .then(r => r.json())
     .then(data => {
@@ -825,7 +820,6 @@ function checkAllClassesPreview() {
         return;
     }
 
-    // Fetch a quick preview: count arms and students
     fetch(ROUTES.studentPreview, {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
@@ -834,8 +828,8 @@ function checkAllClassesPreview() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            document.getElementById('allClassesArms').textContent     = data.arms_count    ?? '—';
-            document.getElementById('allClassesStudents').textContent = data.count         ?? '—';
+            document.getElementById('allClassesArms').textContent     = data.arms_count ?? '—';
+            document.getElementById('allClassesStudents').textContent = data.count ?? '—';
             if (preview) preview.style.display = 'block';
             if (webBtn) webBtn.disabled = false;
             if (pdfBtn) pdfBtn.disabled = false;
@@ -855,22 +849,18 @@ function doAllClassesExport(type) {
     }
 
     const form   = document.getElementById('exportForm');
-    const routes = {
-        web : ROUTES.allClassesWeb,
-        pdf : ROUTES.allClassesPdf,
-    };
+    const routes = { web: ROUTES.allClassesWeb, pdf: ROUTES.allClassesPdf };
 
     form.action = routes[type];
     form.target = '_blank';
 
-    // Clear class-specific fields
-    document.getElementById('ef_class').value   = '';
-    document.getElementById('ef_session').value = sessionId;
-    document.getElementById('ef_term').value    = termId;
-    document.getElementById('ef_paper').value   = document.getElementById('paperSize').value;
-    document.getElementById('ef_orient').value  = document.getElementById('orientation').value;
+    document.getElementById('ef_class').value       = '';
+    document.getElementById('ef_session').value     = sessionId;
+    document.getElementById('ef_term').value        = termId;
+    document.getElementById('ef_paper').value       = document.getElementById('paperSize').value;
+    document.getElementById('ef_orient').value      = document.getElementById('orientation').value;
+    document.getElementById('ef_grade_basis').value = document.getElementById('gradeBasis').value;
 
-    // Add classgroup hidden input
     let cgInput = document.getElementById('ef_classgroup');
     if (!cgInput) {
         cgInput = document.createElement('input');
@@ -881,9 +871,7 @@ function doAllClassesExport(type) {
     }
     cgInput.value = group;
 
-    // Default all columns selected for combined view
-    const colDiv = document.getElementById('ef_columns');
-    colDiv.innerHTML = '';
+    document.getElementById('ef_columns').innerHTML = '';
 
     if (type !== 'web') {
         const overlay = document.getElementById('loadingOverlay');

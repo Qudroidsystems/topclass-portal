@@ -1,8 +1,4 @@
-{{--
-    resources/views/broadsheet/student_list.blade.php
-    Standalone printable student list grouped by promotion recommendation.
-    Opened in a new tab via POST from the broadsheet web view.
---}}
+{{-- resources/views/broadsheet/student_list.blade.php --}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,56 +13,46 @@
 
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes fadeInLeft {
-    from { opacity: 0; transform: translateX(-30px); }
-    to { opacity: 1; transform: translateX(0); }
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes fadeInRight {
-    from { opacity: 0; transform: translateX(30px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
 @keyframes scaleIn {
     from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
+    to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes slideIn {
     from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
+    to   { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    50%      { transform: scale(1.05); }
 }
-
 @keyframes shimmer {
-    0% { background-position: -1000px 0; }
+    0%   { background-position: -1000px 0; }
     100% { background-position: 1000px 0; }
 }
-
 @keyframes glowPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(13,148,136,.4); }
-    50% { box-shadow: 0 0 0 8px rgba(13,148,136,0); }
+    50%      { box-shadow: 0 0 0 8px rgba(13,148,136,0); }
 }
-
 @keyframes rowSlide {
     from { opacity: 0; transform: translateX(-15px); }
-    to { opacity: 1; transform: translateX(0); }
+    to   { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes countUp {
     from { opacity: 0; transform: scale(0.6); }
-    to { opacity: 1; transform: scale(1); }
+    to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+@keyframes floatUp {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
 }
 
 body {
@@ -78,7 +64,9 @@ body {
     min-height: 100vh;
 }
 
-/* ── Print resets ── */
+/* ═══════════════════════════════════════════════════════════
+   PRINT RULES
+═══════════════════════════════════════════════════════════ */
 @media print {
     body { background: #fff !important; font-size: 11px; }
     .no-print { display: none !important; }
@@ -88,33 +76,24 @@ body {
         page-break-after: always;
         page-break-inside: avoid;
     }
-    .group-section:last-child {
-        page-break-after: auto;
-    }
+    .group-section:last-child { page-break-after: auto; }
     @page { margin: 1.4cm 1.2cm; }
-    .btn-print, .btn-pdf, .btn-close-tab, .btn-settings, .toolbar, .settings-panel {
-        display: none !important;
-    }
-    .student-table tbody tr {
-        animation: none !important;
-    }
-    .group-header {
-        animation: none !important;
-    }
+    .btn-print, .btn-pdf, .btn-close-tab, .btn-settings, .toolbar, .settings-panel { display: none !important; }
+    .student-table tbody tr { animation: none !important; }
+    .group-header { animation: none !important; }
 }
-
-/* Paper size overrides for print */
 @media print and (size: A4) { @page { size: A4; } }
 @media print and (size: A3) { @page { size: A3; } }
 @media print and (size: A2) { @page { size: A2; } }
 @media print and (size: A1) { @page { size: A1; } }
-@media print and (size: Legal) { @page { size: Legal; } }
-@media print and (size: Letter) { @page { size: Letter; } }
-
-@media print and (orientation: portrait) { @page { orientation: portrait; } }
+@media print and (size: Legal)   { @page { size: Legal; } }
+@media print and (size: Letter)  { @page { size: Letter; } }
+@media print and (orientation: portrait)  { @page { orientation: portrait; } }
 @media print and (orientation: landscape) { @page { orientation: landscape; } }
 
-/* ── Layout ── */
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════ */
 .page-wrap {
     max-width: 1400px;
     margin: 0 auto;
@@ -138,36 +117,24 @@ body {
     overflow: hidden;
     animation: fadeInDown 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-
 .school-header::before {
     content: '';
     position: absolute;
-    top: -60px;
-    right: -60px;
-    width: 200px;
-    height: 200px;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
     background: radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%);
     border-radius: 50%;
     animation: floatUp 6s ease-in-out infinite;
 }
-
 .school-header::after {
     content: '';
     position: absolute;
-    bottom: -40px;
-    left: -40px;
-    width: 150px;
-    height: 150px;
+    bottom: -40px; left: -40px;
+    width: 150px; height: 150px;
     background: radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%);
     border-radius: 50%;
     animation: floatUp 8s ease-in-out infinite reverse;
 }
-
-@keyframes floatUp {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-
 .school-logo {
     width: 85px;
     height: 85px;
@@ -179,12 +146,7 @@ body {
     transition: all 0.3s ease;
     animation: pulse 3s ease-in-out infinite;
 }
-
-.school-logo:hover {
-    transform: scale(1.05);
-    border-color: #0d9488;
-}
-
+.school-logo:hover { transform: scale(1.05); border-color: #0d9488; }
 .school-logo-placeholder {
     width: 85px;
     height: 85px;
@@ -200,7 +162,6 @@ body {
     flex-shrink: 0;
     transition: all 0.3s ease;
 }
-
 .school-info { flex: 1; text-align: center; }
 .school-name {
     font-size: 22px;
@@ -242,24 +203,18 @@ body {
     animation: fadeInUp 0.5s ease both;
     animation-delay: 0.15s;
 }
-
 .list-title-bar::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);
     animation: shimmer 3s infinite;
 }
 
-@keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
-}
-
-/* ── Meta strip ── */
+/* ═══════════════════════════════════════════════════════════
+   META STRIP
+═══════════════════════════════════════════════════════════ */
 .meta-strip {
     display: flex;
     border: 1px solid #e2e8f0;
@@ -272,7 +227,6 @@ body {
     animation: fadeInUp 0.5s ease both;
     animation-delay: 0.2s;
 }
-
 .meta-cell {
     flex: 1;
     padding: 12px 16px;
@@ -282,11 +236,7 @@ body {
     transition: all 0.3s ease;
 }
 .meta-cell:last-child { border-right: none; }
-.meta-cell:hover {
-    background: #f0fdf9;
-    transform: translateY(-2px);
-}
-
+.meta-cell:hover { background: #f0fdf9; transform: translateY(-2px); }
 .meta-label {
     font-size: 10px;
     color: #64748b;
@@ -311,9 +261,7 @@ body {
     page-break-inside: avoid;
     animation: fadeInUp 0.5s ease both;
 }
-.group-section:last-child {
-    page-break-after: auto;
-}
+.group-section:last-child { page-break-after: auto; }
 
 .group-header {
     display: flex;
@@ -327,11 +275,7 @@ body {
     transition: all 0.3s ease;
     animation: slideIn 0.4s ease both;
 }
-
-.group-header:hover {
-    transform: translateX(5px);
-}
-
+.group-header:hover { transform: translateX(5px); }
 .group-header .count-badge {
     margin-left: auto;
     padding: 4px 14px;
@@ -341,12 +285,8 @@ body {
     background: rgba(255,255,255,.4);
     transition: all 0.3s ease;
 }
+.group-header:hover .count-badge { transform: scale(1.05); }
 
-.group-header:hover .count-badge {
-    transform: scale(1.05);
-}
-
-/* Status colours with animations */
 .status-promoted {
     background: linear-gradient(90deg, #d1fae5, #ecfdf5);
     color: #065f46;
@@ -385,7 +325,6 @@ body {
     overflow-x: auto;
     border-radius: 0 0 12px 12px;
 }
-
 .student-table {
     width: 100%;
     border-collapse: collapse;
@@ -395,7 +334,6 @@ body {
     font-size: 12px;
     min-width: 600px;
 }
-
 .student-table thead th {
     background: linear-gradient(135deg, #1e3a5f, #0f2342);
     color: #a8d4ef;
@@ -423,7 +361,6 @@ body {
     transform: translateX(4px);
     box-shadow: -4px 0 0 #0d9488;
 }
-
 .student-table tbody td {
     padding: 10px 14px;
     border-bottom: 1px solid #e2e8f0;
@@ -459,7 +396,6 @@ td.sn-cell {
     border-color: #0d9488;
     box-shadow: 0 0 0 3px rgba(13,148,136,.2);
 }
-
 .avatar-initials {
     width: 36px;
     height: 36px;
@@ -484,10 +420,7 @@ td.sn-cell {
     color: #0f2342;
     transition: color 0.3s ease;
 }
-.name-cell:hover {
-    color: #0d9488;
-}
-
+.name-cell:hover { color: #0d9488; }
 .adm-cell {
     font-family: 'Courier New', monospace;
     font-size: 11px;
@@ -495,13 +428,11 @@ td.sn-cell {
     letter-spacing: 0.5px;
 }
 .gender-cell { text-align: center; font-size: 11px; }
-.arm-cell {
-    font-size: 11px;
-    color: #0f2342;
-    font-weight: 500;
-}
+.arm-cell { font-size: 11px; color: #0f2342; font-weight: 500; }
 
-/* ── Summary footer ── */
+/* ═══════════════════════════════════════════════════════════
+   SUMMARY FOOTER
+═══════════════════════════════════════════════════════════ */
 .summary-footer {
     background: white;
     border: 1px solid #e2e8f0;
@@ -549,7 +480,9 @@ td.sn-cell {
     margin-top: 6px;
 }
 
-/* ── No-print toolbar ── */
+/* ═══════════════════════════════════════════════════════════
+   TOOLBAR (no-print)
+═══════════════════════════════════════════════════════════ */
 .toolbar {
     background: white;
     border: 1px solid #e2e8f0;
@@ -564,7 +497,6 @@ td.sn-cell {
     box-shadow: 0 4px 12px rgba(0,0,0,.07);
     animation: fadeInUp 0.5s ease both;
 }
-
 .toolbar-title {
     font-size: 16px;
     font-weight: 700;
@@ -594,28 +526,19 @@ td.sn-cell {
 .btn-print::before, .btn-pdf::before {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
+    top: 50%; left: 50%;
+    width: 0; height: 0;
     background: rgba(255,255,255,.2);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     transition: width 0.6s, height 0.6s;
 }
-.btn-print:hover::before, .btn-pdf:hover::before {
-    width: 200px;
-    height: 200px;
-}
-
-.btn-pdf {
-    background: linear-gradient(135deg, #dc2626, #ef4444);
-}
+.btn-print:hover::before, .btn-pdf:hover::before { width: 200px; height: 200px; }
+.btn-pdf { background: linear-gradient(135deg, #dc2626, #ef4444); }
 .btn-print:hover, .btn-pdf:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 20px rgba(0,0,0,.2);
 }
-
 .btn-close-tab {
     background: #f1f5f9;
     color: #475569;
@@ -631,12 +554,11 @@ td.sn-cell {
     text-decoration: none;
     transition: all 0.3s ease;
 }
-.btn-close-tab:hover {
-    background: #e2e8f0;
-    transform: translateY(-2px);
-}
+.btn-close-tab:hover { background: #e2e8f0; transform: translateY(-2px); }
 
-/* Settings panel */
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS PANEL
+═══════════════════════════════════════════════════════════ */
 .settings-panel {
     background: white;
     border: 1px solid #e2e8f0;
@@ -666,9 +588,7 @@ td.sn-cell {
     cursor: pointer;
     transition: all 0.2s ease;
 }
-.settings-group label:hover {
-    color: #0d9488;
-}
+.settings-group label:hover { color: #0d9488; }
 .settings-group select, .settings-group input {
     padding: 8px 12px;
     border-radius: 8px;
@@ -677,15 +597,12 @@ td.sn-cell {
     transition: all 0.2s ease;
     cursor: pointer;
 }
-.settings-group select:hover, .settings-group input:hover {
-    border-color: #0d9488;
-}
+.settings-group select:hover, .settings-group input:hover { border-color: #0d9488; }
 .settings-group select:focus, .settings-group input:focus {
     outline: none;
     border-color: #0d9488;
     box-shadow: 0 0 0 3px rgba(13,148,136,.1);
 }
-
 .btn-settings {
     background: #f1f5f9;
     color: #475569;
@@ -700,17 +617,9 @@ td.sn-cell {
     gap: 8px;
     transition: all 0.3s ease;
 }
-.btn-settings:hover {
-    background: #e2e8f0;
-    transform: translateY(-2px);
-}
-.btn-settings.active {
-    background: #7c3aed;
-    color: white;
-    border-color: #7c3aed;
-}
+.btn-settings:hover { background: #e2e8f0; transform: translateY(-2px); }
+.btn-settings.active { background: #7c3aed; color: white; border-color: #7c3aed; }
 
-/* Column checkboxes grid */
 .columns-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -741,7 +650,9 @@ td.sn-cell {
     cursor: pointer;
 }
 
-/* ── Generated at line ── */
+/* ═══════════════════════════════════════════════════════════
+   GENERATED LINE
+═══════════════════════════════════════════════════════════ */
 .generated-line {
     text-align: center;
     font-size: 10.5px;
@@ -752,13 +663,12 @@ td.sn-cell {
     animation: fadeInUp 0.5s ease both;
 }
 
-/* Loading overlay for PDF generation */
+/* ═══════════════════════════════════════════════════════════
+   PDF LOADING OVERLAY
+═══════════════════════════════════════════════════════════ */
 .pdf-loading {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0,0,0,.85);
     z-index: 99999;
     display: none;
@@ -784,29 +694,31 @@ td.sn-cell {
     letter-spacing: 0.5px;
 }
 
-/* Animations delay for rows */
-.student-table tbody tr:nth-child(1) { animation-delay: 0.02s; }
-.student-table tbody tr:nth-child(2) { animation-delay: 0.04s; }
-.student-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
-.student-table tbody tr:nth-child(4) { animation-delay: 0.08s; }
-.student-table tbody tr:nth-child(5) { animation-delay: 0.10s; }
-.student-table tbody tr:nth-child(6) { animation-delay: 0.12s; }
-.student-table tbody tr:nth-child(7) { animation-delay: 0.14s; }
-.student-table tbody tr:nth-child(8) { animation-delay: 0.16s; }
-.student-table tbody tr:nth-child(9) { animation-delay: 0.18s; }
+/* ═══════════════════════════════════════════════════════════
+   ANIMATION DELAYS FOR ROWS
+═══════════════════════════════════════════════════════════ */
+.student-table tbody tr:nth-child(1)  { animation-delay: 0.02s; }
+.student-table tbody tr:nth-child(2)  { animation-delay: 0.04s; }
+.student-table tbody tr:nth-child(3)  { animation-delay: 0.06s; }
+.student-table tbody tr:nth-child(4)  { animation-delay: 0.08s; }
+.student-table tbody tr:nth-child(5)  { animation-delay: 0.10s; }
+.student-table tbody tr:nth-child(6)  { animation-delay: 0.12s; }
+.student-table tbody tr:nth-child(7)  { animation-delay: 0.14s; }
+.student-table tbody tr:nth-child(8)  { animation-delay: 0.16s; }
+.student-table tbody tr:nth-child(9)  { animation-delay: 0.18s; }
 .student-table tbody tr:nth-child(10) { animation-delay: 0.20s; }
 </style>
 </head>
 <body>
 <div class="page-wrap">
 
-    {{-- PDF Loading Overlay --}}
+    {{-- ══ PDF LOADING OVERLAY ══ --}}
     <div id="pdfLoading" class="pdf-loading">
         <div class="spinner"></div>
         <p>Generating PDF, please wait...</p>
     </div>
 
-    {{-- ── TOOLBAR (no-print) ── --}}
+    {{-- ══ TOOLBAR (no-print) ══ --}}
     <div class="toolbar no-print">
         <div class="toolbar-title">
             <span style="font-size:22px;">📋</span>
@@ -851,7 +763,7 @@ td.sn-cell {
         </div>
     </div>
 
-    {{-- ── SETTINGS PANEL ── --}}
+    {{-- ══ SETTINGS PANEL ══ --}}
     <div id="settingsPanel" class="settings-panel no-print">
         <h4><span>⚙️</span> Print & Display Settings</h4>
 
@@ -899,19 +811,17 @@ td.sn-cell {
             <div class="columns-grid" id="columnsGrid">
                 @php
                 $columnOptions = [
-                    'admissionno' => 'Admission Number',
-                    'firstname' => 'First Name',
-                    'lastname' => 'Last Name',
-                    'gender' => 'Gender',
-                    'dateofbirth' => 'Date of Birth',
-                    'arm' => 'Arm/Class',
-                    'total_cum' => 'Cumulative Total',
-                    'total_term' => 'Term Total',
-                    'cum_ave' => 'Cumulative Average',
-                    'position_cum' => 'Overall Position (Cum)',
+                    'admissionno'   => 'Admission Number',
+                    'firstname'     => 'First Name',
+                    'lastname'      => 'Last Name',
+                    'gender'        => 'Gender',
+                    'dateofbirth'   => 'Date of Birth',
+                    'arm'           => 'Arm/Class',
+                    'total_cum'     => 'Cumulative Total',
+                    'total_term'    => 'Term Total',
+                    'cum_ave'       => 'Cumulative Average',
+                    'position_cum'  => 'Overall Position (Cum)',
                     'position_term' => 'Overall Position (Term)',
-                    'gpa' => 'GPA',
-                    'gpa_grade' => 'GPA Grade (Cum)',
                 ];
                 @endphp
                 @foreach($columnOptions as $key => $label)
@@ -931,7 +841,7 @@ td.sn-cell {
         </div>
     </div>
 
-    {{-- ── SCHOOL HEADER ── --}}
+    {{-- ══ SCHOOL HEADER ══ --}}
     <div class="school-header" id="schoolHeader">
         @if(!empty($school_logo_base64))
             <img src="{{ $school_logo_base64 }}" class="school-logo" alt="Logo">
@@ -952,10 +862,10 @@ td.sn-cell {
         <div style="width:80px;flex-shrink:0;"></div>
     </div>
 
-    {{-- ── TITLE BAR ── --}}
+    {{-- ══ TITLE BAR ══ --}}
     <div class="list-title-bar">STUDENT PROMOTION RECOMMENDATION LIST</div>
 
-    {{-- ── META STRIP ── --}}
+    {{-- ══ META STRIP ══ --}}
     <div class="meta-strip">
         <div class="meta-cell">
             <span class="meta-label">Class</span>
@@ -971,7 +881,7 @@ td.sn-cell {
         </div>
         <div class="meta-cell">
             <span class="meta-label">Grade Basis</span>
-            <span class="meta-value" style="font-size:12px;">{{ ($grade_basis ?? 'cum_ave') === 'total' ? 'Term Total' : 'Cumulative Avg' }}</span>
+            <span class="meta-value" style="font-size:12px;">{{ ($grade_basis ?? 'cum') === 'total' ? 'Term Total' : 'Cumulative' }}</span>
         </div>
         <div class="meta-cell">
             <span class="meta-label">Total Students</span>
@@ -996,38 +906,38 @@ td.sn-cell {
         'cum_ave'       => 'Cum Ave',
         'position_cum'  => 'Overall Pos (Cum)',
         'position_term' => 'Overall Pos (Term)',
-        'gpa'           => 'GPA',
-        'gpa_grade'     => 'GPA Grade',
     ];
 
     $statusMeta = [
-        'promoted'      => ['label' => 'Promoted', 'icon' => '✅', 'class' => 'status-promoted'],
-        'trial'         => ['label' => 'Promoted on Trial', 'icon' => '⚠️', 'class' => 'status-trial'],
+        'promoted'      => ['label' => 'Promoted',                 'icon' => '✅', 'class' => 'status-promoted'],
+        'trial'         => ['label' => 'Promoted on Trial',        'icon' => '⚠️', 'class' => 'status-trial'],
         'see_principal' => ['label' => 'Advised to See Principal', 'icon' => '👤', 'class' => 'status-see_principal'],
-        'repeated'      => ['label' => 'Advice to Repeat', 'icon' => '🔁', 'class' => 'status-repeated'],
-        'awaiting'      => ['label' => 'Awaiting Decision', 'icon' => '⏳', 'class' => 'status-awaiting'],
-        '__other'       => ['label' => 'Other', 'icon' => '📌', 'class' => 'status-other'],
+        'repeated'      => ['label' => 'Advice to Repeat',         'icon' => '🔁', 'class' => 'status-repeated'],
+        'awaiting'      => ['label' => 'Awaiting Decision',        'icon' => '⏳', 'class' => 'status-awaiting'],
+        '__other'       => ['label' => 'Other',                    'icon' => '📌', 'class' => 'status-other'],
     ];
 
-    function listOrdinal($n) {
-        if (!$n) return '—';
-        $n = (int)$n;
-        $s = ['th','st','nd','rd'];
-        $v = $n % 100;
-        return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+    if (!function_exists('listOrdinal')) {
+        function listOrdinal($n) {
+            if (!$n) return '—';
+            $n = (int) $n;
+            $s = ['th','st','nd','rd'];
+            $v = $n % 100;
+            return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+        }
     }
 
     $globalSn = 0;
     @endphp
 
-    {{-- Grouped student sections --}}
+    {{-- ══ GROUPED STUDENT SECTIONS ══ --}}
     <div id="studentListContent">
         @foreach($grouped_students as $statusKey => $students)
             @php
-                $meta = $statusMeta[$statusKey] ?? $statusMeta['__other'];
+                $meta       = $statusMeta[$statusKey] ?? $statusMeta['__other'];
                 $groupLabel = $students[0]['promotion_label'] ?? $meta['label'];
                 $groupCount = count($students);
-                $hasArm = !empty($students[0]['arm']) && $students[0]['arm'] !== '—';
+                $hasArm     = !empty($students[0]['arm']) && $students[0]['arm'] !== '—';
             @endphp
             <div class="group-section" data-status="{{ $statusKey }}">
                 <div class="group-header {{ $meta['class'] }}">
@@ -1071,10 +981,10 @@ td.sn-cell {
                         <tbody>
                             @foreach($students as $idx => $stu)
                                 @php
-                                    $globalSn++;
-                                    $hasPic = !empty($stu['picture']) && $stu['picture'] !== 'unnamed.jpg';
-                                    $imgSrc = $hasPic ? asset('storage/student_avatars/' . basename($stu['picture'])) : null;
-                                    $initials = strtoupper(substr($stu['lastname']??'',0,1) . substr($stu['firstname']??'',0,1)) ?: 'ST';
+                                    $globalSn = $globalSn + 1;
+                                    $hasPic   = !empty($stu['picture']) && $stu['picture'] !== 'unnamed.jpg';
+                                    $imgSrc   = $hasPic ? asset('storage/student_avatars/' . basename($stu['picture'])) : null;
+                                    $initials = strtoupper(substr($stu['lastname'] ?? '', 0, 1) . substr($stu['firstname'] ?? '', 0, 1)) ?: 'ST';
                                 @endphp
                                 <tr>
                                     @if($show_sn)
@@ -1099,21 +1009,21 @@ td.sn-cell {
                                             @if(!empty($stu['arm']) && $stu['arm'] !== '—' && !in_array('arm', $list_fields))
                                                 <span style="font-size:10px; color:#64748b; margin-left:8px; background:#f1f5f9; padding:2px 8px; border-radius:12px;">{{ $stu['arm'] }}</span>
                                             @endif
-                                         </td>
+                                        </td>
                                     @elseif(in_array('firstname', $list_fields))
                                         <td class="name-cell">
                                             {{ $stu['firstname'] ?? '' }}
                                             @if(!empty($stu['arm']) && $stu['arm'] !== '—' && !in_array('arm', $list_fields))
                                                 <span style="font-size:10px; color:#64748b; margin-left:8px; background:#f1f5f9; padding:2px 8px; border-radius:12px;">{{ $stu['arm'] }}</span>
                                             @endif
-                                         </td>
+                                        </td>
                                     @elseif(in_array('lastname', $list_fields))
                                         <td class="name-cell">
                                             {{ strtoupper($stu['lastname'] ?? '') }}
                                             @if(!empty($stu['arm']) && $stu['arm'] !== '—' && !in_array('arm', $list_fields))
                                                 <span style="font-size:10px; color:#64748b; margin-left:8px; background:#f1f5f9; padding:2px 8px; border-radius:12px;">{{ $stu['arm'] }}</span>
                                             @endif
-                                         </td>
+                                        </td>
                                     @endif
 
                                     @foreach($list_fields as $field)
@@ -1137,10 +1047,6 @@ td.sn-cell {
                                             <td style="text-align:center;font-weight:700;color:#1e40af;">{{ listOrdinal($stu['position_cum'] ?? null) }}</td>
                                         @elseif($field === 'position_term')
                                             <td style="text-align:center;font-weight:700;color:#92400e;">{{ listOrdinal($stu['position_term'] ?? null) }}</td>
-                                        @elseif($field === 'gpa')
-                                            <td style="text-align:center;">{{ number_format($stu['gpa'] ?? 0, 2) }}</td>
-                                        @elseif($field === 'gpa_grade')
-                                            <td style="text-align:center;font-weight:700;">{{ $stu['gpa_grade'] ?? '—' }}</td>
                                         @endif
                                     @endforeach
                                 </tr>
@@ -1152,28 +1058,28 @@ td.sn-cell {
         @endforeach
     </div>
 
-    {{-- Summary footer --}}
+    {{-- ══ SUMMARY FOOTER ══ --}}
     @php
         $summaryGroups = [];
-        foreach($grouped_students as $statusKey => $students) {
-            $meta = $statusMeta[$statusKey] ?? $statusMeta['__other'];
+        foreach ($grouped_students as $statusKey => $students) {
+            $meta  = $statusMeta[$statusKey] ?? $statusMeta['__other'];
             $label = !empty($students[0]['promotion_label']) ? $students[0]['promotion_label'] : $meta['label'];
             $summaryGroups[] = [
-                'label' => $label,
-                'count' => count($students),
-                'bgColor' => match($statusKey) {
-                    'promoted' => '#d1fae5',
-                    'trial' => '#fef3c7',
+                'label'     => $label,
+                'count'     => count($students),
+                'bgColor'   => match($statusKey) {
+                    'promoted'      => '#d1fae5',
+                    'trial'         => '#fef3c7',
                     'see_principal' => '#dbeafe',
-                    'repeated' => '#fee2e2',
-                    default => '#f1f5f9',
+                    'repeated'      => '#fee2e2',
+                    default         => '#f1f5f9',
                 },
                 'textColor' => match($statusKey) {
-                    'promoted' => '#065f46',
-                    'trial' => '#92400e',
+                    'promoted'      => '#065f46',
+                    'trial'         => '#92400e',
                     'see_principal' => '#1e40af',
-                    'repeated' => '#991b1b',
-                    default => '#475569',
+                    'repeated'      => '#991b1b',
+                    default         => '#475569',
                 },
             ];
         }
@@ -1204,47 +1110,39 @@ td.sn-cell {
 </div>
 
 <script>
-// Settings panel toggle
+// ═══════════════════════════════════════════════════════════
+//  SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════
 function toggleSettings() {
     var panel = document.getElementById('settingsPanel');
-    var btn = document.getElementById('toggleSettingsBtn');
+    var btn   = document.getElementById('toggleSettingsBtn');
     panel.classList.toggle('open');
     btn.classList.toggle('active');
 }
 
-// Apply page break based on setting
 function applyPageBreaks() {
-    var newPagePerGroup = localStorage.getItem('new_page_per_group') || document.getElementById('newPagePerGroup')?.value || 'yes';
+    var newPagePerGroup = localStorage.getItem('new_page_per_group')
+        || document.getElementById('newPagePerGroup')?.value
+        || 'yes';
     var groups = document.querySelectorAll('.group-section');
-
-    groups.forEach(function(group, index) {
+    groups.forEach(function (group, index) {
         if (newPagePerGroup === 'yes') {
-            if (index < groups.length - 1) {
-                group.style.pageBreakAfter = 'always';
-            } else {
-                group.style.pageBreakAfter = 'auto';
-            }
+            group.style.pageBreakAfter = (index < groups.length - 1) ? 'always' : 'auto';
         } else {
             group.style.pageBreakAfter = 'auto';
         }
     });
 }
 
-// Print with orientation and page breaks
 function printStudentList() {
-    var orientation = document.getElementById('printOrientation').value;
-    var paperSize = document.getElementById('paperSize').value;
+    var orientation     = document.getElementById('printOrientation').value;
+    var paperSize       = document.getElementById('paperSize').value;
     var newPagePerGroup = document.getElementById('newPagePerGroup').value;
 
-    // Apply page breaks
     var groups = document.querySelectorAll('.group-section');
-    groups.forEach(function(group, index) {
+    groups.forEach(function (group, index) {
         if (newPagePerGroup === 'yes') {
-            if (index < groups.length - 1) {
-                group.style.pageBreakAfter = 'always';
-            } else {
-                group.style.pageBreakAfter = 'auto';
-            }
+            group.style.pageBreakAfter = (index < groups.length - 1) ? 'always' : 'auto';
         } else {
             group.style.pageBreakAfter = 'auto';
         }
@@ -1256,28 +1154,21 @@ function printStudentList() {
 
     window.print();
 
-    setTimeout(function() {
+    setTimeout(function () {
         document.head.removeChild(style);
-        groups.forEach(function(group) {
-            group.style.pageBreakAfter = '';
-        });
+        groups.forEach(function (group) { group.style.pageBreakAfter = ''; });
     }, 100);
 }
 
-// Export to PDF
 function exportToPDF() {
-    var orientation = document.getElementById('printOrientation').value;
-    var paperSize = document.getElementById('paperSize').value;
+    var orientation     = document.getElementById('printOrientation').value;
+    var paperSize       = document.getElementById('paperSize').value;
     var newPagePerGroup = document.getElementById('newPagePerGroup').value;
 
     var groups = document.querySelectorAll('.group-section');
-    groups.forEach(function(group, index) {
+    groups.forEach(function (group, index) {
         if (newPagePerGroup === 'yes') {
-            if (index < groups.length - 1) {
-                group.style.pageBreakAfter = 'always';
-            } else {
-                group.style.pageBreakAfter = 'auto';
-            }
+            group.style.pageBreakAfter = (index < groups.length - 1) ? 'always' : 'auto';
         } else {
             group.style.pageBreakAfter = 'auto';
         }
@@ -1290,91 +1181,89 @@ function exportToPDF() {
     style.textContent = '@page { size: ' + paperSize + ' ' + orientation + '; margin: 1.2cm; }';
     document.head.appendChild(style);
 
-    setTimeout(function() {
+    setTimeout(function () {
         window.print();
         loading.classList.remove('active');
-        setTimeout(function() {
+        setTimeout(function () {
             if (style.parentNode) document.head.removeChild(style);
-            groups.forEach(function(group) {
-                group.style.pageBreakAfter = '';
-            });
+            groups.forEach(function (group) { group.style.pageBreakAfter = ''; });
         }, 500);
     }, 500);
 }
 
-// Apply settings and refresh - FIXED to use POST
+// ═══════════════════════════════════════════════════════════
+//  APPLY SETTINGS & REFRESH (POST-resubmit)
+// ═══════════════════════════════════════════════════════════
 function applySettingsAndRefresh() {
     var selectedColumns = [];
-    document.querySelectorAll('.column-checkbox:checked').forEach(function(cb) {
+    document.querySelectorAll('.column-checkbox:checked').forEach(function (cb) {
         selectedColumns.push(cb.value);
     });
 
-    var showPhotos = document.getElementById('showPhotosCheckbox').checked;
-    var showSn = document.getElementById('showSnCheckbox').checked;
-    var orientation = document.getElementById('printOrientation').value;
-    var paperSize = document.getElementById('paperSize').value;
+    var showPhotos      = document.getElementById('showPhotosCheckbox').checked;
+    var showSn          = document.getElementById('showSnCheckbox').checked;
+    var orientation     = document.getElementById('printOrientation').value;
+    var paperSize       = document.getElementById('paperSize').value;
     var newPagePerGroup = document.getElementById('newPagePerGroup').value;
 
-    localStorage.setItem('student_list_columns', JSON.stringify(selectedColumns));
-    localStorage.setItem('student_list_show_photos', showPhotos);
-    localStorage.setItem('student_list_show_sn', showSn);
-    localStorage.setItem('student_list_orientation', orientation);
-    localStorage.setItem('student_list_paper_size', paperSize);
-    localStorage.setItem('new_page_per_group', newPagePerGroup);
+    localStorage.setItem('student_list_columns',       JSON.stringify(selectedColumns));
+    localStorage.setItem('student_list_show_photos',   showPhotos);
+    localStorage.setItem('student_list_show_sn',       showSn);
+    localStorage.setItem('student_list_orientation',   orientation);
+    localStorage.setItem('student_list_paper_size',    paperSize);
+    localStorage.setItem('new_page_per_group',         newPagePerGroup);
 
     // Build a POST form and submit it
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = window.location.pathname;
-    
+
     var csrf = document.createElement('input');
     csrf.type = 'hidden';
     csrf.name = '_token';
     csrf.value = document.querySelector('input[name="_token"]').value;
     form.appendChild(csrf);
-    
-    // Add required fields from the hidden data passed by the controller
-    var requiredFields = ['schoolclassid', 'sessionid', 'termid', 'grade_basis'];
-    requiredFields.forEach(function(name) {
+
+    // Copy hidden fields the controller expects
+    ['schoolclassid', 'sessionid', 'termid', 'grade_basis'].forEach(function (name) {
         var hidden = document.querySelector('input[name="' + name + '"]');
-        if (hidden) {
-            var clone = hidden.cloneNode(true);
-            form.appendChild(clone);
-        }
+        if (hidden) form.appendChild(hidden.cloneNode(true));
     });
-    
-    // Add list fields
-    selectedColumns.forEach(function(val, idx) {
+
+    // List fields
+    selectedColumns.forEach(function (val, idx) {
         var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'list_fields[' + idx + ']';
+        input.type  = 'hidden';
+        input.name  = 'list_fields[' + idx + ']';
         input.value = val;
         form.appendChild(input);
     });
-    
-    // Add show_photos, show_sn
+
+    // Show flags
     var photoInput = document.createElement('input');
-    photoInput.type = 'hidden';
-    photoInput.name = 'show_photos';
+    photoInput.type  = 'hidden';
+    photoInput.name  = 'show_photos';
     photoInput.value = showPhotos ? '1' : '0';
     form.appendChild(photoInput);
-    
+
     var snInput = document.createElement('input');
-    snInput.type = 'hidden';
-    snInput.name = 'show_sn';
+    snInput.type  = 'hidden';
+    snInput.name  = 'show_sn';
     snInput.value = showSn ? '1' : '0';
     form.appendChild(snInput);
-    
+
     document.body.appendChild(form);
     form.submit();
 }
 
-// Load saved preferences
-document.addEventListener('DOMContentLoaded', function() {
+// ═══════════════════════════════════════════════════════════
+//  LOAD SAVED PREFERENCES
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function () {
     var savedColumns = localStorage.getItem('student_list_columns');
     if (savedColumns) {
         var columns = JSON.parse(savedColumns);
-        document.querySelectorAll('.column-checkbox').forEach(function(cb) {
+        document.querySelectorAll('.column-checkbox').forEach(function (cb) {
             cb.checked = columns.includes(cb.value);
         });
     }
@@ -1407,18 +1296,14 @@ document.addEventListener('DOMContentLoaded', function() {
     applyPageBreaks();
 });
 
-window.onbeforeprint = function() {
+// Hide settings panel during print
+window.onbeforeprint = function () {
     var panel = document.getElementById('settingsPanel');
-    if (panel && panel.classList.contains('open')) {
-        panel.style.display = 'none';
-    }
+    if (panel && panel.classList.contains('open')) panel.style.display = 'none';
 };
-
-window.onafterprint = function() {
+window.onafterprint = function () {
     var panel = document.getElementById('settingsPanel');
-    if (panel && panel.classList.contains('open')) {
-        panel.style.display = 'block';
-    }
+    if (panel && panel.classList.contains('open')) panel.style.display = 'block';
 };
 </script>
 </body>
