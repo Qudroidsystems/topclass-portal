@@ -51,6 +51,10 @@
     color:#fff; font-weight:700; font-size:13px; letter-spacing:.5px;
     border:2px solid var(--sc-border); flex-shrink:0; user-select:none;
 }
+.teacher-avatar {
+    width:36px; height:36px; border-radius:50%;
+    object-fit:cover; border:2px solid var(--sc-border); flex-shrink:0;
+}
 
 .dataTables_wrapper .dataTables_filter input { border:1.5px solid var(--sc-border); border-radius:8px; padding:7px 14px; margin-left:8px; font-size:13px; }
 .dataTables_wrapper .dataTables_filter input:focus { border-color:var(--sc-accent); outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
@@ -103,6 +107,13 @@
 .btn-loading { position:relative; pointer-events:none; opacity:.85; }
 .btn-loading .btn-text { visibility:hidden; }
 .btn-loading::after { content:''; position:absolute; inset:0; margin:auto; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:sc-spin .65s linear infinite; }
+
+/* Modal loader overlay */
+.modal-body-loader { display:none; position:absolute; inset:0; background:rgba(255,255,255,.85); z-index:5; align-items:center; justify-content:center; }
+.modal-body-loader.active { display:flex; }
+.modal-body-loader .inner { text-align:center; }
+.modal-body-loader .mbl-spinner { width:42px; height:42px; margin:0 auto 12px; border:3px solid #e2e8f0; border-top-color:var(--sc-accent); border-radius:50%; animation:sc-spin .75s linear infinite; }
+.modal-body-loader .mbl-text { font-size:13px; font-weight:600; color:var(--sc-primary); }
 </style>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
@@ -177,19 +188,20 @@
             </div>
             <form id="add-subjectclass-form" autocomplete="off">
                 @csrf
-                <div class="modal-body-loader" id="add-modal-loader">
-                    <div class="inner">
-                        <div class="mbl-spinner"></div>
-                        <div class="mbl-text" id="add-modal-loader-text">Saving…</div>
-                    </div>
-                </div>
                 <div class="modal-body p-4" style="position:relative">
+                    <div class="modal-body-loader" id="add-modal-loader">
+                        <div class="inner">
+                            <div class="mbl-spinner"></div>
+                            <div class="mbl-text" id="add-modal-loader-text">Saving…</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label">Class <span class="text-danger">*</span></label>
                         <select name="schoolclassid" id="add-schoolclassid" class="form-select" required>
                             <option value="">— Select Class —</option>
                             @foreach ($schoolclasses as $class)
-                                <option value="{{ $class->id }}">{{ $class->label }}</option>
+                                <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -259,14 +271,13 @@
                 <input type="hidden" id="edit-id">
                 <input type="hidden" id="edit-old-staffid">
 
-                <div class="modal-body-loader" id="edit-modal-loader">
-                    <div class="inner">
-                        <div class="mbl-spinner"></div>
-                        <div class="mbl-text" id="edit-modal-loader-text">Updating…</div>
-                    </div>
-                </div>
-
                 <div class="modal-body p-4" style="position:relative">
+                    <div class="modal-body-loader" id="edit-modal-loader">
+                        <div class="inner">
+                            <div class="mbl-spinner"></div>
+                            <div class="mbl-text" id="edit-modal-loader-text">Updating…</div>
+                        </div>
+                    </div>
 
                     <div class="sc-context-box mb-4">
                         <div class="row g-3 text-center">
@@ -371,7 +382,7 @@ $(document).ready(function () {
 
     function toast(type, title, msg) {
         var icons = { success: 'ri-checkbox-circle-fill', error: 'ri-close-circle-fill', warning: 'ri-alert-fill', info: 'ri-information-fill' };
-        var id = 'sc-toast-' + Date.now();
+        var id = 'sc-toast-' + Date.now() + Math.floor(Math.random() * 1000);
         var $el = $('<div class="sc-toast sc-toast-' + type + '" id="' + id + '">'
             + '<span class="sc-toast-icon"><i class="' + icons[type] + '"></i></span>'
             + '<div class="sc-toast-body"><div class="sc-toast-title">' + title + '</div>'
@@ -392,22 +403,37 @@ $(document).ready(function () {
         ajax: {
             url: '{{ route("subjectclass.data") }}',
             type: 'GET',
+            dataSrc: function(json) {
+                // If the server returned an error payload, surface it
+                if (json && json.error) {
+                    toast('error', 'Load Error', json.error);
+                    return [];
+                }
+                return json.data || [];
+            },
             error: function(xhr) {
-                console.error('DataTables error:', xhr.status, xhr.responseText);
-                toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
+                console.error('DataTables error:', xhr.status);
+                console.error('Response:', xhr.responseText);
+                let msg = 'Failed to load assignments.';
+                try {
+                    const j = JSON.parse(xhr.responseText);
+                    if (j.error)   msg = j.error;
+                    if (j.message) msg = j.message;
+                } catch (e) {}
+                toast('error', 'Load Error (HTTP ' + xhr.status + ')', msg);
             }
         },
         columns: [
-            { data: 'checkbox', orderable: false, searchable: false },
-            { data: 'DT_RowIndex', orderable: false, searchable: false },
-            { data: 'teacher_info', orderable: false, searchable: false },
-            { data: 'subject_info', orderable: false, searchable: false },
-            { data: 'class_info', orderable: false, searchable: false },
-            { data: 'term_info', orderable: false, searchable: false },
-            { data: 'session_info', orderable: false, searchable: false },
+            { data: 'checkbox',           orderable: false, searchable: false },
+            { data: 'DT_RowIndex',        orderable: false, searchable: false },
+            { data: 'teacher_info',       orderable: false, searchable: true  },
+            { data: 'subject_info',       orderable: false, searchable: true  },
+            { data: 'class_info',         orderable: false, searchable: true  },
+            { data: 'term_info',          orderable: false, searchable: true  },
+            { data: 'session_info',       orderable: false, searchable: true  },
             { data: 'registration_count', orderable: false, searchable: false },
-            { data: 'formatted_date', orderable: false, searchable: false },
-            { data: 'action', orderable: false, searchable: false },
+            { data: 'formatted_date',     orderable: false, searchable: false },
+            { data: 'action',             orderable: false, searchable: false },
         ],
         dom: "<'row align-items-center mb-3'<'col-sm-6'l><'col-sm-6 text-end'f>>" +
              "<'row'<'col-12'tr>>" +
@@ -418,7 +444,8 @@ $(document).ready(function () {
             lengthMenu: 'Show _MENU_ entries',
             info: 'Showing _START_–_END_ of _TOTAL_ assignments',
             infoEmpty: 'No assignments found', zeroRecords: 'No matching assignments',
-            emptyTable: 'No subject class assignments yet'
+            emptyTable: 'No subject class assignments yet',
+            paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Prev' }
         },
         order: [[1, 'asc']],
         pageLength: 15,
@@ -480,6 +507,7 @@ $(document).ready(function () {
         $('#add-error-msg').addClass('d-none').html('');
         $('#add-teacher-search').val('');
         $('#add-teacher-list .teacher-item').show();
+        btnReset($('#add-btn'));
         new bootstrap.Modal(document.getElementById('addSubjectClassModal')).show();
     });
 
@@ -532,12 +560,13 @@ $(document).ready(function () {
             type: 'POST',
             data: { schoolclassid, subjectteacherid: subjectteacherids, _token: CSRF },
             traditional: true,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             success: function(res) {
                 if (res.success) {
                     $('#addSubjectClassModal').modal('hide');
                     toast('success', 'Added!', res.message);
-                    table.ajax.reload(); loadStats();
+                    table.ajax.reload(null, false);
+                    loadStats();
                 } else {
                     btnReset($('#add-btn')); updateAddBtn();
                     showErr('#add-error-msg', res.message || 'Failed.');
@@ -569,12 +598,13 @@ $(document).ready(function () {
                 url: '{{ url("subjectclass") }}/' + id,
                 type: 'POST',
                 data: { new_staffid: newStaffId, _token: CSRF, _method: 'PUT' },
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 success: function(res) {
                     if (res.success) {
                         $('#editModal').modal('hide');
                         toast('success', 'Updated!', res.message);
-                        table.ajax.reload(); loadStats();
+                        table.ajax.reload(null, false);
+                        loadStats();
                     } else {
                         btnReset($('#update-btn'));
                         showErr('#edit-error-msg', res.message || 'Failed.');
@@ -612,10 +642,10 @@ $(document).ready(function () {
             url: '{{ url("subjectclass") }}/' + deleteId,
             type: 'POST',
             data: { _method: 'DELETE', _token: CSRF },
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             success: function(res) {
                 $('#deleteModal').modal('hide');
-                if (res.success) { toast('success', 'Deleted!', res.message); table.ajax.reload(); loadStats(); }
+                if (res.success) { toast('success', 'Deleted!', res.message); table.ajax.reload(null, false); loadStats(); }
                 else { toast('error', 'Cannot Delete', res.message); }
             },
             error: function(xhr) {
@@ -652,7 +682,8 @@ $(document).ready(function () {
         }).then(function(r) {
             if (r.isConfirmed && r.value) {
                 toast('success', 'Deleted!', r.value.message);
-                table.ajax.reload(); loadStats();
+                table.ajax.reload(null, false);
+                loadStats();
                 $('#selectAll').prop('checked', false); updBulk();
             }
         }).catch(function(err) { toast('error', 'Failed', typeof err === 'string' ? err : 'Could not delete.'); });
