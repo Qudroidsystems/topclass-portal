@@ -17,12 +17,18 @@ class ScoresheetLock extends Model
         'locked_at',
         'is_active',
         'reason',
+        'scheduled_unlock_at',
     ];
 
     protected $casts = [
-        'locked_at' => 'datetime',
-        'is_active' => 'boolean',
+        'locked_at'           => 'datetime',
+        'scheduled_unlock_at' => 'datetime',
+        'is_active'           => 'boolean',
     ];
+
+    // =========================================================================
+    // RELATIONSHIPS
+    // =========================================================================
 
     public function subjectclass()
     {
@@ -42,5 +48,32 @@ class ScoresheetLock extends Model
     public function lockedBy()
     {
         return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    public function hasScheduledUnlock(): bool
+    {
+        return !is_null($this->scheduled_unlock_at);
+    }
+
+    public function isScheduledUnlockExpired(): bool
+    {
+        return $this->scheduled_unlock_at && $this->scheduled_unlock_at->isPast();
+    }
+
+    /**
+     * Auto-expire this lock if scheduled_unlock_at has passed.
+     * Returns true if it was expired (i.e. now inactive).
+     */
+    public function autoExpireIfDue(): bool
+    {
+        if ($this->is_active && $this->isScheduledUnlockExpired()) {
+            $this->update(['is_active' => false]);
+            return true;
+        }
+        return false;
     }
 }

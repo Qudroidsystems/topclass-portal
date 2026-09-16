@@ -3,18 +3,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Classcategory extends Model
 {
     use HasFactory;
 
-    // Explicitly define the table name (plural)
-    protected $table = 'classcategories';
+    protected $table = "classcategories";
 
     protected $fillable = [
         'category',
+        'ca1score',
+        'ca2score',
+        'ca3score',
+        'examscore',
         'is_senior',
         'promotion_pass_average',
     ];
@@ -24,30 +27,44 @@ class Classcategory extends Model
         'promotion_pass_average' => 'decimal:2',
     ];
 
-    // ── Relationships ────────────────────────────────────────────────────────
+    // =========================================================================
+    // RELATIONSHIPS
+    // =========================================================================
 
-    public function assessments()
+    /**
+     * Classes that belong to this category.
+     * FK: schoolclass.classcategoryid → classcategories.id
+     */
+    public function schoolclasses()
     {
-        return $this->hasMany(Assessment::class, 'classcategory_id');
+        return $this->hasMany(Schoolclass::class, 'classcategoryid');
     }
 
-    public function schoolClasses()
-    {
-        return $this->belongsToMany(
-            Schoolclass::class,
-            'schoolclass_classcategory',
-            'classcategory_id',
-            'schoolclass_id'
-        );
-    }
+    /**
+     * Alias — same hasMany, camelCase spelling.
+     */
+    // public function schoolClasses()
+    // {
+    //     return $this->schoolclasses();
+    // }
 
     public function grades()
     {
         return $this->hasMany(Grade::class, 'classcategory_id');
     }
 
-    // ── Grade calculation ────────────────────────────────────────────────────
+    public function assessments()
+    {
+        return $this->hasMany(Assessment::class, 'classcategory_id');
+    }
 
+    // =========================================================================
+    // GRADE CALCULATION
+    // =========================================================================
+
+    /**
+     * Calculate grade based on total score and class type.
+     */
     public function calculateGrade($totalScore)
     {
         return $this->is_senior
@@ -57,7 +74,7 @@ class Classcategory extends Model
 
     private function calculateJuniorGrade($totalScore)
     {
-        if ($totalScore >= 70) return 'A';
+        if ($totalScore >= 70 && $totalScore <= 100) return 'A';
         if ($totalScore >= 60) return 'B';
         if ($totalScore >= 50) return 'C';
         if ($totalScore >= 40) return 'D';
@@ -66,7 +83,7 @@ class Classcategory extends Model
 
     private function calculateSeniorGrade($totalScore)
     {
-        if ($totalScore >= 75) return 'A1';
+        if ($totalScore >= 75 && $totalScore <= 100) return 'A1';
         if ($totalScore >= 70) return 'B2';
         if ($totalScore >= 65) return 'B3';
         if ($totalScore >= 60) return 'C4';
@@ -75,6 +92,15 @@ class Classcategory extends Model
         if ($totalScore >= 45) return 'D7';
         if ($totalScore >= 40) return 'E8';
         return 'F9';
+    }
+
+    // =========================================================================
+    // HELPERS / SCOPES
+    // =========================================================================
+
+    public function getGradeTypeAttribute(): string
+    {
+        return $this->is_senior ? 'Senior' : 'Junior';
     }
 
     public function getGradeScaleAttribute(): array
@@ -91,23 +117,6 @@ class Classcategory extends Model
             : ['A', 'B', 'C', 'D'];
     }
 
-    public function getGradeTypeAttribute(): string
-    {
-        return $this->is_senior ? 'Senior' : 'Junior';
-    }
-
-    public function getTotalMaxScoreAttribute()
-    {
-        return $this->assessments->sum('max_score');
-    }
-
-    public function hasPassAverageThreshold(): bool
-    {
-        return $this->promotion_pass_average !== null;
-    }
-
-    // ── Scopes ───────────────────────────────────────────────────────────────
-
     public function scopeSenior($query)
     {
         return $query->where('is_senior', true);
@@ -116,10 +125,5 @@ class Classcategory extends Model
     public function scopeJunior($query)
     {
         return $query->where('is_senior', false);
-    }
-
-    public function scopeWithPassAverage($query)
-    {
-        return $query->whereNotNull('promotion_pass_average');
     }
 }
