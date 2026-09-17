@@ -1317,8 +1317,8 @@ Route::group(['middleware' => ['auth']], function () {
         Route::post('staff/outage', [StaffAttendanceController::class, 'storeOutage'])->name('staff-attendance.outage.store');
         Route::delete('staff/outage/{id}', [StaffAttendanceController::class, 'destroyOutage'])->name('staff-attendance.outage.destroy');
 
-        Route::get('staff-attendance/time-settings', 'App\Http\Controllers\StaffAttendanceTimeSettingController@edit')->name('staff-attendance.time-settings.edit');
-        Route::post('staff-attendance/time-settings', 'App\Http\Controllers\StaffAttendanceTimeSettingController@update')->name('staff-attendance.time-settings.update');
+        // Route::get('staff-attendance/time-settings', 'App\Http\Controllers\StaffAttendanceTimeSettingController@edit')->name('staff-attendance.time-settings.edit');
+        // Route::post('staff-attendance/time-settings', 'App\Http\Controllers\StaffAttendanceTimeSettingController@update')->name('staff-attendance.time-settings.update');
 
         Route::get('staff-attendance/export', [StaffAttendanceController::class, 'exportExcel'])->name('staff-attendance.export');
 
