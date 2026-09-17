@@ -114,7 +114,17 @@ class PromotionEvaluator
 
                 if ($this->ruleMatches($rule, $scoreMap, $compulsoryIds, $usesSeniorGrading, $overallAverage)) {
                     $matchedRule      = $rule;
-                    $matchedStatus    = $rule['status_label'] ?? self::STATUS_PROMOTED;
+                    // FIX: normalize immediately on read. Settings are saved
+                    // with status_label = 'repeat' (see
+                    // PromotionSettingController::parseRules' $validStatuses),
+                    // but this class's own constant is STATUS_REPEATED =
+                    // 'repeated'. Without normalizing here, 'repeat' never
+                    // equals STATUS_REPEATED anywhere downstream (finalStatus,
+                    // mapStatusLabel, badge class/icon, persisted status),
+                    // and mapStatusLabel's match() falls through to its
+                    // default 'Awaiting Decision' even though a rule matched
+                    // correctly and is shown in applied_rule.name.
+                    $matchedStatus    = $this->normalizeStatus($rule['status_label'] ?? self::STATUS_PROMOTED);
                     $matchedRuleName  = $ruleName;
                     $matchedRuleIndex = $idx;
 
@@ -183,6 +193,25 @@ class PromotionEvaluator
                 'promotion_pass_average' => $requiredAverage,
             ],
         ];
+    }
+
+    /**
+     * Normalizes rule status_label values that don't exactly match this
+     * class's STATUS_* constants. Currently only 'repeat' (the value saved
+     * by PromotionSettingController::parseRules' $validStatuses) needs
+     * mapping to STATUS_REPEATED = 'repeated'. Add further aliases here if
+     * other saved values are ever found to diverge from the constants.
+     */
+    private function normalizeStatus(?string $status): ?string
+    {
+        if ($status === null) {
+            return null;
+        }
+
+        return match ($status) {
+            'repeat' => self::STATUS_REPEATED,
+            default  => $status,
+        };
     }
 
     /**
@@ -384,11 +413,6 @@ class PromotionEvaluator
         bool       $isSenior,
         ?float     $overallAverage = null
     ): bool {
-        // NOTE: grouping only matters for JUNIOR count conditions now
-        // (letter-bucket vs raw A–F rank). Senior count conditions are
-        // always cumulative by grade rank (see countMatchingGrade) — there
-        // is no meaningful "exact vs grouped" distinction for them, so we
-        // no longer force-override $grouping for senior classes here.
         $grouping = $rule['grade_grouping'] ?? 'grouped';
 
         $gradeConditionsMet = true;
@@ -498,19 +522,6 @@ class PromotionEvaluator
         });
     }
 
-    /**
-     * FIX: senior count conditions are now cumulative by grade rank
-     * ("≥5 subjects at C6" means C6-or-better, matching WAEC-style credit
-     * counting), same as junior always was. Previously senior used an
-     * exact-match comparison here (grouping was force-set to 'exact' in
-     * ruleMatches and grouped mode was unreachable for senior), so a
-     * condition like ">=5 C6" only counted students who scored EXACTLY
-     * C6 and silently excluded anyone who scored C5/C4/B3/B2/A1 — meaning
-     * "N credits and above" could not be expressed for senior classes at
-     * all. Audited against all 15 active senior settings in production
-     * (2026-09) — no student's status changed, confirming this was a
-     * dead/unreachable condition rather than one already relied upon.
-     */
     private function countMatchingGrade(
         Collection $scopedScores,
         string     $grade,
@@ -763,6 +774,11 @@ class PromotionEvaluator
 
     private function mapStatusLabel(?string $status, PromotionSetting $settings): string
     {
+        // FIX: normalize here too, as a second line of defense — in case
+        // this method is ever called directly with a raw un-normalized
+        // rule status_label from somewhere other than evaluate().
+        $status = $this->normalizeStatus($status);
+
         return match ($status) {
             self::STATUS_PROMOTED      => $settings->promoted_label      ?? 'Promoted',
             self::STATUS_TRIAL         => $settings->trial_label         ?? 'Promoted on Trial',
@@ -817,6 +833,8 @@ class PromotionEvaluator
 
     public function getStatusBadgeClass(?string $status): string
     {
+        $status = $this->normalizeStatus($status);
+
         return match ($status) {
             self::STATUS_PROMOTED      => 'bg-success',
             self::STATUS_TRIAL         => 'bg-warning',
@@ -828,6 +846,8 @@ class PromotionEvaluator
 
     public function getStatusIcon(?string $status): string
     {
+        $status = $this->normalizeStatus($status);
+
         return match ($status) {
             self::STATUS_PROMOTED      => 'ri-checkbox-circle-line',
             self::STATUS_TRIAL         => 'ri-time-line',
