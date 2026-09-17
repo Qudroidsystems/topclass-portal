@@ -312,11 +312,37 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/sessionid/{sessionid}', [SchoolsessionController::class, 'deletesession'])->name('session.deletesession');
     Route::post('updatesessionid', [SchoolsessionController::class, 'updatesession'])->name('session.updatesession');
 
-    Route::resource('term', SchooltermController::class);
-    Route::patch('term/{term}/status', [SchooltermController::class, 'updateStatus'])->name('term.status.update');
-    Route::patch('term/{term}/promotional', [SchooltermController::class, 'updatePromotional'])->name('term.promotional.update');
-    Route::post('term/deleteterm', [SchooltermController::class, 'deleteterm'])->name('term.deleteterm');
-    Route::post('term/updateterm', [SchooltermController::class, 'updateterm'])->name('term.updateterm');
+    
+    
+        /*
+        |------------------------------------------------------------------
+        | Term Management
+        |------------------------------------------------------------------
+        | Custom PATCH routes MUST be declared BEFORE Route::resource,
+        | otherwise Laravel will try to match /term/{id}/promotional to
+        | the resource "show" route (GET /term/{term}) and fail.
+        */
+
+        Route::prefix('term')->name('term.')->group(function () {
+
+            // List + create
+            Route::get('/',    [SchooltermController::class, 'index'])->name('index');
+            Route::post('/',   [SchooltermController::class, 'store'])->name('store');
+
+            // Update / delete by id
+            Route::put('/{id}',    [SchooltermController::class, 'update'])->name('update');
+            Route::delete('/{id}', [SchooltermController::class, 'destroy'])->name('destroy');
+
+            // Custom toggle endpoints
+            Route::patch('/{id}/status',      [SchooltermController::class, 'updateStatus'])->name('updateStatus');
+            Route::patch('/{id}/promotional', [SchooltermController::class, 'updatePromotional'])->name('updatePromotional');
+
+            // Legacy JSON endpoints (if used elsewhere)
+            Route::post('/updateterm', [SchooltermController::class, 'updateterm'])->name('updateterm');
+            Route::post('/deleteterm', [SchooltermController::class, 'deleteterm'])->name('deleteterm');
+        });
+
+
 
     // ===================================================================
     // SCHOOL ARM / CLASS / CLUB / SPORT / HOUSE

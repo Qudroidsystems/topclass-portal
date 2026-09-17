@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/SchooltermController.php
 
 namespace App\Http\Controllers;
 
@@ -51,8 +50,9 @@ class SchooltermController extends Controller
             'is_promotional' => 'sometimes|boolean',
         ]);
 
+        $term = null;
+
         DB::transaction(function () use ($validated, &$term) {
-            // If this term is being set as promotional, unset all others first
             if (!empty($validated['is_promotional'])) {
                 Schoolterm::where('is_promotional', true)->update(['is_promotional' => false]);
             }
@@ -63,6 +63,8 @@ class SchooltermController extends Controller
                 'is_promotional' => $validated['is_promotional'] ?? false,
             ]);
         });
+
+        Schoolterm::forgetCurrent();
 
         return response()->json([
             'success' => true,
@@ -90,6 +92,8 @@ class SchooltermController extends Controller
             $term->update($validated);
         });
 
+        Schoolterm::forgetCurrent();
+
         return response()->json([
             'success' => true,
             'message' => 'Term updated successfully',
@@ -102,12 +106,21 @@ class SchooltermController extends Controller
         $request->validate(['status' => 'required|boolean']);
 
         $term = Schoolterm::findOrFail($id);
-        $term->update(['status' => $request->status]);
+
+        DB::transaction(function () use ($request, $term) {
+            if ($request->boolean('status')) {
+                // Ensure only one active term
+                Schoolterm::where('id', '!=', $term->id)->update(['status' => false]);
+            }
+            $term->update(['status' => $request->boolean('status')]);
+        });
+
+        Schoolterm::forgetCurrent();
 
         return response()->json([
             'success' => true,
             'message' => 'Status updated successfully',
-            'term'    => $term,
+            'term'    => $term->fresh(),
         ]);
     }
 
@@ -119,17 +132,21 @@ class SchooltermController extends Controller
     {
         $request->validate(['is_promotional' => 'required|boolean']);
 
-        DB::transaction(function () use ($request, $id) {
+        // Make sure the term exists before entering the transaction
+        $term = Schoolterm::findOrFail($id);
+
+        DB::transaction(function () use ($request, $id, $term) {
             if ($request->boolean('is_promotional')) {
-                // Clear any existing promotional term
                 Schoolterm::where('is_promotional', true)
                     ->where('id', '!=', $id)
                     ->update(['is_promotional' => false]);
             }
-            Schoolterm::where('id', $id)->update(['is_promotional' => $request->boolean('is_promotional')]);
+            $term->update(['is_promotional' => $request->boolean('is_promotional')]);
         });
 
-        $term = Schoolterm::find($id);
+        Schoolterm::forgetCurrent();
+
+        $term->refresh();
 
         return response()->json([
             'success' => true,
@@ -142,7 +159,10 @@ class SchooltermController extends Controller
 
     public function destroy($id)
     {
-        Schoolterm::findOrFail($id)->delete();
+        $term = Schoolterm::findOrFail($id);
+        $term->delete();
+
+        Schoolterm::forgetCurrent();
 
         return response()->json([
             'success' => true,
@@ -168,6 +188,8 @@ class SchooltermController extends Controller
             Schoolterm::findOrFail($validated['id'])->update($validated);
         });
 
+        Schoolterm::forgetCurrent();
+
         return response()->json([
             'success' => true,
             'message' => 'Term updated successfully',
@@ -178,6 +200,8 @@ class SchooltermController extends Controller
     {
         $request->validate(['termid' => 'required|exists:schoolterm,id']);
         Schoolterm::findOrFail($request->termid)->delete();
+
+        Schoolterm::forgetCurrent();
 
         return response()->json([
             'success' => true,

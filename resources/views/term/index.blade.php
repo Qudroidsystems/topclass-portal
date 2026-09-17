@@ -18,7 +18,6 @@
     --term-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
 
-/* Loading overlay */
 .loading-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.5); z-index: 9999;
@@ -32,7 +31,6 @@
 .loading-spinner .spinner-border { width: 2.5rem; height: 2.5rem; }
 .loading-spinner p { margin: 10px 0 0; font-size: 14px; font-weight: 600; color: var(--term-primary); }
 
-/* Hero */
 .term-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #4f46e5 100%);
     border-radius: var(--term-radius); padding: 24px 32px; margin-bottom: 24px;
@@ -45,7 +43,6 @@
 .term-hero h1 { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 4px; position: relative; }
 .term-hero p  { font-size: 13px; color: rgba(255,255,255,.75); margin: 0; position: relative; }
 
-/* Info banner */
 .promo-banner {
     background: linear-gradient(135deg, #f0fdf4, #dcfce7);
     border: 1px solid #bbf7d0; border-radius: 12px;
@@ -56,7 +53,6 @@
     border: 1px solid #fde68a;
 }
 
-/* Switch styling */
 .form-check-input.status-toggle,
 .form-check-input.promotional-toggle {
     width: 3em; height: 1.5em; cursor: pointer;
@@ -71,7 +67,6 @@
 .status-label.active   { color: #198754; font-weight: 500; }
 .status-label.inactive { color: #dc3545; font-weight: 500; }
 
-/* Modal styling */
 #addTermModal .modal-content,
 #editModal .modal-content {
     border: none; border-radius: 16px; overflow: hidden;
@@ -88,10 +83,9 @@
 .modal-hero-bar h5 { color: #fff; font-weight: 700; margin: 0; font-size: 15px; position: relative; }
 .modal-hero-bar .btn-close { position: absolute; top: 16px; right: 20px; filter: invert(1); }
 
-/* Table styling - EVEN COLUMN WIDTHS */
 .term-table {
     width: 100%;
-    table-layout: fixed; /* This ensures even distribution */
+    table-layout: fixed;
 }
 .term-table th,
 .term-table td {
@@ -111,33 +105,24 @@
     background: #f0f9ff;
 }
 
-/* Specific column widths - evenly distributed */
-.term-table th:nth-child(1) { width: 5%; }   /* # */
-.term-table th:nth-child(2) { width: 25%; }  /* Term Name */
-.term-table th:nth-child(3) { width: 15%; }  /* Status */
-.term-table th:nth-child(4) { width: 25%; }  /* Promotional Term */
-.term-table th:nth-child(5) { width: 15%; }  /* Date Updated */
-.term-table th:nth-child(6) { width: 15%; }  /* Actions */
+.term-table th:nth-child(1) { width: 5%; }
+.term-table th:nth-child(2) { width: 25%; }
+.term-table th:nth-child(3) { width: 15%; }
+.term-table th:nth-child(4) { width: 25%; }
+.term-table th:nth-child(5) { width: 15%; }
+.term-table th:nth-child(6) { width: 15%; }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
-    .term-table {
-        table-layout: auto;
-    }
+    .term-table { table-layout: auto; }
     .term-table th:nth-child(1),
-    .term-table th:nth-child(5) {
-        display: none;
-    }
+    .term-table th:nth-child(5),
     .term-table td:nth-child(1),
     .term-table td:nth-child(5) {
         display: none;
     }
 }
 
-/* Search box */
-.search-box {
-    position: relative;
-}
+.search-box { position: relative; }
 .search-box .form-control {
     padding-left: 38px;
     border-radius: 10px;
@@ -152,7 +137,6 @@
     font-size: 16px;
 }
 
-/* Button styles */
 .btn-outline-primary {
     border: 1px solid var(--term-border);
     transition: all 0.2s;
@@ -171,7 +155,6 @@
 <div class="page-content">
 <div class="container-fluid">
 
-    {{-- Global loading overlay --}}
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">
             <div class="spinner-border text-primary" role="status">
@@ -186,7 +169,6 @@
         <p>Manage academic terms, set active/inactive status, and define promotional terms for student progression.</p>
     </div>
 
-    {{-- Promotional term info banner --}}
     @php $promotionalTerm = $terms->firstWhere('is_promotional', true); @endphp
     @if ($promotionalTerm)
         <div class="promo-banner d-flex align-items-start gap-3">
@@ -254,7 +236,7 @@
                             <tbody>
                                 @forelse ($terms as $index => $term)
                                     <tr data-term-id="{{ $term->id }}" data-term-name="{{ strtolower($term->term) }}">
-                                        <td>{{ $index + $terms->firstItem() ?? $index + 1 }}</td>
+                                        <td>{{ $index + ($terms->firstItem() ?? 1) }}</td>
                                         <td>
                                             <div class="fw-semibold" style="color: var(--term-primary);">
                                                 {{ $term->term }}
@@ -406,7 +388,6 @@
             </div>
             <form id="editTermForm">
                 @csrf
-                @method('PUT')
                 <div class="modal-body p-4">
                     <input type="hidden" id="edit-id-field" name="id">
                     <div class="mb-3">
@@ -472,16 +453,23 @@ $(function() {
     const CSRF = '{{ csrf_token() }}';
     let deleteId = null;
 
-    // Helper: Show loading
-    function showLoading(show) {
-        if (show) {
-            $('#loadingOverlay').addClass('active');
-        } else {
-            $('#loadingOverlay').removeClass('active');
-        }
+    // Route templates from Laravel (avoids hardcoding URLs)
+    const ROUTES = {
+        store:            "{{ route('term.store') }}",
+        update:           "{{ route('term.update', ['id' => '__ID__']) }}",
+        destroy:          "{{ route('term.destroy', ['id' => '__ID__']) }}",
+        updateStatus:     "{{ route('term.updateStatus', ['id' => '__ID__']) }}",
+        updatePromotional:"{{ route('term.updatePromotional', ['id' => '__ID__']) }}",
+    };
+
+    function url(name, id) {
+        return ROUTES[name].replace('__ID__', id);
     }
 
-    // Helper: Show SweetAlert toast
+    function showLoading(show) {
+        $('#loadingOverlay').toggleClass('active', !!show);
+    }
+
     function showToast(icon, title) {
         Swal.fire({
             icon: icon,
@@ -494,7 +482,7 @@ $(function() {
         });
     }
 
-    // Search functionality
+    // Search
     $('#searchInput').on('keyup', function() {
         const searchTerm = $(this).val().toLowerCase();
         $('#termTable tbody tr').filter(function() {
@@ -503,26 +491,25 @@ $(function() {
         });
     });
 
-    // Promotional toggle
+    // -------- Promotional toggle --------
     $(document).on('change', '.promotional-toggle', function() {
-        const id = $(this).data('id');
-        const isPromo = $(this).is(':checked');
         const $toggle = $(this);
+        const id = $toggle.data('id');
+        const isPromo = $toggle.is(':checked');
         const $label = $(`#promo-label-${id}`);
 
         showLoading(true);
         $toggle.prop('disabled', true);
 
         $.ajax({
-            url: `/term/${id}/promotional`,
+            url: url('updatePromotional', id),
             method: 'PATCH',
-            headers: { 'X-CSRF-TOKEN': CSRF },
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             data: JSON.stringify({ is_promotional: isPromo ? 1 : 0 }),
             contentType: 'application/json',
             success: function(response) {
                 if (response.success) {
                     if (isPromo) {
-                        // Reset all other toggles
                         $('.promotional-toggle').not($toggle).each(function() {
                             const otherId = $(this).data('id');
                             $(this).prop('checked', false);
@@ -531,20 +518,17 @@ $(function() {
                                 .addClass('bg-light text-muted')
                                 .html('Not Promotional');
                         });
-                        // Update current label
                         $label
                             .removeClass('bg-light text-muted')
                             .addClass('bg-success-subtle text-success border border-success-subtle')
                             .html('<i class="ri-award-line me-1"></i>Promotional');
-                        showToast('success', response.message);
                     } else {
                         $label
                             .removeClass('bg-success-subtle text-success border border-success-subtle')
                             .addClass('bg-light text-muted')
                             .html('Not Promotional');
-                        showToast('success', response.message);
                     }
-                    // Reload to update banner
+                    showToast('success', response.message);
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     $toggle.prop('checked', !isPromo);
@@ -563,37 +547,37 @@ $(function() {
         });
     });
 
-    // Status toggle
+    // -------- Status toggle --------
     $(document).on('change', '.status-toggle', function() {
-        const id = $(this).data('id');
-        const isActive = $(this).is(':checked');
+        const $toggle = $(this);
+        const id = $toggle.data('id');
+        const isActive = $toggle.is(':checked');
+        const $statusLabel = $toggle.next('.status-label');
 
         showLoading(true);
 
         $.ajax({
-            url: `/term/${id}/status`,
+            url: url('updateStatus', id),
             method: 'PATCH',
-            headers: { 'X-CSRF-TOKEN': CSRF },
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             data: JSON.stringify({ status: isActive ? 1 : 0 }),
             contentType: 'application/json',
             success: function(response) {
                 if (response.success) {
                     const statusText = isActive ? 'Active' : 'Inactive';
                     showToast('success', `Term ${statusText.toLowerCase()} successfully`);
-                    // Update label class
-                    const $statusLabel = $(`.status-toggle[data-id="${id}"]`).next('.status-label');
                     if (isActive) {
                         $statusLabel.removeClass('inactive').addClass('active').text('Active');
                     } else {
                         $statusLabel.removeClass('active').addClass('inactive').text('Inactive');
                     }
                 } else {
-                    $(this).prop('checked', !isActive);
+                    $toggle.prop('checked', !isActive);
                     showToast('error', response.message || 'Failed to update status');
                 }
             },
             error: function() {
-                $(this).prop('checked', !isActive);
+                $toggle.prop('checked', !isActive);
                 showToast('error', 'An error occurred while updating status');
             },
             complete: function() {
@@ -602,40 +586,35 @@ $(function() {
         });
     });
 
-    // Edit button click
+    // -------- Edit button --------
     $(document).on('click', '.edit-item-btn', function() {
-        const id = $(this).data('id');
-        const term = $(this).data('term');
-        const status = $(this).data('status');
-        const isPromo = $(this).data('is-promotional');
-
-        $('#edit-id-field').val(id);
-        $('#edit-term').val(term);
-        $('#edit-status-switch').prop('checked', status == 1);
-        $('#edit-promo-switch').prop('checked', isPromo == 1);
+        const $btn = $(this);
+        $('#edit-id-field').val($btn.data('id'));
+        $('#edit-term').val($btn.data('term'));
+        $('#edit-status-switch').prop('checked', $btn.data('status') == 1);
+        $('#edit-promo-switch').prop('checked', $btn.data('is-promotional') == 1);
         $('#editModal').modal('show');
     });
 
-    // Delete button click
+    // -------- Delete button --------
     $(document).on('click', '.remove-item-btn', function() {
         deleteId = $(this).data('id');
-        const termName = $(this).data('term');
-        $('#deleteTermName').text(termName);
+        $('#deleteTermName').text($(this).data('term'));
         $('#deleteModal').modal('show');
     });
 
-    // Confirm delete
+    // -------- Confirm delete --------
     $('#confirmDeleteBtn').on('click', function() {
         if (!deleteId) return;
 
         showLoading(true);
-        const btn = $(this);
-        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Deleting...');
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Deleting...');
 
         $.ajax({
-            url: `/term/${deleteId}`,
+            url: url('destroy', deleteId),
             method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': CSRF },
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             success: function(response) {
                 if (response.success) {
                     showToast('success', 'Term deleted successfully');
@@ -646,19 +625,18 @@ $(function() {
                 }
             },
             error: function(xhr) {
-                const error = xhr.responseJSON?.message || 'An error occurred';
-                showToast('error', error);
+                showToast('error', xhr.responseJSON?.message || 'An error occurred');
                 $('#deleteModal').modal('hide');
             },
             complete: function() {
                 showLoading(false);
-                btn.prop('disabled', false).html('<i class="ri-delete-bin-line me-1"></i>Delete Term');
+                $btn.prop('disabled', false).html('<i class="ri-delete-bin-line me-1"></i>Delete Term');
                 deleteId = null;
             }
         });
     });
 
-    // Add term form submit
+    // -------- Add term --------
     $('#addTermForm').on('submit', function(e) {
         e.preventDefault();
 
@@ -672,17 +650,15 @@ $(function() {
         $('#term_name').removeClass('is-invalid');
         showLoading(true);
 
-        const formData = {
-            term: termName,
-            status: $('#add-status-switch').is(':checked') ? 1 : 0,
-            is_promotional: $('#add-promo-switch').is(':checked') ? 1 : 0
-        };
-
         $.ajax({
-            url: '{{ route("term.store") }}',
+            url: ROUTES.store,
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF },
-            data: JSON.stringify(formData),
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            data: JSON.stringify({
+                term:           termName,
+                status:         $('#add-status-switch').is(':checked') ? 1 : 0,
+                is_promotional: $('#add-promo-switch').is(':checked') ? 1 : 0
+            }),
             contentType: 'application/json',
             success: function(response) {
                 if (response.success) {
@@ -703,13 +679,11 @@ $(function() {
                 $('#termNameError').text(errorMsg);
                 showToast('error', errorMsg);
             },
-            complete: function() {
-                showLoading(false);
-            }
+            complete: function() { showLoading(false); }
         });
     });
 
-    // Edit term form submit
+    // -------- Edit term (real PUT) --------
     $('#editTermForm').on('submit', function(e) {
         e.preventDefault();
 
@@ -725,20 +699,15 @@ $(function() {
         $('#edit-term').removeClass('is-invalid');
         showLoading(true);
 
-        const formData = {
-            term: termName,
-            status: $('#edit-status-switch').is(':checked') ? 1 : 0,
-            is_promotional: $('#edit-promo-switch').is(':checked') ? 1 : 0
-        };
-
         $.ajax({
-            url: `/term/${id}`,
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': CSRF,
-                'X-HTTP-Method-Override': 'PUT'
-            },
-            data: JSON.stringify(formData),
+            url: url('update', id),
+            method: 'PUT',                       // ✅ real PUT, no method override
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            data: JSON.stringify({
+                term:           termName,
+                status:         $('#edit-status-switch').is(':checked') ? 1 : 0,
+                is_promotional: $('#edit-promo-switch').is(':checked') ? 1 : 0
+            }),
             contentType: 'application/json',
             success: function(response) {
                 if (response.success) {
@@ -759,9 +728,7 @@ $(function() {
                 $('#editTermNameError').text(errorMsg);
                 showToast('error', errorMsg);
             },
-            complete: function() {
-                showLoading(false);
-            }
+            complete: function() { showLoading(false); }
         });
     });
 });
