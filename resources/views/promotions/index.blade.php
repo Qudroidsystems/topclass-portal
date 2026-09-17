@@ -408,9 +408,11 @@
                         <p>Manage student promotion, repetition, and class assignments based on academic performance.</p>
                     </div>
                     <div>
+                        @if (\Illuminate\Support\Facades\Route::has('promotion-settings.index'))
                         <a href="{{ route('promotion-settings.index') }}" class="btn btn-light">
                             <i class="ri-settings-4-line me-1"></i>Promotion Settings
                         </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -453,7 +455,11 @@
                 <div class="text">
                     <strong>Promotion evaluation uses the same rules as Broadsheet.</strong>
                     Choose <em>Average Basis</em> (Term Total or Cumulative) so overall average matches the broadsheet Grade Basis. Configure rules under
+                    @if (\Illuminate\Support\Facades\Route::has('promotion-settings.index'))
                     <a href="{{ route('promotion-settings.index') }}">Promotion Settings</a>.
+                    @else
+                    Promotion Settings.
+                    @endif
                 </div>
             </div>
 
@@ -466,7 +472,7 @@
                             <option value="">— Select class —</option>
                             @foreach($schoolclasses ?? [] as $cls)
                                 <option value="{{ $cls->id }}"
-                                    {{ (string)($selectedClassId ?? '') === (string)$cls->id ? 'selected' : '' }}>
+                                    {{ (string) request('schoolclassid') === (string) $cls->id ? 'selected' : '' }}>
                                     {{ $cls->schoolclass }}{{ !empty($cls->arm) ? ' ' . $cls->arm : '' }}
                                 </option>
                             @endforeach
@@ -478,7 +484,7 @@
                             <option value="">— Select session —</option>
                             @foreach($schoolsessions ?? [] as $session)
                                 <option value="{{ $session->id }}"
-                                    {{ (string)($selectedSessionId ?? '') === (string)$session->id ? 'selected' : '' }}>
+                                    {{ (string) request('sessionid') === (string) $session->id ? 'selected' : '' }}>
                                     {{ $session->session }}
                                 </option>
                             @endforeach
@@ -490,7 +496,7 @@
                             <option value="">— Select term —</option>
                             @foreach($terms ?? [] as $term)
                                 <option value="{{ $term->id }}"
-                                    {{ (string)($selectedTermId ?? '') === (string)$term->id ? 'selected' : '' }}>
+                                    {{ (string) request('termid') === (string) $term->id ? 'selected' : '' }}>
                                     {{ $term->term }}
                                 </option>
                             @endforeach
@@ -499,8 +505,8 @@
                     <div class="col-md-2">
                         <label class="form-label">Average Basis</label>
                         <select class="form-select" id="average_basis" name="average_basis">
-                            <option value="total" {{ ($selectedAverageBasis ?? 'total') === 'total' ? 'selected' : '' }}>Term Total</option>
-                            <option value="cum" {{ ($selectedAverageBasis ?? '') === 'cum' ? 'selected' : '' }}>Cumulative</option>
+                            <option value="total" {{ request('average_basis', 'total') === 'total' ? 'selected' : '' }}>Term Total</option>
+                            <option value="cum" {{ request('average_basis') === 'cum' ? 'selected' : '' }}>Cumulative</option>
                         </select>
                         <small class="text-muted" style="font-size:11px;">Matches broadsheet Grade Basis</small>
                     </div>
@@ -827,21 +833,28 @@ async function filterData() {
                 termid,
                 search,
                 average_basis,
-                ajax: 1,
             },
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html, application/json',
+                'Accept': 'application/json',
             },
         });
 
         const body = document.getElementById('studentTableBody');
-        if (typeof response.data === 'string') {
-            body.innerHTML = response.data;
-        } else if (response.data?.html) {
-            body.innerHTML = response.data.html;
-        } else if (response.data?.success && response.data?.rows_html) {
-            body.innerHTML = response.data.rows_html;
+        const data = response.data || {};
+
+        // PromotionController returns { tableBody, pagination, studentCount }
+        if (data.tableBody) {
+            body.innerHTML = data.tableBody;
+        } else if (typeof data === 'string') {
+            body.innerHTML = data;
+        } else if (data.html) {
+            body.innerHTML = data.html;
+        } else if (data.rows_html) {
+            body.innerHTML = data.rows_html;
+        } else {
+            console.warn('Unexpected filter response', data);
+            showToast('Unexpected response while loading students', 'warning');
         }
 
         updateStats();
@@ -1418,10 +1431,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }).observe(bulkBar, { attributes: true });
     }
 
-    // Initial load if filters already selected
-    if (document.getElementById('idclass').value &&
-        document.getElementById('idsession').value &&
-        document.getElementById('idterm').value) {
+    // Re-fetch only when filters are already filled (e.g. browser back / query string).
+    // Otherwise leave the server-rendered table as-is.
+    const hasClass   = document.getElementById('idclass').value;
+    const hasSession = document.getElementById('idsession').value;
+    const hasTerm    = document.getElementById('idterm').value;
+    if (hasClass && hasSession && hasTerm) {
         filterData();
     }
 });
