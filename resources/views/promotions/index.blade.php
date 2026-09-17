@@ -488,7 +488,7 @@
                         <label class="form-label">Term <span class="text-danger">*</span></label>
                         <select class="form-select" id="idterm" name="termid">
                             <option value="">— Select term —</option>
-                            @foreach($schoolterms ?? [] as $term)
+                            @foreach($terms ?? [] as $term)
                                 <option value="{{ $term->id }}"
                                     {{ (string)($selectedTermId ?? '') === (string)$term->id ? 'selected' : '' }}>
                                     {{ $term->term }}
@@ -635,7 +635,7 @@
                                 <label class="form-label fw-semibold">New Term</label>
                                 <select class="form-select" id="newTermSelect" name="new_termid">
                                     <option value="">— Select —</option>
-                                    @foreach($schoolterms ?? [] as $term)
+                                    @foreach($terms ?? [] as $term)
                                         <option value="{{ $term->id }}">{{ $term->term }}</option>
                                     @endforeach
                                 </select>
@@ -728,7 +728,7 @@
                     <label class="form-label fw-semibold">New Term</label>
                     <select class="form-select" id="bulkNewTerm">
                         <option value="">— Select —</option>
-                        @foreach($schoolterms ?? [] as $term)
+                        @foreach($terms ?? [] as $term)
                             <option value="{{ $term->id }}">{{ $term->term }}</option>
                         @endforeach
                     </select>
