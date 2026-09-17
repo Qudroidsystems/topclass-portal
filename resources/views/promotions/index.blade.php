@@ -1348,7 +1348,7 @@ function submitBulkPromote() {
         if (!result.isConfirmed) return;
         showLoading('Bulk updating…');
         bootstrap.Modal.getInstance(document.getElementById('bulkPromoteModal'))?.hide();
-        axios.post('{{ route("promotions.bulk") }}', fd, {
+        axios.post('{{ route("promotions.bulk.promote") }}', fd, {
             headers: { 'X-CSRF-TOKEN': CSRF }
         }).then(response => {
             hideLoading();
