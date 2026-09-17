@@ -2,6 +2,22 @@
 @extends('layouts.master')
 
 @section('content')
+
+@php
+    /**
+     * Inline SVG avatar placeholder.
+     * Rendered as a data URI so the browser NEVER makes an HTTP request,
+     * which sidesteps any 403/404 from the web server for /storage/ files.
+     */
+    $defaultAvatarSvg = 'data:image/svg+xml;base64,' . base64_encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">'
+        . '<rect width="80" height="80" fill="#e2e8f0"/>'
+        . '<circle cx="40" cy="30" r="14" fill="#94a3b8"/>'
+        . '<path d="M14 78 Q40 52 66 78 Z" fill="#94a3b8"/>'
+        . '</svg>'
+    );
+@endphp
+
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <style>
 :root {
@@ -274,7 +290,7 @@
                         </tr>
                     </thead>
                     <tbody id="studentTableBody">
-                        @include('studentreports.partials.student_rows')
+                        @include('studentreports.partials.student_rows', ['defaultAvatarSvg' => $defaultAvatarSvg])
                     </tbody>
                 </table>
             </div>
@@ -301,7 +317,7 @@
             <div class="modal-body text-center p-4">
                 <img id="enlargedImage" src="" alt="Student Image"
                      class="img-fluid rounded" style="max-height:420px;"
-                     onerror="this.src='{{ asset('storage/student_avatars/unnamed.jpg') }}';">
+                     onerror="this.onerror=null; this.src='{{ $defaultAvatarSvg }}';">
             </div>
         </div>
     </div>
@@ -333,7 +349,6 @@
 
                 <div id="columnSelectionForm" style="display:none;">
                     <div class="row g-3">
-
                         {{-- Grade Basis Toggle --}}
                         <div class="col-12">
                             <div class="card border" style="border-radius:var(--bill-radius);">
@@ -437,7 +452,6 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -458,7 +472,7 @@
     console.log("[studentreports] Script loaded at", new Date().toISOString());
 
     // ══════════════════════════════════════════════════════════════════
-    // CSRF helper — reads meta tag or XSRF cookie
+    // CSRF helper
     // ══════════════════════════════════════════════════════════════════
     function getCsrfToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');
@@ -526,7 +540,7 @@
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // filterData — WITH GUARD against empty selects
+    // filterData — with guard
     // ══════════════════════════════════════════════════════════════════
     function filterData() {
         if (typeof axios === 'undefined') {
@@ -543,7 +557,6 @@
         const termValue    = termSelect ? termSelect.value : 'ALL';
         const searchValue  = (document.getElementById("searchInput").value || '').trim();
 
-        // ── GUARD: do not fire AJAX with empty/invalid selects ────────
         if (!classValue || classValue === 'ALL' || !sessionValue || sessionValue === 'ALL') {
             console.warn("[filterData] ABORTED — class or session not selected", {
                 classValue, sessionValue, termValue, searchValue
@@ -608,6 +621,7 @@
     }
 
     function resetTable() {
+        const avatarSvg = '{{ $defaultAvatarSvg }}';
         document.getElementById('studentTableBody').innerHTML =
             '<tr><td colspan="10" class="text-center py-4 text-muted">' +
             'Select class and session to view students.</td></tr>';
@@ -656,15 +670,32 @@
 
         window.currentPrintParams = { classId, sessionId, termId, studentIds };
 
+        console.log('[loadColumnOptions] Fetching columns', { classId, sessionId, termId });
+
         fetch('{{ route("studentreports.column-options") }}', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken(),
+                'Content-Type':     'application/json',
+                'X-CSRF-TOKEN':     getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept':           'application/json',
             },
-            body: JSON.stringify({ schoolclassid: classId, sessionid: sessionId, termid: termId })
+            body: JSON.stringify({
+                schoolclassid: classId,
+                sessionid:     sessionId,
+                termid:        termId,
+            }),
+            credentials: 'same-origin',
         })
-        .then(r => r.json())
+        .then(async r => {
+            console.log('[loadColumnOptions] Response status:', r.status);
+            if (!r.ok) {
+                const text = await r.text();
+                console.error('[loadColumnOptions] Non-OK response:', text);
+                throw new Error('HTTP ' + r.status + ': ' + text.substring(0, 200));
+            }
+            return r.json();
+        })
         .then(data => {
             if (data.success) {
                 populateColumnOptions(data.columns);
@@ -681,7 +712,7 @@
         .catch(error => {
             console.error('[loadColumnOptions] Error:', error);
             Swal.fire({ icon: "error", title: "Network Error",
-                        text: "Failed to load column options. Please try again." });
+                        text: error.message || "Failed to load column options. Please try again." });
             bootstrap.Modal.getInstance(
                 document.getElementById('columnSelectionModal')).hide();
         });
@@ -721,12 +752,10 @@
         renderCheckboxes('otherColumns',       columns.other);
 
         document.getElementById('selectAllAssessments').addEventListener('change', function () {
-            document.querySelectorAll('.assessment-checkbox')
-                    .forEach(cb => cb.checked = this.checked);
+            document.querySelectorAll('.assessment-checkbox').forEach(cb => cb.checked = this.checked);
         });
         document.getElementById('selectAllGPAMetrics').addEventListener('change', function () {
-            document.querySelectorAll('.gpa-checkbox')
-                    .forEach(cb => cb.checked = this.checked);
+            document.querySelectorAll('.gpa-checkbox').forEach(cb => cb.checked = this.checked);
         });
     }
 
@@ -924,9 +953,8 @@
         if (imageModal) {
             imageModal.addEventListener('show.bs.modal', function (event) {
                 const btn = event.relatedTarget;
-                document.getElementById('enlargedImage').src =
-                    btn.getAttribute('data-image') ||
-                    '{{ asset('storage/student_avatars/unnamed.jpg') }}';
+                const src = btn.getAttribute('data-image');
+                document.getElementById('enlargedImage').src = src || '{{ $defaultAvatarSvg }}';
             });
         }
     });
