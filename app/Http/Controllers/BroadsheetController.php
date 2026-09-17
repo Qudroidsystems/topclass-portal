@@ -62,6 +62,7 @@ class BroadsheetController extends Controller
             return response()->json(['success' => false, 'message' => 'Missing parameters'], 400);
         }
 
+        // Subject count for this class
         $actualSubjectCount = DB::table('subjectclass as sc')
             ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
             ->where('sc.schoolclassid', $schoolclassid)
@@ -71,6 +72,7 @@ class BroadsheetController extends Controller
         $term              = Schoolterm::find($termid);
         $isPromotionalTerm = $term && $term->is_promotional;
 
+        // ── Project-1 shape: fixed CA columns + subject-level metrics ───
         $columns = [
             'student_info' => [
                 'sn'           => ['label' => 'SN',           'default' => true],
@@ -184,123 +186,6 @@ class BroadsheetController extends Controller
     }
 
     // =========================================================================
-    // POSITION RECALCULATION (shared by all broadsheet renders)
-    // =========================================================================
-
-    /**
-     * Recompute all 4 position columns for every subjectclass in a class.
-     *
-     * Called before broadsheet rendering to guarantee that:
-     *   - subject_position_class       (Class rank, by cum)
-     *   - subject_position_class_total (Class rank, by total)
-     *   - arm_position                 (Arm rank, by total)
-     *   - arm_position_cum             (Arm rank, by cum)
-     * are populated for every student, regardless of whether a teacher
-     * has recently opened the teacher-side scoresheet.
-     */
-    protected function recalculatePositionsForClass(int $schoolclassid, int $termid, int $sessionid): void
-    {
-        $subjectClassIds = DB::table('subjectclass')
-            ->where('schoolclassid', $schoolclassid)
-            ->pluck('id');
-
-        foreach ($subjectClassIds as $scId) {
-            $this->recalculatePositions((int) $scId, $termid, $sessionid);
-        }
-    }
-
-    /**
-     * Recompute all 4 position dimensions for a single subjectclass.
-     */
-    protected function recalculatePositions(int $subjectclassid, int $termid, int $sessionid): void
-    {
-        // Resolve subject + base schoolclass
-        $subjectClass = DB::table('subjectclass')
-            ->join('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
-            ->where('subjectclass.id', $subjectclassid)
-            ->first(['subjectclass.schoolclassid', 'subjectteacher.subjectid']);
-
-        if (!$subjectClass) return;
-
-        $subjectId     = $subjectClass->subjectid;
-        $schoolclassId = $subjectClass->schoolclassid;
-
-        $baseClass = DB::table('schoolclass')
-            ->where('id', $schoolclassId)
-            ->first(['schoolclass', 'classcategoryid']);
-        if (!$baseClass) return;
-
-        // All sibling arms (same class name + category)
-        $allArmIds = DB::table('schoolclass')
-            ->where('schoolclass', $baseClass->schoolclass)
-            ->where('classcategoryid', $baseClass->classcategoryid)
-            ->pluck('id');
-
-        if ($allArmIds->isEmpty()) return;
-
-        // All subjectclass IDs for this subject across arms
-        $allSubjectClassIds = DB::table('subjectclass')
-            ->join('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
-            ->whereIn('subjectclass.schoolclassid', $allArmIds)
-            ->where('subjectteacher.subjectid', $subjectId)
-            ->pluck('subjectclass.id');
-
-        if ($allSubjectClassIds->isEmpty()) return;
-
-        // All broadsheet rows for this subject/term/session across arms
-        $allStudents = DB::table('broadsheets')
-            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-            ->whereIn('broadsheets.subjectclass_id', $allSubjectClassIds)
-            ->where('broadsheets.term_id', $termid)
-            ->where('broadsheet_records.session_id', $sessionid)
-            ->get([
-                'broadsheets.id',
-                'broadsheets.cum',
-                'broadsheets.total',
-                'broadsheet_records.schoolclass_id',
-            ]);
-
-        if ($allStudents->isEmpty()) return;
-
-        // 1) Class-wide rank by cum
-        $this->denseRank($allStudents, 'cum', 'subject_position_class');
-
-        // 2) Class-wide rank by total
-        $this->denseRank($allStudents, 'total', 'subject_position_class_total');
-
-        // 3 & 4) Per-arm ranks
-        foreach ($allStudents->groupBy('schoolclass_id') as $armStudents) {
-            $this->denseRank($armStudents, 'total', 'arm_position');
-            $this->denseRank($armStudents, 'cum',   'arm_position_cum');
-        }
-    }
-
-    /**
-     * Dense-rank rows by a numeric key and write the rank to a column.
-     * Ties share the same rank; next distinct value = its 1-based index.
-     */
-    protected function denseRank($rows, string $sortKey, string $column): void
-    {
-        $sorted = $rows->sortByDesc(fn ($r) => (float) ($r->$sortKey ?? 0))->values();
-
-        $lastVal = null;
-        $rank    = 0;
-
-        foreach ($sorted as $idx => $row) {
-            $currentVal = (float) ($row->$sortKey ?? 0);
-
-            if ($lastVal === null || $currentVal !== $lastVal) {
-                $rank    = $idx + 1;
-                $lastVal = $currentVal;
-            }
-
-            DB::table('broadsheets')
-                ->where('id', $row->id)
-                ->update([$column => $rank]);
-        }
-    }
-
-    // =========================================================================
     // HELPER: fetch previous term's cum for BF computation
     // =========================================================================
 
@@ -353,12 +238,6 @@ class BroadsheetController extends Controller
         array  $selectedColumns = [],
         string $gradeBasis = 'cum'
     ): array {
-        // ── Recompute all 4 position dimensions FIRST ────────────────
-        // Ensures pos_class_cum, pos_class_total, pos_arm_total,
-        // pos_arm_cum are populated for every student in this class
-        // (across all arms), so the broadsheet shows all 4 positions.
-        $this->recalculatePositionsForClass($schoolclassid, $termid, $sessionid);
-
         $schoolInfo  = SchoolInformation::getActiveSchool() ?? new \stdClass();
         $schoolclass = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->select(['schoolclass.*', 'schoolarm.arm as arm_name'])
@@ -439,7 +318,7 @@ class BroadsheetController extends Controller
                 'broadsheets.cum',
                 'broadsheets.grade',
                 'broadsheets.remark',
-                // ── All 4 positions ──────────────────────────────────────
+                // ── Positions ────────────────────────────────────────────
                 'broadsheets.subject_position_class as pos_class_cum',
                 'broadsheets.subject_position_class_total as pos_class_total',
                 'broadsheets.arm_position as pos_arm_total',
@@ -722,7 +601,7 @@ class BroadsheetController extends Controller
     }
 
     // =========================================================================
-    // HELPER: position map (overall student positions)
+    // HELPER: position map
     // =========================================================================
 
     private function buildPositionMap(array $studentRows, string $key): array
@@ -836,7 +715,7 @@ class BroadsheetController extends Controller
     }
 
     // =========================================================================
-    // STUDENT LIST
+    // STUDENT LIST (printable promotion-ordered list)
     // =========================================================================
 
     public function studentList(Request $request): View|RedirectResponse
@@ -865,9 +744,8 @@ class BroadsheetController extends Controller
 
             $listFields = $request->input('list_fields', []);
             if (empty($listFields)) {
-                // Project-1 shape: no GPA/CGPA
                 $listFields = ['admissionno', 'firstname', 'lastname', 'arm',
-                               'total_cum', 'cum_ave', 'position_cum'];
+                               'total_cum', 'cum_ave', 'position_cum', 'gpa_grade'];
             }
 
             $recommendationOrder = $request->input('recommendation_order', [
@@ -1147,11 +1025,6 @@ class BroadsheetController extends Controller
         }
 
         $classIds = $matchingClasses->pluck('id')->map(fn ($v) => (int) $v)->toArray();
-
-        // Recompute positions for every subjectclass across all arms
-        foreach ($classIds as $clsId) {
-            $this->recalculatePositionsForClass($clsId, $termid, $sessionid);
-        }
 
         // Subjects across arms
         $subjectsMap    = [];
