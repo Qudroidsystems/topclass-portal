@@ -1038,4 +1038,49 @@ class ViewStudentReportController extends Controller
     {
         return [1 => 'First Term', 2 => 'Second Term', 3 => 'Third Term'][$termid] ?? 'Unknown Term';
     }
+
+
+    public function columnOptions(Request $request): JsonResponse
+{
+    try {
+        $columns = [
+            'student_info' => [
+                'sn'           => ['label' => 'S/N',          'default' => true],
+                'admission_no' => ['label' => 'Admission No', 'default' => false],
+                'name'         => ['label' => 'Subject Name', 'default' => true],
+            ],
+            'assessments' => [
+                'ca1'  => ['label' => 'CA1',  'default' => true],
+                'ca2'  => ['label' => 'CA2',  'default' => true],
+                'ca3'  => ['label' => 'CA3',  'default' => true],
+                'exam' => ['label' => 'Exam', 'default' => true],
+            ],
+            'scores' => [
+                'total'            => ['label' => 'Total',             'default' => true],
+                'bf'               => ['label' => 'BF (Brought Fwd)',  'default' => true],
+                'cum'              => ['label' => 'Cumulative',        'default' => true],
+                'cum_ave'          => ['label' => 'Cum Average',       'default' => false],
+                'grade'            => ['label' => 'Grade',             'default' => true],
+                'arm_position'     => ['label' => 'Arm Pos (Total)',   'default' => true],
+                'arm_position_cum' => ['label' => 'Arm Pos (Cum)',     'default' => true],
+                'position_total'   => ['label' => 'Class Pos (Total)', 'default' => true],
+                'position'         => ['label' => 'Class Pos (Cum)',   'default' => true],
+                'class_average'    => ['label' => 'Subject Average',   'default' => true],
+            ],
+            'gpa_metrics' => [
+                'gpa'  => ['label' => 'GPA',  'default' => false],
+                'cgpa' => ['label' => 'CGPA', 'default' => false],
+            ],
+            'other' => [
+                'compulsory_flag' => ['label' => 'Compulsory Flag', 'default' => false],
+                'remark'          => ['label' => 'Remark',          'default' => false],
+            ],
+        ];
+
+        return response()->json(['success' => true, 'columns' => $columns]);
+    } catch (\Throwable $e) {
+        Log::error('columnOptions failed', ['error' => $e->getMessage()]);
+        return response()->json(['success' => false, 'message' => 'Failed to load column options.'], 500);
+    }
+}
 }
