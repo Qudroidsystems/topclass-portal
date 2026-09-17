@@ -234,6 +234,17 @@ class BroadsheetController extends Controller
      * Recompute all 4 position dimensions for a single subjectclass.
      * Silently swallows all errors.
      */
+    /**
+     * Recompute subject positions for one subjectclass.
+     *
+     * Aligned with ViewStudentReportController::calculateClassPositionsAndAverages:
+     *  - Scope = all arms of the same class name (class-wide)
+     *  - Eligible students: cum != 0 (and numeric)
+     *  - subject_position_class / subject_position_class_total ranked by TOTAL
+     *  - arm_position / arm_position_cum ranked within each arm by TOTAL / CUM
+     *  - Competition rank (ties share place; next is 1,2,2,4…)
+     *  - Unscored students get null position
+     */
     protected function recalculatePositionsForSubjectClass(int $subjectclassid, int $termid, int $sessionid): void
     {
         try {
@@ -242,7 +253,9 @@ class BroadsheetController extends Controller
                 ->where('subjectclass.id', $subjectclassid)
                 ->first(['subjectclass.schoolclassid', 'subjectteacher.subjectid']);
 
-            if (!$subjectClass) return;
+            if (!$subjectClass) {
+                return;
+            }
 
             $subjectId     = $subjectClass->subjectid;
             $schoolclassId = $subjectClass->schoolclassid;
@@ -250,20 +263,26 @@ class BroadsheetController extends Controller
             $baseClass = DB::table('schoolclass')
                 ->where('id', $schoolclassId)
                 ->first(['schoolclass', 'classcategoryid']);
-            if (!$baseClass) return;
+            if (!$baseClass) {
+                return;
+            }
 
+            // Same scope as ViewStudentReportController: all arms of this class name
             $allArmIds = DB::table('schoolclass')
                 ->where('schoolclass', $baseClass->schoolclass)
-                ->where('classcategoryid', $baseClass->classcategoryid)
                 ->pluck('id');
-            if ($allArmIds->isEmpty()) return;
+            if ($allArmIds->isEmpty()) {
+                return;
+            }
 
             $allSubjectClassIds = DB::table('subjectclass')
                 ->join('subjectteacher', 'subjectteacher.id', '=', 'subjectclass.subjectteacherid')
                 ->whereIn('subjectclass.schoolclassid', $allArmIds)
                 ->where('subjectteacher.subjectid', $subjectId)
                 ->pluck('subjectclass.id');
-            if ($allSubjectClassIds->isEmpty()) return;
+            if ($allSubjectClassIds->isEmpty()) {
+                return;
+            }
 
             $allStudents = DB::table('broadsheets')
                 ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
@@ -277,18 +296,38 @@ class BroadsheetController extends Controller
                     'broadsheet_records.schoolclass_id',
                 ]);
 
-            if ($allStudents->isEmpty()) return;
+            if ($allStudents->isEmpty()) {
+                return;
+            }
 
-            // 1) Class-wide rank by cum
-            $this->applyDenseRank($allStudents, 'cum',   'subject_position_class');
+            // Class-wide: match report card — rank by TOTAL among cum != 0
+            $this->applySubjectRank(
+                $allStudents,
+                rankBy: 'total',
+                eligibleKey: 'cum',
+                column: 'subject_position_class'
+            );
+            $this->applySubjectRank(
+                $allStudents,
+                rankBy: 'total',
+                eligibleKey: 'cum',
+                column: 'subject_position_class_total'
+            );
 
-            // 2) Class-wide rank by total
-            $this->applyDenseRank($allStudents, 'total', 'subject_position_class_total');
-
-            // 3 & 4) Per-arm ranks
+            // Per-arm ranks
             foreach ($allStudents->groupBy('schoolclass_id') as $armStudents) {
-                $this->applyDenseRank($armStudents, 'total', 'arm_position');
-                $this->applyDenseRank($armStudents, 'cum',   'arm_position_cum');
+                $this->applySubjectRank(
+                    $armStudents,
+                    rankBy: 'total',
+                    eligibleKey: 'cum',
+                    column: 'arm_position'
+                );
+                $this->applySubjectRank(
+                    $armStudents,
+                    rankBy: 'cum',
+                    eligibleKey: 'cum',
+                    column: 'arm_position_cum'
+                );
             }
         } catch (\Throwable $e) {
             Log::warning('recalculatePositionsForSubjectClass skipped: ' . $e->getMessage(), [
@@ -300,31 +339,90 @@ class BroadsheetController extends Controller
     }
 
     /**
-     * Dense-rank rows by numeric key. Ties share rank; next distinct value
-     * gets rank = its 1-based index. Silently swallows write errors.
+     * Competition-rank broadsheet rows (same rules as ViewStudentReportController).
+     *
+     * @param  \Illuminate\Support\Collection|iterable  $rows
+     * @param  string  $rankBy       Field to sort by ('total' or 'cum')
+     * @param  string  $eligibleKey  Field that must be non-zero to be ranked (report uses cum != 0)
+     * @param  string  $column       DB column to write
      */
-    protected function applyDenseRank($rows, string $sortKey, string $column): void
+    protected function applySubjectRank($rows, string $rankBy, string $eligibleKey, string $column): void
     {
         try {
-            $sorted  = $rows->sortByDesc(fn ($r) => (float) ($r->$sortKey ?? 0))->values();
+            $collection = $rows instanceof \Illuminate\Support\Collection
+                ? $rows
+                : collect($rows);
+
+            $scored = [];
+            $unscoredIds = [];
+
+            foreach ($collection as $row) {
+                $eligibleRaw = $row->{$eligibleKey} ?? null;
+
+                // Report card: cum == 0 → not ranked (stores '-')
+                if ($eligibleRaw === null || $eligibleRaw === '' || !is_numeric($eligibleRaw) || (float) $eligibleRaw == 0.0) {
+                    $unscoredIds[] = $row->id;
+                    continue;
+                }
+
+                $raw = $row->{$rankBy} ?? null;
+
+                // If ranking by cum and empty, fall back to total
+                if ($rankBy === 'cum' && ($raw === null || $raw === '' || !is_numeric($raw))) {
+                    $raw = $row->total ?? null;
+                }
+
+                if ($raw === null || $raw === '' || !is_numeric($raw)) {
+                    $unscoredIds[] = $row->id;
+                    continue;
+                }
+
+                $scored[] = (object) [
+                    'id'  => $row->id,
+                    'val' => (float) $raw,
+                ];
+            }
+
+            if (!empty($unscoredIds)) {
+                DB::table('broadsheets')
+                    ->whereIn('id', $unscoredIds)
+                    ->update([$column => null]);
+            }
+
+            if (empty($scored)) {
+                return;
+            }
+
+            usort($scored, fn ($a, $b) => $b->val <=> $a->val);
+
             $lastVal = null;
             $rank    = 0;
+            $lastPos = 0;
 
-            foreach ($sorted as $idx => $row) {
-                $currentVal = (float) ($row->$sortKey ?? 0);
-
-                if ($lastVal === null || $currentVal !== $lastVal) {
-                    $rank    = $idx + 1;
-                    $lastVal = $currentVal;
+            foreach ($scored as $idx => $item) {
+                $rank++;
+                if ($lastVal !== null && $item->val == $lastVal) {
+                    // tie → same position as previous (competition rank)
+                    $pos = $lastPos;
+                } else {
+                    $pos     = $rank;
+                    $lastPos = $pos;
+                    $lastVal = $item->val;
                 }
 
                 DB::table('broadsheets')
-                    ->where('id', $row->id)
-                    ->update([$column => $rank]);
+                    ->where('id', $item->id)
+                    ->update([$column => $pos]);
             }
         } catch (\Throwable $e) {
-            Log::warning('applyDenseRank skipped: ' . $e->getMessage(), ['column' => $column]);
+            Log::warning('applySubjectRank skipped: ' . $e->getMessage(), ['column' => $column]);
         }
+    }
+
+    /** @deprecated Use applySubjectRank — kept as thin wrapper for any old callers */
+    protected function applyDenseRank($rows, string $sortKey, string $column): void
+    {
+        $this->applySubjectRank($rows, rankBy: $sortKey, eligibleKey: 'cum', column: $column);
     }
 
     // =========================================================================
@@ -585,17 +683,35 @@ class BroadsheetController extends Controller
             $sid       = (int) $stu->id;
             $subScores = $studentSubjectMap[$sid] ?? [];
 
+            // Aggregate per-subject scores. Include numeric 0 (sat & failed);
+            // skip only null/missing. Cum falls back to total when empty.
             $termTotals = [];
             $cumValues  = [];
             foreach ($subScores as $subData) {
-                if (($subData['total'] ?? 0) > 0) $termTotals[] = $subData['total'];
-                if (($subData['cum']   ?? 0) > 0) $cumValues[]  = $subData['cum'];
+                $t = $subData['total'] ?? null;
+                $c = $subData['cum']   ?? null;
+
+                if ($t !== null && $t !== '' && is_numeric($t)) {
+                    $termTotals[] = (float) $t;
+                }
+
+                if ($c === null || $c === '' || !is_numeric($c)) {
+                    // Term 1 / no BF: treat cum as total when total exists
+                    $c = ($t !== null && $t !== '' && is_numeric($t)) ? (float) $t : null;
+                }
+                if ($c !== null && is_numeric($c)) {
+                    $cumValues[] = (float) $c;
+                }
             }
 
             $totalTerm   = array_sum($termTotals);
             $totalCum    = array_sum($cumValues);
-            $numSubjects = count($cumValues);
-            $classAvg    = $numSubjects > 0 ? round($totalCum / $numSubjects, 1) : 0;
+            $numSubjects = max(count($cumValues), count($termTotals));
+            $nCum        = count($cumValues);
+            $nTerm       = count($termTotals);
+            $classAvg    = $nCum > 0 ? round($totalCum / $nCum, 1) : ($nTerm > 0 ? round($totalTerm / $nTerm, 1) : 0);
+            $termAve     = $nTerm > 0 ? round($totalTerm / $nTerm, 1) : 0;
+            $cumAve      = $nCum  > 0 ? round($totalCum  / $nCum,  1) : 0;
 
             // ── Arm label ──────────────────────────────────────────
             $armLabel = '';
@@ -713,7 +829,8 @@ class BroadsheetController extends Controller
                 'subjects'               => $subScores,
                 'total_cum'              => round($totalCum, 1),
                 'total_term'             => round($totalTerm, 1),
-                'cum_ave'                => $numSubjects > 0 ? round($totalCum / $numSubjects, 1) : 0,
+                'cum_ave'                => $cumAve,
+                'term_ave'               => $termAve,
                 'num_subjects'           => $numSubjects,
                 'class_average'          => $classAvg,
                 'position_cum'           => 0,
@@ -726,8 +843,10 @@ class BroadsheetController extends Controller
         }
 
         // ── Overall positions ─────────────────────────────────────
-        $posMapCum  = $this->buildPositionMap($studentRows, 'total_cum');
-        $posMapTerm = $this->buildPositionMap($studentRows, 'total_term');
+                // Rank by AVERAGE (not sum) so different subject counts stay fair.
+        // Students with no sat subjects are left unranked (position 0).
+        $posMapCum  = $this->buildPositionMap($studentRows, 'cum_ave');
+        $posMapTerm = $this->buildPositionMap($studentRows, 'term_ave');
 
         foreach ($studentRows as $sid => &$row) {
             $row['position_cum']  = $posMapCum[(int) $sid]  ?? 0;
@@ -766,17 +885,27 @@ class BroadsheetController extends Controller
 
     private function buildPositionMap(array $studentRows, string $key): array
     {
-        $sorted = $studentRows;
-        uasort($sorted, fn ($a, $b) => ($b[$key] ?? 0) <=> ($a[$key] ?? 0));
+        // Only rank students who have at least one sat subject (num_subjects > 0
+        // or a positive/zero average that came from real scores).
+        $eligible = [];
+        foreach ($studentRows as $sid => $row) {
+            $n = (int) ($row['num_subjects'] ?? 0);
+            if ($n <= 0 && (float) ($row[$key] ?? 0) == 0.0) {
+                continue; // no scores → leave unranked
+            }
+            $eligible[$sid] = $row;
+        }
+
+        uasort($eligible, fn ($a, $b) => ($b[$key] ?? 0) <=> ($a[$key] ?? 0));
 
         $positionMap = [];
         $prevVal     = null;
         $prevPos     = 0;
         $counter     = 0;
 
-        foreach ($sorted as $sid => $row) {
+        foreach ($eligible as $sid => $row) {
             $counter++;
-            $val = (float) ($row[$key] ?? 0);
+            $val = round((float) ($row[$key] ?? 0), 4);
 
             if ($prevVal !== null && $val === $prevVal) {
                 $positionMap[(int) $sid] = $prevPos;
