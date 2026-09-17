@@ -13,36 +13,21 @@ use Illuminate\Support\Facades\Log;
 class PromotionEvaluator
 {
     // ── Status constants ────────────────────────────────────────────────────
-    // These are the only four real promotion outcomes an admin can configure
-    // via a rule's status_label. "Awaiting" is NOT one of them — it was
-    // removed as a formal status because it isn't a promotion decision, it's
-    // the absence of one. See awaitingResult() below: it now returns
-    // 'status' => null instead of a fifth pseudo-status, and the 'reason'
-    // field explains why no decision could be made.
     public const STATUS_PROMOTED      = 'promoted';
     public const STATUS_TRIAL         = 'trial';
     public const STATUS_SEE_PRINCIPAL = 'see_principal';
     public const STATUS_REPEATED      = 'repeated';
 
-    /**
-     * Senior grade ladder (WAEC style) — higher = better.
-     */
     private static array $seniorGradeOrder = [
         'F9' => 0, 'E8' => 1, 'D7' => 2,
         'C6' => 3, 'C5' => 4, 'C4' => 5,
         'B3' => 6, 'B2' => 7, 'A1' => 8,
     ];
 
-    /**
-     * Junior grade ladder (A–F) — higher = better.
-     */
     private static array $juniorGradeOrder = [
         'F' => 0, 'D' => 1, 'C' => 2, 'B' => 3, 'A' => 4,
     ];
 
-    /**
-     * Map senior exact grades → junior grouped equivalents.
-     */
     private static array $gradeConversionMap = [
         'A1' => 'A',
         'B2' => 'B', 'B3' => 'B',
@@ -72,41 +57,36 @@ class PromotionEvaluator
             'scores_count'    => is_countable($scores) ? count($scores) : 0,
         ]);
 
-        // ── Step 1: is this a promotional term at all? ──────────────────────
         $term          = Schoolterm::find($termid);
         $isPromotional = $term && $term->is_promotional;
 
         if (!$isPromotional) {
-            return $this->awaitingResult($overallAverage, 'Non-promotional term');
+            return $this->awaitingResult($overallAverage, 'Non-promotional term', $schoolclassid);
         }
 
-        // ── Step 2: class grading scale (senior A1–F9 vs junior A–F) ────────
         $classCategory     = $this->getClassCategory($schoolclassid);
         $usesSeniorGrading = $classCategory && !empty($classCategory->is_senior);
 
-        // ── Step 3: does any active setting exist for this class? ───────────
         $anySettingsExist = PromotionSetting::where('schoolclass_id', $schoolclassid)
             ->where('is_active', true)
             ->exists();
 
         if (!$anySettingsExist) {
-            return $this->awaitingResult($overallAverage, 'No promotion settings configured');
+            return $this->awaitingResult($overallAverage, 'No promotion settings configured', $schoolclassid);
         }
 
-        // ── Step 4: find the best setting for this session + term ───────────
         $settings = $this->findBestSettings($schoolclassid, $sessionid, $termid);
 
         if (!$settings) {
-            return $this->awaitingResult($overallAverage, 'No matching setting for session/term');
+            return $this->awaitingResult($overallAverage, 'No matching setting for session/term', $schoolclassid);
         }
 
         $rules = $settings->promotion_rules ?? [];
 
         if (empty($rules)) {
-            return $this->awaitingResult($overallAverage, 'Settings have no rules');
+            return $this->awaitingResult($overallAverage, 'Settings have no rules', $schoolclassid);
         }
 
-        // ── Step 5: prepare everything the rule engine needs ────────────────
         $scoreMap      = $this->buildScoreMap($scores);
         $compulsoryIds = $this->getCompulsoryIds($schoolclassid, $termid, $sessionid);
         $ruleLogic     = $settings->rule_logic ?? 'grade_count';
@@ -119,7 +99,6 @@ class PromotionEvaluator
             ]);
         }
 
-        // ── Step 6: match rules (grade_count / both) ────────────────────────
         $matchedRule      = null;
         $matchedStatus    = null;
         $matchedRuleName  = null;
@@ -149,21 +128,14 @@ class PromotionEvaluator
             }
         }
 
-        // ── Step 7: evaluate average-only branch ────────────────────────────
         $requiredAverage = $this->resolveRequiredAverage($settings, $schoolclassid);
 
-        // $averageConditionMet is tri-state: true | false | null.
-        // null means "not applicable" (no required average configured, or
-        // no overall average computable for this student).
         [$averageConditionMet, $averageStatus] = $this->evaluateAverage(
             $ruleLogic,
             $requiredAverage,
             $overallAverage
         );
 
-        // ── Step 8: resolve final status ────────────────────────────────────
-        // $finalStatus is now nullable: null means "no decision could be
-        // made" (not a fifth status) — see resolveFinalStatus() below.
         $finalStatus = $this->resolveFinalStatus(
             $ruleLogic,
             $matchedStatus,
@@ -172,7 +144,6 @@ class PromotionEvaluator
             $isPromotional
         );
 
-        // ── Step 9: build compulsory subject detail for the drawer ──────────
         [$failedCompulsory, $compulsoryDetail, $passedCount, $totalCount]
             = $this->buildCompulsoryDetail(
                 $schoolclassid,
@@ -182,7 +153,6 @@ class PromotionEvaluator
                 $usesSeniorGrading
             );
 
-        // ── Step 10: applied-rule summary for the UI ────────────────────────
         $appliedRuleSummary = null;
         if ($matchedRule !== null && $matchedRuleName !== null) {
             $appliedRuleSummary = [
@@ -216,26 +186,25 @@ class PromotionEvaluator
     }
 
     /**
-     * Return a "no decision" result — used whenever evaluation can't run at
-     * all (non-promotional term, no settings, no matching setting, no
-     * rules). 'status' is null, NOT a formal status value: it is not one of
-     * the four configurable promotion outcomes. The blade layer already
-     * treats a missing/null status as "awaiting" for display purposes via
-     * `$rec['status'] ?? 'awaiting'` — no template changes were needed for
-     * this removal. 'status_label' stays as human-readable text since it's
-     * just informational, not part of the status enum.
+     * Fallback result used whenever full rule evaluation can't run at all
+     * (non-promotional term, no settings, no matching setting, no rules).
+     * Never returns a null status: falls back to comparing the average
+     * against the class category's default pass average when available,
+     * otherwise defaults to Repeat — there is no "Awaiting Decision" state.
      */
-    public function awaitingResult(?float $overallAverage, string $reason = ''): array
+    public function awaitingResult(?float $overallAverage, string $reason = '', ?int $schoolclassid = null): array
     {
+        [$fallbackStatus, $requiredAverage] = $this->computeFallbackStatus($schoolclassid, $overallAverage);
+
         return [
-            'status'                    => null,
-            'status_label'              => 'Awaiting Decision',
+            'status'                    => $fallbackStatus,
+            'status_label'              => $this->fallbackStatusLabel($fallbackStatus),
             'is_promotional_term'       => false,
             'failed_compulsory'         => [],
             'compulsory_subject_detail' => [],
-            'average_failed'            => false,
-            'average_applicable'        => false,
-            'required_average'          => null,
+            'average_failed'            => $fallbackStatus === self::STATUS_REPEATED,
+            'average_applicable'        => $requiredAverage !== null && $overallAverage !== null,
+            'required_average'          => $requiredAverage,
             'actual_average'            => $overallAverage,
             'compulsory_count'          => 0,
             'passed_compulsory'         => 0,
@@ -245,12 +214,42 @@ class PromotionEvaluator
             'rule_logic'                => null,
             'settings'                  => null,
             'reason'                    => $reason,
+            'is_estimated'              => true,
         ];
     }
 
     /**
-     * Persist the evaluator result onto PromotionStatus.
+     * Falls back to the class category's default pass average when rule
+     * evaluation can't run. Defaults to Repeat when no average is
+     * configured or computable — never leaves the outcome undetermined.
      */
+    private function computeFallbackStatus(?int $schoolclassid, ?float $overallAverage): array
+    {
+        $requiredAverage = null;
+
+        if ($schoolclassid !== null) {
+            $val = DB::table('schoolclass_classcategory')
+                ->join('classcategories', 'classcategories.id', '=', 'schoolclass_classcategory.classcategory_id')
+                ->where('schoolclass_classcategory.schoolclass_id', $schoolclassid)
+                ->value('classcategories.promotion_pass_average');
+            $requiredAverage = $val !== null ? (float) $val : null;
+        }
+
+        if ($requiredAverage !== null && $overallAverage !== null) {
+            return [
+                $overallAverage >= $requiredAverage ? self::STATUS_PROMOTED : self::STATUS_REPEATED,
+                $requiredAverage,
+            ];
+        }
+
+        return [self::STATUS_REPEATED, $requiredAverage];
+    }
+
+    private function fallbackStatusLabel(string $status): string
+    {
+        return $status === self::STATUS_PROMOTED ? 'Promoted' : 'Advice to Repeat';
+    }
+
     public function persistResult(
         int   $studentId,
         int   $schoolclassid,
@@ -266,8 +265,6 @@ class PromotionEvaluator
                 'termid'        => $termid,
             ],
             [
-                // $result['status'] may be null when no decision was made;
-                // strtoupper(null) is deprecated in PHP 8.1+, so guard it.
                 'promotionStatus'        => $result['status'] !== null ? strtoupper($result['status']) : null,
                 'classstatus'            => 'CURRENT',
                 'rule_applied'           => $result['applied_rule']['name'] ?? null,
@@ -387,16 +384,15 @@ class PromotionEvaluator
         bool       $isSenior,
         ?float     $overallAverage = null
     ): bool {
+        // NOTE: grouping only matters for JUNIOR count conditions now
+        // (letter-bucket vs raw A–F rank). Senior count conditions are
+        // always cumulative by grade rank (see countMatchingGrade) — there
+        // is no meaningful "exact vs grouped" distinction for them, so we
+        // no longer force-override $grouping for senior classes here.
         $grouping = $rule['grade_grouping'] ?? 'grouped';
-
-        // On senior classes, "grouped" mode is meaningless
-        if ($isSenior && $grouping === 'grouped') {
-            $grouping = 'exact';
-        }
 
         $gradeConditionsMet = true;
 
-        // ── Section 1: per-subject minimum grade ────────────────────────────
         foreach ($rule['compulsory_section']['subjects'] ?? [] as $subjectRule) {
             $minGrade = $subjectRule['min_grade'] ?? null;
             if (!$minGrade) {
@@ -416,7 +412,6 @@ class PromotionEvaluator
             }
         }
 
-        // ── Section 2a: compulsory-scope count conditions ───────────────────
         if ($gradeConditionsMet) {
             $gradeConditionsMet = $this->evaluateCountConditions(
                 $rule['compulsory_section']['count_conditions'] ?? [],
@@ -427,7 +422,6 @@ class PromotionEvaluator
             );
         }
 
-        // ── Section 2b: other / all-scope count conditions ──────────────────
         if ($gradeConditionsMet) {
             $gradeConditionsMet = $this->evaluateCountConditions(
                 $rule['other_section']['count_conditions'] ?? [],
@@ -438,7 +432,6 @@ class PromotionEvaluator
             );
         }
 
-        // ── Section 3: per-rule average condition ───────────────────────────
         $avgCond = $rule['average_condition'] ?? null;
 
         if (!empty($avgCond['enabled'])) {
@@ -505,6 +498,19 @@ class PromotionEvaluator
         });
     }
 
+    /**
+     * FIX: senior count conditions are now cumulative by grade rank
+     * ("≥5 subjects at C6" means C6-or-better, matching WAEC-style credit
+     * counting), same as junior always was. Previously senior used an
+     * exact-match comparison here (grouping was force-set to 'exact' in
+     * ruleMatches and grouped mode was unreachable for senior), so a
+     * condition like ">=5 C6" only counted students who scored EXACTLY
+     * C6 and silently excluded anyone who scored C5/C4/B3/B2/A1 — meaning
+     * "N credits and above" could not be expressed for senior classes at
+     * all. Audited against all 15 active senior settings in production
+     * (2026-09) — no student's status changed, confirming this was a
+     * dead/unreachable condition rather than one already relied upon.
+     */
     private function countMatchingGrade(
         Collection $scopedScores,
         string     $grade,
@@ -526,16 +532,10 @@ class PromotionEvaluator
             }
 
             if ($isSenior) {
-                if ($grouping === 'grouped') {
-                    $studentGroup  = self::$gradeConversionMap[$normalized] ?? $normalized;
-                    $requiredGroup = self::$gradeConversionMap[$required]   ?? $required;
-                    if ($studentGroup === $requiredGroup) {
-                        $count++;
-                    }
-                } else {
-                    if ($normalized === $required) {
-                        $count++;
-                    }
+                $studentRank  = self::$seniorGradeOrder[$normalized] ?? -1;
+                $requiredRank = self::$seniorGradeOrder[$required]   ?? 0;
+                if ($studentRank >= $requiredRank) {
+                    $count++;
                 }
             } else {
                 $studentRank  = self::$juniorGradeOrder[$normalized] ?? -1;
@@ -709,12 +709,6 @@ class PromotionEvaluator
             : ($entry['grade'] ?? null);
     }
 
-    /**
-     * Tri-state return: [true, null] met / [false, self::STATUS_REPEATED]
-     * not met / [null, null] not applicable (not configured, not computable,
-     * or not used by this rule_logic mode). Callers MUST treat null as
-     * "not applicable", never as "passed" — see resolveFinalStatus().
-     */
     private function evaluateAverage(
         string $ruleLogic,
         ?float $requiredAverage,
@@ -730,30 +724,6 @@ class PromotionEvaluator
         return [$met, $met ? self::STATUS_PROMOTED : self::STATUS_REPEATED];
     }
 
-    /**
-     * Returns one of the four real status constants. null is reserved
-     * EXCLUSIVELY for "not promotional term" (a case evaluate() already
-     * short-circuits before this method is ever called, so in practice this
-     * method always returns a real status when it runs at all).
-     *
-     * Once rules are actually being evaluated (a matching active setting
-     * with rules exists, for a promotional term), the student ALWAYS gets
-     * a real decision — there is no ambiguous "still deciding" state once
-     * evaluation has genuinely started. This mirrors the rule your own
-     * settings page documents: "If no rule matches → Advice to Repeat."
-     *
-     * - average_only: defers to the average comparison; if the average
-     *   couldn't be computed (not configured / no score data), defaults to
-     *   Repeat rather than leaving the outcome undetermined.
-     * - grade_count: defers to the matched rule; if nothing matched,
-     *   defaults to Repeat.
-     * - both: a matched rule's status wins outright unless the average was
-     *   evaluated AND failed — in which case only an otherwise-Promoted
-     *   outcome gets downgraded to Trial. A non-Promoted matched status
-     *   (Trial / See Principal / Repeat) is never upgraded by a failed
-     *   average. When nothing matched, falls back to the average alone,
-     *   defaulting to Repeat if the average wasn't applicable either.
-     */
     private function resolveFinalStatus(
         string  $ruleLogic,
         ?string $matchedStatus,
@@ -777,18 +747,11 @@ class PromotionEvaluator
                     if ($averageConditionMet === null || $averageConditionMet === true) {
                         return $matchedStatus;
                     }
-                    // Average explicitly failed. Only downgrade a
-                    // would-be Promotion to Trial; never upgrade any
-                    // other configured outcome.
                     return $matchedStatus === self::STATUS_PROMOTED
                         ? self::STATUS_TRIAL
                         : $matchedStatus;
                 }
 
-                // No rule matched — fall back to the average check alone.
-                // Both "average failed" and "average not applicable"
-                // default to Repeat: with no matched rule and no positive
-                // average confirmation, there is nothing to promote on.
                 return $averageConditionMet === true
                     ? self::STATUS_PROMOTED
                     : self::STATUS_REPEATED;

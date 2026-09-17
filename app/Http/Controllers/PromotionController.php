@@ -52,16 +52,6 @@ class PromotionController extends Controller
             $sessionId     = (int) $request->input('sessionid');
             $termId        = (int) $request->input('termid');
 
-            // ── FIX (Issue 1): everything below — including
-            // classHasNoApplicableSetting(), which was previously called
-            // OUTSIDE any try/catch — is now wrapped in a single try block
-            // that catches \Throwable (not just \Exception). A mismatched or
-            // stale termid coming from the client (see the index.blade.php
-            // fix) could trigger a TypeError deep in a typed method here,
-            // and \Exception alone does NOT catch \Error/\TypeError since
-            // they are siblings under \Throwable in PHP 7+. Catching
-            // \Throwable guarantees we always log the REAL exception and
-            // return a safe empty result instead of a raw 500 with no logs.
             try {
                 $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                     $schoolclassId, $sessionId, $termId
@@ -112,7 +102,11 @@ class PromotionController extends Controller
 
                         if ($shouldSkipEvaluator) {
                             $student->promotion_recommendation =
-                                $this->promotionEvaluator->awaitingResult($overallAverage);
+                                $this->promotionEvaluator->awaitingResult(
+                                    $overallAverage,
+                                    'No matching promotion setting',
+                                    $schoolclassId
+                                );
                         } else {
                             $student->promotion_recommendation =
                                 $this->promotionEvaluator->evaluate(
@@ -151,9 +145,6 @@ class PromotionController extends Controller
                 ]);
                 $allstudents = new LengthAwarePaginator([], 0, 10);
 
-                // Surface a real message to the client instead of a silent
-                // empty table, so "Error loading data" in the UI can be
-                // traced back to something concrete.
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => false,
@@ -215,7 +206,11 @@ class PromotionController extends Controller
             );
 
             $promotionResult = $shouldSkipEvaluator
-                ? $this->promotionEvaluator->awaitingResult($overallAverage)
+                ? $this->promotionEvaluator->awaitingResult(
+                    $overallAverage,
+                    'No matching promotion setting',
+                    (int) $schoolclassId
+                )
                 : $this->promotionEvaluator->evaluate(
                     studentId:      $studentId,
                     schoolclassid:  $schoolclassId,
@@ -225,7 +220,6 @@ class PromotionController extends Controller
                     overallAverage: $overallAverage
                 );
 
-            // ── Compulsory subjects for this class ────────────────────────
             $compulsoryQuery = CompulsorySubjectClass::where('schoolclassid', $schoolclassId)
                 ->where(function ($q) use ($termId, $sessionId) {
                     $q->where(function ($q2) use ($termId, $sessionId) {
@@ -241,7 +235,6 @@ class PromotionController extends Controller
 
             $compulsorySubjectIds = $compulsoryQuery->pluck('subjectId')->toArray();
 
-            // ── Per-subject min-grade overrides from the matched rule ─────
             $appliedRule  = $promotionResult['applied_rule'] ?? null;
             $ruleSubjects = [];
             if ($appliedRule && isset($promotionResult['settings_id'])) {
@@ -258,7 +251,6 @@ class PromotionController extends Controller
                 }
             }
 
-            // ── Build ALL subjects list ───────────────────────────────────
             $allSubjects = [];
 
             foreach ($scores as $score) {
@@ -285,7 +277,6 @@ class PromotionController extends Controller
                 ];
             }
 
-            // Add compulsory subjects with no score (Not Sat)
             foreach ($compulsoryQuery as $compulsory) {
                 $alreadyAdded = collect($allSubjects)->firstWhere('subject_id', $compulsory->subjectId);
                 if (!$alreadyAdded && $compulsory->subject) {
@@ -314,7 +305,6 @@ class PromotionController extends Controller
                 return strcmp($a['subject_name'], $b['subject_name']);
             });
 
-            // ── Compulsory subjects summary ───────────────────────────────
             $compulsorySubjectsWithStatus = $compulsoryQuery->map(
                 function ($cs) use ($scores, $ruleSubjects) {
                     $scoreEntry       = $scores->firstWhere('subject_id', $cs->subjectId);
@@ -347,7 +337,6 @@ class PromotionController extends Controller
                 }
             );
 
-            // ── Statistics ────────────────────────────────────────────────
             $passedCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'pass')->count();
             $failedCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'fail')->count();
             $notSatCompulsory = $compulsorySubjectsWithStatus->where('pass_status', 'not_sat')->count();
