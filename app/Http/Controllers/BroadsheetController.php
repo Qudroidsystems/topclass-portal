@@ -357,19 +357,31 @@ class BroadsheetController extends Controller
             $unscoredIds = [];
 
             foreach ($collection as $row) {
-                $eligibleRaw = $row->{$eligibleKey} ?? null;
+                $totalRaw = $row->total ?? null;
+                $cumRaw   = $row->cum   ?? null;
 
-                // Report card: cum == 0 → not ranked (stores '-')
-                if ($eligibleRaw === null || $eligibleRaw === '' || !is_numeric($eligibleRaw) || (float) $eligibleRaw == 0.0) {
+                // Has a real score if total or cum is numeric and non-zero.
+                // (Report card uses cum != 0; we also accept total so term-1
+                //  rows with only total filled still get positions.)
+                $hasTotal = $totalRaw !== null && $totalRaw !== '' && is_numeric($totalRaw) && (float) $totalRaw != 0.0;
+                $hasCum   = $cumRaw   !== null && $cumRaw   !== '' && is_numeric($cumRaw)   && (float) $cumRaw   != 0.0;
+
+                if (!$hasTotal && !$hasCum) {
                     $unscoredIds[] = $row->id;
                     continue;
                 }
 
+                // Value to rank by
                 $raw = $row->{$rankBy} ?? null;
-
-                // If ranking by cum and empty, fall back to total
-                if ($rankBy === 'cum' && ($raw === null || $raw === '' || !is_numeric($raw))) {
-                    $raw = $row->total ?? null;
+                if ($rankBy === 'cum') {
+                    // Prefer cum; fall back to total when cum empty
+                    if ($raw === null || $raw === '' || !is_numeric($raw) || (float) $raw == 0.0) {
+                        $raw = $hasTotal ? (float) $totalRaw : null;
+                    }
+                } elseif ($rankBy === 'total') {
+                    if ($raw === null || $raw === '' || !is_numeric($raw)) {
+                        $raw = $hasCum ? (float) $cumRaw : null;
+                    }
                 }
 
                 if ($raw === null || $raw === '' || !is_numeric($raw)) {

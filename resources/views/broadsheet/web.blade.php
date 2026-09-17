@@ -1006,9 +1006,18 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 
                         @if($showPosTerm || $showPosCum)
                             <td style="text-align:center;white-space:nowrap;">
-                                <div class="pos-dual" data-tooltip="Overall Term: {{ $posTerm }} · Overall Cum: {{ $posCum }}">
-                                    <span class="pos-term-lbl">T:{{ $posTerm }}</span>
-                                    <span class="pos-cum-lbl">C:{{ $posCum }}</span>
+                                @php
+                                    $ordOverall = function ($n) {
+                                        if ($n === null || $n === '' || (int) $n <= 0) return '—';
+                                        $n = (int) $n;
+                                        $s = ['th','st','nd','rd'];
+                                        $v = $n % 100;
+                                        return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+                                    };
+                                @endphp
+                                <div class="pos-dual" data-tooltip="Overall Term: {{ $ordOverall($posTerm) }} · Overall Cum: {{ $ordOverall($posCum) }}">
+                                    <span class="pos-term-lbl">T:{{ $ordOverall($posTerm) }}</span>
+                                    <span class="pos-cum-lbl">C:{{ $ordOverall($posCum) }}</span>
                                 </div>
                             </td>
                         @endif
@@ -1053,12 +1062,22 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                 $spAT = $sd['pos_arm_total']   ?? null;
                                 $spAK = $sd['pos_arm_cum']     ?? null;
 
-                                $ord = function($n) {
-                                    if (!$n) return '—';
-                                    $n = (int) $n;
-                                    $s = ['th','st','nd','rd'];
+                                $ord = function ($n) {
+                                    if ($n === null || $n === '' || $n === false) {
+                                        return '—';
+                                    }
+                                    // Report card may have stored '1st' / '2nd' already
+                                    if (is_string($n) && preg_match('/(\d+)/', $n, $m)) {
+                                        $n = (int) $m[1];
+                                    } else {
+                                        $n = (int) $n;
+                                    }
+                                    if ($n <= 0) {
+                                        return '—';
+                                    }
+                                    $s = ['th', 'st', 'nd', 'rd'];
                                     $v = $n % 100;
-                                    return $n . ($s[($v-20)%10] ?? $s[$v] ?? $s[0]);
+                                    return $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
                                 };
                             @endphp
 
