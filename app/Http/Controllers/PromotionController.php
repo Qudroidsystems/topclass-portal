@@ -13,7 +13,7 @@ use App\Models\Student;
 use App\Models\Studentclass;
 use App\Models\StudentCurrentTerm;
 use App\Services\PromotionEvaluator;
-use Exception;
+use Throwable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -43,37 +43,48 @@ class PromotionController extends Controller
 
         $hasFilters = $request->filled('schoolclassid')
             && $request->filled('sessionid')
+            && $request->filled('termid')
             && $request->input('schoolclassid') !== 'ALL'
             && $request->input('sessionid')     !== 'ALL';
 
         if ($hasFilters) {
             $schoolclassId = (int) $request->input('schoolclassid');
             $sessionId     = (int) $request->input('sessionid');
-            $termId        = (int) $request->input('termid', 3);
+            $termId        = (int) $request->input('termid');
 
-            $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
-                $schoolclassId, $sessionId, $termId
-            );
-
-            $query = Studentclass::query()
-                ->where('studentclass.schoolclassid', $schoolclassId)
-                ->where('studentclass.sessionid',     $sessionId)
-                ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
-                ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
-                ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
-                ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
-                ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
-
-            if ($search = $request->input('search')) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('studentRegistration.admissionNo', 'like', "%{$search}%")
-                      ->orWhere('studentRegistration.firstname',  'like', "%{$search}%")
-                      ->orWhere('studentRegistration.lastname',   'like', "%{$search}%")
-                      ->orWhere('studentRegistration.othername',  'like', "%{$search}%");
-                });
-            }
-
+            // ── FIX (Issue 1): everything below — including
+            // classHasNoApplicableSetting(), which was previously called
+            // OUTSIDE any try/catch — is now wrapped in a single try block
+            // that catches \Throwable (not just \Exception). A mismatched or
+            // stale termid coming from the client (see the index.blade.php
+            // fix) could trigger a TypeError deep in a typed method here,
+            // and \Exception alone does NOT catch \Error/\TypeError since
+            // they are siblings under \Throwable in PHP 7+. Catching
+            // \Throwable guarantees we always log the REAL exception and
+            // return a safe empty result instead of a raw 500 with no logs.
             try {
+                $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
+                    $schoolclassId, $sessionId, $termId
+                );
+
+                $query = Studentclass::query()
+                    ->where('studentclass.schoolclassid', $schoolclassId)
+                    ->where('studentclass.sessionid',     $sessionId)
+                    ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
+                    ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
+                    ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
+                    ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
+                    ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
+
+                if ($search = $request->input('search')) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('studentRegistration.admissionNo', 'like', "%{$search}%")
+                          ->orWhere('studentRegistration.firstname',  'like', "%{$search}%")
+                          ->orWhere('studentRegistration.lastname',   'like', "%{$search}%")
+                          ->orWhere('studentRegistration.othername',  'like', "%{$search}%");
+                    });
+                }
+
                 $allstudents = $query->select([
                     'studentRegistration.id           as stid',
                     'studentRegistration.admissionNo  as admissionno',
@@ -129,12 +140,28 @@ class PromotionController extends Controller
                     }
                 );
 
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 Log::error('Promotion index query failed', [
                     'request' => $request->all(),
                     'error'   => $e->getMessage(),
+                    'class'   => get_class($e),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                    'trace'   => $e->getTraceAsString(),
                 ]);
                 $allstudents = new LengthAwarePaginator([], 0, 10);
+
+                // Surface a real message to the client instead of a silent
+                // empty table, so "Error loading data" in the UI can be
+                // traced back to something concrete.
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => app()->hasDebugModeEnabled() ?? config('app.debug')
+                            ? $e->getMessage()
+                            : 'Failed to load students. Please check the selected class, session, and term.',
+                    ], 500);
+                }
             }
         }
 
@@ -346,10 +373,13 @@ class PromotionController extends Controller
                 'scores_count'        => $scores->count(),
             ]);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('getStudentDetails failed', [
                 'student_id' => $studentId,
                 'error'      => $e->getMessage(),
+                'class'      => get_class($e),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
                 'trace'      => $e->getTraceAsString(),
             ]);
             return response()->json([
@@ -444,11 +474,12 @@ class PromotionController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Promotion updated successfully.']);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('Promotion update failed', [
                 'studentId' => $studentId,
                 'request'   => $request->all(),
                 'error'     => $e->getMessage(),
+                'class'     => get_class($e),
             ]);
             return response()->json(['success' => false, 'message' => 'Failed to update promotion.'], 500);
         }
@@ -483,10 +514,11 @@ class PromotionController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Student removed successfully from class.']);
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('Student removal failed', [
                 'studentId' => $studentId,
                 'error'     => $e->getMessage(),
+                'class'     => get_class($e),
             ]);
             return response()->json(['success' => false, 'message' => 'Failed to remove student.'], 500);
         }
@@ -557,11 +589,12 @@ class PromotionController extends Controller
                     );
                 });
                 $successCount++;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $failCount++;
                 Log::error('Bulk promotion failed for student', [
                     'studentId' => $studentId,
                     'error'     => $e->getMessage(),
+                    'class'     => get_class($e),
                 ]);
             }
         }
@@ -624,10 +657,11 @@ class PromotionController extends Controller
                 ])
                 ->get();
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Log::error('getStudentScores failed', [
                 'student_id' => $studentId,
                 'error'      => $e->getMessage(),
+                'class'      => get_class($e),
             ]);
             return collect();
         }

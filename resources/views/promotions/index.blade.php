@@ -495,11 +495,27 @@
                             </select>
                         </div>
                         <div class="col-md-3">
+                            {{--
+                                FIX (Issue 3): previously this select had a hardcoded
+                                <option value="3">Third Term (Promotional)</option> BEFORE the
+                                @foreach loop. If the real database id for "Third Term" is not
+                                literally 3, the browser sends termid=3 to the server while the
+                                promotion setting was saved against the real term id — so
+                                classHasNoApplicableSetting() never finds a match and every
+                                student shows "Not Configured" even though rules exist.
+
+                                Fix: render terms ONLY from $terms (the real DB rows), and
+                                auto-select whichever one is actually flagged as promotional
+                                (is_promotional = true) — the same flag PromotionEvaluator
+                                already uses server-side. No more duplicate/hardcoded option.
+                            --}}
                             <label class="form-label">Select Term</label>
                             <select class="form-select" id="idterm" name="termid">
-                                <option value="3">Third Term (Promotional)</option>
+                                <option value="">-- Select Term --</option>
                                 @foreach ($terms as $term)
-                                    <option value="{{ $term->id }}">{{ $term->term }}</option>
+                                    <option value="{{ $term->id }}" {{ !empty($term->is_promotional) ? 'selected' : '' }}>
+                                        {{ $term->term }}{{ !empty($term->is_promotional) ? ' (Promotional)' : '' }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -1058,9 +1074,9 @@ function filterData() {
     const term = document.getElementById('idterm').value;
     const srch = document.getElementById('searchInput').value.trim();
 
-    if (cls === 'ALL' || sess === 'ALL') {
+    if (cls === 'ALL' || sess === 'ALL' || !term) {
         document.getElementById('studentTableBody').innerHTML =
-            '<tr><td colspan="10" class="text-center py-4 text-muted">Select class and session to view students.</td></tr>';
+            '<tr><td colspan="10" class="text-center py-4 text-muted">Select class, session, and term to view students.</td></tr>';
         document.getElementById('pagination-container').innerHTML = '';
         document.getElementById('studentcount').innerText = '0';
         updateStats();
@@ -1084,8 +1100,12 @@ function filterData() {
         showToast(`${res.data.studentCount || 0} students loaded`, 'success');
     }).catch(err => {
         hideLoading();
+        // Surface the real server-side error message (if any) instead of a
+        // generic string, so client-visible failures are actually debuggable.
+        console.error('[filterData] request failed:', err.response?.status, err.response?.data || err.message);
+        const serverMsg = err.response?.data?.message;
         tb.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>';
-        showToast('Failed to fetch student data', 'danger');
+        showToast(serverMsg || 'Failed to fetch student data', 'danger');
     });
 }
 
@@ -1115,8 +1135,9 @@ function loadPage(url) {
         document.getElementById('studentcount').innerText         = res.data.studentCount || '0';
         updateStats(); setupPaginationLinks(); setupCheckboxHandlers();
         triggerRowEntrance(); popPromotionBadges(); setupRowSelection();
-    }).catch(() => {
+    }).catch(err => {
         hideLoading();
+        console.error('[loadPage] request failed:', err.response?.status, err.response?.data || err.message);
         tb.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-4">Error loading data.</td></tr>';
     });
 }
