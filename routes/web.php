@@ -823,14 +823,15 @@ Route::group(['middleware' => ['auth']], function () {
     // ===================================================================
     // STUDENT REPORTS (ViewStudent / ViewStudentReport)
     // ===================================================================
-    Route::get('/viewstudent/{schoolclassid}/{termid}/{sessionid}', [ViewStudentController::class, 'show'])->name('viewstudent');
-
     Route::get('/studentreports', [ViewStudentReportController::class, 'index'])->name('studentreports.index');
     Route::get('/studentresult/{id}/{schoolclassid}/{sessionid}/{termid}', [ViewStudentReportController::class, 'studentresult'])->name('studentresult');
     Route::get('/student-reports/registered-classes', [ViewStudentReportController::class, 'registeredClasses'])->name('studentreports.registeredClasses');
     Route::get('/class-broadsheet/{schoolclassid}/{sessionid}/{termid}', [ViewStudentReportController::class, 'classBroadsheet'])->name('classbroadsheet');
     Route::match(['get', 'post'], '/studentreports/export-class-results-pdf', [ViewStudentReportController::class, 'exportClassResultsPdf'])->name('studentreports.exportClassResultsPdf');
-    Route::post('/column-options', [ViewStudentReportController::class, 'columnOptions']) ->name('column-options');
+
+    // Fixed name + path
+    Route::post('/studentreports/column-options', [ViewStudentReportController::class, 'columnOptions'])
+        ->name('studentreports.column-options');
 
     // Mock student reports
     Route::get('/studentmockreports', [ViewStudentMockReportController::class, 'index'])->name('studentmockreports.index');
