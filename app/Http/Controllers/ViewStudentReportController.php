@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/ViewStudentReportController.php
 
 namespace App\Http\Controllers;
 
@@ -117,13 +118,13 @@ class ViewStudentReportController extends Controller
     protected function getRemark($grade)
     {
         return match ($grade) {
-            'A1', 'A'            => 'Excellent',
-            'B2', 'B3', 'B'      => 'Very Good',
-            'C4', 'C5', 'C6', 'C' => 'Good',
-            'D7', 'D'            => 'Pass',
-            'E8'                 => 'Pass',
-            'F9', 'F'            => 'Fail',
-            default              => 'Unknown',
+            'A1', 'A'              => 'Excellent',
+            'B2', 'B3', 'B'        => 'Very Good',
+            'C4', 'C5', 'C6', 'C'  => 'Good',
+            'D7', 'D'              => 'Pass',
+            'E8'                   => 'Pass',
+            'F9', 'F'              => 'Fail',
+            default                => 'Unknown',
         };
     }
 
@@ -563,7 +564,6 @@ class ViewStudentReportController extends Controller
     public function index(Request $request): View|JsonResponse
     {
         $pagetitle   = 'Student Terminal Report Management';
-        $current     = 'Current';
         $allstudents = new LengthAwarePaginator([], 0, 10);
 
         if (
@@ -577,8 +577,9 @@ class ViewStudentReportController extends Controller
                 ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
                 ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
                 ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
-                ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid')
-                ->where('schoolsession.status', '=', $current);
+                ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
+                // NOTE: Removed `->where('schoolsession.status', '=', 'Current')`
+                // because the `schoolsession` table has no `status` column.
 
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
@@ -605,8 +606,10 @@ class ViewStudentReportController extends Controller
             ])->latest('studentclass.created_at')->paginate(100);
         }
 
-        $schoolsessions = Schoolsession::where('status', 'Current')->get();
-        $schoolclasses  = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+        // NOTE: Removed `->where('status', 'Current')` — no such column on the table.
+        $schoolsessions = Schoolsession::get();
+
+        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm']);
 
         if ($request->ajax()) {
@@ -1039,48 +1042,51 @@ class ViewStudentReportController extends Controller
         return [1 => 'First Term', 2 => 'Second Term', 3 => 'Third Term'][$termid] ?? 'Unknown Term';
     }
 
+    // =========================================================================
+    // COLUMN OPTIONS (for the export modal)
+    // =========================================================================
 
     public function columnOptions(Request $request): JsonResponse
-{
-    try {
-        $columns = [
-            'student_info' => [
-                'sn'           => ['label' => 'S/N',          'default' => true],
-                'admission_no' => ['label' => 'Admission No', 'default' => false],
-                'name'         => ['label' => 'Subject Name', 'default' => true],
-            ],
-            'assessments' => [
-                'ca1'  => ['label' => 'CA1',  'default' => true],
-                'ca2'  => ['label' => 'CA2',  'default' => true],
-                'ca3'  => ['label' => 'CA3',  'default' => true],
-                'exam' => ['label' => 'Exam', 'default' => true],
-            ],
-            'scores' => [
-                'total'            => ['label' => 'Total',             'default' => true],
-                'bf'               => ['label' => 'BF (Brought Fwd)',  'default' => true],
-                'cum'              => ['label' => 'Cumulative',        'default' => true],
-                'cum_ave'          => ['label' => 'Cum Average',       'default' => false],
-                'grade'            => ['label' => 'Grade',             'default' => true],
-                'arm_position'     => ['label' => 'Arm Pos (Total)',   'default' => true],
-                'arm_position_cum' => ['label' => 'Arm Pos (Cum)',     'default' => true],
-                'position_total'   => ['label' => 'Class Pos (Total)', 'default' => true],
-                'position'         => ['label' => 'Class Pos (Cum)',   'default' => true],
-                'class_average'    => ['label' => 'Subject Average',   'default' => true],
-            ],
-            'gpa_metrics' => [
-                'gpa'  => ['label' => 'GPA',  'default' => false],
-                'cgpa' => ['label' => 'CGPA', 'default' => false],
-            ],
-            'other' => [
-                'compulsory_flag' => ['label' => 'Compulsory Flag', 'default' => false],
-                'remark'          => ['label' => 'Remark',          'default' => false],
-            ],
-        ];
+    {
+        try {
+            $columns = [
+                'student_info' => [
+                    'sn'           => ['label' => 'S/N',          'default' => true],
+                    'admission_no' => ['label' => 'Admission No', 'default' => false],
+                    'name'         => ['label' => 'Subject Name', 'default' => true],
+                ],
+                'assessments' => [
+                    'ca1'  => ['label' => 'CA1',  'default' => true],
+                    'ca2'  => ['label' => 'CA2',  'default' => true],
+                    'ca3'  => ['label' => 'CA3',  'default' => true],
+                    'exam' => ['label' => 'Exam', 'default' => true],
+                ],
+                'scores' => [
+                    'total'            => ['label' => 'Total',             'default' => true],
+                    'bf'               => ['label' => 'BF (Brought Fwd)',  'default' => true],
+                    'cum'              => ['label' => 'Cumulative',        'default' => true],
+                    'cum_ave'          => ['label' => 'Cum Average',       'default' => false],
+                    'grade'            => ['label' => 'Grade',             'default' => true],
+                    'arm_position'     => ['label' => 'Arm Pos (Total)',   'default' => true],
+                    'arm_position_cum' => ['label' => 'Arm Pos (Cum)',     'default' => true],
+                    'position_total'   => ['label' => 'Class Pos (Total)', 'default' => true],
+                    'position'         => ['label' => 'Class Pos (Cum)',   'default' => true],
+                    'class_average'    => ['label' => 'Subject Average',   'default' => true],
+                ],
+                'gpa_metrics' => [
+                    'gpa'  => ['label' => 'GPA',  'default' => false],
+                    'cgpa' => ['label' => 'CGPA', 'default' => false],
+                ],
+                'other' => [
+                    'compulsory_flag' => ['label' => 'Compulsory Flag', 'default' => false],
+                    'remark'          => ['label' => 'Remark',          'default' => false],
+                ],
+            ];
 
-        return response()->json(['success' => true, 'columns' => $columns]);
-    } catch (\Throwable $e) {
-        Log::error('columnOptions failed', ['error' => $e->getMessage()]);
-        return response()->json(['success' => false, 'message' => 'Failed to load column options.'], 500);
+            return response()->json(['success' => true, 'columns' => $columns]);
+        } catch (\Throwable $e) {
+            Log::error('columnOptions failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to load column options.'], 500);
+        }
     }
-}
 }
