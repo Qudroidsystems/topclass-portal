@@ -1573,7 +1573,10 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
         avgEl.innerHTML = `<span class="${avgCls} fs-5 fw-bold">${avgValue}</span>`;
 
         // ── Recommendation card
-        if (result && result.status !== 'awaiting') {
+        // NOTE: the backend no longer emits a literal 'awaiting' status
+        // string — when no decision could be made, result.status is null.
+        // Check truthiness rather than comparing to the old string.
+        if (result && result.status) {
             const recCard = document.getElementById('recommendationCard');
             recCard.style.display = 'block';
             const statusColors = {

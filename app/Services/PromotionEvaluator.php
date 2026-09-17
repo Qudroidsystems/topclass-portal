@@ -13,11 +13,16 @@ use Illuminate\Support\Facades\Log;
 class PromotionEvaluator
 {
     // ── Status constants ────────────────────────────────────────────────────
+    // These are the only four real promotion outcomes an admin can configure
+    // via a rule's status_label. "Awaiting" is NOT one of them — it was
+    // removed as a formal status because it isn't a promotion decision, it's
+    // the absence of one. See awaitingResult() below: it now returns
+    // 'status' => null instead of a fifth pseudo-status, and the 'reason'
+    // field explains why no decision could be made.
     public const STATUS_PROMOTED      = 'promoted';
     public const STATUS_TRIAL         = 'trial';
     public const STATUS_SEE_PRINCIPAL = 'see_principal';
     public const STATUS_REPEATED      = 'repeated';
-    public const STATUS_AWAITING      = 'awaiting';
 
     /**
      * Senior grade ladder (WAEC style) — higher = better.
@@ -147,10 +152,9 @@ class PromotionEvaluator
         // ── Step 7: evaluate average-only branch ────────────────────────────
         $requiredAverage = $this->resolveRequiredAverage($settings, $schoolclassid);
 
-        // $averageConditionMet is now tri-state: true | false | null.
+        // $averageConditionMet is tri-state: true | false | null.
         // null means "not applicable" (no required average configured, or
-        // no overall average computable for this student) — see FIX #1
-        // in evaluateAverage() below.
+        // no overall average computable for this student).
         [$averageConditionMet, $averageStatus] = $this->evaluateAverage(
             $ruleLogic,
             $requiredAverage,
@@ -158,6 +162,8 @@ class PromotionEvaluator
         );
 
         // ── Step 8: resolve final status ────────────────────────────────────
+        // $finalStatus is now nullable: null means "no decision could be
+        // made" (not a fifth status) — see resolveFinalStatus() below.
         $finalStatus = $this->resolveFinalStatus(
             $ruleLogic,
             $matchedStatus,
@@ -192,11 +198,6 @@ class PromotionEvaluator
             'is_promotional_term'       => $isPromotional,
             'failed_compulsory'         => $failedCompulsory,
             'compulsory_subject_detail' => $compulsoryDetail,
-            // FIX #1 (cont.): "failed" now means the average condition was
-            // actually evaluated AND came back false — not "wasn't met OR
-            // wasn't configured", which is what `!$averageConditionMet`
-            // used to conflate (null was falsy, so "not applicable" showed
-            // up identically to "genuinely failed" in the UI).
             'average_failed'            => $averageConditionMet === false,
             'average_applicable'        => $averageConditionMet !== null,
             'required_average'          => $requiredAverage,
@@ -215,12 +216,19 @@ class PromotionEvaluator
     }
 
     /**
-     * Return an "awaiting" result.
+     * Return a "no decision" result — used whenever evaluation can't run at
+     * all (non-promotional term, no settings, no matching setting, no
+     * rules). 'status' is null, NOT a formal status value: it is not one of
+     * the four configurable promotion outcomes. The blade layer already
+     * treats a missing/null status as "awaiting" for display purposes via
+     * `$rec['status'] ?? 'awaiting'` — no template changes were needed for
+     * this removal. 'status_label' stays as human-readable text since it's
+     * just informational, not part of the status enum.
      */
     public function awaitingResult(?float $overallAverage, string $reason = ''): array
     {
         return [
-            'status'                    => self::STATUS_AWAITING,
+            'status'                    => null,
             'status_label'              => 'Awaiting Decision',
             'is_promotional_term'       => false,
             'failed_compulsory'         => [],
@@ -258,7 +266,9 @@ class PromotionEvaluator
                 'termid'        => $termid,
             ],
             [
-                'promotionStatus'        => strtoupper($result['status']),
+                // $result['status'] may be null when no decision was made;
+                // strtoupper(null) is deprecated in PHP 8.1+, so guard it.
+                'promotionStatus'        => $result['status'] !== null ? strtoupper($result['status']) : null,
                 'classstatus'            => 'CURRENT',
                 'rule_applied'           => $result['applied_rule']['name'] ?? null,
                 'overall_average'        => $result['actual_average']   ?? null,
@@ -700,20 +710,10 @@ class PromotionEvaluator
     }
 
     /**
-     * FIX #1: previously this returned [true, null] whenever the required
-     * average or the student's overall average were missing — meaning "not
-     * configured" was silently treated identically to "condition met". That
-     * let students slip through the average gate in 'both' mode purely
-     * because nobody had set a pass-average anywhere (class category or
-     * per-setting), with no visible signal that the check never actually
-     * ran.
-     *
-     * Now the tri-state is explicit:
-     *   - true  → average was checked and met
-     *   - false → average was checked and NOT met
-     *   - null  → average could not be checked (not configured, or no
-     *             computable overall average for this student) — callers
-     *             MUST treat this as "not applicable", never as "passed".
+     * Tri-state return: [true, null] met / [false, self::STATUS_REPEATED]
+     * not met / [null, null] not applicable (not configured, not computable,
+     * or not used by this rule_logic mode). Callers MUST treat null as
+     * "not applicable", never as "passed" — see resolveFinalStatus().
      */
     private function evaluateAverage(
         string $ruleLogic,
@@ -721,12 +721,9 @@ class PromotionEvaluator
         ?float $overallAverage
     ): array {
         if (!in_array($ruleLogic, ['average_only', 'both'], true)) {
-            // Average isn't part of this mode at all — not applicable.
             return [null, null];
         }
         if ($requiredAverage === null || $overallAverage === null) {
-            // Not configured / not computable — explicitly "not applicable",
-            // NOT "met".
             return [null, null];
         }
         $met = $overallAverage >= $requiredAverage;
@@ -734,23 +731,19 @@ class PromotionEvaluator
     }
 
     /**
-     * FIX #2: in 'both' mode, a matched rule that fails the global average
-     * condition used to be unconditionally forced to STATUS_TRIAL — even if
-     * the rule's own configured outcome was "Repeat" or "See Principal".
-     * That silently UPGRADED some outcomes (e.g. Repeat → Trial) purely
-     * because of how the average happened to compare, overriding what the
-     * admin explicitly configured for that rule.
+     * Returns one of the four real status constants, or null when no
+     * decision could be made at all (never a formal "awaiting" status).
      *
-     * Now: failing the average only ever downgrades an otherwise-"Promoted"
-     * result to "Trial" (the one case where "close, but not quite" makes
-     * sense). Any other matched status (trial / see_principal / repeated)
-     * is left exactly as the matched rule specified — the average check
-     * can restrict a promotion, but it never overrides a rule's own
-     * non-promotion outcome.
-     *
-     * A null $averageConditionMet ("not applicable" — see evaluateAverage())
-     * now falls back to the matched rule's own status, i.e. behaves like
-     * grade_count mode, instead of being treated as an implicit pass.
+     * - average_only: defers entirely to the average comparison; null when
+     *   the average couldn't be evaluated (not configured / not computable).
+     * - grade_count: defers entirely to the matched rule; null when nothing
+     *   matched.
+     * - both: a matched rule's status wins outright unless the average was
+     *   evaluated AND failed — in which case only an otherwise-Promoted
+     *   outcome gets downgraded to Trial. A non-Promoted matched status
+     *   (Trial / See Principal / Repeat) is never upgraded by a failed
+     *   average. When nothing matched, falls back to the average alone;
+     *   null when neither matched nor the average was applicable.
      */
     private function resolveFinalStatus(
         string  $ruleLogic,
@@ -758,26 +751,21 @@ class PromotionEvaluator
         ?bool   $averageConditionMet,
         ?string $averageStatus,
         bool    $isPromotional = true
-    ): string {
+    ): ?string {
         if (!$isPromotional) {
-            return self::STATUS_AWAITING;
+            return null;
         }
 
         switch ($ruleLogic) {
             case 'average_only':
-                return $averageStatus ?? self::STATUS_AWAITING;
+                return $averageStatus;
 
             case 'grade_count':
-                return $matchedStatus ?? self::STATUS_REPEATED;
+                return $matchedStatus;
 
             case 'both':
                 if ($matchedStatus !== null) {
-                    // Average not applicable (not configured) → defer to
-                    // the matched rule's own status, same as grade_count.
-                    if ($averageConditionMet === null) {
-                        return $matchedStatus;
-                    }
-                    if ($averageConditionMet === true) {
+                    if ($averageConditionMet === null || $averageConditionMet === true) {
                         return $matchedStatus;
                     }
                     // Average explicitly failed. Only downgrade a
@@ -788,20 +776,21 @@ class PromotionEvaluator
                         : $matchedStatus;
                 }
 
-                // No rule matched at all — fall back to the average check
-                // alone, same as before, but only when it was actually
-                // evaluated.
+                // No rule matched — fall back to the average check alone.
                 if ($averageConditionMet === true) {
                     return self::STATUS_PROMOTED;
                 }
-                return self::STATUS_REPEATED;
+                if ($averageConditionMet === false) {
+                    return self::STATUS_REPEATED;
+                }
+                return null;
 
             default:
-                return $matchedStatus ?? self::STATUS_REPEATED;
+                return $matchedStatus;
         }
     }
 
-    private function mapStatusLabel(string $status, PromotionSetting $settings): string
+    private function mapStatusLabel(?string $status, PromotionSetting $settings): string
     {
         return match ($status) {
             self::STATUS_PROMOTED      => $settings->promoted_label      ?? 'Promoted',
@@ -855,7 +844,7 @@ class PromotionEvaluator
     // PUBLIC — badge helpers (used by Blade views)
     // =========================================================================
 
-    public function getStatusBadgeClass(string $status): string
+    public function getStatusBadgeClass(?string $status): string
     {
         return match ($status) {
             self::STATUS_PROMOTED      => 'bg-success',
@@ -866,7 +855,7 @@ class PromotionEvaluator
         };
     }
 
-    public function getStatusIcon(string $status): string
+    public function getStatusIcon(?string $status): string
     {
         return match ($status) {
             self::STATUS_PROMOTED      => 'ri-checkbox-circle-line',
