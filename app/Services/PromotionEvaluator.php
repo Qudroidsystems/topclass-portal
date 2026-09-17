@@ -731,19 +731,28 @@ class PromotionEvaluator
     }
 
     /**
-     * Returns one of the four real status constants, or null when no
-     * decision could be made at all (never a formal "awaiting" status).
+     * Returns one of the four real status constants. null is reserved
+     * EXCLUSIVELY for "not promotional term" (a case evaluate() already
+     * short-circuits before this method is ever called, so in practice this
+     * method always returns a real status when it runs at all).
      *
-     * - average_only: defers entirely to the average comparison; null when
-     *   the average couldn't be evaluated (not configured / not computable).
-     * - grade_count: defers entirely to the matched rule; null when nothing
-     *   matched.
+     * Once rules are actually being evaluated (a matching active setting
+     * with rules exists, for a promotional term), the student ALWAYS gets
+     * a real decision — there is no ambiguous "still deciding" state once
+     * evaluation has genuinely started. This mirrors the rule your own
+     * settings page documents: "If no rule matches → Advice to Repeat."
+     *
+     * - average_only: defers to the average comparison; if the average
+     *   couldn't be computed (not configured / no score data), defaults to
+     *   Repeat rather than leaving the outcome undetermined.
+     * - grade_count: defers to the matched rule; if nothing matched,
+     *   defaults to Repeat.
      * - both: a matched rule's status wins outright unless the average was
      *   evaluated AND failed — in which case only an otherwise-Promoted
      *   outcome gets downgraded to Trial. A non-Promoted matched status
      *   (Trial / See Principal / Repeat) is never upgraded by a failed
-     *   average. When nothing matched, falls back to the average alone;
-     *   null when neither matched nor the average was applicable.
+     *   average. When nothing matched, falls back to the average alone,
+     *   defaulting to Repeat if the average wasn't applicable either.
      */
     private function resolveFinalStatus(
         string  $ruleLogic,
@@ -758,10 +767,10 @@ class PromotionEvaluator
 
         switch ($ruleLogic) {
             case 'average_only':
-                return $averageStatus;
+                return $averageStatus ?? self::STATUS_REPEATED;
 
             case 'grade_count':
-                return $matchedStatus;
+                return $matchedStatus ?? self::STATUS_REPEATED;
 
             case 'both':
                 if ($matchedStatus !== null) {
@@ -777,16 +786,15 @@ class PromotionEvaluator
                 }
 
                 // No rule matched — fall back to the average check alone.
-                if ($averageConditionMet === true) {
-                    return self::STATUS_PROMOTED;
-                }
-                if ($averageConditionMet === false) {
-                    return self::STATUS_REPEATED;
-                }
-                return null;
+                // Both "average failed" and "average not applicable"
+                // default to Repeat: with no matched rule and no positive
+                // average confirmation, there is nothing to promote on.
+                return $averageConditionMet === true
+                    ? self::STATUS_PROMOTED
+                    : self::STATUS_REPEATED;
 
             default:
-                return $matchedStatus;
+                return $matchedStatus ?? self::STATUS_REPEATED;
         }
     }
 
