@@ -561,68 +561,218 @@ class ViewStudentReportController extends Controller
     // INDEX
     // =========================================================================
 
+      // =========================================================================
+    // INDEX — with debug logging
+    // =========================================================================
+
     public function index(Request $request): View|JsonResponse
     {
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG: Log every incoming request with full context
+        // ═══════════════════════════════════════════════════════════════════
+        Log::info('[studentreports.index] Request received', [
+            'is_ajax'         => $request->ajax(),
+            'wants_json'      => $request->wantsJson(),
+            'method'          => $request->method(),
+            'url'             => $request->fullUrl(),
+            'ip'              => $request->ip(),
+            'user_id'         => optional($request->user())->id,
+            'user_email'      => optional($request->user())->email,
+            'user_roles'      => $request->user() ? $request->user()->getRoleNames()->toArray() : [],
+            'user_perms'      => $request->user() ? $request->user()->getAllPermissions()->pluck('name')->toArray() : [],
+            'can_view_report' => $request->user() ? $request->user()->can('View student-report') : false,
+            'all_input'       => $request->all(),
+            'schoolclassid'   => $request->input('schoolclassid'),
+            'sessionid'       => $request->input('sessionid'),
+            'termid'          => $request->input('termid'),
+            'search'          => $request->input('search'),
+            'has_csrf_header' => $request->hasHeader('X-CSRF-TOKEN'),
+            'csrf_header'     => $request->header('X-CSRF-TOKEN'),
+            'x_requested_with' => $request->header('X-Requested-With'),
+            'session_id'      => $request->session()->getId(),
+            'session_token'   => $request->session()->token(),
+        ]);
+
         $pagetitle   = 'Student Terminal Report Management';
         $allstudents = new LengthAwarePaginator([], 0, 10);
 
-        if (
-            $request->filled('schoolclassid') && $request->filled('sessionid') &&
-            $request->input('schoolclassid') !== 'ALL' && $request->input('sessionid') !== 'ALL'
-        ) {
-            $query = Studentclass::query()
-                ->where('schoolclassid', $request->input('schoolclassid'))
-                ->where('sessionid',     $request->input('sessionid'))
-                ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
-                ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
-                ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
-                ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
-                ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
-                // NOTE: Removed `->where('schoolsession.status', '=', 'Current')`
-                // because the `schoolsession` table has no `status` column.
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG: Branch — do we have valid filter parameters?
+        // ═══════════════════════════════════════════════════════════════════
+        $hasSchoolClass = $request->filled('schoolclassid');
+        $hasSession     = $request->filled('sessionid');
+        $isAllClass     = $request->input('schoolclassid') === 'ALL';
+        $isAllSession   = $request->input('sessionid')     === 'ALL';
 
-            if ($search = $request->input('search')) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('studentRegistration.admissionNo', 'like', "%{$search}%")
-                      ->orWhere('studentRegistration.firstname',  'like', "%{$search}%")
-                      ->orWhere('studentRegistration.lastname',   'like', "%{$search}%")
-                      ->orWhere('studentRegistration.othername',  'like', "%{$search}%");
-                });
+        Log::info('[studentreports.index] Filter param check', [
+            'has_schoolclassid' => $hasSchoolClass,
+            'has_sessionid'     => $hasSession,
+            'schoolclassid_val' => $request->input('schoolclassid'),
+            'sessionid_val'     => $request->input('sessionid'),
+            'is_all_class'      => $isAllClass,
+            'is_all_session'    => $isAllSession,
+            'will_query'        => $hasSchoolClass && $hasSession && !$isAllClass && !$isAllSession,
+        ]);
+
+        if ($hasSchoolClass && $hasSession && !$isAllClass && !$isAllSession) {
+            try {
+                Log::info('[studentreports.index] Building student query', [
+                    'schoolclassid' => $request->input('schoolclassid'),
+                    'sessionid'     => $request->input('sessionid'),
+                ]);
+
+                $query = Studentclass::query()
+                    ->where('schoolclassid', $request->input('schoolclassid'))
+                    ->where('sessionid',     $request->input('sessionid'))
+                    ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
+                    ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
+                    ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
+                    ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
+                    ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
+                    // NOTE: no ->where('schoolsession.status', ...) — column doesn't exist
+
+                if ($search = $request->input('search')) {
+                    Log::info('[studentreports.index] Adding search filter', ['search' => $search]);
+
+                    $query->where(function ($q) use ($search) {
+                        $q->where('studentRegistration.admissionNo', 'like', "%{$search}%")
+                          ->orWhere('studentRegistration.firstname',  'like', "%{$search}%")
+                          ->orWhere('studentRegistration.lastname',   'like', "%{$search}%")
+                          ->orWhere('studentRegistration.othername',  'like', "%{$search}%");
+                    });
+                }
+
+                Log::debug('[studentreports.index] SQL before pagination', [
+                    'sql'      => $query->toSql(),
+                    'bindings' => $query->getBindings(),
+                ]);
+
+                $allstudents = $query->select([
+                    'studentRegistration.admissionNo as admissionno',
+                    'studentRegistration.firstname   as firstname',
+                    'studentRegistration.lastname    as lastname',
+                    'studentRegistration.othername   as othername',
+                    'studentRegistration.gender      as gender',
+                    'studentRegistration.id          as stid',
+                    'studentpicture.picture          as picture',
+                    'studentclass.schoolclassid      as schoolclassID',
+                    'studentclass.sessionid          as sessionid',
+                    'schoolclass.schoolclass         as schoolclass',
+                    'schoolarm.arm                   as schoolarm',
+                    'schoolsession.session           as session',
+                ])->latest('studentclass.created_at')->paginate(100);
+
+                Log::info('[studentreports.index] Query succeeded', [
+                    'total_students'  => $allstudents->total(),
+                    'per_page'        => $allstudents->perPage(),
+                    'current_page'    => $allstudents->currentPage(),
+                    'count_on_page'   => $allstudents->count(),
+                    'first_student'   => $allstudents->first() ? [
+                        'id'          => $allstudents->first()->stid,
+                        'admissionno' => $allstudents->first()->admissionno,
+                        'name'        => $allstudents->first()->firstname . ' ' . $allstudents->first()->lastname,
+                    ] : null,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('[studentreports.index] Query FAILED', [
+                    'message' => $e->getMessage(),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                    'trace'   => $e->getTraceAsString(),
+                ]);
+
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Query error: ' . $e->getMessage(),
+                        'file'    => basename($e->getFile()) . ':' . $e->getLine(),
+                    ], 500);
+                }
+
+                return back()->with('error', 'Failed to load students: ' . $e->getMessage());
             }
-
-            $allstudents = $query->select([
-                'studentRegistration.admissionNo as admissionno',
-                'studentRegistration.firstname   as firstname',
-                'studentRegistration.lastname    as lastname',
-                'studentRegistration.othername   as othername',
-                'studentRegistration.gender      as gender',
-                'studentRegistration.id          as stid',
-                'studentpicture.picture          as picture',
-                'studentclass.schoolclassid      as schoolclassID',
-                'studentclass.sessionid          as sessionid',
-                'schoolclass.schoolclass         as schoolclass',
-                'schoolarm.arm                   as schoolarm',
-                'schoolsession.session           as session',
-            ])->latest('studentclass.created_at')->paginate(100);
         }
 
-        // NOTE: Removed `->where('status', 'Current')` — no such column on the table.
-        $schoolsessions = Schoolsession::get();
-
-        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm']);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'tableBody'    => view('studentreports.partials.student_rows', compact('allstudents'))->render(),
-                'pagination'   => $allstudents->links('pagination::bootstrap-5')->render(),
-                'studentCount' => $allstudents->total(),
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG: Loading sessions + classes
+        // ═══════════════════════════════════════════════════════════════════
+        try {
+            $schoolsessions = Schoolsession::get();
+            Log::info('[studentreports.index] Loaded sessions', [
+                'count'    => $schoolsessions->count(),
+                'sessions' => $schoolsessions->pluck('session', 'id')->toArray(),
             ]);
+        } catch (\Throwable $e) {
+            Log::error('[studentreports.index] Failed to load sessions', [
+                'message' => $e->getMessage(),
+            ]);
+            $schoolsessions = collect();
         }
+
+        try {
+            $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+                ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm']);
+            Log::info('[studentreports.index] Loaded classes', [
+                'count'   => $schoolclasses->count(),
+                'classes' => $schoolclasses->pluck('schoolclass', 'id')->toArray(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[studentreports.index] Failed to load classes', [
+                'message' => $e->getMessage(),
+            ]);
+            $schoolclasses = collect();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG: AJAX branch — build JSON response
+        // ═══════════════════════════════════════════════════════════════════
+        if ($request->ajax()) {
+            try {
+                Log::info('[studentreports.index] AJAX — rendering partial', [
+                    'total' => $allstudents->total(),
+                ]);
+
+                $tableBody = view('studentreports.partials.student_rows', compact('allstudents'))->render();
+
+                Log::info('[studentreports.index] Partial rendered', [
+                    'html_length' => strlen($tableBody),
+                    'html_preview' => substr($tableBody, 0, 200),
+                ]);
+
+                $pagination = $allstudents->links('pagination::bootstrap-5')->render();
+
+                Log::info('[studentreports.index] Pagination rendered', [
+                    'html_length' => strlen($pagination),
+                ]);
+
+                return response()->json([
+                    'tableBody'    => $tableBody,
+                    'pagination'   => $pagination,
+                    'studentCount' => $allstudents->total(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('[studentreports.index] AJAX render FAILED', [
+                    'message' => $e->getMessage(),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                    'trace'   => $e->getTraceAsString(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Render error: ' . $e->getMessage(),
+                    'file'    => basename($e->getFile()) . ':' . $e->getLine(),
+                ], 500);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DEBUG: Standard HTML page render
+        // ═══════════════════════════════════════════════════════════════════
+        Log::info('[studentreports.index] Rendering full HTML view');
 
         return view('studentreports.index', compact('allstudents', 'schoolsessions', 'schoolclasses', 'pagetitle'));
     }
-
     // =========================================================================
     // DRAWER DATA
     // =========================================================================
