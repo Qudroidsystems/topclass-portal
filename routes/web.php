@@ -64,6 +64,7 @@ use App\Http\Controllers\SchoolPaymentController;
 use App\Http\Controllers\SchoolsessionController;
 use App\Http\Controllers\SchooltermController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SportController;
 use App\Http\Controllers\StaffAttendanceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StaffImageUploadController;
@@ -89,6 +90,7 @@ use App\Http\Controllers\ViewStudentController;
 use App\Http\Controllers\ViewStudentMockReportController;
 use App\Http\Controllers\ViewStudentReportController;
 use Illuminate\Support\Facades\Route;
+
 
 /*
 |--------------------------------------------------------------------------
