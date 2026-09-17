@@ -60,22 +60,19 @@ class PromotionController extends Controller
                 $query = Studentclass::query()
                     ->where('studentclass.schoolclassid', $schoolclassId)
                     ->where('studentclass.sessionid',     $sessionId)
-                    // FIX (term-mismatch bug): the query previously filtered
-                    // only by class + session, so it could return
-                    // studentclass rows whose termid did NOT match the term
-                    // selected in the filter (e.g. a row left over from Term
-                    // 1 or 2). The table then computed scores/evaluation
-                    // using the FILTER's $termId (correct), but the row's
-                    // own studentclass.termid column (now guaranteed equal
-                    // to $termId by this filter) is what the Blade partial
-                    // passes into openPromotionModal(...) in the browser.
-                    // Without this filter, that row termid could diverge
-                    // from $termId, so the modal's AJAX call to
-                    // getStudentDetails() fetched a DIFFERENT term's
-                    // broadsheet scores than the ones shown in the table —
-                    // producing a different average and a different (wrong)
-                    // promotion recommendation for the same student.
-                    ->where('studentclass.termid', $termId)
+                    // NOTE: deliberately NOT filtering by studentclass.termid
+                    // here. studentclass is one row per student per
+                    // class+session (not one row per term), so its termid
+                    // column does not reliably mean "this row's scores
+                    // belong to term X" — filtering on it excluded almost
+                    // every student. The term-mismatch bug between the
+                    // table and the promotion modal is instead fixed
+                    // client-side in index.blade.php: openPromotionModal()
+                    // always uses the currently selected #idterm value for
+                    // its AJAX call, rather than trusting this row's own
+                    // (unreliable) termid column. Do not reintroduce a
+                    // termid filter here without confirming how
+                    // studentclass rows are created/updated across terms.
                     ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
                     ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
                     ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
