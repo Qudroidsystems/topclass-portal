@@ -18,6 +18,10 @@ class PromotionEvaluator
     public const STATUS_SEE_PRINCIPAL = 'see_principal';
     public const STATUS_REPEATED      = 'repeated';
 
+    // ── Average basis (shared with Broadsheet grade_basis) ──────────────────
+    public const AVERAGE_BASIS_TOTAL = 'total';
+    public const AVERAGE_BASIS_CUM   = 'cum';
+
     private static array $seniorGradeOrder = [
         'F9' => 0, 'E8' => 1, 'D7' => 2,
         'C6' => 3, 'C5' => 4, 'C4' => 5,
@@ -51,7 +55,7 @@ class PromotionEvaluator
         Log::info('[PromotionEvaluator] START', [
             'student_id'      => $studentId,
             'class_id'        => $schoolclassid,
-            'session_id'      => $sessionid,
+            'session_id'     => $sessionid,
             'term_id'         => $termid,
             'overall_average' => $overallAverage,
             'scores_count'    => is_countable($scores) ? count($scores) : 0,
@@ -193,6 +197,79 @@ class PromotionEvaluator
                 'promotion_pass_average' => $requiredAverage,
             ],
         ];
+    }
+
+    /**
+     * Overall average from score rows that expose total and/or cum.
+     * Same formula for PromotionController and BroadsheetController.
+     *
+     * Formula: (sum of chosen field values) / (count of numeric values * 100) * 100
+     * i.e. mean of the chosen field when each subject is out of 100.
+     *
+     * @param  \Illuminate\Support\Collection|iterable  $scores
+     * @param  string  $basis  'total' | 'cum'  (default total)
+     */
+    public function computeOverallAverage($scores, string $basis = self::AVERAGE_BASIS_TOTAL): ?float
+    {
+        $basis = strtolower(trim($basis)) === self::AVERAGE_BASIS_CUM
+            ? self::AVERAGE_BASIS_CUM
+            : self::AVERAGE_BASIS_TOTAL;
+
+        $collection = $scores instanceof \Illuminate\Support\Collection
+            ? $scores
+            : collect($scores);
+
+        if ($collection->isEmpty()) {
+            return null;
+        }
+
+        $obtained   = 0.0;
+        $obtainable = 0.0;
+
+        foreach ($collection as $score) {
+            $value = is_object($score)
+                ? ($score->{$basis} ?? null)
+                : ($score[$basis] ?? null);
+
+            if ($value !== null && is_numeric($value)) {
+                $obtained   += (float) $value;
+                $obtainable += 100;
+            }
+        }
+
+        return $obtainable > 0
+            ? round(($obtained / $obtainable) * 100, 1)
+            : 0.0;
+    }
+
+    /**
+     * Resolve which basis to use for this evaluation.
+     * Priority: explicit $requested → setting field → default 'total'.
+     *
+     * Safe if $settings is null or the column does not exist yet.
+     */
+    public function resolveAverageBasis(?object $settings = null, ?string $requested = null): string
+    {
+        if ($requested !== null && $requested !== '') {
+            $r = strtolower(trim($requested));
+            if (in_array($r, [self::AVERAGE_BASIS_TOTAL, self::AVERAGE_BASIS_CUM], true)) {
+                return $r;
+            }
+        }
+
+        if ($settings !== null) {
+            $fromSetting = $settings->promotion_average_basis
+                ?? $settings->average_basis
+                ?? null;
+            if ($fromSetting !== null && $fromSetting !== '') {
+                $s = strtolower(trim((string) $fromSetting));
+                if (in_array($s, [self::AVERAGE_BASIS_TOTAL, self::AVERAGE_BASIS_CUM], true)) {
+                    return $s;
+                }
+            }
+        }
+
+        return self::AVERAGE_BASIS_TOTAL;
     }
 
     /**

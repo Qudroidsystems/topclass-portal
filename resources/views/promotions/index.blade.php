@@ -80,7 +80,6 @@
     50%       { transform: translateY(-10px); }
 }
 
-/* ── Hero ───────────────────────────────────────────────────────────────────── */
 .pay-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #4f46e5 100%);
     border-radius: var(--pay-radius);
@@ -100,7 +99,6 @@
 .pay-hero h1 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 6px; position: relative; }
 .pay-hero p  { font-size: 13px; color: rgba(255,255,255,.75); margin: 0; position: relative; }
 
-/* ── Stat cards ─────────────────────────────────────────────────────────────── */
 .stat-card {
     background: #fff;
     border: 1px solid var(--pay-border);
@@ -115,7 +113,6 @@
 .stat-card .stat-icon  { font-size: 32px; opacity: .12; float: right; margin-top: -8px; }
 .stat-flash { animation: statFlash .45s cubic-bezier(.34,1.4,.64,1); }
 
-/* ── Info banner ────────────────────────────────────────────────────────────── */
 .info-banner {
     background: #eff6ff; border: 1px solid #bfdbfe;
     border-radius: 10px; padding: 12px 16px;
@@ -127,7 +124,6 @@
 .info-banner .text strong { display: block; margin-bottom: 4px; }
 .info-banner .text a { color: #1e40af; font-weight: 600; text-decoration: underline; }
 
-/* ── Promotion badges ───────────────────────────────────────────────────────── */
 .promotion-badge-promoted,
 .promotion-badge-trial,
 .promotion-badge-see_principal,
@@ -144,7 +140,6 @@
 .promotion-badge-pending     { background: #6b7280; color: white; }
 .badge-pop { animation: badgePop .4s cubic-bezier(.34,1.4,.64,1); }
 
-/* ── Bulk action bar ────────────────────────────────────────────────────────── */
 .bulk-action-bar {
     display: none; align-items: center; gap: 12px;
     background: #fff7ed; border: 1px solid #fed7aa;
@@ -154,7 +149,6 @@
 .bulk-action-bar .bulk-count { font-size: 13px; font-weight: 600; color: #92400e; }
 .select-all-checkbox { width: 16px; height: 16px; cursor: pointer; }
 
-/* ── Modal chrome ───────────────────────────────────────────────────────────── */
 .modal-content {
     border-radius: 16px; overflow: hidden;
     animation: modalZoomIn 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
@@ -172,7 +166,6 @@
     margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--pay-border);
 }
 
-/* ── Decision cards ─────────────────────────────────────────────────────────── */
 .form-check-card .form-check-input { display: none; }
 .promotion-card, .trial-card, .principal-card, .repeat-card {
     transition: all 0.3s ease; background-color: #fff;
@@ -187,7 +180,6 @@
 #seePrincipalCheckbox:checked ~ label .principal-card { border-color: #0dcaf0 !important; background-color: #cff4fc !important; }
 #repeatCheckbox:checked ~ label .repeat-card          { border-color: #dc3545 !important; background-color: #f8d7da !important; }
 
-/* ── Row entrance ───────────────────────────────────────────────────────────── */
 #studentTableBody tr[data-student-id] {
     opacity: 0; transform: translateY(14px);
     transition: opacity .38s cubic-bezier(.25,.46,.45,.94),
@@ -213,16 +205,13 @@
 #studentTableBody tr[data-student-id]:hover .row-checkbox,
 #studentTableBody tr[data-student-id] .row-checkbox:checked { opacity: 1; transform: scale(1); }
 
-/* ── Score bar ──────────────────────────────────────────────────────────────── */
 .score-bar-wrap { background: #e2e8f0; border-radius: 4px; height: 6px; width: 60px; display: inline-block; vertical-align: middle; margin-left: 6px; }
 .score-bar-fill { height: 100%; border-radius: 4px; }
 
-/* ── Table chrome ───────────────────────────────────────────────────────────── */
 .compulsory-table { width: 100%; border-collapse: collapse; }
 .compulsory-table th { background: var(--pay-primary); color: #fff; padding: 12px 16px; font-weight: 600; font-size: 13px; white-space: nowrap; text-align: left; }
 .compulsory-table td { padding: 11px 16px; vertical-align: middle; border-bottom: 1px solid var(--pay-border); font-size: 13px; }
 
-/* ── Subjects table (modal) ─────────────────────────────────────────────────── */
 .subj-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 .subj-table thead th {
     background: var(--pay-primary); color: #fff;
@@ -241,7 +230,6 @@
     border-top: 2px solid #e2e8f0;
 }
 
-/* grade colors */
 .gc-a  { color: #15803d; }
 .gc-b  { color: #1d4ed8; }
 .gc-c  { color: #0369a1; }
@@ -249,7 +237,6 @@
 .gc-f  { color: #b91c1c; }
 .gc-na { color: #9ca3af; }
 
-/* row left-border status */
 .subj-table .row-pass    { border-left: 3px solid #10b981; }
 .subj-table .row-fail    { border-left: 3px solid #ef4444; }
 .subj-table .row-notsat  { border-left: 3px solid #f59e0b; }
@@ -258,12 +245,10 @@
 .subj-table .row-optfail { border-left: 3px solid #ef4444; }
 .subj-table .row-optns   { border-left: 3px solid #9ca3af; }
 
-/* inline mini-bar */
 .mini-bar { display:inline-flex; align-items:center; gap:7px; }
 .mini-bar-track { height:6px; background:#e2e8f0; border-radius:3px; display:inline-block; vertical-align:middle; overflow:hidden; flex-shrink:0; }
 .mini-bar-fill  { height:100%; border-radius:3px; display:block; }
 
-/* eval tag */
 .eval-tag {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 500; padding: 2px 8px;
@@ -277,7 +262,6 @@
 .eval-gray   { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
 .eval-sub { display: block; font-size: 10.5px; color: #64748b; margin-top: 2px; line-height: 1.35; }
 
-/* stat summary row */
 .subj-stat-row {
     display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
     padding: 10px 14px; background: #f8fafc;
@@ -294,7 +278,6 @@
 .chip-notsat  { background: #fef9c3; color: #92400e; }
 .chip-credit  { background: #dbeafe; color: #1e40af; }
 
-/* credit tally cards */
 .credit-tally {
     display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
 }
@@ -308,7 +291,6 @@
 .credit-tally-card .lbl { font-size: 11px; color: #64748b; line-height: 1.4; }
 .credit-tally-card .lbl small { display: block; opacity: .75; }
 
-/* rule match banner */
 .rule-match-banner {
     padding: 10px 14px; border-radius: 8px;
     font-size: 12.5px; margin-bottom: 12px;
@@ -321,43 +303,34 @@
 .rule-match-banner .top      { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-weight: 600; }
 .rule-match-banner .sub      { font-size: 11.5px; opacity: .85; }
 
-/* ── Empty state ────────────────────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 52px 24px; color: var(--pay-muted); }
 .empty-state i { font-size: 3rem; opacity: .25; display: block; margin-bottom: 14px; }
 
-/* ── Search box ─────────────────────────────────────────────────────────────── */
 .search-box { position: relative; }
 .search-box .form-control { border: 1.5px solid var(--pay-border); border-radius: 8px; padding: 9px 14px; padding-right: 36px; font-size: 13px; width: 100%; }
 .search-box .form-control:focus { border-color: var(--pay-accent); outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 .search-box .search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--pay-muted); pointer-events: none; }
 
-/* ── Modal student profile ──────────────────────────────────────────────────── */
 .student-avatar-lg { width: 120px; height: 120px; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,.15); background: #f8f9fa; }
 .status-badge-lg   { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 30px; font-size: 14px; font-weight: 600; }
 
-/* ── Rule badge ─────────────────────────────────────────────────────────────── */
 .rule-badge { background: #1e3a5f; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
 
-/* ── Button icons ───────────────────────────────────────────────────────────── */
 .btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all .15s; border: none; cursor: pointer; }
 .btn-subtle-primary { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
 .btn-subtle-primary:hover { background: #dbeafe; color: #1d4ed8; transform: translateY(-1px); }
 .btn-subtle-danger  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 .btn-subtle-danger:hover  { background: #fee2e2; color: #b91c1c; transform: translateY(-1px); }
 
-/* ── Toast ──────────────────────────────────────────────────────────────────── */
 .toast-notification { position: fixed; bottom: 20px; right: 20px; z-index: 10000; animation: toastSlideIn 0.3s ease-out; }
 .toast-notification.closing { animation: toastSlideOut 0.3s ease-out forwards; }
 
-/* ── Loading overlay ────────────────────────────────────────────────────────── */
 .loading-overlay  { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(3px); }
 .loading-spinner  { background: white; padding: 20px 30px; border-radius: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
 
-/* ── Skeleton ───────────────────────────────────────────────────────────────── */
 .skeleton-row td { position: relative; overflow: hidden; }
 .skeleton-row td::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); animation: skeletonLoading 1.5s infinite; }
 
-/* ── Misc ───────────────────────────────────────────────────────────────────── */
 .btn-pulse { animation: btnPulse 2s infinite; }
 .animate-bounce { animation: bounce 2s infinite; }
 .avatar-sm { height: 3rem; width: 3rem; }
@@ -368,7 +341,6 @@
 .bg-danger-subtle  { background-color: rgba(220,53,69,.1)  !important; }
 .table-hover tbody tr:hover { background-color: rgba(0,0,0,.02); }
 
-/* ── Recommendation card ────────────────────────────────────────────────────── */
 .recommendation-card { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .recommendation-card.promoted      { border-left: 4px solid #10b981; }
 .recommendation-card.trial         { border-left: 4px solid #f59e0b; }
@@ -376,6 +348,45 @@
 .recommendation-card.repeated      { border-left: 4px solid #ef4444; }
 .recommendation-card .label { font-size: 12px; color: var(--pay-muted); margin-bottom: 4px; }
 .recommendation-card .value { font-size: 16px; font-weight: 700; }
+
+.filter-card {
+    background: #fff;
+    border: 1px solid var(--pay-border);
+    border-radius: var(--pay-radius);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--pay-shadow);
+}
+.filter-card .form-label { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.filter-card .form-select, .filter-card .form-control {
+    border: 1.5px solid var(--pay-border); border-radius: 8px; font-size: 13px; padding: 9px 12px;
+}
+.filter-card .form-select:focus, .filter-card .form-control:focus {
+    border-color: var(--pay-accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+
+.table-card {
+    background: #fff;
+    border: 1px solid var(--pay-border);
+    border-radius: var(--pay-radius);
+    box-shadow: var(--pay-shadow);
+    overflow: hidden;
+}
+.table-card .table thead th {
+    background: var(--pay-primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 12px 14px;
+    white-space: nowrap;
+    border: none;
+}
+.table-card .table tbody td {
+    padding: 11px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--pay-border);
+}
 
 @media (prefers-reduced-motion: reduce) {
     #studentTableBody tr[data-student-id],
@@ -391,7 +402,7 @@
 
             {{-- Hero --}}
             <div class="pay-hero">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div>
                         <h1><i class="ri-user-star-line me-2"></i>Student Promotion Management</h1>
                         <p>Manage student promotion, repetition, and class assignments based on academic performance.</p>
@@ -407,180 +418,135 @@
             {{-- Stats --}}
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <div class="stat-card" data-tooltip="Total number of students in this class">
+                    <div class="stat-card">
                         <div class="stat-icon"><i class="ri-user-line"></i></div>
                         <div class="stat-value" id="totalStudents">0</div>
                         <div class="stat-label">Total Students</div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" data-tooltip="Students recommended for promotion">
+                    <div class="stat-card">
                         <div class="stat-icon"><i class="ri-arrow-up-circle-line"></i></div>
                         <div class="stat-value text-success" id="promotedCount">0</div>
                         <div class="stat-label">Recommended Promoted</div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" data-tooltip="Students recommended for conditional promotion">
+                    <div class="stat-card">
                         <div class="stat-icon"><i class="ri-time-line"></i></div>
                         <div class="stat-value text-warning" id="trialCount">0</div>
                         <div class="stat-label">On Trial</div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" data-tooltip="Students recommended to repeat current class">
+                    <div class="stat-card">
                         <div class="stat-icon"><i class="ri-repeat-line"></i></div>
                         <div class="stat-value text-danger" id="repeatCount">0</div>
-                        <div class="stat-label">To Repeat</div>
+                        <div class="stat-label">Advice to Repeat</div>
                     </div>
                 </div>
             </div>
 
-            {{-- Info Banner --}}
+            {{-- Info banner --}}
             <div class="info-banner">
                 <i class="ri-information-line"></i>
                 <div class="text">
-                    <strong>Promotion Rules</strong>
-                    Promotion decisions are based on compulsory subject performance and overall averages.
-                    Only <strong>active</strong> rules are applied automatically.
-                    Configure rules in <a href="{{ route('promotion-settings.index') }}">Promotion Settings</a>.
+                    <strong>Promotion evaluation uses the same rules as Broadsheet.</strong>
+                    Choose <em>Average Basis</em> (Term Total or Cumulative) so overall average matches the broadsheet Grade Basis. Configure rules under
+                    <a href="{{ route('promotion-settings.index') }}">Promotion Settings</a>.
                 </div>
             </div>
-
-            {{-- Warning Banner --}}
-            @php
-                $selectedClassId = request()->input('schoolclassid');
-                $hasPromotionSettings = false;
-                if ($selectedClassId && $selectedClassId !== 'ALL') {
-                    $hasPromotionSettings = \App\Models\PromotionSetting::where('schoolclass_id', $selectedClassId)
-                        ->where('is_active', true)->exists();
-                }
-            @endphp
-
-            @if(request()->filled('schoolclassid') && request()->input('schoolclassid') !== 'ALL' && !$hasPromotionSettings)
-            <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert" style="border-left: 4px solid #d97706;">
-                <div class="d-flex align-items-center">
-                    <i class="ri-alert-line fs-4 me-3"></i>
-                    <div>
-                        <strong class="d-block mb-1">⚠️ No Promotion Rules Configured!</strong>
-                        <span>No active promotion settings found for this class. Please
-                        <a href="{{ route('promotion-settings.index') }}" class="alert-link fw-bold">configure promotion rules</a>
-                        to enable automatic recommendations.</span>
-                    </div>
-                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-            @endif
 
             {{-- Filters --}}
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Select Class</label>
-                            <select class="form-select" id="idclass" name="schoolclassid">
-                                <option value="ALL">-- Select Class --</option>
-                                @foreach ($schoolclasses as $class)
-                                    <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm ?? '' }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Select Session</label>
-                            <select class="form-select" id="idsession" name="sessionid">
-                                <option value="ALL">-- Select Session --</option>
-                                @foreach ($schoolsessions as $session)
-                                    <option value="{{ $session->id }}">{{ $session->session }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            {{--
-                                FIX (Issue 3): previously this select had a hardcoded
-                                <option value="3">Third Term (Promotional)</option> BEFORE the
-                                @foreach loop. If the real database id for "Third Term" is not
-                                literally 3, the browser sends termid=3 to the server while the
-                                promotion setting was saved against the real term id — so
-                                classHasNoApplicableSetting() never finds a match and every
-                                student shows "Not Configured" even though rules exist.
-
-                                Fix: render terms ONLY from $terms (the real DB rows), and
-                                auto-select whichever one is actually flagged as promotional
-                                (is_promotional = true) — the same flag PromotionEvaluator
-                                already uses server-side. No more duplicate/hardcoded option.
-                            --}}
-                            <label class="form-label">Select Term</label>
-                            <select class="form-select" id="idterm" name="termid">
-                                <option value="">-- Select Term --</option>
-                                @foreach ($terms as $term)
-                                    <option value="{{ $term->id }}" {{ !empty($term->is_promotional) ? 'selected' : '' }}>
-                                        {{ $term->term }}{{ !empty($term->is_promotional) ? ' (Promotional)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Search Student</label>
-                            <div class="search-box">
-                                <input type="text" class="form-control" id="searchInput"
-                                       placeholder="Search by name or admission number...">
-                                <i class="ri-search-line search-icon"></i>
-                            </div>
-                            <small class="text-muted mt-1 d-block">
-                                <i class="ri-keyboard-line me-1"></i>Tip: Press <kbd>Ctrl+F</kbd> to focus search
-                            </small>
+            <div class="filter-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Class / Arm <span class="text-danger">*</span></label>
+                        <select class="form-select" id="idclass" name="schoolclassid">
+                            <option value="">— Select class —</option>
+                            @foreach($schoolclasses ?? [] as $cls)
+                                <option value="{{ $cls->id }}"
+                                    {{ (string)($selectedClassId ?? '') === (string)$cls->id ? 'selected' : '' }}>
+                                    {{ $cls->schoolclass }}{{ !empty($cls->arm) ? ' ' . $cls->arm : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Session <span class="text-danger">*</span></label>
+                        <select class="form-select" id="idsession" name="sessionid">
+                            <option value="">— Select session —</option>
+                            @foreach($schoolsessions ?? [] as $session)
+                                <option value="{{ $session->id }}"
+                                    {{ (string)($selectedSessionId ?? '') === (string)$session->id ? 'selected' : '' }}>
+                                    {{ $session->session }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Term <span class="text-danger">*</span></label>
+                        <select class="form-select" id="idterm" name="termid">
+                            <option value="">— Select term —</option>
+                            @foreach($schoolterms ?? [] as $term)
+                                <option value="{{ $term->id }}"
+                                    {{ (string)($selectedTermId ?? '') === (string)$term->id ? 'selected' : '' }}>
+                                    {{ $term->term }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Average Basis</label>
+                        <select class="form-select" id="average_basis" name="average_basis">
+                            <option value="total" {{ ($selectedAverageBasis ?? 'total') === 'total' ? 'selected' : '' }}>Term Total</option>
+                            <option value="cum" {{ ($selectedAverageBasis ?? '') === 'cum' ? 'selected' : '' }}>Cumulative</option>
+                        </select>
+                        <small class="text-muted" style="font-size:11px;">Matches broadsheet Grade Basis</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Search</label>
+                        <div class="search-box">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Name or admission no…">
+                            <i class="ri-search-line search-icon"></i>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Students Table --}}
-            <div class="card border-0 shadow-sm">
-                <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="padding:16px 20px">
-                    <h5 class="mb-0 fw-semibold" style="color:var(--pay-primary)">
-                        <i class="ri-group-line me-2"></i>Students
-                        <span class="badge bg-primary ms-2" id="studentcount">{{ $allstudents->total() }}</span>
-                    </h5>
-                    <div class="d-flex gap-2">
-                        <small class="text-muted"><i class="ri-keyboard-line me-1"></i><kbd>Ctrl+A</kbd> Select all</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="bulk-action-bar" id="bulkActionBar">
-                        <span class="bulk-count" id="bulkCount">0 selected</span>
-                        <button type="button" class="btn btn-primary btn-sm" id="bulkPromoteActionBtn">
-                            <i class="ri-group-line me-1"></i>Bulk Promote Selected
-                        </button>
-                        <button type="button" class="btn btn-light btn-sm" id="clearSelectionBtn">
-                            <i class="ri-close-line me-1"></i>Clear
-                        </button>
-                    </div>
+            {{-- Bulk action bar --}}
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="bulk-count"><span id="bulkSelectedCount">0</span> selected</span>
+                <button type="button" class="btn btn-sm btn-primary" id="bulkPromoteActionBtn" onclick="openBulkPromoteModal()">
+                    <i class="ri-user-shared-line me-1"></i>Bulk Promote
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">Clear</button>
+            </div>
 
-                    <div class="table-responsive">
-                        <table class="compulsory-table">
-                            <thead>
-                                <tr>
-                                    <th width="40"><input type="checkbox" class="select-all-checkbox" id="selectAll"></th>
-                                    <th>Admission No</th>
-                                    <th>Student Name</th>
-                                    <th>Class</th>
-                                    <th>Arm</th>
-                                    <th>Session</th>
-                                    <th>Overall Avg</th>
-                                    <th>Recommendation</th>
-                                    <th>Promotion Status</th>
-                                    <th width="90">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="studentTableBody">
-                                @include('promotions.partials.student_rows')
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-end mt-3" id="pagination-container">
-                        {{ $allstudents->links('pagination::bootstrap-5') }}
-                    </div>
+            {{-- Student table --}}
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="studentTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" class="select-all-checkbox" id="selectAll" title="Select all">
+                                </th>
+                                <th>Adm. No</th>
+                                <th>Student Name</th>
+                                <th>Class</th>
+                                <th>Arm</th>
+                                <th>Session</th>
+                                <th>Overall Avg</th>
+                                <th>System Recommendation</th>
+                                <th>Promotion Status</th>
+                                <th style="width:90px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody">
+                            @include('promotions.partials.student_rows', ['allstudents' => $allstudents ?? collect()])
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -588,595 +554,368 @@
     </div>
 </div>
 
-{{-- ================================================================
-     Promotion Modal
-     ================================================================ --}}
+{{-- ═══════════════════════════════════════════════════════════
+     PROMOTION MODAL
+═══════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="promotionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
             <div class="modal-header">
-                <h5 class="modal-title text-white">
-                    <i class="ri-user-star-line me-2"></i>Student Promotion Management
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form id="promotionForm">
-                @csrf
-                <div class="modal-body p-4" style="max-height:82vh;overflow-y:auto;">
-
-                    {{-- Student Profile --}}
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-body p-4">
-                            <div class="row align-items-center">
-                                <div class="col-md-3 text-center">
-                                    <img id="modalStudentImage"
-                                         src="{{ asset('storage/student_avatars/unnamed.jpg') }}"
-                                         alt="Student Picture"
-                                         class="student-avatar-lg rounded-circle">
-                                    <div class="mt-2">
-                                        <span class="badge bg-primary" id="modalStudentGender"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-9">
-                                    <h4 class="mb-2 text-primary" id="modalStudentName"></h4>
-                                    <div class="row g-3 mt-2">
-                                        <div class="col-md-3">
-                                            <div class="d-flex align-items-center p-3 bg-light rounded">
-                                                <i class="ri-book-2-line text-primary fs-4 me-3"></i>
-                                                <div>
-                                                    <small class="text-muted d-block">Current Class</small>
-                                                    <strong id="modalCurrentClass" class="fs-5"></strong>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="d-flex align-items-center p-3 bg-light rounded">
-                                                <i class="ri-team-line text-primary fs-4 me-3"></i>
-                                                <div>
-                                                    <small class="text-muted d-block">Arm</small>
-                                                    <strong id="modalCurrentArm" class="fs-5"></strong>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="d-flex align-items-center p-3 bg-light rounded">
-                                                <i class="ri-calendar-line text-primary fs-4 me-3"></i>
-                                                <div>
-                                                    <small class="text-muted d-block">Session</small>
-                                                    <strong id="modalCurrentSession" class="fs-5"></strong>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="d-flex align-items-center p-3 bg-light rounded">
-                                                <i class="ri-percent-line text-primary fs-4 me-3"></i>
-                                                <div>
-                                                    <small class="text-muted d-block">Overall Average</small>
-                                                    <strong id="modalOverallAverage" class="fs-5"></strong>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- System Recommendation --}}
-                    <div class="card border-0 shadow-sm mb-4" id="recommendationCard" style="display:none;">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <i class="ri-robot-line fs-4 text-primary"></i>
-                                <h6 class="mb-0 fw-bold text-primary">System Recommendation</h6>
-                            </div>
-                            <div id="recommendationContent"></div>
-                        </div>
-                    </div>
-
-                    {{-- Compulsory Subjects Summary --}}
-                    <div class="card border-0 shadow-sm mb-4" id="compulsoryCard" style="display:none;">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <i class="ri-star-fill fs-4 text-warning"></i>
-                                <h6 class="mb-0 fw-bold">Compulsory Subjects Performance</h6>
-                            </div>
-                            <div id="compulsoryContent"></div>
-                        </div>
-                    </div>
-
-                    {{-- All Subjects Table --}}
-                    <div class="card border-0 shadow-sm mb-4" id="allSubjectsCard" style="display:none;">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <i class="ri-book-open-line fs-4 text-primary"></i>
-                                <h6 class="mb-0 fw-bold">All Subjects Performance</h6>
-                            </div>
-                            <div id="allSubjectsContent"></div>
-                        </div>
-                    </div>
-
-                    <div class="text-center my-4">
-                        <i class="ri-arrow-down-line text-primary fs-1 animate-bounce"></i>
-                    </div>
-
-                    {{-- New Assignment --}}
-                    <div class="card border-2 border-primary shadow-sm mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <i class="ri-refresh-line me-2"></i>New Assignment
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">New Class <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="new_schoolclassid" id="newClassSelect" required>
-                                        <option value="">-- Select Class --</option>
-                                        @foreach ($schoolclasses as $class)
-                                            <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm ?? '' }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">New Session <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="new_sessionid" id="newSessionSelect" required>
-                                        <option value="">-- Select Session --</option>
-                                        @foreach ($schoolsessions as $session)
-                                            <option value="{{ $session->id }}">{{ $session->session }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-semibold">New Term <span class="text-danger">*</span></label>
-                                    <select class="form-select" name="new_termid" id="newTermSelect" required>
-                                        <option value="">-- Select Term --</option>
-                                        <option value="1">First Term</option>
-                                        <option value="2">Second Term</option>
-                                        <option value="3">Third Term</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Promotion Decision --}}
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-light">
-                            <i class="ri-checkbox-circle-line me-2 text-primary"></i>Promotion Decision
-                            <span class="text-danger">*</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-3">
-                                    <div class="form-check form-check-card">
-                                        <input class="form-check-input" type="checkbox" name="promotion" id="promotionCheckbox" value="promoted">
-                                        <label class="form-check-label w-100" for="promotionCheckbox">
-                                            <div class="d-flex align-items-center p-3 border rounded cursor-pointer promotion-card">
-                                                <div class="flex-shrink-0">
-                                                    <div class="avatar-sm"><div class="avatar-title bg-success-subtle text-success rounded-circle fs-2"><i class="ri-arrow-up-circle-line"></i></div></div>
-                                                </div>
-                                                <div class="flex-grow-1 ms-3">
-                                                    <h6 class="mb-1">Promote</h6>
-                                                    <p class="text-muted mb-0 small">Move to next class level</p>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check form-check-card">
-                                        <input class="form-check-input" type="checkbox" name="trial" id="trialCheckbox" value="trial">
-                                        <label class="form-check-label w-100" for="trialCheckbox">
-                                            <div class="d-flex align-items-center p-3 border rounded cursor-pointer trial-card">
-                                                <div class="flex-shrink-0">
-                                                    <div class="avatar-sm"><div class="avatar-title bg-warning-subtle text-warning rounded-circle fs-2"><i class="ri-time-line"></i></div></div>
-                                                </div>
-                                                <div class="flex-grow-1 ms-3">
-                                                    <h6 class="mb-1">Promote on Trial</h6>
-                                                    <p class="text-muted mb-0 small">Conditional promotion</p>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check form-check-card">
-                                        <input class="form-check-input" type="checkbox" name="see_principal" id="seePrincipalCheckbox" value="see_principal">
-                                        <label class="form-check-label w-100" for="seePrincipalCheckbox">
-                                            <div class="d-flex align-items-center p-3 border rounded cursor-pointer principal-card">
-                                                <div class="flex-shrink-0">
-                                                    <div class="avatar-sm"><div class="avatar-title bg-info-subtle text-info rounded-circle fs-2"><i class="ri-eye-line"></i></div></div>
-                                                </div>
-                                                <div class="flex-grow-1 ms-3">
-                                                    <h6 class="mb-1">See Principal</h6>
-                                                    <p class="text-muted mb-0 small">Principal review needed</p>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check form-check-card">
-                                        <input class="form-check-input" type="checkbox" name="repeat" id="repeatCheckbox" value="repeat">
-                                        <label class="form-check-label w-100" for="repeatCheckbox">
-                                            <div class="d-flex align-items-center p-3 border rounded cursor-pointer repeat-card">
-                                                <div class="flex-shrink-0">
-                                                    <div class="avatar-sm"><div class="avatar-title bg-danger-subtle text-danger rounded-circle fs-2"><i class="ri-repeat-line"></i></div></div>
-                                                </div>
-                                                <div class="flex-grow-1 ms-3">
-                                                    <h6 class="mb-1">Repeat Class</h6>
-                                                    <p class="text-muted mb-0 small">Student repeats current level</p>
-                                                </div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
-                        <i class="ri-close-line me-1"></i> Cancel
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="submitPromotion()">
-                        <i class="ri-save-line me-1"></i> Save Changes
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- ================================================================
-     Bulk Promotion Modal
-     ================================================================ --}}
-<div class="modal fade" id="bulkPromotionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-white"><i class="ri-group-line me-2"></i>Bulk Promotion</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="modalStudentName">Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>You have selected <strong id="bulkSelectedCount">0</strong> students.</p>
-                <div class="mb-3">
-                    <label class="form-label">Promotion Type</label>
-                    <select class="form-select" id="bulkPromotionType">
-                        <option value="promoted">Promote Students</option>
-                        <option value="trial">Promote on Trial</option>
-                        <option value="see_principal">Advised to See Principal</option>
-                        <option value="repeat">Advice to Repeat</option>
-                    </select>
+                <div class="row g-4 mb-3">
+                    <div class="col-md-3 text-center">
+                        <img id="modalStudentImage" src="{{ asset('storage/student_avatars/unnamed.jpg') }}"
+                             class="student-avatar-lg rounded-circle mb-2" alt="Student">
+                        <div id="modalStudentGender" class="text-muted small"></div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row g-2">
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Current Class</div>
+                                <div class="fw-semibold" id="modalCurrentClass">—</div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Arm</div>
+                                <div class="fw-semibold" id="modalCurrentArm">—</div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Session</div>
+                                <div class="fw-semibold" id="modalCurrentSession">—</div>
+                            </div>
+                            <div class="col-sm-4 mt-2">
+                                <div class="text-muted small">Overall Average</div>
+                                <div id="modalOverallAverage"><span class="text-muted">—</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <div id="recommendationCard" style="display:none;">
+                    <div id="recommendationContent"></div>
+                </div>
+
+                <div id="allSubjectsCard" class="form-section" style="display:none;">
+                    <div class="form-section-title"><i class="ri-book-open-line me-1"></i>All Subjects</div>
+                    <div id="allSubjectsContent"></div>
+                </div>
+
+                <div id="compulsoryCard" class="form-section" style="display:none;">
+                    <div class="form-section-title"><i class="ri-bookmark-line me-1"></i>Compulsory Subjects</div>
+                    <div id="compulsoryContent"></div>
+                </div>
+
+                <form id="promotionForm">
+                    <div class="form-section">
+                        <div class="form-section-title">New Placement</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">New Class</label>
+                                <select class="form-select" id="newClassSelect" name="new_schoolclassid">
+                                    <option value="">— Select —</option>
+                                    @foreach($schoolclasses ?? [] as $cls)
+                                        <option value="{{ $cls->id }}">
+                                            {{ $cls->schoolclass }}{{ !empty($cls->arm) ? ' ' . $cls->arm : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">New Session</label>
+                                <select class="form-select" id="newSessionSelect" name="new_sessionid">
+                                    <option value="">— Select —</option>
+                                    @foreach($schoolsessions ?? [] as $session)
+                                        <option value="{{ $session->id }}">{{ $session->session }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">New Term</label>
+                                <select class="form-select" id="newTermSelect" name="new_termid">
+                                    <option value="">— Select —</option>
+                                    @foreach($schoolterms ?? [] as $term)
+                                        <option value="{{ $term->id }}">{{ $term->term }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Promotion Decision <span class="text-danger">*</span></div>
+                        <div class="row g-3">
+                            <div class="col-md-3 form-check-card">
+                                <input type="checkbox" id="promotionCheckbox" class="form-check-input">
+                                <label for="promotionCheckbox" class="w-100">
+                                    <div class="promotion-card border rounded-3 p-3 text-center h-100">
+                                        <i class="ri-arrow-up-circle-line text-success fs-3"></i>
+                                        <div class="fw-semibold mt-1">Promote</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-3 form-check-card">
+                                <input type="checkbox" id="trialCheckbox" class="form-check-input">
+                                <label for="trialCheckbox" class="w-100">
+                                    <div class="trial-card border rounded-3 p-3 text-center h-100">
+                                        <i class="ri-time-line text-warning fs-3"></i>
+                                        <div class="fw-semibold mt-1">On Trial</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-3 form-check-card">
+                                <input type="checkbox" id="seePrincipalCheckbox" class="form-check-input">
+                                <label for="seePrincipalCheckbox" class="w-100">
+                                    <div class="principal-card border rounded-3 p-3 text-center h-100">
+                                        <i class="ri-eye-line text-info fs-3"></i>
+                                        <div class="fw-semibold mt-1">See Principal</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-3 form-check-card">
+                                <input type="checkbox" id="repeatCheckbox" class="form-check-input">
+                                <label for="repeatCheckbox" class="w-100">
+                                    <div class="repeat-card border rounded-3 p-3 text-center h-100">
+                                        <i class="ri-repeat-line text-danger fs-3"></i>
+                                        <div class="fw-semibold mt-1">Repeat</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitPromotion()">
+                    <i class="ri-save-line me-1"></i>Update Promotion
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Bulk promote modal (minimal) --}}
+<div class="modal fade" id="bulkPromoteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title text-white">Bulk Promote Selected</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Apply the same new class / session / term and decision to all selected students.</p>
                 <div class="mb-3">
-                    <label class="form-label">New Class</label>
+                    <label class="form-label fw-semibold">New Class</label>
                     <select class="form-select" id="bulkNewClass">
-                        <option value="">-- Select Class --</option>
-                        @foreach ($schoolclasses as $class)
-                            <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm ?? '' }}</option>
+                        <option value="">— Select —</option>
+                        @foreach($schoolclasses ?? [] as $cls)
+                            <option value="{{ $cls->id }}">{{ $cls->schoolclass }}{{ !empty($cls->arm) ? ' ' . $cls->arm : '' }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">New Session</label>
+                    <label class="form-label fw-semibold">New Session</label>
                     <select class="form-select" id="bulkNewSession">
-                        <option value="">-- Select Session --</option>
-                        @foreach ($schoolsessions as $session)
+                        <option value="">— Select —</option>
+                        @foreach($schoolsessions ?? [] as $session)
                             <option value="{{ $session->id }}">{{ $session->session }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">New Term</label>
+                    <label class="form-label fw-semibold">New Term</label>
                     <select class="form-select" id="bulkNewTerm">
-                        <option value="1">First Term</option>
-                        <option value="2">Second Term</option>
-                        <option value="3">Third Term</option>
+                        <option value="">— Select —</option>
+                        @foreach($schoolterms ?? [] as $term)
+                            <option value="{{ $term->id }}">{{ $term->term }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Decision</label>
+                    <select class="form-select" id="bulkDecision">
+                        <option value="promoted">Promote</option>
+                        <option value="trial">On Trial</option>
+                        <option value="see_principal">See Principal</option>
+                        <option value="repeated">Repeat</option>
                     </select>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmBulkPromoteBtn">Process Bulk Promotion</button>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitBulkPromote()">Confirm Bulk Update</button>
             </div>
         </div>
+    </div>
+</div>
+
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status"></div>
+        <span id="loadingText">Loading…</span>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-let currentStudentId     = null;
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+let currentStudentId = null;
 let currentSchoolclassId = null;
-let currentSessionId     = null;
-let currentTermId        = null;
-let currentStudentData   = null;
+let currentSessionId = null;
+let currentTermId = null;
+let currentStudentData = null;
 
-/* ── Grade helpers ─────────────────────────────────────────────────────────── */
-const SENIOR_GO = { F9:0, E8:1, D7:2, C6:3, C5:4, C4:5, B3:6, B2:7, A1:8 };
-const JUNIOR_GO = { F:0, D:1, C:2, B:3, A:4 };
-
-function detectScale(grades) {
-    return grades.some(g => /^[A-E][1-9]$|^F9$/.test((g||'').toUpperCase()));
-}
-function gradeRank(g, senior) {
-    const u = (g||'').toUpperCase();
-    return senior ? (SENIOR_GO[u] ?? -1) : (JUNIOR_GO[u] ?? -1);
-}
-function isCreditGrade(g, senior) {
-    const u = (g||'').toUpperCase();
-    return senior ? ['A1','B2','B3','C4','C5','C6'].includes(u) : ['A','B','C'].includes(u);
-}
-function isPassGrade(g, senior) {
-    const u = (g||'').toUpperCase();
-    return senior ? !['F9','E8'].includes(u) && u !== '' : u !== 'F' && u !== '';
-}
-function gradeColorClass(g) {
-    const u = (g||'').toUpperCase();
-    if (['A1','A'].includes(u))           return 'gc-a';
-    if (['B2','B3','B'].includes(u))      return 'gc-b';
-    if (['C4','C5','C6','C'].includes(u)) return 'gc-c';
-    if (['D7','D'].includes(u))           return 'gc-d';
-    if (['F9','E8','F'].includes(u))      return 'gc-f';
-    return 'gc-na';
-}
-
-/* ── escapeHtml ────────────────────────────────────────────────────────────── */
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ── Image helpers ─────────────────────────────────────────────────────────── */
-function normalizeImagePath(picture, gender) {
-    const defaultImg = gender === 'Male'
-        ? '/storage/student_avatars/male-default.png'
-        : '/storage/student_avatars/female-default.png';
-
-    if (!picture) return defaultImg;
-    const raw = String(picture).trim();
-    if (!raw || ['null','undefined','false'].includes(raw)) return defaultImg;
-
-    // Already absolute URL
-    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-
-    // Strip all known leading segments to get the bare filename/path
-    let clean = raw
-        .replace(/^\/+/, '')          // leading slashes
-        .replace(/^storage\//, '')    // storage/
-        .replace(/^public\//, '')     // public/
-        .replace(/^app\/public\//, '') // app/public/
-        .replace(/^\/+/, '');         // any remaining leading slashes
-
-    if (!clean) return defaultImg;
-    return '/storage/' + clean;
-}
-
-function setStudentImage(imgEl, primarySrc, gender) {
-    const fallback1 = gender === 'Male'
-        ? '/storage/student_avatars/male-default.png'
-        : '/storage/student_avatars/female-default.png';
-    const fallback2 = '/storage/student_avatars/unnamed.jpg';
-
-    const tries = [primarySrc, fallback1, fallback2]
-        .filter(s => s && s !== '/storage/' && s !== '/storage/null' && s !== '/storage/undefined');
-
-    console.log('[StudentImage] trying paths:', tries);
-
-    let attempt = 0;
-    imgEl.onerror = null;
-    imgEl.onerror = function () {
-        console.warn('[StudentImage] failed:', this.src, '— trying next fallback');
-        attempt++;
-        if (attempt < tries.length) { this.src = tries[attempt]; }
-        else { this.onerror = null; }
-    };
-    imgEl.src = tries[0] || fallback2;
-}
-
-/* ── Toast ─────────────────────────────────────────────────────────────────── */
-function showToast(message, type = 'info') {
-    const colors = { success:'#16a34a', warning:'#d97706', danger:'#dc2626', info:'#2563eb' };
-    const icons  = { success:'ri-checkbox-circle-line', warning:'ri-alert-line', danger:'ri-error-warning-line', info:'ri-information-line' };
-    const id = 'toast_' + Date.now();
-    document.body.insertAdjacentHTML('beforeend', `
-        <div id="${id}" class="toast-notification" style="background:${colors[type]};color:white;padding:12px 20px;border-radius:10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">
-            <i class="${icons[type]} fs-5"></i>
-            <span>${message}</span>
-            <button onclick="document.getElementById('${id}').classList.add('closing');setTimeout(()=>document.getElementById('${id}')?.remove(),300)" style="background:none;border:none;color:white;margin-left:10px;cursor:pointer;font-size:18px;">&times;</button>
-        </div>`);
-    setTimeout(() => {
-        const t = document.getElementById(id);
-        if (t) { t.classList.add('closing'); setTimeout(() => t.remove(), 300); }
-    }, 4000);
-}
-
-/* ── Loading ───────────────────────────────────────────────────────────────── */
-function showLoading(msg = 'Loading...') {
-    let ov = document.getElementById('globalLoadingOverlay');
-    if (!ov) {
-        ov = document.createElement('div');
-        ov.id = 'globalLoadingOverlay';
-        ov.className = 'loading-overlay';
-        ov.innerHTML = `<div class="loading-spinner"><div class="spinner-border text-primary" role="status"></div><span id="loadingMessage">${msg}</span></div>`;
-        document.body.appendChild(ov);
-    } else {
-        ov.style.display = 'flex';
-        const s = ov.querySelector('#loadingMessage');
-        if (s) s.textContent = msg;
-    }
+function showLoading(msg) {
+    document.getElementById('loadingText').textContent = msg || 'Loading…';
+    document.getElementById('loadingOverlay').style.display = 'flex';
 }
 function hideLoading() {
-    const ov = document.getElementById('globalLoadingOverlay');
-    if (ov) ov.style.display = 'none';
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+function showToast(message, type) {
+    const colors = { success: '#16a34a', danger: '#dc2626', warning: '#d97706', info: '#2563eb' };
+    const el = document.createElement('div');
+    el.className = 'toast-notification';
+    el.style.cssText = `background:#fff;border-left:4px solid ${colors[type]||colors.info};padding:12px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-width:360px;`;
+    el.innerHTML = `<div style="font-size:13px;color:#1e293b;">${escapeHtml(message)}</div>`;
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.add('closing'); setTimeout(() => el.remove(), 300); }, 3200);
+}
+function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatRuleDescription(d) { return d || ''; }
+
+function normalizeImagePath(picture, gender) {
+    if (picture && picture !== 'unnamed.jpg') {
+        return `/storage/student_avatars/${picture.replace(/^.*[\\/]/, '')}`;
+    }
+    return '/storage/student_avatars/unnamed.jpg';
+}
+function setStudentImage(imgEl, src, gender) {
+    if (!imgEl) return;
+    imgEl.src = src;
+    imgEl.onerror = function () { this.src = '/storage/student_avatars/unnamed.jpg'; };
 }
 
-/* ── Counter animation ─────────────────────────────────────────────────────── */
-function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
-function animateCounter(el, start, end, dur = 500) {
-    if (!el) return;
-    const t0 = performance.now();
-    const tick = (t) => {
-        const p = Math.min((t - t0) / dur, 1);
-        el.textContent = Math.floor(start + (end - start) * easeOutCubic(p));
-        if (p < 1) requestAnimationFrame(tick);
-        else el.textContent = end;
-    };
-    requestAnimationFrame(tick);
+function getAverageBasis() {
+    return document.getElementById('average_basis')?.value || 'total';
 }
 
-/* ── Stats ─────────────────────────────────────────────────────────────────── */
-function updateStats() {
-    const rows = document.querySelectorAll('#studentTableBody tr[data-student-id]');
-    let total = 0, promoted = 0, trial = 0, repeat = 0;
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length < 8) return;
-        total++;
-        const s = (cells[7].getAttribute('data-rec-status') || '').toLowerCase();
-        if (s === 'promoted') promoted++;
-        else if (s === 'trial') trial++;
-        else if (s === 'repeated' || s === 'repeat') repeat++;
-    });
-    animateCounter(document.getElementById('totalStudents'),  parseInt(document.getElementById('totalStudents')?.innerText)  || 0, total);
-    animateCounter(document.getElementById('promotedCount'),  parseInt(document.getElementById('promotedCount')?.innerText)  || 0, promoted);
-    animateCounter(document.getElementById('trialCount'),     parseInt(document.getElementById('trialCount')?.innerText)     || 0, trial);
-    animateCounter(document.getElementById('repeatCount'),    parseInt(document.getElementById('repeatCount')?.innerText)    || 0, repeat);
-    document.querySelectorAll('.stat-card').forEach(c => {
-        c.classList.add('stat-flash');
-        setTimeout(() => c.classList.remove('stat-flash'), 450);
-    });
-}
+/* ── Filter / reload table ── */
+async function filterData() {
+    const schoolclassid = document.getElementById('idclass').value;
+    const sessionid     = document.getElementById('idsession').value;
+    const termid        = document.getElementById('idterm').value;
+    const search        = document.getElementById('searchInput').value || '';
+    const average_basis = getAverageBasis();
 
-/* ── Row animations ────────────────────────────────────────────────────────── */
-function triggerRowEntrance() {
-    document.querySelectorAll('#studentTableBody tr[data-student-id]').forEach((row, i) => {
-        row.classList.remove('row-visible');
-        setTimeout(() => row.classList.add('row-visible'), i * 20);
-    });
-}
-function popPromotionBadges() {
-    document.querySelectorAll('#studentTableBody [class*="promotion-badge-"]').forEach(b => {
-        b.classList.remove('badge-pop');
-        void b.offsetWidth;
-        b.classList.add('badge-pop');
-        b.addEventListener('animationend', () => b.classList.remove('badge-pop'), { once: true });
-    });
-}
-
-/* ── Filter & load ─────────────────────────────────────────────────────────── */
-function filterData() {
-    const cls  = document.getElementById('idclass').value;
-    const sess = document.getElementById('idsession').value;
-    const term = document.getElementById('idterm').value;
-    const srch = document.getElementById('searchInput').value.trim();
-
-    if (cls === 'ALL' || sess === 'ALL' || !term) {
-        document.getElementById('studentTableBody').innerHTML =
-            '<tr><td colspan="10" class="text-center py-4 text-muted">Select class, session, and term to view students.</td></tr>';
-        document.getElementById('pagination-container').innerHTML = '';
-        document.getElementById('studentcount').innerText = '0';
-        updateStats();
+    if (!schoolclassid || !sessionid || !termid) {
         return;
     }
 
-    const tb = document.getElementById('studentTableBody');
-    tb.innerHTML = '<tr class="skeleton-row"><td colspan="10"><div style="height:300px;"></div></td></tr>';
-    showLoading('Loading students...');
-
-    axios.get('{{ route("promotions.index") }}', {
-        params: { search: srch, schoolclassid: cls, sessionid: sess, termid: term },
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' }
-    }).then(res => {
-        hideLoading();
-        document.getElementById('studentTableBody').innerHTML       = res.data.tableBody;
-        document.getElementById('pagination-container').innerHTML   = res.data.pagination;
-        document.getElementById('studentcount').innerText           = res.data.studentCount || '0';
-        updateStats(); setupPaginationLinks(); setupCheckboxHandlers();
-        triggerRowEntrance(); popPromotionBadges(); setupRowSelection();
-        showToast(`${res.data.studentCount || 0} students loaded`, 'success');
-    }).catch(err => {
-        hideLoading();
-        // Surface the real server-side error message (if any) instead of a
-        // generic string, so client-visible failures are actually debuggable.
-        console.error('[filterData] request failed:', err.response?.status, err.response?.data || err.message);
-        const serverMsg = err.response?.data?.message;
-        tb.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>';
-        showToast(serverMsg || 'Failed to fetch student data', 'danger');
-    });
-}
-
-function setupPaginationLinks() {
-    document.querySelectorAll('#pagination-container a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const url = new URL(this.href);
-            url.searchParams.set('schoolclassid', document.getElementById('idclass').value);
-            url.searchParams.set('sessionid',     document.getElementById('idsession').value);
-            url.searchParams.set('termid',        document.getElementById('idterm').value);
-            loadPage(url.toString());
+    showLoading('Loading students…');
+    try {
+        const response = await axios.get('{{ route("promotions.index") }}', {
+            params: {
+                schoolclassid,
+                sessionid,
+                termid,
+                search,
+                average_basis,
+                ajax: 1,
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html, application/json',
+            },
         });
+
+        const body = document.getElementById('studentTableBody');
+        if (typeof response.data === 'string') {
+            body.innerHTML = response.data;
+        } else if (response.data?.html) {
+            body.innerHTML = response.data.html;
+        } else if (response.data?.success && response.data?.rows_html) {
+            body.innerHTML = response.data.rows_html;
+        }
+
+        updateStats();
+        triggerRowEntrance();
+        popPromotionBadges();
+        setupRowSelection();
+        clearSelection();
+    } catch (err) {
+        console.error(err);
+        showToast(err.response?.data?.message || 'Failed to load students', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+function updateStats() {
+    const rows = document.querySelectorAll('#studentTableBody tr[data-student-id]');
+    let total = 0, promoted = 0, trial = 0, repeated = 0;
+    rows.forEach(tr => {
+        total++;
+        const st = (tr.querySelector('[data-rec-status]')?.getAttribute('data-rec-status') || '').toLowerCase();
+        if (st === 'promoted') promoted++;
+        else if (st === 'trial') trial++;
+        else if (st === 'repeated' || st === 'repeat') repeated++;
+    });
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = val;
+        el.classList.remove('stat-flash');
+        void el.offsetWidth;
+        el.classList.add('stat-flash');
+    };
+    set('totalStudents', total);
+    set('promotedCount', promoted);
+    set('trialCount', trial);
+    set('repeatCount', repeated);
+}
+
+function triggerRowEntrance() {
+    document.querySelectorAll('#studentTableBody tr[data-student-id]').forEach((tr, i) => {
+        setTimeout(() => tr.classList.add('row-visible'), 30 * i);
+    });
+}
+function popPromotionBadges() {
+    document.querySelectorAll('#studentTableBody [class*="promotion-badge-"]').forEach((b, i) => {
+        setTimeout(() => b.classList.add('badge-pop'), 40 * i);
     });
 }
 
-function loadPage(url) {
-    const tb = document.getElementById('studentTableBody');
-    tb.innerHTML = '<tr class="skeleton-row"><td colspan="10"><div style="height:300px;"></div></td></tr>';
-    showLoading('Loading page...');
-    axios.get(url, {
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' }
-    }).then(res => {
-        hideLoading();
-        document.getElementById('studentTableBody').innerHTML     = res.data.tableBody;
-        document.getElementById('pagination-container').innerHTML = res.data.pagination;
-        document.getElementById('studentcount').innerText         = res.data.studentCount || '0';
-        updateStats(); setupPaginationLinks(); setupCheckboxHandlers();
-        triggerRowEntrance(); popPromotionBadges(); setupRowSelection();
-    }).catch(err => {
-        hideLoading();
-        console.error('[loadPage] request failed:', err.response?.status, err.response?.data || err.message);
-        tb.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-4">Error loading data.</td></tr>';
-    });
-}
-
-/* ── Row selection ─────────────────────────────────────────────────────────── */
 function setupRowSelection() {
     document.querySelectorAll('.row-checkbox').forEach(cb => {
-        cb.removeEventListener('change', handleRowSelectionChange);
-        cb.addEventListener('change', handleRowSelectionChange);
+        cb.onchange = function () {
+            this.closest('tr')?.classList.toggle('selected', this.checked);
+            updateBulkBar();
+        };
     });
-}
-function handleRowSelectionChange() {
-    const row = this.closest('tr');
-    row?.classList.toggle('selected', this.checked);
-    updateBulkBar();
-}
-function setupCheckboxHandlers() {
-    const sa = document.getElementById('selectAll');
-    if (sa) {
-        const fresh = sa.cloneNode(true);
-        sa.parentNode.replaceChild(fresh, sa);
-        fresh.addEventListener('change', function() {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.onchange = function () {
             document.querySelectorAll('.row-checkbox').forEach(cb => {
-                cb.checked = this.checked;
-                cb.closest('tr')?.classList.toggle('selected', this.checked);
+                cb.checked = selectAll.checked;
+                cb.closest('tr')?.classList.toggle('selected', selectAll.checked);
             });
             updateBulkBar();
-        });
+        };
     }
-    document.querySelectorAll('.row-checkbox').forEach(cb => {
-        cb.removeEventListener('change', handleRowSelectionChange);
-        cb.addEventListener('change', handleRowSelectionChange);
-    });
 }
 function updateBulkBar() {
-    const count = document.querySelectorAll('.row-checkbox:checked').length;
-    const bar   = document.getElementById('bulkActionBar');
-    bar.classList.toggle('visible', count > 0);
-    document.getElementById('bulkCount').innerText = count + ' selected';
+    const n = document.querySelectorAll('.row-checkbox:checked').length;
+    const bar = document.getElementById('bulkActionBar');
+    const countEl = document.getElementById('bulkSelectedCount');
+    if (countEl) countEl.textContent = n;
+    if (bar) bar.classList.toggle('visible', n > 0);
 }
 function clearSelection() {
     document.querySelectorAll('.row-checkbox').forEach(cb => {
@@ -1186,285 +925,90 @@ function clearSelection() {
     const sa = document.getElementById('selectAll');
     if (sa) sa.checked = false;
     updateBulkBar();
-    showToast('Selection cleared', 'info');
 }
-document.getElementById('clearSelectionBtn')?.addEventListener('click', clearSelection);
-
-document.getElementById('bulkPromoteActionBtn')?.addEventListener('click', () => {
-    const selected = document.querySelectorAll('.row-checkbox:checked');
-    if (!selected.length) { showToast('No students selected', 'warning'); return; }
-    document.getElementById('bulkSelectedCount').innerText = selected.length;
-    new bootstrap.Modal(document.getElementById('bulkPromotionModal')).show();
-});
-
-document.getElementById('confirmBulkPromoteBtn')?.addEventListener('click', async () => {
-    const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
-    if (!ids.length) { showToast('No students selected', 'warning'); return; }
-    const newClass   = document.getElementById('bulkNewClass').value;
-    const newSession = document.getElementById('bulkNewSession').value;
-    if (!newClass || !newSession) { showToast('Please select new class and session', 'warning'); return; }
-
-    showLoading(`Processing ${ids.length} students...`);
-    bootstrap.Modal.getInstance(document.getElementById('bulkPromotionModal'))?.hide();
-
-    try {
-        const res = await axios.post('{{ route("promotions.bulk.promote") }}', {
-            student_ids: ids,
-            new_schoolclassid: newClass,
-            new_sessionid: newSession,
-            new_termid: document.getElementById('bulkNewTerm').value,
-            promotion_type: document.getElementById('bulkPromotionType').value,
-            _token: document.querySelector('meta[name="csrf-token"]').content
-        });
-        hideLoading();
-        showToast(res.data.message, res.data.success ? 'success' : 'danger');
-        if (res.data.success) setTimeout(() => location.reload(), 1500);
-    } catch (err) {
-        hideLoading();
-        showToast(err.response?.data?.message || 'Bulk promotion failed', 'danger');
-    }
-});
-
-/* ── formatRuleDescription ─────────────────────────────────────────────────── */
-function formatRuleDescription(d) {
-    if (!d) return '';
-    let f = d.replace(/subj\b/g,'subjects').replace(/subj\.\b/g,'subjects').replace(/;\s*>=/g,'; ≥');
-    return f.charAt(0).toUpperCase() + f.slice(1);
-}
-
-/* ── Build subjects table ───────────────────────────────────────────────────── */
-function buildSubjectsTable(allSubjects, result) {
-    if (!allSubjects || !allSubjects.length) return '';
-
-    const senior      = detectScale(allSubjects.map(s => s.grade));
-    const creditLabel = senior ? 'C4–A1' : 'C–A';
-    const FAIL_SET    = new Set(senior ? ['F9','E8'] : ['F']);
-
-    function isCredit(g)  { return g && g !== '—' && isCreditGrade(g, senior); }
-    function isPass(g)    { return g && g !== '—' && isPassGrade(g, senior); }
-    function isFail(g)    { return g && g !== '—' && FAIL_SET.has(g.toUpperCase()); }
-
-    const compList  = allSubjects.filter(s =>  s.is_compulsory);
-    const optList   = allSubjects.filter(s => !s.is_compulsory);
-
-    // Tallies
-    const compCred  = compList.filter(s => isCredit(s.grade)).length;
-    const optCred   = optList.filter(s  => isCredit(s.grade)).length;
-    const allCred   = allSubjects.filter(s => isCredit(s.grade)).length;
-    const compPass  = compList.filter(s => s.pass_status === 'pass').length;
-    const compFail  = compList.filter(s => s.pass_status === 'fail').length;
-    const compNS    = compList.filter(s => s.pass_status === 'not_sat').length;
-    const optPass   = optList.filter(s  => isPass(s.grade) || s.pass_status === 'optional_pass').length;
-    const optFail   = optList.filter(s  => isFail(s.grade) || s.pass_status === 'optional_fail').length;
-
-    const appliedRule   = result?.applied_rule || null;
-    const ruleStatus    = result?.status || null;
-    // rule_logic tells us WHICH evaluation mode actually decided this
-    // student's outcome — this drives which banner variant we show below.
-    const ruleLogicMode = result?.rule_logic || result?.settings?.rule_logic || 'grade_count';
-
-    // ── Rule match banner
-    let html = '';
-    if (appliedRule) {
-        // A rule genuinely matched (grade_count or both mode) — show which one.
-        const statusBg = { promoted:'matched', trial:'matched', see_principal:'matched', repeated:'unmatched' }[ruleStatus] || 'matched';
-        html += `<div class="rule-match-banner ${statusBg}">
-            <div class="top">
-                <i class="ri-price-tag-3-line"></i>
-                Matched rule: <strong>${escapeHtml(appliedRule.name)}</strong>
-                ${appliedRule.description ? `<span style="font-weight:400;opacity:.8;">— ${escapeHtml(formatRuleDescription(appliedRule.description))}</span>` : ''}
-            </div>
-            <div class="sub"><i class="ri-information-line me-1"></i>Credit grades (${creditLabel}) contribute to grade-count conditions. Each subject's contribution is shown below.</div>
-        </div>`;
-    } else if (ruleLogicMode === 'average_only') {
-        // No rule is EVER matched in average_only mode by design — the
-        // per-rule conditions are not evaluated at all in this mode. Showing
-        // "No rule matched" here would be misleading, since the outcome is
-        // driven entirely by the Global Minimum Average comparison instead.
-        const requiredAvg = result?.required_average;
-        const actualAvg   = result?.actual_average;
-        const hasBoth      = requiredAvg !== null && requiredAvg !== undefined
-                           && actualAvg   !== null && actualAvg   !== undefined;
-        const metAvg       = hasBoth && actualAvg >= requiredAvg;
-        const outcomeLabelMap = {
-            promoted: 'Promoted', trial: 'Promoted on Trial',
-            see_principal: 'Advised to See Principal',
-            repeated: 'Advice to Repeat', awaiting: 'Awaiting Decision',
-        };
-        const bannerCls = !hasBoth ? 'info' : (metAvg ? 'matched' : 'unmatched');
-
-        html += `<div class="rule-match-banner ${bannerCls}">
-            <div class="top">
-                <i class="ri-percent-line"></i>
-                Average-only mode: <strong>${hasBoth ? actualAvg + '%' : '—'}</strong>
-                vs required <strong>${hasBoth ? requiredAvg + '%' : '— (not configured)'}</strong>
-                → <strong>${outcomeLabelMap[ruleStatus] || ruleStatus || '—'}</strong>
-            </div>
-            <div class="sub"><i class="ri-information-line me-1"></i>This rule set's Evaluation Mode is "Minimum Average Only" — grade-count rules and per-subject minimums below are informational only and are not evaluated. Only the Global Minimum Average decides the outcome in this mode.</div>
-        </div>`;
-    } else {
-        // grade_count or both mode, and genuinely no rule matched.
-        html += `<div class="rule-match-banner unmatched">
-            <div class="top"><i class="ri-close-circle-line"></i>No rule matched — result is Advice to Repeat.</div>
-            <div class="sub"><i class="ri-information-line me-1"></i>Check compulsory subject min grades and whether credit counts reach rule thresholds.</div>
-        </div>`;
-    }
-
-    // ── Credit tally cards
-    html += `<div class="credit-tally">
-        <div class="credit-tally-card">
-            <div class="num" style="color:#15803d;">${compCred}</div>
-            <div class="lbl">Credits — compulsory<small>of ${compList.length} subjects</small></div>
-        </div>
-        <div class="credit-tally-card">
-            <div class="num" style="color:#1e40af;">${optCred}</div>
-            <div class="lbl">Credits — optional<small>of ${optList.length} subjects</small></div>
-        </div>
-        <div class="credit-tally-card">
-            <div class="num" style="color:#1e293b;">${allCred}</div>
-            <div class="lbl">Total credits<small>of ${allSubjects.length} subjects</small></div>
-        </div>
-    </div>`;
-
-    // ── Summary strip
-    html += `<div class="subj-stat-row">
-        <span class="subj-stat-chip chip-total"><i class="ri-book-open-line me-1"></i>${allSubjects.length} subjects</span>
-        <span style="color:#cbd5e1;font-size:11px;">|</span>
-        <span style="font-size:11px;color:#64748b;font-weight:600;">Compulsory:</span>
-        <span class="subj-stat-chip chip-pass"><i class="ri-checkbox-circle-line me-1"></i>${compPass} passed</span>
-        <span class="subj-stat-chip chip-fail"><i class="ri-close-circle-line me-1"></i>${compFail} failed</span>
-        ${compNS ? `<span class="subj-stat-chip chip-notsat"><i class="ri-minus-circle-line me-1"></i>${compNS} not sat</span>` : ''}
-        <span style="color:#cbd5e1;font-size:11px;">|</span>
-        <span style="font-size:11px;color:#64748b;font-weight:600;">Optional:</span>
-        <span class="subj-stat-chip chip-pass"><i class="ri-checkbox-circle-line me-1"></i>${optPass} passed</span>
-        <span class="subj-stat-chip chip-fail"><i class="ri-close-circle-line me-1"></i>${optFail} failed</span>
-        <span class="subj-stat-chip chip-credit ms-auto"><i class="ri-add-circle-line me-1"></i>${allCred} total credits</span>
-    </div>`;
-
-    // ── Table
-    // col widths: # 36 | Subject ~auto | Code 60 | Score 110 | Grade 56 | Min 70 | Eval ~auto
-    html += `<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--pay-border);">
-    <table class="subj-table">
-    <colgroup>
-        <col style="width:36px">
-        <col>
-        <col style="width:62px">
-        <col style="width:120px">
-        <col style="width:58px">
-        <col style="width:76px">
-        <col>
-    </colgroup>
-    <thead><tr>
-        <th style="text-align:center;">#</th>
-        <th>Subject</th>
-        <th style="text-align:center;">Code</th>
-        <th style="text-align:center;">Score / 100</th>
-        <th style="text-align:center;">Grade</th>
-        <th style="text-align:center;">Min grade</th>
-        <th>Rule evaluation</th>
-    </tr></thead>
-    <tbody>`;
-
-    /* ── Eval tag builder ── */
-    function evalTag(cls, icon, label) {
-        return `<span class="eval-tag eval-${cls}"><i class="${icon}"></i> ${label}</span>`;
-    }
-    function evalNote(text) {
-        return `<span class="eval-sub">${text}</span>`;
-    }
-    function buildEval(s) {
-        const grade = (s.grade || '').toUpperCase();
-        const ps    = s.pass_status;
-        const min   = s.required_min_grade;
-
-        if (s.is_compulsory) {
-            if (ps === 'not_sat')
-                return evalTag('amber','ri-alert-line','Not sat') +
-                       evalNote('Absent — compulsory subjects must be sat to qualify');
-            if (min && min !== '—') {
-                return ps === 'pass'
-                    ? evalTag('green','ri-checkbox-circle-line',`Meets min grade (≥ ${min})`) +
-                      evalNote(`${grade} ≥ required ${min} ✓`)
-                    : evalTag('red','ri-close-circle-line',`Below min grade (needs ≥ ${min})`) +
-                      evalNote(`${grade} < required ${min} — blocks promotion`);
+function setupCheckboxHandlers() {
+    const ids = ['promotionCheckbox','trialCheckbox','seePrincipalCheckbox','repeatCheckbox'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function () {
+            if (this.checked) {
+                ids.forEach(other => {
+                    if (other !== id) {
+                        const o = document.getElementById(other);
+                        if (o) o.checked = false;
+                    }
+                });
             }
-            return ps === 'pass'
-                ? evalTag('green','ri-checkbox-circle-line','Compulsory — passed') + evalNote('Meets pass threshold')
-                : evalTag('red','ri-close-circle-line','Compulsory — failed') + evalNote('Does not meet pass threshold');
-        }
+        });
+    });
+}
 
-        // Optional
-        if (!grade || grade === '—')
-            return evalTag('gray','ri-subtract-line','Not attempted') + evalNote('No score — not counted in any condition');
-        if (isCredit(s.grade))
-            return evalTag('blue','ri-add-circle-line','Credit') + evalNote(`${grade} = credit (${creditLabel}) — counts toward credit conditions`);
-        if (isPass(s.grade))
-            return evalTag('amber','ri-record-circle-line','Pass — not a credit') + evalNote(`${grade} is a pass but below credit threshold`);
-        return evalTag('red','ri-close-circle-line','Fail') + evalNote(`${grade} is a failing grade — not counted`);
-    }
+/* ── Subjects table builders (modal) ── */
+function gradeColorClass(g) {
+    if (!g) return 'gc-na';
+    const u = String(g).toUpperCase();
+    if (['A1','A'].includes(u)) return 'gc-a';
+    if (['B2','B3','B'].includes(u)) return 'gc-b';
+    if (['C4','C5','C6','C'].includes(u)) return 'gc-c';
+    if (['D7','D'].includes(u)) return 'gc-d';
+    return 'gc-f';
+}
+function scoreBar(total, grade) {
+    const t = parseFloat(total) || 0;
+    const pct = Math.max(0, Math.min(100, t));
+    const color = pct >= 50 ? '#16a34a' : (pct >= 40 ? '#d97706' : '#dc2626');
+    return `<span class="mini-bar"><span class="mini-bar-track" style="width:48px;"><span class="mini-bar-fill" style="width:${pct}%;background:${color};"></span></span><span style="font-size:11px;font-weight:600;">${t ? t.toFixed(1) : '—'}</span></span>`;
+}
+function buildEval(s) {
+    const st = s.pass_status || s.eval_status || '';
+    if (st === 'pass' || st === 'credit') return `<span class="eval-tag eval-green">✓ Pass</span>`;
+    if (st === 'fail') return `<span class="eval-tag eval-red">✗ Fail</span>`;
+    if (st === 'not_sat') return `<span class="eval-tag eval-amber">○ Not Sat</span>`;
+    return `<span class="eval-tag eval-gray">—</span>`;
+}
+function rowCls(s) {
+    const st = s.pass_status || '';
+    if (st === 'pass') return 'row-pass';
+    if (st === 'fail') return 'row-fail';
+    if (st === 'not_sat') return 'row-notsat';
+    if (st === 'credit') return 'row-credit';
+    return '';
+}
+function buildSubjectsTable(allSubjects, result) {
+    const compList = allSubjects.filter(s => s.is_compulsory);
+    const optList  = allSubjects.filter(s => !s.is_compulsory);
+    const optCred  = optList.filter(s => s.pass_status === 'credit' || s.pass_status === 'pass').length;
 
-    /* ── Grade → bar/text color (always grade-based, not status-based) ── */
-    function gradeHexColor(g) {
-        const u = (g || '').toUpperCase();
-        if (['A1','A'].includes(u))           return { bar: '#10b981', text: '#15803d' }; // emerald
-        if (['B2','B3','B'].includes(u))      return { bar: '#3b82f6', text: '#1d4ed8' }; // blue
-        if (['C4','C5','C6','C'].includes(u)) return { bar: '#0891b2', text: '#0369a1' }; // cyan
-        if (['D7','D'].includes(u))           return { bar: '#f59e0b', text: '#d97706' }; // amber
-        if (['E8'].includes(u))               return { bar: '#f97316', text: '#c2410c' }; // orange
-        if (['F9','F'].includes(u))           return { bar: '#ef4444', text: '#b91c1c' }; // red
-        return { bar: '#94a3b8', text: '#64748b' };                                        // gray (not sat)
-    }
+    let html = `<div class="table-responsive"><table class="subj-table"><thead><tr>
+        <th style="width:36px;">#</th>
+        <th style="width:28%;">Subject</th>
+        <th style="width:10%;">Code</th>
+        <th style="width:14%;">Score</th>
+        <th style="width:10%;">Grade</th>
+        <th style="width:12%;">Min</th>
+        <th>Evaluation</th>
+    </tr></thead><tbody>`;
 
-    /* ── Score mini-bar — color driven by grade ── */
-    function scoreBar(score, grade) {
-        if (score === null || score === undefined || score === '')
-            return `<span style="color:#94a3b8;font-size:12px;">—</span>`;
-        const num = parseFloat(score);
-        const pct = Math.min(100, Math.round((num / 100) * 100));
-        const clr = gradeHexColor(grade);
-        return `<span class="mini-bar">
-            <strong style="min-width:28px;text-align:right;display:inline-block;color:${clr.text};font-size:13px;">${score}</strong>
-            <span class="mini-bar-track" style="width:52px;height:5px;">
-                <span class="mini-bar-fill" style="width:${pct}%;background:${clr.bar};"></span>
-            </span>
-        </span>`;
-    }
-
-    /* ── Row class ── */
-    function rowCls(s) {
-        if (s.is_compulsory) {
-            if (s.pass_status === 'pass')    return 'row-pass';
-            if (s.pass_status === 'not_sat') return 'row-notsat';
-            return 'row-fail';
-        }
-        const g = (s.grade || '').toUpperCase();
-        if (!g || g === '—') return 'row-optns';
-        if (isCredit(s.grade)) return 'row-credit';
-        if (isPass(s.grade))   return 'row-passonly';
-        return 'row-optfail';
-    }
-
-    /* ── Compulsory section ── */
     if (compList.length) {
         html += `<tr class="section-row"><td colspan="7">
-            <i class="ri-star-fill" style="color:#d97706;margin-right:5px;"></i>
-            Compulsory subjects — always rule-bound &nbsp;·&nbsp; ${compList.length} subject${compList.length !== 1 ? 's' : ''}
+            <i class="ri-bookmark-fill" style="color:#7c3aed;margin-right:5px;"></i>
+            Compulsory subjects
         </td></tr>`;
-
         compList.forEach((s, i) => {
             const grade = s.grade || '—';
-            const min   = s.required_min_grade;
+            const min = s.min_grade || s.required_min_grade || '—';
             html += `<tr class="${rowCls(s)}">
                 <td style="text-align:center;color:#94a3b8;font-size:11px;">${i + 1}</td>
                 <td>
                     <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
                         <strong style="font-size:13px;">${escapeHtml(s.subject_name)}</strong>
-                        <span style="background:#fef3c7;color:#92400e;border:0.5px solid #fde68a;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.03em;">COMPULSORY</span>
+                        <span style="background:#fef3c7;color:#92400e;border:0.5px solid #fde68a;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;">COMPULSORY</span>
                     </div>
                 </td>
                 <td style="text-align:center;font-family:monospace;font-size:11px;color:#64748b;">${escapeHtml(s.subject_code || '—')}</td>
                 <td style="text-align:center;">${scoreBar(s.total, grade)}</td>
-                <td style="text-align:center;"><strong class="${gradeColorClass(grade)}" style="font-size:17px;letter-spacing:.02em;">${grade}</strong></td>
+                <td style="text-align:center;"><strong class="${gradeColorClass(grade)}" style="font-size:17px;">${grade}</strong></td>
                 <td style="text-align:center;">
                     ${min && min !== '—'
                         ? `<span style="background:#dbeafe;color:#1e40af;border:0.5px solid #bfdbfe;font-size:11px;padding:2px 9px;border-radius:10px;font-weight:600;">≥ ${min}</span>`
@@ -1475,13 +1019,11 @@ function buildSubjectsTable(allSubjects, result) {
         });
     }
 
-    /* ── Optional section ── */
     if (optList.length) {
         html += `<tr class="section-row"><td colspan="7">
             <i class="ri-book-line" style="color:#0891b2;margin-right:5px;"></i>
-            Optional subjects — credits count toward grade conditions &nbsp;·&nbsp; ${optCred} credit${optCred !== 1 ? 's' : ''} from ${optList.length} subject${optList.length !== 1 ? 's' : ''}
+            Optional subjects — ${optCred} credit${optCred !== 1 ? 's' : ''} from ${optList.length} subject${optList.length !== 1 ? 's' : ''}
         </td></tr>`;
-
         optList.forEach((s, i) => {
             const grade = s.grade || '—';
             html += `<tr class="${rowCls(s)}">
@@ -1489,12 +1031,12 @@ function buildSubjectsTable(allSubjects, result) {
                 <td>
                     <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
                         <strong style="font-size:13px;">${escapeHtml(s.subject_name)}</strong>
-                        <span style="background:#e0f2fe;color:#0369a1;border:0.5px solid #bae6fd;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;letter-spacing:.03em;">OPTIONAL</span>
+                        <span style="background:#e0f2fe;color:#0369a1;border:0.5px solid #bae6fd;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;">OPTIONAL</span>
                     </div>
                 </td>
                 <td style="text-align:center;font-family:monospace;font-size:11px;color:#64748b;">${escapeHtml(s.subject_code || '—')}</td>
                 <td style="text-align:center;">${scoreBar(s.total, grade)}</td>
-                <td style="text-align:center;"><strong class="${gradeColorClass(grade)}" style="font-size:17px;letter-spacing:.02em;">${grade}</strong></td>
+                <td style="text-align:center;"><strong class="${gradeColorClass(grade)}" style="font-size:17px;">${grade}</strong></td>
                 <td style="text-align:center;"><span style="color:#94a3b8;font-size:11px;font-style:italic;">No min grade</span></td>
                 <td>${buildEval(s)}</td>
             </tr>`;
@@ -1505,43 +1047,25 @@ function buildSubjectsTable(allSubjects, result) {
     return html;
 }
 
-/* ── Open promotion modal ───────────────────────────────────────────────────── */
+/* ── Open promotion modal ── */
 async function openPromotionModal(studentId, admissionNo, firstName, lastName, otherName, picture, gender, schoolclass, schoolarm, session, termid) {
     currentStudentId     = studentId;
     currentSchoolclassId = document.getElementById('idclass').value;
     currentSessionId     = document.getElementById('idsession').value;
-
-    // FIX (term-mismatch bug): previously this was
-    //     currentTermId = termid || document.getElementById('idterm').value;
-    // where `termid` was the STUDENT ROW's own studentclass.termid, passed
-    // in from the Blade partial. The index() query filters students by
-    // class + session only (not by term), so a row's own termid could
-    // silently differ from whatever term is currently selected in the
-    // filter dropdown. When it did, this modal fetched
-    // getStudentDetails() for a DIFFERENT term than the one the table row
-    // was evaluated against — producing a different overall average and a
-    // different (wrong) promotion recommendation for the same student.
-    //
-    // The modal must always evaluate against the term the table is
-    // currently showing, never a stale per-row value. The `termid`
-    // parameter is intentionally ignored here (kept in the function
-    // signature only so existing onclick="" calls in the partial don't
-    // need to change their argument count).
+    // Always use filter term (not per-row termid) so modal matches table evaluation
     currentTermId = document.getElementById('idterm').value;
 
     document.getElementById('modalStudentName').innerHTML =
-        `<i class="ri-id-card-line me-2"></i>${admissionNo} — ${firstName} ${lastName}${otherName ? ' ' + otherName : ''}`;
+        `<i class="ri-id-card-line me-2"></i>${escapeHtml(admissionNo)} — ${escapeHtml(firstName)} ${escapeHtml(lastName)}${otherName ? ' ' + escapeHtml(otherName) : ''}`;
     document.getElementById('modalStudentGender').innerHTML =
-        `<i class="ri-gender-${gender === 'Male' ? 'male' : 'female'}-line me-1"></i>${gender || 'N/A'}`;
+        `<i class="ri-gender-${gender === 'Male' ? 'male' : 'female'}-line me-1"></i>${escapeHtml(gender || 'N/A')}`;
     document.getElementById('modalCurrentClass').innerText   = schoolclass;
     document.getElementById('modalCurrentArm').innerText     = schoolarm || 'N/A';
     document.getElementById('modalCurrentSession').innerText = session;
 
-    // Show picture immediately from what the table already has (no blank flash)
     const imgEl = document.getElementById('modalStudentImage');
     setStudentImage(imgEl, normalizeImagePath(picture, gender), gender);
 
-    // Reset form state
     document.getElementById('promotionForm').reset();
     ['newClassSelect','newSessionSelect','newTermSelect'].forEach(id => {
         document.getElementById(id).value = '';
@@ -1560,8 +1084,10 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
     showLoading('Loading student data...');
 
     try {
+        const basis = getAverageBasis();
         const response = await axios.get(
-            `/promotions/student-details/${studentId}/${currentSchoolclassId}/${currentSessionId}/${currentTermId}`
+            `/promotions/student-details/${studentId}/${currentSchoolclassId}/${currentSessionId}/${currentTermId}`,
+            { params: { average_basis: basis } }
         );
         hideLoading();
 
@@ -1572,7 +1098,6 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
 
         currentStudentData = response.data;
 
-        // Refresh picture from server response (more authoritative)
         const serverPic = response.data.student?.picture || picture;
         setStudentImage(imgEl, normalizeImagePath(serverPic, gender), gender);
 
@@ -1581,18 +1106,14 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
         const allSubjects = response.data.all_subjects        || [];
         const compData    = response.data.compulsory_subjects || [];
 
-        // Overall average
         const avgEl    = document.getElementById('modalOverallAverage');
         const avgValue = avg !== null && avg !== undefined ? `${avg}%` : 'N/A';
         const avgCls   = avg !== null
             ? (avg >= 50 ? 'text-success' : avg >= 40 ? 'text-warning' : 'text-danger')
             : 'text-muted';
-        avgEl.innerHTML = `<span class="${avgCls} fs-5 fw-bold">${avgValue}</span>`;
+        const basisLbl = basis === 'cum' ? 'Cum' : 'Term Total';
+        avgEl.innerHTML = `<span class="${avgCls} fs-5 fw-bold">${avgValue}</span> <small class="text-muted">(${basisLbl})</small>`;
 
-        // ── Recommendation card
-        // NOTE: the backend no longer emits a literal 'awaiting' status
-        // string — when no decision could be made, result.status is null.
-        // Check truthiness rather than comparing to the old string.
         if (result && result.status) {
             const recCard = document.getElementById('recommendationCard');
             recCard.style.display = 'block';
@@ -1608,10 +1129,10 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
                     <div>
                         <div class="label text-muted mb-2">System Recommendation</div>
                         <span class="status-badge-lg text-white" style="background:${sc.bg};">
-                            <i class="${sc.icon} me-1"></i>${result.status_label || result.status}
+                            <i class="${sc.icon} me-1"></i>${escapeHtml(result.status_label || result.status)}
                         </span>
                     </div>`;
-            if (result.required_average !== null) {
+            if (result.required_average !== null && result.required_average !== undefined) {
                 const metAvg = result.actual_average >= result.required_average;
                 html += `<div class="text-end">
                     <div class="rule-badge"><i class="ri-percent-line me-1"></i>Required: ${result.required_average}%</div>
@@ -1631,7 +1152,7 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
             } else if (result.rule_logic === 'average_only') {
                 html += `<div class="mt-3 pt-3 border-top d-flex align-items-center flex-wrap gap-2">
                     <i class="ri-percent-line text-info"></i>
-                    <span class="small text-muted">Determined by Global Minimum Average only — grade-count rules were not evaluated for this class's current Evaluation Mode.</span>
+                    <span class="small text-muted">Determined by Global Minimum Average only.</span>
                 </div>`;
             }
             if (result.compulsory_count > 0) {
@@ -1646,7 +1167,7 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
                 if (result.failed_compulsory?.length) {
                     html += `<div class="mt-2 small text-danger"><i class="ri-close-circle-line me-1"></i>Failed: `;
                     result.failed_compulsory.forEach(f => {
-                        html += `<span class="badge bg-danger me-1">${f.subject || `Subject #${f.subject_id}`}</span>`;
+                        html += `<span class="badge bg-danger me-1">${escapeHtml(f.subject || `Subject #${f.subject_id}`)}</span>`;
                     });
                     html += `</div>`;
                 }
@@ -1656,13 +1177,11 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
             document.getElementById('recommendationContent').innerHTML = html;
         }
 
-        // ── All Subjects table
         if (allSubjects.length) {
             document.getElementById('allSubjectsCard').style.display = 'block';
             document.getElementById('allSubjectsContent').innerHTML = buildSubjectsTable(allSubjects, result);
         }
 
-        // ── Compulsory subjects summary card
         if (compData.length) {
             const passCount  = compData.filter(s => s.pass_status === 'pass').length;
             const failCount  = compData.filter(s => s.pass_status === 'fail').length;
@@ -1709,7 +1228,6 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
     new bootstrap.Modal(document.getElementById('promotionModal')).show();
 }
 
-/* ── Remove student ─────────────────────────────────────────────────────────── */
 function removeStudent(studentId, schoolclassId, sessionId, termId, admissionNo, firstName, lastName) {
     Swal.fire({
         title: 'Confirm Removal',
@@ -1728,7 +1246,7 @@ function removeStudent(studentId, schoolclassId, sessionId, termId, admissionNo,
         fd.append('sessionid', sessionId);
         fd.append('termid', termId);
         axios.post(`/promotions/${studentId}`, fd, {
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'multipart/form-data' }
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'multipart/form-data' }
         }).then(response => {
             hideLoading();
             showToast(response.data.success ? response.data.message : (response.data.message || 'Failed to remove'), response.data.success ? 'success' : 'danger');
@@ -1740,7 +1258,6 @@ function removeStudent(studentId, schoolclassId, sessionId, termId, admissionNo,
     });
 }
 
-/* ── Submit promotion ───────────────────────────────────────────────────────── */
 function submitPromotion() {
     if (!currentStudentId) { showToast('Student ID not found', 'danger'); return; }
 
@@ -1779,7 +1296,7 @@ function submitPromotion() {
         showLoading('Updating promotion...');
         bootstrap.Modal.getInstance(document.getElementById('promotionModal'))?.hide();
         axios.post(`/promotions/${currentStudentId}`, fd, {
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+            headers: { 'X-CSRF-TOKEN': CSRF }
         }).then(response => {
             hideLoading();
             showToast(response.data.success ? response.data.message : (response.data.message || 'Failed to update'), response.data.success ? 'success' : 'danger');
@@ -1791,7 +1308,59 @@ function submitPromotion() {
     });
 }
 
-/* ── Keyboard shortcuts ─────────────────────────────────────────────────────── */
+function openBulkPromoteModal() {
+    const n = document.querySelectorAll('.row-checkbox:checked').length;
+    if (!n) { showToast('Select at least one student', 'warning'); return; }
+    new bootstrap.Modal(document.getElementById('bulkPromoteModal')).show();
+}
+
+function submitBulkPromote() {
+    const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!ids.length) { showToast('No students selected', 'warning'); return; }
+
+    const newClass   = document.getElementById('bulkNewClass').value;
+    const newSession = document.getElementById('bulkNewSession').value;
+    const newTerm    = document.getElementById('bulkNewTerm').value;
+    const decision   = document.getElementById('bulkDecision').value;
+
+    if (!newClass || !newSession || !newTerm) {
+        showToast('Select new class, session and term', 'warning');
+        return;
+    }
+
+    const fd = new FormData();
+    ids.forEach((id, i) => fd.append(`student_ids[${i}]`, id));
+    fd.append('new_schoolclassid', newClass);
+    fd.append('new_sessionid', newSession);
+    fd.append('new_termid', newTerm);
+    fd.append('decision', decision);
+    fd.append('schoolclassid', document.getElementById('idclass').value);
+    fd.append('sessionid', document.getElementById('idsession').value);
+    fd.append('termid', document.getElementById('idterm').value);
+
+    Swal.fire({
+        title: 'Confirm Bulk Update',
+        text: `Update ${ids.length} student(s)?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Update',
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        showLoading('Bulk updating…');
+        bootstrap.Modal.getInstance(document.getElementById('bulkPromoteModal'))?.hide();
+        axios.post('{{ route("promotions.bulk") }}', fd, {
+            headers: { 'X-CSRF-TOKEN': CSRF }
+        }).then(response => {
+            hideLoading();
+            showToast(response.data.message || (response.data.success ? 'Updated' : 'Failed'), response.data.success ? 'success' : 'danger');
+            if (response.data.success) filterData();
+        }).catch(error => {
+            hideLoading();
+            showToast(error.response?.data?.message || 'Bulk update failed', 'danger');
+        });
+    });
+}
+
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
@@ -1823,11 +1392,11 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-/* ── DOMContentLoaded ───────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('idclass').addEventListener('change', filterData);
     document.getElementById('idsession').addEventListener('change', filterData);
     document.getElementById('idterm').addEventListener('change', filterData);
+    document.getElementById('average_basis').addEventListener('change', filterData);
 
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function () {
@@ -1841,13 +1410,19 @@ document.addEventListener('DOMContentLoaded', function () {
     popPromotionBadges();
     setupRowSelection();
 
-    // Pulse bulk button when bar is visible
     const bulkBtn = document.getElementById('bulkPromoteActionBtn');
     const bulkBar = document.getElementById('bulkActionBar');
     if (bulkBtn && bulkBar) {
         new MutationObserver(() => {
             bulkBtn.classList.toggle('btn-pulse', bulkBar.classList.contains('visible'));
         }).observe(bulkBar, { attributes: true });
+    }
+
+    // Initial load if filters already selected
+    if (document.getElementById('idclass').value &&
+        document.getElementById('idsession').value &&
+        document.getElementById('idterm').value) {
+        filterData();
     }
 });
 </script>

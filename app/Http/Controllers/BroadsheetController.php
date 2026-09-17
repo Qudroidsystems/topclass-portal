@@ -8,6 +8,7 @@ use App\Models\Schoolclass;
 use App\Models\SchoolInformation;
 use App\Models\Schoolsession;
 use App\Models\Schoolterm;
+use App\Models\PromotionSetting;
 use App\Models\Studentclass;
 use App\Services\PromotionEvaluator;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -614,36 +615,59 @@ class BroadsheetController extends Controller
                 }
             }
 
-            // ── Promotion evaluation ──────────────────────────────
+            // ── Promotion evaluation (aligned with PromotionController) ──
             $promoResult = null;
             if ($shouldEvalPromo) {
-                $scoresForPromo = [];
-                foreach ($subScores as $subjectId => $sd) {
-                    $scoresForPromo[] = (object) [
-                        'subject_id'   => $subjectId,
-                        'grade'        => $sd['grade'] ?? null,
-                        'total'        => $sd['total'] ?? 0,
-                        'cum'          => $sd['cum']   ?? 0,
-                        'subject_name' => $subjectsMap[$subjectId]['subject_name'] ?? null,
-                    ];
-                }
-
                 $evalClassId = ($isCombined && $studentClassMap && isset($studentClassMap[$sid]))
-                    ? $studentClassMap[$sid]
-                    : $schoolclassid;
+                    ? (int) $studentClassMap[$sid]
+                    : (int) $schoolclassid;
+
+                $averageBasis = in_array($gradeBasis, ['total', 'cum'], true)
+                    ? $gradeBasis
+                    : 'total';
 
                 try {
-                    $promoResult = $this->promotionEvaluator->evaluate(
+                    $scoresForPromo = $this->getStudentScoresForPromotion(
                         $sid,
-                        (int) $evalClassId,
-                        (int) $termid,
+                        $evalClassId,
                         (int) $sessionid,
-                        $scoresForPromo,
-                        $classAvg > 0 ? $classAvg : null
+                        (int) $termid
                     );
+
+                    $overallAverage = $this->promotionEvaluator->computeOverallAverage(
+                        $scoresForPromo,
+                        $averageBasis
+                    );
+
+                    $shouldSkip = $this->classHasNoApplicableSetting(
+                        $evalClassId,
+                        (int) $sessionid,
+                        (int) $termid
+                    );
+
+                    if ($shouldSkip) {
+                        $promoResult = $this->promotionEvaluator->awaitingResult(
+                            $overallAverage,
+                            'No matching promotion setting',
+                            $evalClassId
+                        );
+                    } else {
+                        $promoResult = $this->promotionEvaluator->evaluate(
+                            studentId:      $sid,
+                            schoolclassid:  $evalClassId,
+                            termid:         (int) $termid,
+                            sessionid:      (int) $sessionid,
+                            scores:         $scoresForPromo,
+                            overallAverage: $overallAverage
+                        );
+                    }
                 } catch (\Throwable $e) {
                     Log::warning('Promotion eval failed for student ' . $sid . ': ' . $e->getMessage());
-                    $promoResult = $this->promotionEvaluator->awaitingResult($classAvg ?: null);
+                    $promoResult = $this->promotionEvaluator->awaitingResult(
+                        null,
+                        'Evaluation error',
+                        $evalClassId ?? null
+                    );
                 }
             }
 
@@ -1355,6 +1379,76 @@ class BroadsheetController extends Controller
     {
         $c = fn (string $s) => preg_replace('/[^A-Za-z0-9_\-]/', '_', trim($s));
         return 'Broadsheet_' . $c($class) . '_' . $c($session) . '_' . $c($term) . '.' . $ext;
+    }
+
+
+    // =========================================================================
+    // PROMOTION HELPERS — same behaviour as PromotionController
+    // =========================================================================
+
+    /**
+     * Same query shape as PromotionController::getStudentScores().
+     * Returns stored grade, total, cum from broadsheets — not pivot recalculation.
+     */
+    private function getStudentScoresForPromotion(
+        int $studentId,
+        int $schoolclassId,
+        int $sessionId,
+        int $termId
+    ): \Illuminate\Support\Collection {
+        try {
+            return Broadsheets::where('broadsheet_records.student_id', $studentId)
+                ->where('broadsheets.term_id', $termId)
+                ->where('broadsheet_records.session_id', $sessionId)
+                ->where('broadsheet_records.schoolclass_id', $schoolclassId)
+                ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+                ->join('subject', 'subject.id', '=', 'broadsheet_records.subject_id')
+                ->select([
+                    'subject.id           as subject_id',
+                    'subject.subject      as subject_name',
+                    'subject.subject_code as subject_code',
+                    'broadsheets.total    as total',
+                    'broadsheets.cum      as cum',
+                    'broadsheets.grade    as grade',
+                ])
+                ->get();
+        } catch (\Throwable $e) {
+            Log::error('getStudentScoresForPromotion failed', [
+                'student_id' => $studentId,
+                'error'      => $e->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    /**
+     * Same applicability check as PromotionController::classHasNoApplicableSetting().
+     */
+    private function classHasNoApplicableSetting(
+        int $schoolclassId,
+        int $sessionId,
+        int $termId
+    ): bool {
+        $activeSettings = PromotionSetting::where('schoolclass_id', $schoolclassId)
+            ->where('is_active', true)
+            ->get(['id', 'session_id', 'term_id']);
+
+        if ($activeSettings->isEmpty()) {
+            return true;
+        }
+
+        foreach ($activeSettings as $setting) {
+            $sid = $setting->session_id;
+            $tid = $setting->term_id;
+
+            if ($sid == $sessionId && $tid == $termId)               return false;
+            if ($sid == $sessionId && $tid === null)                 return false;
+            if ($sid === null      && $tid == $termId)               return false;
+            if ($sid === null      && $tid === null)                 return false;
+            if ($sid !== null && $sid != $sessionId && $tid === null) return false;
+        }
+
+        return true;
     }
 
     private function getLogoBase64($schoolInfo): string

@@ -52,6 +52,11 @@ class PromotionController extends Controller
             $sessionId     = (int) $request->input('sessionid');
             $termId        = (int) $request->input('termid');
 
+            $averageBasis = $request->input('average_basis', $request->input('grade_basis', 'total'));
+            if (!in_array($averageBasis, ['total', 'cum'], true)) {
+                $averageBasis = 'total';
+            }
+
             try {
                 $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                     $schoolclassId, $sessionId, $termId
@@ -106,12 +111,15 @@ class PromotionController extends Controller
 
                 $allstudents->getCollection()->transform(
                     function ($student) use (
-                        $schoolclassId, $sessionId, $termId, $shouldSkipEvaluator
+                        $schoolclassId, $sessionId, $termId, $shouldSkipEvaluator, $averageBasis
                     ) {
-                        $scores         = $this->getStudentScores(
+                        $scores = $this->getStudentScores(
                             $student->stid, $schoolclassId, $sessionId, $termId
                         );
-                        $overallAverage = $this->calculateOverallAverage($scores);
+                        $overallAverage = $this->promotionEvaluator->computeOverallAverage(
+                            $scores,
+                            $averageBasis
+                        );
 
                         if ($shouldSkipEvaluator) {
                             $student->promotion_recommendation =
@@ -133,6 +141,7 @@ class PromotionController extends Controller
                         }
 
                         $student->overall_average = $overallAverage;
+                        $student->average_basis   = $averageBasis;
 
                         $existing = PromotionStatus::where('studentId',     $student->stid)
                             ->where('schoolclassid', $schoolclassId)
@@ -211,11 +220,16 @@ class PromotionController extends Controller
                 return response()->json(['success' => false, 'message' => 'Student not found'], 404);
             }
 
+            $averageBasis = request()->input('average_basis', request()->input('grade_basis', 'total'));
+            if (!in_array($averageBasis, ['total', 'cum'], true)) {
+                $averageBasis = 'total';
+            }
+
             $scores         = $this->getStudentScores($studentId, $schoolclassId, $sessionId, $termId);
-            $overallAverage = $this->calculateOverallAverage($scores);
+            $overallAverage = $this->promotionEvaluator->computeOverallAverage($scores, $averageBasis);
 
             $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
-                $schoolclassId, $sessionId, $termId
+                (int) $schoolclassId, (int) $sessionId, (int) $termId
             );
 
             $promotionResult = $shouldSkipEvaluator
@@ -225,10 +239,10 @@ class PromotionController extends Controller
                     (int) $schoolclassId
                 )
                 : $this->promotionEvaluator->evaluate(
-                    studentId:      $studentId,
-                    schoolclassid:  $schoolclassId,
-                    termid:         $termId,
-                    sessionid:      $sessionId,
+                    studentId:      (int) $studentId,
+                    schoolclassid:  (int) $schoolclassId,
+                    termid:         (int) $termId,
+                    sessionid:      (int) $sessionId,
                     scores:         $scores,
                     overallAverage: $overallAverage
                 );
@@ -281,6 +295,7 @@ class PromotionController extends Controller
                     'subject_name'       => $score->subject_name,
                     'subject_code'       => $score->subject_code ?? '',
                     'total'              => $score->total,
+                    'cum'                => $score->cum ?? null,
                     'grade'              => $score->grade,
                     'is_compulsory'      => $isCompulsory,
                     'required_min_grade' => $requiredMinGrade,
@@ -301,6 +316,7 @@ class PromotionController extends Controller
                         'subject_name'       => $compulsory->subject->subject ?? 'Unknown',
                         'subject_code'       => $compulsory->subject->subject_code ?? '',
                         'total'              => null,
+                        'cum'                => null,
                         'grade'              => null,
                         'is_compulsory'      => true,
                         'required_min_grade' => $requiredMinGrade,
@@ -323,6 +339,7 @@ class PromotionController extends Controller
                     $scoreEntry       = $scores->firstWhere('subject_id', $cs->subjectId);
                     $studentGrade     = $scoreEntry?->grade ?? null;
                     $studentTotal     = $scoreEntry?->total ?? null;
+                    $studentCum       = $scoreEntry?->cum ?? null;
                     $minGradeFromRule = $ruleSubjects[$cs->subjectId] ?? null;
                     $requiredMinGrade = $minGradeFromRule ?? $cs->min_grade;
 
@@ -343,6 +360,7 @@ class PromotionController extends Controller
                         'rule_requirement'   => $ruleRequirement,
                         'student_grade'      => $studentGrade,
                         'student_total'      => $studentTotal,
+                        'student_cum'        => $studentCum,
                         'pass_status'        => $passStatus,
                         'pass_status_label'  => $this->getPassStatusLabel($passStatus),
                         'pass_status_class'  => $this->getPassStatusClass($passStatus),
@@ -362,6 +380,7 @@ class PromotionController extends Controller
                 'student'             => $student,
                 'promotion_result'    => $promotionResult,
                 'overall_average'     => $overallAverage,
+                'average_basis'       => $averageBasis,
                 'all_subjects'        => $allSubjects,
                 'compulsory_subjects' => $compulsorySubjectsWithStatus,
                 'statistics'          => [
@@ -669,23 +688,13 @@ class PromotionController extends Controller
         }
     }
 
-    private function calculateOverallAverage($scores): ?float
+    /**
+     * Thin wrapper — delegates to PromotionEvaluator so both controllers share one formula.
+     * $basis: 'total' (default) or 'cum'
+     */
+    private function calculateOverallAverage($scores, string $basis = 'total'): ?float
     {
-        if ($scores->isEmpty()) return null;
-
-        $obtained   = 0;
-        $obtainable = 0;
-
-        foreach ($scores as $score) {
-            if ($score->total !== null && is_numeric($score->total)) {
-                $obtained   += (float) $score->total;
-                $obtainable += 100;
-            }
-        }
-
-        return $obtainable > 0
-            ? round(($obtained / $obtainable) * 100, 1)
-            : 0;
+        return $this->promotionEvaluator->computeOverallAverage($scores, $basis);
     }
 
     private function determinePassStatus(?string $grade, ?string $requiredMinGrade, bool $isCompulsory): string
