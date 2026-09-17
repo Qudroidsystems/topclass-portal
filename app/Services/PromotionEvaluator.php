@@ -147,6 +147,10 @@ class PromotionEvaluator
         // ── Step 7: evaluate average-only branch ────────────────────────────
         $requiredAverage = $this->resolveRequiredAverage($settings, $schoolclassid);
 
+        // $averageConditionMet is now tri-state: true | false | null.
+        // null means "not applicable" (no required average configured, or
+        // no overall average computable for this student) — see FIX #1
+        // in evaluateAverage() below.
         [$averageConditionMet, $averageStatus] = $this->evaluateAverage(
             $ruleLogic,
             $requiredAverage,
@@ -188,7 +192,13 @@ class PromotionEvaluator
             'is_promotional_term'       => $isPromotional,
             'failed_compulsory'         => $failedCompulsory,
             'compulsory_subject_detail' => $compulsoryDetail,
-            'average_failed'            => !$averageConditionMet,
+            // FIX #1 (cont.): "failed" now means the average condition was
+            // actually evaluated AND came back false — not "wasn't met OR
+            // wasn't configured", which is what `!$averageConditionMet`
+            // used to conflate (null was falsy, so "not applicable" showed
+            // up identically to "genuinely failed" in the UI).
+            'average_failed'            => $averageConditionMet === false,
+            'average_applicable'        => $averageConditionMet !== null,
             'required_average'          => $requiredAverage,
             'actual_average'            => $overallAverage,
             'compulsory_count'          => $totalCount,
@@ -216,6 +226,7 @@ class PromotionEvaluator
             'failed_compulsory'         => [],
             'compulsory_subject_detail' => [],
             'average_failed'            => false,
+            'average_applicable'        => false,
             'required_average'          => null,
             'actual_average'            => $overallAverage,
             'compulsory_count'          => 0,
@@ -688,25 +699,63 @@ class PromotionEvaluator
             : ($entry['grade'] ?? null);
     }
 
+    /**
+     * FIX #1: previously this returned [true, null] whenever the required
+     * average or the student's overall average were missing — meaning "not
+     * configured" was silently treated identically to "condition met". That
+     * let students slip through the average gate in 'both' mode purely
+     * because nobody had set a pass-average anywhere (class category or
+     * per-setting), with no visible signal that the check never actually
+     * ran.
+     *
+     * Now the tri-state is explicit:
+     *   - true  → average was checked and met
+     *   - false → average was checked and NOT met
+     *   - null  → average could not be checked (not configured, or no
+     *             computable overall average for this student) — callers
+     *             MUST treat this as "not applicable", never as "passed".
+     */
     private function evaluateAverage(
         string $ruleLogic,
         ?float $requiredAverage,
         ?float $overallAverage
     ): array {
         if (!in_array($ruleLogic, ['average_only', 'both'], true)) {
-            return [true, null];
+            // Average isn't part of this mode at all — not applicable.
+            return [null, null];
         }
         if ($requiredAverage === null || $overallAverage === null) {
-            return [true, null];
+            // Not configured / not computable — explicitly "not applicable",
+            // NOT "met".
+            return [null, null];
         }
         $met = $overallAverage >= $requiredAverage;
         return [$met, $met ? self::STATUS_PROMOTED : self::STATUS_REPEATED];
     }
 
+    /**
+     * FIX #2: in 'both' mode, a matched rule that fails the global average
+     * condition used to be unconditionally forced to STATUS_TRIAL — even if
+     * the rule's own configured outcome was "Repeat" or "See Principal".
+     * That silently UPGRADED some outcomes (e.g. Repeat → Trial) purely
+     * because of how the average happened to compare, overriding what the
+     * admin explicitly configured for that rule.
+     *
+     * Now: failing the average only ever downgrades an otherwise-"Promoted"
+     * result to "Trial" (the one case where "close, but not quite" makes
+     * sense). Any other matched status (trial / see_principal / repeated)
+     * is left exactly as the matched rule specified — the average check
+     * can restrict a promotion, but it never overrides a rule's own
+     * non-promotion outcome.
+     *
+     * A null $averageConditionMet ("not applicable" — see evaluateAverage())
+     * now falls back to the matched rule's own status, i.e. behaves like
+     * grade_count mode, instead of being treated as an implicit pass.
+     */
     private function resolveFinalStatus(
         string  $ruleLogic,
         ?string $matchedStatus,
-        bool    $averageConditionMet,
+        ?bool   $averageConditionMet,
         ?string $averageStatus,
         bool    $isPromotional = true
     ): string {
@@ -722,9 +771,29 @@ class PromotionEvaluator
                 return $matchedStatus ?? self::STATUS_REPEATED;
 
             case 'both':
-                if ($matchedStatus !== null && $averageConditionMet)  return $matchedStatus;
-                if ($matchedStatus !== null && !$averageConditionMet) return self::STATUS_TRIAL;
-                if ($matchedStatus === null && $averageConditionMet)  return self::STATUS_PROMOTED;
+                if ($matchedStatus !== null) {
+                    // Average not applicable (not configured) → defer to
+                    // the matched rule's own status, same as grade_count.
+                    if ($averageConditionMet === null) {
+                        return $matchedStatus;
+                    }
+                    if ($averageConditionMet === true) {
+                        return $matchedStatus;
+                    }
+                    // Average explicitly failed. Only downgrade a
+                    // would-be Promotion to Trial; never upgrade any
+                    // other configured outcome.
+                    return $matchedStatus === self::STATUS_PROMOTED
+                        ? self::STATUS_TRIAL
+                        : $matchedStatus;
+                }
+
+                // No rule matched at all — fall back to the average check
+                // alone, same as before, but only when it was actually
+                // evaluated.
+                if ($averageConditionMet === true) {
+                    return self::STATUS_PROMOTED;
+                }
                 return self::STATUS_REPEATED;
 
             default:
