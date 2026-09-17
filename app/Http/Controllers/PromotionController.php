@@ -60,6 +60,22 @@ class PromotionController extends Controller
                 $query = Studentclass::query()
                     ->where('studentclass.schoolclassid', $schoolclassId)
                     ->where('studentclass.sessionid',     $sessionId)
+                    // FIX (term-mismatch bug): the query previously filtered
+                    // only by class + session, so it could return
+                    // studentclass rows whose termid did NOT match the term
+                    // selected in the filter (e.g. a row left over from Term
+                    // 1 or 2). The table then computed scores/evaluation
+                    // using the FILTER's $termId (correct), but the row's
+                    // own studentclass.termid column (now guaranteed equal
+                    // to $termId by this filter) is what the Blade partial
+                    // passes into openPromotionModal(...) in the browser.
+                    // Without this filter, that row termid could diverge
+                    // from $termId, so the modal's AJAX call to
+                    // getStudentDetails() fetched a DIFFERENT term's
+                    // broadsheet scores than the ones shown in the table —
+                    // producing a different average and a different (wrong)
+                    // promotion recommendation for the same student.
+                    ->where('studentclass.termid', $termId)
                     ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
                     ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
                     ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')

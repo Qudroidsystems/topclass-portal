@@ -1510,7 +1510,24 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
     currentStudentId     = studentId;
     currentSchoolclassId = document.getElementById('idclass').value;
     currentSessionId     = document.getElementById('idsession').value;
-    currentTermId        = termid || document.getElementById('idterm').value;
+
+    // FIX (term-mismatch bug): previously this was
+    //     currentTermId = termid || document.getElementById('idterm').value;
+    // where `termid` was the STUDENT ROW's own studentclass.termid, passed
+    // in from the Blade partial. The index() query filters students by
+    // class + session only (not by term), so a row's own termid could
+    // silently differ from whatever term is currently selected in the
+    // filter dropdown. When it did, this modal fetched
+    // getStudentDetails() for a DIFFERENT term than the one the table row
+    // was evaluated against — producing a different overall average and a
+    // different (wrong) promotion recommendation for the same student.
+    //
+    // The modal must always evaluate against the term the table is
+    // currently showing, never a stale per-row value. The `termid`
+    // parameter is intentionally ignored here (kept in the function
+    // signature only so existing onclick="" calls in the partial don't
+    // need to change their argument count).
+    currentTermId = document.getElementById('idterm').value;
 
     document.getElementById('modalStudentName').innerHTML =
         `<i class="ri-id-card-line me-2"></i>${admissionNo} — ${firstName} ${lastName}${otherName ? ' ' + otherName : ''}`;
