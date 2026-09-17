@@ -455,10 +455,24 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    console.log("Script loaded at", new Date().toISOString());
+    console.log("[studentreports] Script loaded at", new Date().toISOString());
 
-    // ── Visibility helpers ──────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════
+    // CSRF helper — reads meta tag or XSRF cookie
+    // ══════════════════════════════════════════════════════════════════
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content) return meta.content;
 
+        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+        if (match) return decodeURIComponent(match[1]);
+
+        return '';
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // Visibility helpers
+    // ══════════════════════════════════════════════════════════════════
     function updateSelectionAlert() {
         const classSelect   = document.getElementById("idclass");
         const sessionSelect = document.getElementById("idsession");
@@ -472,7 +486,7 @@
             parts.push(`Class: ${classSelect.options[classSelect.selectedIndex].text}`);
         if (sessionSelect.value !== 'ALL')
             parts.push(`Session: ${sessionSelect.options[sessionSelect.selectedIndex].text}`);
-        if (termSelect.value !== 'ALL')
+        if (termSelect && termSelect.value !== 'ALL')
             parts.push(`Term: ${termSelect.options[termSelect.selectedIndex].text}`);
         parts.push(`Students Selected: ${checked.length}`);
 
@@ -495,7 +509,6 @@
         updateSelectionAlert();
     }
 
-    // Only controls term dropdown visibility
     function updateTermSelectVisibility() {
         const studentCount = parseInt(document.getElementById("studentcount").innerText) || 0;
         document.getElementById("termSelectContainer").style.display =
@@ -503,34 +516,47 @@
         updateSelectionAlert();
     }
 
-    // Sole owner of print button visibility
     function updatePrintButtonVisibility() {
-        const termValue = document.getElementById("idterm").value;
-        const checked   = document.querySelectorAll('tbody input[name="chk_child"]:checked');
-        const show      = termValue !== 'ALL' && checked.length > 0;
+        const termSelect = document.getElementById("idterm");
+        const termValue  = termSelect ? termSelect.value : 'ALL';
+        const checked    = document.querySelectorAll('tbody input[name="chk_child"]:checked');
+        const show       = termValue !== 'ALL' && checked.length > 0;
         document.getElementById("printAllBtn").style.display = show ? 'block' : 'none';
         updateSelectionAlert();
     }
 
-    // ── Filter / search ─────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════════════
+    // filterData — WITH GUARD against empty selects
+    // ══════════════════════════════════════════════════════════════════
     function filterData() {
         if (typeof axios === 'undefined') {
             Swal.fire({ icon: "error", title: "Configuration Error", text: "Axios library is missing." });
             return;
         }
 
-        const classValue   = document.getElementById("idclass").value;
-        const sessionValue = document.getElementById("idsession").value;
-        const termValue    = document.getElementById("idterm").value;
+        const classSelect   = document.getElementById("idclass");
+        const sessionSelect = document.getElementById("idsession");
+        const termSelect    = document.getElementById("idterm");
+
+        const classValue   = classSelect ? classSelect.value : 'ALL';
+        const sessionValue = sessionSelect ? sessionSelect.value : 'ALL';
+        const termValue    = termSelect ? termSelect.value : 'ALL';
         const searchValue  = (document.getElementById("searchInput").value || '').trim();
 
-        if (classValue === 'ALL' || sessionValue === 'ALL') {
-            resetTable();
-            Swal.fire({ icon: "warning", title: "Missing Selection",
-                        text: "Please select a valid class and session." });
+        // ── GUARD: do not fire AJAX with empty/invalid selects ────────
+        if (!classValue || classValue === 'ALL' || !sessionValue || sessionValue === 'ALL') {
+            console.warn("[filterData] ABORTED — class or session not selected", {
+                classValue, sessionValue, termValue, searchValue
+            });
             return;
         }
+
+        console.log("[filterData] Firing AJAX with params", {
+            search: searchValue,
+            schoolclassid: classValue,
+            sessionid: sessionValue,
+            termid: termValue,
+        });
 
         const tableBody = document.getElementById('studentTableBody');
         tableBody.innerHTML =
@@ -538,12 +564,17 @@
             '<span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading...</td></tr>';
 
         axios.get('{{ route("studentreports.index") }}', {
-            params: { search: searchValue, schoolclassid: classValue,
-                      sessionid: sessionValue, termid: termValue },
+            params: {
+                search:        searchValue,
+                schoolclassid: classValue,
+                sessionid:     sessionValue,
+                termid:        termValue,
+            },
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                'X-CSRF-TOKEN':     getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            withCredentials: true,
         }).then(function (response) {
             document.getElementById('studentTableBody').innerHTML =
                 response.data.tableBody ||
@@ -567,7 +598,7 @@
                             text: "No students found for the selected filters." });
             }
         }).catch(function (error) {
-            console.error("AJAX error:", error);
+            console.error("[filterData] AJAX error:", error);
             tableBody.innerHTML =
                 '<tr><td colspan="10" class="text-center text-danger py-4">' +
                 'Error loading data. Please try again.</td></tr>';
@@ -588,8 +619,9 @@
         updateSelectionAlert();
     }
 
-    // ── Print / PDF ─────────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════════════
+    // Print / PDF
+    // ══════════════════════════════════════════════════════════════════
     function printAllResults() {
         const classValue   = document.getElementById("idclass").value;
         const sessionValue = document.getElementById("idsession").value;
@@ -628,7 +660,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': getCsrfToken(),
             },
             body: JSON.stringify({ schoolclassid: classId, sessionid: sessionId, termid: termId })
         })
@@ -647,7 +679,7 @@
             }
         })
         .catch(error => {
-            console.error('Error loading column options:', error);
+            console.error('[loadColumnOptions] Error:', error);
             Swal.fire({ icon: "error", title: "Network Error",
                         text: "Failed to load column options. Please try again." });
             bootstrap.Modal.getInstance(
@@ -755,7 +787,7 @@
             form.appendChild(input);
         };
 
-        addInput('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+        addInput('_token',          getCsrfToken());
         addInput('schoolclassid',   params.classId);
         addInput('sessionid',       params.sessionId);
         addInput('termid',          params.termId);
@@ -771,8 +803,9 @@
         setTimeout(() => Swal.close(), 2000);
     });
 
-    // ── Pagination ──────────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════════════
+    // Pagination
+    // ══════════════════════════════════════════════════════════════════
     function setupPaginationLinks() {
         document.querySelectorAll('#pagination-container a').forEach(link => {
             link.addEventListener('click', function (e) {
@@ -790,9 +823,10 @@
 
         axios.get(url, {
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+                'X-CSRF-TOKEN':     getCsrfToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            withCredentials: true,
         }).then(function (response) {
             document.getElementById('studentTableBody').innerHTML =
                 response.data.tableBody ||
@@ -809,7 +843,7 @@
             updateTermSelectVisibility();
             updatePrintButtonVisibility();
         }).catch(function (error) {
-            console.error("Page load error:", error);
+            console.error("[loadPage] Error:", error);
             tableBody.innerHTML =
                 '<tr><td colspan="10" class="text-center text-danger py-4">' +
                 'Error loading data. Please try again.</td></tr>';
@@ -818,14 +852,14 @@
         });
     }
 
-    // ── Checkboxes ──────────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════════════
+    // Checkboxes
+    // ══════════════════════════════════════════════════════════════════
     function setupCheckboxListeners() {
         const checkAll   = document.getElementById("checkAll");
         const checkboxes = document.querySelectorAll('tbody input[name="chk_child"]');
 
         if (checkAll) {
-            // Rebind fresh to avoid duplicate listeners
             const freshCheckAll = checkAll.cloneNode(true);
             checkAll.parentNode.replaceChild(freshCheckAll, checkAll);
 
@@ -850,8 +884,9 @@
         });
     }
 
-    // ── Boot ────────────────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════════════
+    // Boot
+    // ══════════════════════════════════════════════════════════════════
     document.addEventListener("DOMContentLoaded", function () {
         setupCheckboxListeners();
 
@@ -860,25 +895,30 @@
         const termSelect    = document.getElementById("idterm");
 
         classSelect.addEventListener("change", function () {
-            termSelect.value = 'ALL';
+            console.log("[class change] class =", this.value);
+            if (termSelect) termSelect.value = 'ALL';
             updateSearchButtonVisibility();
             resetTable();
         });
 
         sessionSelect.addEventListener("change", function () {
-            termSelect.value = 'ALL';
+            console.log("[session change] session =", this.value);
+            if (termSelect) termSelect.value = 'ALL';
             updateSearchButtonVisibility();
             resetTable();
         });
 
-        termSelect.addEventListener("change", function () {
-            if (this.value !== 'ALL') {
-                filterData();
-            } else {
-                document.getElementById("printAllBtn").style.display = 'none';
-                updateSelectionAlert();
-            }
-        });
+        if (termSelect) {
+            termSelect.addEventListener("change", function () {
+                console.log("[term change] term =", this.value);
+                if (this.value !== 'ALL') {
+                    filterData();
+                } else {
+                    document.getElementById("printAllBtn").style.display = 'none';
+                    updateSelectionAlert();
+                }
+            });
+        }
 
         const imageModal = document.getElementById('imageViewModal');
         if (imageModal) {
@@ -886,7 +926,7 @@
                 const btn = event.relatedTarget;
                 document.getElementById('enlargedImage').src =
                     btn.getAttribute('data-image') ||
-                    '{{ asset('student_avatars/unnamed.jpg') }}';
+                    '{{ asset('storage/student_avatars/unnamed.jpg') }}';
             });
         }
     });
