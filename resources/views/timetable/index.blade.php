@@ -315,6 +315,20 @@
 .pa-set-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .pa-set-row-actions .btn { padding: 4px 8px; font-size: 13px; line-height: 1; }
 
+.wiz-saved-allocation-box {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: linear-gradient(135deg, rgba(13,148,136,.06), rgba(21,101,192,.06));
+    border: 1px solid rgba(13,148,136,.25); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 12px;
+}
+.wiz-saved-allocation-icon {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0d9488, #1565C0); color: #fff; font-size: 15px;
+}
+.wiz-saved-allocation-text { font-size: 12.5px; color: #334155; font-weight: 600; margin-right: auto; }
+.wiz-saved-allocation-text small { display: block; font-weight: 400; color: #64748B; font-size: 11px; margin-top: 1px; }
+
 .wiz-priority-select { font-size: 12px; padding: 3px 6px; }
 .wiz-priority-flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; }
 .wiz-priority-flags label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -1685,26 +1699,29 @@
 
         {{-- Subjects & Priority panel --}}
         <hr>
-        <h6 class="mb-3">
-            <i class="ri-bookmark-3-line me-2"></i>Subjects &amp; Priority
-            <i class="ri-question-line text-muted ms-1" style="cursor:pointer;font-size:14px"
-               data-bs-toggle="popover"
-               data-bs-title="Subjects &amp; Priority"
-               data-bs-content="For each class in scope, tune the weekly period count, allow double periods, and — optionally — set a priority that influences how the generator places this subject."></i>
-        </h6>
-
-        <div id="wizSubjectsPanel">
-            <div class="text-center py-4 text-muted">
-                <i class="ri-bookmark-3-line ri-2x d-block mb-2 opacity-30"></i>
-                <p class="mb-0">Select a session and click <strong>Load Subjects</strong> to see per-class subject settings.</p>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">
+                <i class="ri-bookmark-3-line me-2"></i>Subjects &amp; Priority
+                <i class="ri-question-line text-muted ms-1" style="cursor:pointer;font-size:14px"
+                   data-bs-toggle="popover"
+                   data-bs-title="Subjects &amp; Priority"
+                   data-bs-content="For each class in scope, tune the weekly period count, allow double periods, and — optionally — set a priority that influences how the generator places this subject."></i>
+            </h6>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadWizardSubjects()">
+                <i class="ri-refresh-line me-1"></i>Load Subjects
+            </button>
         </div>
 
-        <div id="wizAllocationSetWrap" class="d-flex flex-wrap gap-2 align-items-center mb-2" style="display:none">
-            <select class="form-select form-select-sm" id="wizAllocationSetId" style="max-width:320px">
-                <option value="">— Use a saved period allocation —</option>
+        <div id="wizAllocationSetWrap" class="wiz-saved-allocation-box" style="display:none">
+            <div class="wiz-saved-allocation-icon"><i class="ri-flashlight-line"></i></div>
+            <div class="wiz-saved-allocation-text">
+                Skip the manual setup
+                <small>Apply a saved period allocation for this session/term instead</small>
+            </div>
+            <select class="form-select form-select-sm" id="wizAllocationSetId" style="max-width:260px">
+                <option value="">Choose a saved set…</option>
             </select>
-            <button type="button" class="btn btn-sm btn-outline-success" onclick="applyWizardPeriodAllocationSet()">
+            <button type="button" class="btn btn-sm btn-success" onclick="applyWizardPeriodAllocationSet()">
                 <i class="ri-download-2-line me-1"></i>Apply
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openPeriodAllocationModal()">
@@ -1712,10 +1729,11 @@
             </button>
         </div>
 
-        <div class="d-flex justify-content-end mt-2">
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadWizardSubjects()">
-                <i class="ri-refresh-line me-1"></i>Load Subjects
-            </button>
+        <div id="wizSubjectsPanel">
+            <div class="text-center py-4 text-muted">
+                <i class="ri-bookmark-3-line ri-2x d-block mb-2 opacity-30"></i>
+                <p class="mb-0">Pick a session above, then click <strong>Load Subjects</strong> to see per-class subject settings.</p>
+            </div>
         </div>
 
         {{-- Room Mappings panel --}}
@@ -4657,7 +4675,7 @@ async function refreshWizardAllocationPicker() {
         const data = await res.json();
         if (!data.success || !data.sets.length) { wrap.style.display = 'none'; return; }
 
-        select.innerHTML = '<option value="">— Use a saved period allocation —</option>' +
+        select.innerHTML = '<option value="">Choose a saved set…</option>' +
             data.sets.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.class_count} class${s.class_count === 1 ? '' : 'es'})</option>`).join('');
         wrap.style.display = '';
     } catch (e) {
