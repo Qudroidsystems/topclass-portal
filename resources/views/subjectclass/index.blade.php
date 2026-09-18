@@ -76,6 +76,55 @@
 .checkbox-scroll .form-check-label { font-size:13px; cursor:pointer; }
 .checkbox-scroll .form-check-input:checked { background-color:var(--sc-accent); border-color:var(--sc-accent); }
 
+/* NEW — filter chip group */
+.filter-chip-group {
+    display:flex; flex-wrap:wrap; gap:6px;
+    padding:10px 12px;
+    border:1.5px solid var(--sc-border); border-radius:8px;
+    background:#fafbfc;
+    min-height:44px;
+}
+.filter-chip-group .form-check { margin:0; }
+.filter-chip-group .form-check-input { display:none; }
+.filter-chip-group .form-check-label {
+    display:inline-flex; align-items:center;
+    padding:4px 12px; border-radius:20px;
+    font-size:12px; font-weight:600;
+    border:1.5px solid var(--sc-border);
+    background:#fff; color:var(--sc-muted);
+    cursor:pointer; user-select:none;
+    transition:all .15s;
+}
+.filter-chip-group .form-check-label:hover { border-color:var(--sc-accent); color:var(--sc-accent); }
+.filter-chip-group .form-check-input:checked + .form-check-label {
+    background:var(--sc-accent); color:#fff; border-color:var(--sc-accent);
+    box-shadow:0 2px 6px rgba(37,99,235,.25);
+}
+
+.filter-toolbar {
+    display:flex; flex-wrap:wrap; gap:10px;
+    align-items:flex-end; margin-bottom:10px;
+}
+.filter-toolbar .filter-col { flex:1 1 200px; min-width:180px; }
+.filter-toolbar .filter-col.full { flex:1 1 100%; }
+
+.filter-summary {
+    font-size:11px; color:var(--sc-muted);
+    background:#eff6ff; border:1px solid #bfdbfe;
+    border-radius:6px; padding:6px 10px;
+    display:flex; align-items:center; gap:6px;
+    margin-bottom:8px;
+}
+.filter-summary i { color:var(--sc-accent); }
+.filter-summary strong { color:var(--sc-primary); }
+
+.filter-clear-btn {
+    background:none; border:none; color:var(--sc-danger);
+    font-size:11px; font-weight:600; cursor:pointer;
+    padding:2px 6px; border-radius:4px;
+}
+.filter-clear-btn:hover { background:#fee2e2; }
+
 .sc-context-box { background: var(--sc-bg); border: 1.5px solid var(--sc-border); border-radius: 10px; padding: 14px 18px; }
 .sc-context-box .context-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--sc-muted); margin-bottom: 4px; }
 .sc-context-box .context-value { font-size: 13px; font-weight: 600; color: var(--sc-primary); }
@@ -108,12 +157,17 @@
 .btn-loading .btn-text { visibility:hidden; }
 .btn-loading::after { content:''; position:absolute; inset:0; margin:auto; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:sc-spin .65s linear infinite; }
 
-/* Modal loader overlay */
 .modal-body-loader { display:none; position:absolute; inset:0; background:rgba(255,255,255,.85); z-index:5; align-items:center; justify-content:center; }
 .modal-body-loader.active { display:flex; }
 .modal-body-loader .inner { text-align:center; }
 .modal-body-loader .mbl-spinner { width:42px; height:42px; margin:0 auto 12px; border:3px solid #e2e8f0; border-top-color:var(--sc-accent); border-radius:50%; animation:sc-spin .75s linear infinite; }
 .modal-body-loader .mbl-text { font-size:13px; font-weight:600; color:var(--sc-primary); }
+
+.teacher-item.hidden-by-filter { display:none !important; }
+.no-teachers-msg {
+    text-align:center; padding:22px 10px; color:var(--sc-muted); font-size:13px;
+}
+.no-teachers-msg i { font-size:28px; display:block; margin-bottom:6px; opacity:.4; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
@@ -206,12 +260,76 @@
                         </select>
                     </div>
 
+                    {{-- ═════════════ FILTER TOOLBAR ═════════════ --}}
                     <div class="mb-3">
-                        <label class="form-label">Subject Teachers <span class="text-danger">*</span></label>
-                        <div class="mb-2">
-                            <input type="text" id="add-teacher-search" class="form-control form-control-sm"
-                                   placeholder="🔍  Filter teachers…">
+                        <label class="form-label">Filter Subject Teachers</label>
+
+                        <div class="filter-toolbar">
+                            <div class="filter-col full">
+                                <input type="text" id="add-teacher-search"
+                                       class="form-control form-control-sm"
+                                       placeholder="🔍  Search teacher or subject…">
+                            </div>
+
+                            <div class="filter-col">
+                                <small class="d-block mb-1" style="font-size:11px;font-weight:600;color:var(--sc-muted);text-transform:uppercase;letter-spacing:.4px;">
+                                    Session
+                                </small>
+                                <div class="filter-chip-group" id="add-session-filter">
+                                    @foreach ($filterSessions as $sess)
+                                        <div class="form-check">
+                                            <input class="form-check-input add-session-filter-cb"
+                                                   type="checkbox"
+                                                   id="add-sessf-{{ $sess->id }}"
+                                                   value="{{ $sess->id }}"
+                                                   data-session="{{ strtolower($sess->session) }}">
+                                            <label class="form-check-label" for="add-sessf-{{ $sess->id }}">
+                                                {{ $sess->session }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="filter-col">
+                                <small class="d-block mb-1" style="font-size:11px;font-weight:600;color:var(--sc-muted);text-transform:uppercase;letter-spacing:.4px;">
+                                    Term
+                                </small>
+                                <div class="filter-chip-group" id="add-term-filter">
+                                    @foreach ($filterTerms as $t)
+                                        <div class="form-check">
+                                            <input class="form-check-input add-term-filter-cb"
+                                                   type="checkbox"
+                                                   id="add-termf-{{ $t->id }}"
+                                                   value="{{ $t->id }}"
+                                                   data-term="{{ strtolower($t->term) }}">
+                                            <label class="form-check-label" for="add-termf-{{ $t->id }}">
+                                                {{ $t->term }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
+
+                        {{-- Live filter summary --}}
+                        <div class="filter-summary" id="add-filter-summary" style="display:none;">
+                            <i class="ri-filter-3-line"></i>
+                            <span id="add-filter-summary-text">Showing all teachers</span>
+                            <button type="button" class="filter-clear-btn ms-auto" id="add-clear-filters">
+                                <i class="ri-close-line"></i> Clear filters
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ═════════════ TEACHER LIST ═════════════ --}}
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Subject Teachers <span class="text-danger">*</span>
+                            <span class="text-muted fw-normal" style="font-size:11px;">
+                                (<span id="add-visible-count">0</span> shown)
+                            </span>
+                        </label>
                         <div class="checkbox-scroll" id="add-teacher-list">
                             @foreach ($subjectteacher->sortBy(['teachername', 'subject']) as $teacher)
                                 @php
@@ -222,7 +340,12 @@
                                         default => '#6b7280'
                                     };
                                 @endphp
-                                <div class="form-check teacher-item">
+                                <div class="form-check teacher-item"
+                                     data-session-id="{{ $teacher->sessionid }}"
+                                     data-term-id="{{ $teacher->termid }}"
+                                     data-session-text="{{ strtolower($teacher->sessionname ?? '') }}"
+                                     data-term-text="{{ strtolower($teacher->termname ?? '') }}"
+                                     data-search-text="{{ strtolower(($teacher->teachername ?? '') . ' ' . ($teacher->subject ?? '') . ' ' . ($teacher->subjectcode ?? '') . ' ' . ($teacher->sessionname ?? '') . ' ' . ($teacher->termname ?? '')) }}">
                                     <input class="form-check-input add-teacher-checkbox"
                                            type="checkbox"
                                            name="subjectteacherid[]"
@@ -242,6 +365,11 @@
                                     </label>
                                 </div>
                             @endforeach
+
+                            <div class="no-teachers-msg" id="add-no-teachers" style="display:none;">
+                                <i class="ri-search-eye-line"></i>
+                                No subject teachers match the current filters.
+                            </div>
                         </div>
                         <small class="text-muted mt-1 d-block">
                             <span id="add-selected-count">0</span> teacher(s) selected
@@ -400,6 +528,103 @@ $(document).ready(function () {
     function btnReset($b) { var o = $b.data('orig'); if (o) $b.html(o); $b.prop('disabled', false).removeClass('btn-loading'); }
     function showErr(sel, m) { $(sel).removeClass('d-none').html('<i class="ri-error-warning-line me-1"></i>' + m); }
 
+    // ═══════════════════════════════════════════════════════════
+    //  ADD MODAL — LIVE FILTER (Text + Session + Term)
+    // ═══════════════════════════════════════════════════════════
+
+    function getCheckedValues(selector) {
+        return $(selector).map(function () { return String(this.value); }).get();
+    }
+
+    function applyAddFilters() {
+        const q          = ($('#add-teacher-search').val() || '').toLowerCase().trim();
+        const sessions   = getCheckedValues('.add-session-filter-cb:checked');
+        const terms      = getCheckedValues('.add-term-filter-cb:checked');
+        const sessionsTx = $('.add-session-filter-cb:checked').map(function(){ return $(this).data('session'); }).get();
+        const termsTx    = $('.add-term-filter-cb:checked').map(function(){ return $(this).data('term'); }).get();
+
+        let visibleCount = 0;
+
+        $('#add-teacher-list .teacher-item').each(function () {
+            const $item       = $(this);
+            const itemSession = String($item.data('session-id'));
+            const itemTerm    = String($item.data('term-id'));
+            const searchText  = String($item.data('search-text') || '');
+
+            let show = true;
+
+            // Text search
+            if (q && searchText.indexOf(q) === -1) {
+                show = false;
+            }
+
+            // Session filter (by ID and by text fallback)
+            if (show && sessions.length > 0) {
+                if (sessions.indexOf(itemSession) === -1) {
+                    const itemSessTx = String($item.data('session-text') || '');
+                    const txMatch = sessionsTx.some(function (tx) {
+                        return tx && itemSessTx.indexOf(String(tx).toLowerCase()) !== -1;
+                    });
+                    if (!txMatch) show = false;
+                }
+            }
+
+            // Term filter (by ID and by text fallback)
+            if (show && terms.length > 0) {
+                if (terms.indexOf(itemTerm) === -1) {
+                    const itemTermTx = String($item.data('term-text') || '');
+                    const txMatch = termsTx.some(function (tx) {
+                        return tx && itemTermTx.indexOf(String(tx).toLowerCase()) !== -1;
+                    });
+                    if (!txMatch) show = false;
+                }
+            }
+
+            $item.toggleClass('hidden-by-filter', !show);
+            if (show) visibleCount++;
+        });
+
+        $('#add-visible-count').text(visibleCount);
+        $('#add-no-teachers').toggle(visibleCount === 0);
+
+        updateFilterSummary(sessionsTx, termsTx, q, visibleCount);
+    }
+
+    function updateFilterSummary(sessionsTx, termsTx, q, visibleCount) {
+        const parts = [];
+        if (q) parts.push('search "<strong>' + $('<div>').text(q).html() + '</strong>"');
+        if (sessionsTx.length) parts.push('session <strong>' + sessionsTx.join(' / ') + '</strong>');
+        if (termsTx.length)    parts.push('term <strong>' + termsTx.join(' / ') + '</strong>');
+
+        if (parts.length === 0) {
+            $('#add-filter-summary').hide();
+            return;
+        }
+
+        $('#add-filter-summary').show();
+        $('#add-filter-summary-text').html(
+            'Filtering by ' + parts.join(', ') + ' — ' +
+            '<strong>' + visibleCount + '</strong> teacher(s) match'
+        );
+    }
+
+    // Bind: text search + session + term checkboxes
+    $('#add-teacher-search').on('input', applyAddFilters);
+    $('#add-session-filter').on('change', '.add-session-filter-cb', applyAddFilters);
+    $('#add-term-filter').on('change', '.add-term-filter-cb', applyAddFilters);
+
+    // Clear filter button
+    $('#add-clear-filters').on('click', function () {
+        $('#add-teacher-search').val('');
+        $('#add-session-filter .add-session-filter-cb').prop('checked', false);
+        $('#add-term-filter .add-term-filter-cb').prop('checked', false);
+        applyAddFilters();
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    //  DATATABLE
+    // ═══════════════════════════════════════════════════════════
+
     var table = $('#subjectClassTable').DataTable({
         processing: true,
         serverSide: true,
@@ -482,13 +707,7 @@ $(document).ready(function () {
         if (c === 0) $('#selectAll').prop('checked', false);
     }
 
-    $('#add-teacher-search').on('input', function () {
-        const q = $(this).val().toLowerCase();
-        $('#add-teacher-list .teacher-item').each(function () {
-            $(this).toggle($(this).find('label').text().toLowerCase().includes(q));
-        });
-    });
-
+    // Update selected-teacher counter
     $('#add-teacher-list').on('change', '.add-teacher-checkbox', function () {
         $('#add-selected-count').text($('.add-teacher-checkbox:checked').length);
         updateAddBtn();
@@ -501,18 +720,25 @@ $(document).ready(function () {
         $('#add-btn').prop('disabled', !ok);
     }
 
+    // Open ADD modal — reset everything
     $('#createSubjectClassBtn').on('click', function() {
         $('#add-schoolclassid').val('');
         $('.add-teacher-checkbox').prop('checked', false);
         $('#add-selected-count').text(0);
         $('#add-btn').prop('disabled', true);
         $('#add-error-msg').addClass('d-none').html('');
+
+        // Reset filter controls
         $('#add-teacher-search').val('');
-        $('#add-teacher-list .teacher-item').show();
+        $('#add-session-filter .add-session-filter-cb').prop('checked', false);
+        $('#add-term-filter .add-term-filter-cb').prop('checked', false);
+        applyAddFilters();
+
         btnReset($('#add-btn'));
         new bootstrap.Modal(document.getElementById('addSubjectClassModal')).show();
     });
 
+    // ── EDIT modal ─────────────────────────────────────────────
     $(document).on('click', '.edit-sc-btn', function () {
         var $b = $(this);
         $('#edit-id').val($b.data('id'));
@@ -545,6 +771,7 @@ $(document).ready(function () {
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     });
 
+    // ── ADD submit ─────────────────────────────────────────────
     $('#add-subjectclass-form').on('submit', function(e) {
         e.preventDefault();
 
@@ -583,6 +810,7 @@ $(document).ready(function () {
         });
     });
 
+    // ── EDIT submit ────────────────────────────────────────────
     $('#edit-subjectclass-form').on('submit', function(e) {
         e.preventDefault();
 
@@ -637,6 +865,7 @@ $(document).ready(function () {
         }
     });
 
+    // ── DELETE single ──────────────────────────────────────────
     $('#confirm-delete-btn').on('click', function() {
         if (!deleteId) return;
         var $b = $(this); btnLoad($b, 'Deleting…');
@@ -658,6 +887,7 @@ $(document).ready(function () {
         });
     });
 
+    // ── BULK delete ────────────────────────────────────────────
     function doBulk() {
         var ids = $('.row-checkbox:checked').map(function() { return this.value; }).get();
         if (!ids.length) { toast('warning', 'No Selection', 'Select at least one assignment.'); return; }
@@ -693,6 +923,9 @@ $(document).ready(function () {
     $('#bulkDeleteBtn, #bulkDeleteBtn2').on('click', doBulk);
 
     bindCB();
+
+    // Initialise filters so the visible count is correct on page load
+    applyAddFilters();
 });
 </script>
 @endsection

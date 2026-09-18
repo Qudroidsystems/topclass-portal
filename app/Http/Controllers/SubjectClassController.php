@@ -66,10 +66,29 @@ class SubjectClassController extends Controller
 
             $allStaff = User::orderBy('name')->get(['id', 'name']);
 
+            // ── Filter lists for the Add modal ─────────────────────────
+            // Only include sessions/terms that are actually used by at least
+            // one SubjectTeacher, so the chips don't show empty values.
+            $filterSessions = Schoolsession::whereIn(
+                    'id',
+                    SubjectTeacher::query()->select('sessionid')->distinct()
+                )
+                ->orderBy('session', 'asc')
+                ->get(['id', 'session']);
+
+            $filterTerms = Schoolterm::whereIn(
+                    'id',
+                    SubjectTeacher::query()->select('termid')->distinct()
+                )
+                ->orderBy('term', 'asc')
+                ->get(['id', 'term']);
+
             return view('subjectclass.index')
                 ->with('schoolclasses', $schoolclasses)
                 ->with('subjectteacher', $subjectteacher)
                 ->with('allStaff', $allStaff)
+                ->with('filterSessions', $filterSessions)
+                ->with('filterTerms', $filterTerms)
                 ->with('pagetitle', $pagetitle);
 
         } catch (\Exception $e) {
@@ -112,7 +131,7 @@ class SubjectClassController extends Controller
                     'subjectclass.updated_at'
                 ]);
 
-            // ── Global search across relevant columns ──────────────────
+            // ── Global search ───────────────────────────────────────────
             $search = $request->input('search.value');
             if (!empty($search)) {
                 $query->where(function ($q) use ($search) {
@@ -126,7 +145,7 @@ class SubjectClassController extends Controller
                 });
             }
 
-            // ── Per-column search (only for searchable columns) ────────
+            // ── Per-column search ──────────────────────────────────────
             $columns = $request->input('columns', []);
             foreach ($columns as $col) {
                 if (isset($col['searchable']) && $col['searchable'] === 'true'
@@ -161,12 +180,10 @@ class SubjectClassController extends Controller
             return DataTables::of($query)
                 ->addIndexColumn()
 
-                // ── Checkbox ──────────────────────────────────────────────
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
                 })
 
-                // ── Teacher Info with Avatar ──────────────────────────────
                 ->addColumn('teacher_info', function ($row) {
                     $staffname  = $this->cleanUtf8String($row->teachername ?? 'Unknown');
                     $defaultUrl = asset('storage/staff_avatars/unnamed.jpg');
@@ -206,7 +223,6 @@ class SubjectClassController extends Controller
                         . '</div>';
                 })
 
-                // ── Subject Info ──────────────────────────────────────────
                 ->addColumn('subject_info', function ($row) {
                     return '<div>'
                         . '<span class="fw-semibold">' . e($this->cleanUtf8String($row->subjectname ?? '')) . '</span>'
@@ -214,14 +230,12 @@ class SubjectClassController extends Controller
                         . '</div>';
                 })
 
-                // ── Class Info ────────────────────────────────────────────
                 ->addColumn('class_info', function ($row) {
                     $class = $this->cleanUtf8String($row->schoolclass ?? '');
                     $arm   = $this->cleanUtf8String($row->schoolarm ?? '');
                     return '<span class="sc-badge sc-badge-class">' . e($class) . ' (' . e($arm) . ')</span>';
                 })
 
-                // ── Term Badge ────────────────────────────────────────────
                 ->addColumn('term_info', function ($row) {
                     $term      = $this->cleanUtf8String($row->termname ?? 'N/A');
                     $termClass = match(true) {
@@ -233,14 +247,12 @@ class SubjectClassController extends Controller
                     return '<span class="sc-badge ' . $termClass . '">' . e($term) . '</span>';
                 })
 
-                // ── Session Badge ─────────────────────────────────────────
                 ->addColumn('session_info', function ($row) {
                     return '<span class="sc-badge sc-badge-session">'
                         . e($this->cleanUtf8String($row->sessionname ?? 'N/A'))
                         . '</span>';
                 })
 
-                // ── Registration Count ────────────────────────────────────
                 ->addColumn('registration_count', function ($row) {
                     $count = SubjectRegistrationStatus::where('subjectclassid', $row->id)->count();
                     if ($count > 0) {
@@ -249,7 +261,6 @@ class SubjectClassController extends Controller
                     return '<span class="text-muted">—</span>';
                 })
 
-                // ── Date ──────────────────────────────────────────────────
                 ->addColumn('formatted_date', function ($row) {
                     if (!$row->updated_at) {
                         return '<span class="text-muted small">—</span>';
@@ -259,7 +270,6 @@ class SubjectClassController extends Controller
                         . '</small>';
                 })
 
-                // ── Actions ───────────────────────────────────────────────
                 ->addColumn('action', function ($row) {
                     $buttons = '<div class="d-flex gap-1">';
 
@@ -801,15 +811,12 @@ class SubjectClassController extends Controller
         if (empty($string)) {
             return '';
         }
-        // Ensure we're working with a string
         $string = (string) $string;
-        // Replace invalid UTF-8 sequences
         if (function_exists('mb_scrub')) {
             $string = mb_scrub($string, 'UTF-8');
         } else {
             $string = iconv('UTF-8', 'UTF-8//IGNORE', $string);
         }
-        // Strip control characters (except tab/newline/CR) — safe with /u flag
         $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $string);
         return $string ?? '';
     }

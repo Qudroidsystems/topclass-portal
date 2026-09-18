@@ -16,7 +16,6 @@
     --st-shadow:   0 2px 8px rgba(0,0,0,.08);
 }
 
-/* ── Hero ────────────────────────────────────────────────── */
 .st-hero {
     background: linear-gradient(135deg, #1e3a5f 0%, #0891b2 60%, #0d9488 100%);
     border-radius: var(--st-radius);
@@ -34,7 +33,6 @@
 .st-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
 .st-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
 
-/* ── Stat cards ──────────────────────────────────────────── */
 .stat-card {
     background:#fff; border:1px solid var(--st-border);
     border-radius:var(--st-radius); padding:18px 20px;
@@ -45,7 +43,6 @@
 .stat-card .stat-label { font-size:12px; color:var(--st-muted); margin-top:4px; }
 .stat-card .stat-icon  { font-size:32px; opacity:.12; float:right; margin-top:-8px; }
 
-/* ── Table ───────────────────────────────────────────────── */
 .st-table th {
     background:var(--st-primary); color:#fff;
     padding:12px 16px; font-weight:600; font-size:13px;
@@ -57,7 +54,6 @@
 }
 .st-table tr:hover td { background:#f0f9ff; }
 
-/* ── Badges ──────────────────────────────────────────────── */
 .st-badge {
     display:inline-flex; align-items:center;
     padding:3px 9px; border-radius:20px;
@@ -65,7 +61,6 @@
 }
 .st-badge-session { background:#ccfbf1; color:#0f766e; }
 
-/* ── Term badges ─────────────────────────────────────────── */
 .st-badge-term {
     margin:1px 2px;
 }
@@ -74,7 +69,6 @@
 .st-badge-term-third  { background:#fee2e2; color:#dc2626; }
 .st-badge-term-other  { background:#f3f4f6; color:#6b7280; }
 
-/* ── Avatar ──────────────────────────────────────────────── */
 .teacher-avatar {
     width:36px; height:36px; border-radius:50%;
     object-fit:cover; border:2px solid var(--st-border);
@@ -93,7 +87,6 @@
 }
 .avatar-initials:hover { border-color:var(--st-accent); transform:scale(1.08); }
 
-/* ── DataTables overrides ────────────────────────────────── */
 .dataTables_wrapper .dataTables_filter input {
     border:1.5px solid var(--st-border); border-radius:8px;
     padding:7px 14px; margin-left:8px; font-size:13px;
@@ -118,7 +111,6 @@
     border-color:var(--st-accent) !important; color:#fff !important;
 }
 
-/* ── Modals ──────────────────────────────────────────────── */
 .st-modal .modal-content {
     border:none; border-radius:16px;
     overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15);
@@ -144,7 +136,6 @@
     box-shadow:0 0 0 3px rgba(37,99,235,.1);
 }
 
-/* ── Checkbox / radio scroll area ────────────────────────── */
 .checkbox-scroll {
     max-height:200px; overflow-y:auto;
     border:1.5px solid var(--st-border); border-radius:8px;
@@ -157,7 +148,6 @@
     background-color:var(--st-accent); border-color:var(--st-accent);
 }
 
-/* ── Term / Session inline group ─────────────────────────── */
 .inline-check-group {
     display:flex; flex-wrap:wrap; gap:8px;
     padding:10px 14px;
@@ -170,7 +160,6 @@
     background-color:var(--st-accent); border-color:var(--st-accent);
 }
 
-/* ── Bulk bar ────────────────────────────────────────────── */
 .bulk-bar {
     background:#fff3cd; border:1px solid #ffc107;
     border-radius:8px; padding:10px 16px;
@@ -178,7 +167,6 @@
 }
 .bulk-bar.show { display:flex; }
 
-/* ── Full-page loader overlay ────────────────────────────── */
 #st-page-loader {
     position:fixed; inset:0; z-index:9999;
     background:rgba(15,23,42,.55);
@@ -221,7 +209,6 @@
     transition:width .35s ease;
 }
 
-/* ── Modal body loading overlay ──────────────────────────── */
 .modal-body-loader {
     position:absolute; inset:0; z-index:10;
     background:rgba(255,255,255,.82);
@@ -242,7 +229,6 @@
 }
 .modal-body-loader .mbl-text { font-size:13px; font-weight:600; color:var(--st-primary); }
 
-/* ── Toast notifications ─────────────────────────────────── */
 #st-toast-stack {
     position:fixed; bottom:24px; right:24px;
     z-index:10000; display:flex;
@@ -276,7 +262,6 @@
     padding:0; flex-shrink:0;
 }
 
-/* ── Button loading state ────────────────────────────────── */
 .btn-loading { position:relative; pointer-events:none; opacity:.85; }
 .btn-loading .btn-text { visibility:hidden; }
 .btn-loading::after {
@@ -290,7 +275,6 @@
 .btn-loading.btn-outline-danger::after { border-top-color:currentColor; }
 .btn-loading.btn-light::after { border-top-color:#374151; }
 
-/* ── Subject search inside modal ─────────────────────────── */
 .modal-search-input {
     border:1.5px solid var(--st-border); border-radius:8px;
     padding:7px 12px; font-size:12px; width:100%;
@@ -304,7 +288,6 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 
-{{-- ═══ Full-page loader overlay ═══ --}}
 <div id="st-page-loader">
     <div class="st-loader-card">
         <div class="st-loader-spinner"></div>
@@ -315,20 +298,17 @@
     </div>
 </div>
 
-{{-- ═══ Toast stack ═══ --}}
 <div id="st-toast-stack"></div>
 
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
 
-    {{-- Hero --}}
     <div class="st-hero">
         <h1><i class="ri-user-star-line me-2"></i>Subject Teacher Management</h1>
         <p>Assign teachers to subjects across terms and sessions.</p>
     </div>
 
-    {{-- Stat cards --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="stat-card">
@@ -360,7 +340,6 @@
         </div>
     </div>
 
-    {{-- Table card --}}
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
@@ -382,7 +361,6 @@
         </div>
         <div class="card-body">
 
-            {{-- Bulk bar --}}
             <div class="bulk-bar" id="bulkBar">
                 <i class="ri-checkbox-circle-line text-warning"></i>
                 <span id="bulkCount">0</span> assignment(s) selected
@@ -417,7 +395,7 @@
 </div>
 </div>
 
-{{-- ═══════════════════════ ADD MODAL ═══════════════════════ --}}
+{{-- ADD MODAL --}}
 <div class="modal fade st-modal" id="addSubjectTeacherModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -435,7 +413,6 @@
                 </div>
                 <div class="modal-body p-4" style="position:relative">
 
-                    {{-- Teacher --}}
                     <div class="mb-3">
                         <label class="form-label">Teacher <span class="text-danger">*</span></label>
                         <select name="staffid" id="add-staffid" class="form-select" required>
@@ -446,7 +423,6 @@
                         </select>
                     </div>
 
-                    {{-- Subjects --}}
                     <div class="mb-3">
                         <label class="form-label">Subject(s) <span class="text-danger">*</span></label>
                         <input type="text" id="add-subject-search" class="modal-search-input"
@@ -472,7 +448,6 @@
                         </small>
                     </div>
 
-                    {{-- Terms --}}
                     <div class="mb-3">
                         <label class="form-label">Term(s) <span class="text-danger">*</span></label>
                         <div class="inline-check-group">
@@ -499,7 +474,6 @@
                         </div>
                     </div>
 
-                    {{-- Session --}}
                     <div class="mb-3">
                         <label class="form-label">Session <span class="text-danger">*</span></label>
                         <div class="inline-check-group">
@@ -532,7 +506,7 @@
     </div>
 </div>
 
-{{-- ═══════════════════════ EDIT MODAL ══════════════════════ --}}
+{{-- EDIT MODAL --}}
 <div class="modal fade st-modal" id="editModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -551,7 +525,6 @@
                 </div>
                 <div class="modal-body p-4" style="position:relative">
 
-                    {{-- Teacher --}}
                     <div class="mb-3">
                         <label class="form-label">Teacher <span class="text-danger">*</span></label>
                         <select name="staffid" id="edit-staffid" class="form-select" required>
@@ -562,7 +535,6 @@
                         </select>
                     </div>
 
-                    {{-- Subjects --}}
                     <div class="mb-3">
                         <label class="form-label">Subject(s) <span class="text-danger">*</span></label>
                         <input type="text" id="edit-subject-search" class="modal-search-input"
@@ -585,7 +557,6 @@
                         </div>
                     </div>
 
-                    {{-- Terms --}}
                     <div class="mb-3">
                         <label class="form-label">Term(s) <span class="text-danger">*</span></label>
                         <div class="inline-check-group">
@@ -612,7 +583,6 @@
                         </div>
                     </div>
 
-                    {{-- Session --}}
                     <div class="mb-3">
                         <label class="form-label">Session <span class="text-danger">*</span></label>
                         <div class="inline-check-group">
@@ -645,7 +615,7 @@
     </div>
 </div>
 
-{{-- ═══════════════════════ DELETE MODAL ════════════════════ --}}
+{{-- DELETE MODAL --}}
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
         <div class="modal-content border-0" style="border-radius:16px;overflow:hidden">
@@ -676,10 +646,6 @@ $(document).ready(function () {
 
     const CSRF = $('meta[name="csrf-token"]').attr('content');
     let deleteId = null;
-
-    // =========================================================================
-    // LOADING HELPERS
-    // =========================================================================
 
     const PageLoader = {
         _prog: 0, _timer: null,
@@ -763,10 +729,6 @@ $(document).ready(function () {
         );
     }
 
-    // =========================================================================
-    // DATATABLE (server-side)
-    // =========================================================================
-
     var table = $('#subjectTeacherTable').DataTable({
         processing: true,
         serverSide: true,
@@ -801,8 +763,6 @@ $(document).ready(function () {
             zeroRecords:     'No matching assignments',
             emptyTable:      'No subject teacher assignments yet',
         },
-        // Server already returns data ordered by created_at DESC.
-        // We keep the index column ordering neutral so the "latest first" order is preserved.
         order: [],
         pageLength: 15,
         responsive: true,
@@ -811,10 +771,6 @@ $(document).ready(function () {
             $('#totalBadge').text(this.api().page.info().recordsTotal);
         },
     });
-
-    // =========================================================================
-    // STATS
-    // =========================================================================
 
     function loadStats() {
         $.get('{{ route("subjectteacher.stats") }}', function(data) {
@@ -829,10 +785,6 @@ $(document).ready(function () {
         });
     }
     loadStats();
-
-    // =========================================================================
-    // CHECKBOXES & BULK BAR
-    // =========================================================================
 
     function bindCheckboxes() {
         $('.row-checkbox').off('change').on('change', updateBulkBar);
@@ -849,10 +801,6 @@ $(document).ready(function () {
         if (count === 0) $('#selectAll').prop('checked', false);
     }
 
-    // =========================================================================
-    // SUBJECT SEARCH FILTER (inside modals)
-    // =========================================================================
-
     $('#add-subject-search').on('input', function () {
         const q = $(this).val().toLowerCase();
         $('#add-subject-list .subject-item').each(function () {
@@ -866,10 +814,6 @@ $(document).ready(function () {
             $(this).toggle($(this).text().toLowerCase().includes(q));
         });
     });
-
-    // =========================================================================
-    // ADD MODAL — guard button
-    // =========================================================================
 
     function updateAddBtn() {
         const ok = $('#add-staffid').val() !== '' &&
@@ -885,7 +829,6 @@ $(document).ready(function () {
         updateAddBtn();
     });
 
-    // ── Open ADD ─────────────────────────────────────────────────
     $('#createSubjectTeacherBtn').on('click', function () {
         $('#add-staffid').val('');
         $('.add-subject-checkbox, .add-term-checkbox').prop('checked', false);
@@ -899,10 +842,6 @@ $(document).ready(function () {
         new bootstrap.Modal(document.getElementById('addSubjectTeacherModal')).show();
     });
 
-    // =========================================================================
-    // EDIT MODAL
-    // =========================================================================
-
     $(document).on('click', '.edit-st-btn', function () {
         const id        = $(this).data('id');
         const staffid   = $(this).data('staffid');
@@ -913,7 +852,6 @@ $(document).ready(function () {
         $('#edit-id').val(id);
         $('#edit-staffid').val(staffid);
 
-        // Reset all checkboxes/radios then restore saved values
         $('.edit-subject-checkbox').prop('checked', false);
         $('.edit-term-checkbox').prop('checked', false);
         $('input[name="sessionid"]').prop('checked', false);
@@ -936,10 +874,6 @@ $(document).ready(function () {
 
         new bootstrap.Modal(document.getElementById('editModal')).show();
     });
-
-    // =========================================================================
-    // SUBMIT: ADD
-    // =========================================================================
 
     $('#add-subjectteacher-form').on('submit', function (e) {
         e.preventDefault();
@@ -999,10 +933,6 @@ $(document).ready(function () {
         });
     });
 
-    // =========================================================================
-    // SUBMIT: EDIT
-    // =========================================================================
-
     $('#edit-subjectteacher-form').on('submit', function (e) {
         e.preventDefault();
 
@@ -1061,10 +991,6 @@ $(document).ready(function () {
         });
     });
 
-    // =========================================================================
-    // DELETE: SINGLE
-    // =========================================================================
-
     $(document).on('click', '.delete-st-btn', function() {
         deleteId = $(this).data('id');
         $('#delete-subject-name').text($(this).data('subject') || 'this subject');
@@ -1110,10 +1036,6 @@ $(document).ready(function () {
             },
         });
     });
-
-    // =========================================================================
-    // DELETE: BULK
-    // =========================================================================
 
     function doBulkDelete() {
         var ids = [];

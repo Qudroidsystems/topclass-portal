@@ -92,12 +92,10 @@ class SubjectTeacherController extends Controller
             return DataTables::of($subjectteacher)
                 ->addIndexColumn()
 
-                // ── Checkbox ──────────────────────────────────────────────────
                 ->addColumn('checkbox', function ($row) {
                     return '<input type="checkbox" class="form-check-input row-checkbox" value="' . $row->id . '">';
                 })
 
-                // ── Teacher Info with Avatar ───────────────────────────────
                 ->addColumn('teacher_info', function ($row) {
                     $staffname = $this->cleanUtf8String($row->staffname ?? 'Unknown');
                     $defaultUrl = asset('storage/staff_avatars/unnamed.jpg');
@@ -137,7 +135,6 @@ class SubjectTeacherController extends Controller
                     </div>';
                 })
 
-                // ── Subject Info ─────────────────────────────────────────────
                 ->addColumn('subject_info', function ($row) {
                     return '<div>
                         <span class="fw-semibold">' . e($this->cleanUtf8String($row->subjectname ?? '')) . '</span>
@@ -145,9 +142,7 @@ class SubjectTeacherController extends Controller
                     </div>';
                 })
 
-                // ── Term Badges ─────────────────────────────────────────────
                 ->addColumn('term_info', function ($row) {
-                    // Get all terms for this teacher+subject+session
                     $terms = SubjectTeacher::where('staffid', $row->userid)
                         ->where('subjectid', $row->subjectid)
                         ->where('sessionid', $row->sessionid)
@@ -168,12 +163,10 @@ class SubjectTeacherController extends Controller
                     return $html ?: '<span class="text-muted">—</span>';
                 })
 
-                // ── Session Badge ────────────────────────────────────────────
                 ->addColumn('session_info', function ($row) {
                     return '<span class="st-badge st-badge-session">' . e($this->cleanUtf8String($row->sessionname ?? 'N/A')) . '</span>';
                 })
 
-                // ── Date ──────────────────────────────────────────────────────
                 ->addColumn('formatted_date', function ($row) {
                     if (!$row->updated_at) {
                         return '<span class="text-muted small">—</span>';
@@ -183,9 +176,7 @@ class SubjectTeacherController extends Controller
                         . '</small>';
                 })
 
-                // ── Actions ──────────────────────────────────────────────────
                 ->addColumn('action', function ($row) {
-                    // Get all term IDs for this teacher+subject+session
                     $termIds = SubjectTeacher::where('staffid', $row->userid)
                         ->where('subjectid', $row->subjectid)
                         ->where('sessionid', $row->sessionid)
@@ -306,7 +297,6 @@ class SubjectTeacherController extends Controller
             $termids = $request->input('termid');
             $sessionid = $request->input('sessionid');
 
-            // Check for existing assignments
             $existing = SubjectTeacher::where('staffid', $staffid)
                 ->whereIn('subjectid', $subjectids)
                 ->whereIn('termid', $termids)
@@ -403,7 +393,6 @@ class SubjectTeacherController extends Controller
             $termids = $request->input('termid');
             $sessionid = $request->input('sessionid');
 
-            // Get the current subject teacher record
             $current = SubjectTeacher::find($id);
             if (!$current) {
                 return response()->json([
@@ -412,13 +401,11 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
-            // Delete all existing records for this teacher+subject+session
             SubjectTeacher::where('staffid', $current->staffid)
                 ->where('subjectid', $current->subjectid)
                 ->where('sessionid', $current->sessionid)
                 ->delete();
 
-            // Check for conflicts with other teachers
             $conflict = SubjectTeacher::where('staffid', $staffid)
                 ->whereIn('subjectid', $subjectids)
                 ->whereIn('termid', $termids)
@@ -445,7 +432,6 @@ class SubjectTeacherController extends Controller
                 }
             }
 
-            // Update related records
             $this->updateRelatedRecords($staffid, $id);
 
             DB::commit();
@@ -471,7 +457,7 @@ class SubjectTeacherController extends Controller
     }
 
     // =========================================================================
-    // UPDATE RELATED RECORDS (broadsheets, registrations)
+    // UPDATE RELATED RECORDS
     // =========================================================================
 
     private function updateRelatedRecords($staffid, $subjectTeacherId)
@@ -532,7 +518,6 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
-            // Check if this subject teacher is assigned to any classes
             $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
 
             if ($inUse) {
@@ -589,7 +574,6 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
-            // Check if this subject teacher is assigned to any classes
             $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
 
             if ($inUse) {
@@ -644,7 +628,6 @@ class SubjectTeacherController extends Controller
                 ], 400);
             }
 
-            // Check if any are in use
             $inUse = Subjectclass::whereIn('subjectteacherid', $ids)->exists();
 
             if ($inUse) {
