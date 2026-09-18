@@ -1482,49 +1482,54 @@ class TimetableController extends Controller
             'schoolclass_ids.*'  => 'exists:schoolclass,id',
         ]);
 
-        $classIds = $validated['schoolclass_ids'] ?? null;
+        try {
+            $classIds = $validated['schoolclass_ids'] ?? null;
 
-        $subjectClasses = Subjectclass::with(['subject', 'subjectTeacher.staff'])
-            ->when($classIds, fn($q) => $q->whereIn('schoolclassid', $classIds))
-            ->get()
-            ->groupBy(fn($sc) => (int) $sc->schoolclassid);
+            $subjectClasses = Subjectclass::with(['subject', 'subjectTeacher.staff'])
+                ->when($classIds, fn($q) => $q->whereIn('schoolclassid', $classIds))
+                ->get()
+                ->groupBy(fn($sc) => (int) $sc->schoolclassid);
 
-        if ($subjectClasses->isEmpty()) {
-            return response()->json(['success' => true, 'classes' => []]);
+            if ($subjectClasses->isEmpty()) {
+                return response()->json(['success' => true, 'classes' => []]);
+            }
+
+            $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+                ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+                ->whereIn('schoolclass.id', $subjectClasses->keys())
+                ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
+                ->get();
+
+            $classPayload = [];
+            foreach ($classes as $classMeta) {
+                $classId      = $classMeta->id;
+                $rowsForClass = $subjectClasses->get($classId) ?? collect();
+
+                $className = trim(($classMeta->schoolclass ?? '') . ' ' . ($classMeta->arm_name ?? ''));
+
+                $subjectRows = $rowsForClass->unique('subjectid')
+                    ->map(fn($sc) => [
+                        'subject_id'   => (int) $sc->subjectid,
+                        'subject_name' => $sc->subject?->subject ?? 'Unknown',
+                        'subject_code' => $sc->subject?->subject_code,
+                        'teacher_id'   => $sc->subjectTeacher?->staffid,
+                        'teacher_name' => $sc->subjectTeacher?->staff?->name ?? 'Unassigned',
+                    ])
+                    ->sortBy('subject_name')
+                    ->values();
+
+                $classPayload[] = [
+                    'schoolclass_id' => $classId,
+                    'class_name'     => $className ?: 'Class #' . $classId,
+                    'subjects'       => $subjectRows,
+                ];
+            }
+
+            return response()->json(['success' => true, 'classes' => $classPayload]);
+        } catch (\Throwable $e) {
+            Log::error('getPeriodAllocationGrid failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
-            ->whereIn('schoolclass.id', $subjectClasses->keys())
-            ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
-            ->get();
-
-        $classPayload = [];
-        foreach ($classes as $classMeta) {
-            $classId      = $classMeta->id;
-            $rowsForClass = $subjectClasses->get($classId) ?? collect();
-
-            $className = trim(($classMeta->schoolclass ?? '') . ' ' . ($classMeta->arm_name ?? ''));
-
-            $subjectRows = $rowsForClass->unique('subjectid')
-                ->map(fn($sc) => [
-                    'subject_id'   => (int) $sc->subjectid,
-                    'subject_name' => $sc->subject?->subject ?? 'Unknown',
-                    'subject_code' => $sc->subject?->subject_code,
-                    'teacher_id'   => $sc->subjectTeacher?->staffid,
-                    'teacher_name' => $sc->subjectTeacher?->staff?->name ?? 'Unassigned',
-                ])
-                ->sortBy('subject_name')
-                ->values();
-
-            $classPayload[] = [
-                'schoolclass_id' => $classId,
-                'class_name'     => $className ?: 'Class #' . $classId,
-                'subjects'       => $subjectRows,
-            ];
-        }
-
-        return response()->json(['success' => true, 'classes' => $classPayload]);
     }
 
     /**
@@ -1539,34 +1544,39 @@ class TimetableController extends Controller
             'term_id'    => 'nullable|exists:schoolterm,id',
         ]);
 
-        $sessionId = (int) $validated['session_id'];
-        $termId    = $validated['term_id'] ?? null;
+        try {
+            $sessionId = (int) $validated['session_id'];
+            $termId    = $validated['term_id'] ?? null;
 
-        $sets = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
-            ->withCount('allocations')
-            ->with('updater:id,name')
-            ->orderByDesc('updated_at')
-            ->get();
+            $sets = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
+                ->withCount('allocations')
+                ->with('updater:id,name')
+                ->orderByDesc('updated_at')
+                ->get();
 
-        $classCounts = TimetablePeriodAllocation::whereIn('set_id', $sets->pluck('id'))
-            ->select('set_id', DB::raw('COUNT(DISTINCT schoolclass_id) as cnt'))
-            ->groupBy('set_id')
-            ->pluck('cnt', 'set_id');
+            $classCounts = TimetablePeriodAllocation::whereIn('set_id', $sets->pluck('id'))
+                ->select('set_id', DB::raw('COUNT(DISTINCT schoolclass_id) as cnt'))
+                ->groupBy('set_id')
+                ->pluck('cnt', 'set_id');
 
-        return response()->json([
-            'success' => true,
-            'sets'    => $sets->map(fn($s) => [
-                'id'               => $s->id,
-                'name'             => $s->name,
-                'description'      => $s->description,
-                'term_id'          => $s->term_id,
-                'is_all_terms'     => is_null($s->term_id),
-                'allocation_count' => $s->allocations_count,
-                'class_count'      => (int) ($classCounts[$s->id] ?? 0),
-                'updated_at'       => $s->updated_at->format('d M Y, H:i'),
-                'updated_by'       => $s->updater?->name,
-            ])->values(),
-        ]);
+            return response()->json([
+                'success' => true,
+                'sets'    => $sets->map(fn($s) => [
+                    'id'               => $s->id,
+                    'name'             => $s->name,
+                    'description'      => $s->description,
+                    'term_id'          => $s->term_id,
+                    'is_all_terms'     => is_null($s->term_id),
+                    'allocation_count' => $s->allocations_count,
+                    'class_count'      => (int) ($classCounts[$s->id] ?? 0),
+                    'updated_at'       => $s->updated_at->format('d M Y, H:i'),
+                    'updated_by'       => $s->updater?->name,
+                ])->values(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('listPeriodAllocationSets failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -1576,25 +1586,32 @@ class TimetableController extends Controller
      */
     public function getPeriodAllocationSetDetail(int $setId): JsonResponse
     {
-        $set = TimetablePeriodAllocationSet::with('allocations')->findOrFail($setId);
+        try {
+            $set = TimetablePeriodAllocationSet::with('allocations')->findOrFail($setId);
 
-        return response()->json([
-            'success' => true,
-            'set' => [
-                'id'          => $set->id,
-                'session_id'  => $set->session_id,
-                'term_id'     => $set->term_id,
-                'name'        => $set->name,
-                'description' => $set->description,
-            ],
-            'allocations' => $set->allocations->map(fn($a) => [
-                'schoolclass_id'              => $a->schoolclass_id,
-                'subject_id'                  => $a->subject_id,
-                'periods_per_week'            => $a->periods_per_week,
-                'allow_double_period'         => $a->allow_double_period,
-                'max_double_periods_per_week' => $a->max_double_periods_per_week,
-            ])->values(),
-        ]);
+            return response()->json([
+                'success' => true,
+                'set' => [
+                    'id'          => $set->id,
+                    'session_id'  => $set->session_id,
+                    'term_id'     => $set->term_id,
+                    'name'        => $set->name,
+                    'description' => $set->description,
+                ],
+                'allocations' => $set->allocations->map(fn($a) => [
+                    'schoolclass_id'              => $a->schoolclass_id,
+                    'subject_id'                  => $a->subject_id,
+                    'periods_per_week'            => $a->periods_per_week,
+                    'allow_double_period'         => $a->allow_double_period,
+                    'max_double_periods_per_week' => $a->max_double_periods_per_week,
+                ])->values(),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'That period allocation set no longer exists.'], 404);
+        } catch (\Throwable $e) {
+            Log::error('getPeriodAllocationSetDetail failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -1634,24 +1651,25 @@ class TimetableController extends Controller
         $sessionId = (int) $validated['session_id'];
         $termId    = $validated['term_id'] ?? null;
 
-        // forScope() OR-includes the session's "All Terms" sets alongside this
-        // specific term, so this also stops a term-specific set from shadowing
-        // an all-terms one with the same name (they'd otherwise both show up
-        // side by side in the same picker).
-        $nameTaken = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
-            ->where('name', $validated['name'])
-            ->when(!empty($validated['set_id']), fn($q) => $q->where('id', '!=', $validated['set_id']))
-            ->exists();
-
-        if ($nameTaken) {
-            return response()->json([
-                'success' => false,
-                'message' => 'A period allocation set named "' . $validated['name'] . '" already exists for this session/term. Choose a different name.',
-            ], 422);
-        }
-
-        DB::beginTransaction();
         try {
+            // forScope() OR-includes the session's "All Terms" sets alongside
+            // this specific term, so this also stops a term-specific set from
+            // shadowing an all-terms one with the same name (they'd otherwise
+            // both show up side by side in the same picker).
+            $nameTaken = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
+                ->where('name', $validated['name'])
+                ->when(!empty($validated['set_id']), fn($q) => $q->where('id', '!=', $validated['set_id']))
+                ->exists();
+
+            if ($nameTaken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A period allocation set named "' . $validated['name'] . '" already exists for this session/term. Choose a different name.',
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
             if (!empty($validated['set_id'])) {
                 $set = TimetablePeriodAllocationSet::findOrFail($validated['set_id']);
                 if ((int) $set->session_id !== $sessionId || $set->term_id != $termId) {
@@ -1700,19 +1718,33 @@ class TimetableController extends Controller
                 'set_id'  => $set->id,
                 'message' => 'Period allocation set saved.',
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             Log::error('savePeriodAllocationSet failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? 'A database error occurred while saving. If this is your first time using Period Allocation, make sure the migration has been run (php artisan migrate).'
+                : $e->getMessage();
+
+            return response()->json(['success' => false, 'message' => $message], 500);
         }
     }
 
     public function deletePeriodAllocationSet(int $setId): JsonResponse
     {
-        $set = TimetablePeriodAllocationSet::findOrFail($setId);
-        $set->delete(); // cascades to timetable_period_allocations via FK
+        try {
+            $set = TimetablePeriodAllocationSet::findOrFail($setId);
+            $set->delete(); // cascades to timetable_period_allocations via FK
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'message' => 'That period allocation set no longer exists.'], 404);
+        } catch (\Throwable $e) {
+            Log::error('deletePeriodAllocationSet failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     // =========================================================================
