@@ -1,181 +1,103 @@
-@extends('layouts.master')
-
-@section('content')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ $pagetitle ?? 'Merged Timetable' }} — Columns per Class</title>
 <style>
-:root { --mg-navy:#0f2342; --mg-teal:#0d9488; --mg-border:#e2e8f0; --mg-radius:14px; --mg-shadow:0 4px 16px rgba(15,35,66,.10); }
-
-.mg-hero {
-    background: linear-gradient(135deg, var(--mg-navy) 0%, #1e4a7e 55%, #0d9488 100%);
-    border-radius: var(--mg-radius); padding: 26px 30px; margin-bottom: 20px; color:#fff;
-    display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;
-}
-.mg-hero h1 { font-size:21px; font-weight:700; margin:0 0 6px; }
-.mg-hero p  { font-size:13px; opacity:.75; margin:0; }
-.mg-print-btn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
-.mg-print-btn:hover { background:rgba(255,255,255,.28); }
-
-.run-meta-block { background:#F8FAFC; border:1px solid #E2E8F0; border-left:4px solid #1565C0; border-radius:10px; padding:12px 16px; margin-bottom:16px; }
-.run-meta-header { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; }
-.run-meta-name { font-size:14px; color:#0f2342; }
-.run-meta-code { color:#64748B; margin-left:8px; font-family:monospace; font-size:12px; letter-spacing:.5px; }
-.run-meta-right { color:#64748B; font-size:12px; }
-.run-meta-desc { margin-top:6px; color:#475569; font-size:13px; line-height:1.4; }
-.run-rules-block { background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:10px 16px; margin-bottom:16px; font-size:12.5px; color:#92400E; }
-.run-rule-item { display:inline-block; margin-left:10px; white-space:nowrap; }
-
-.mg-legend { display:flex; flex-wrap:wrap; gap:6px; background:#fff; border:1px solid var(--mg-border); border-radius:10px; padding:12px 16px; margin-bottom:18px; }
-.mg-legend-chip { border-radius:14px; padding:4px 12px; font-size:11px; font-weight:700; color:#fff; }
-
-.mg-card { background:#fff; border:1px solid var(--mg-border); border-radius:var(--mg-radius); box-shadow:var(--mg-shadow); overflow:hidden; }
-.mg-scroll { overflow:auto; max-height:calc(100vh - 260px); }
-
-table.mg-byclass { width:100%; border-collapse:collapse; font-size:12px; }
-table.mg-byclass thead th {
-    position:sticky; top:0; z-index:3;
-    background:#1E293B; color:#fff; padding:10px 6px;
-    font-size:11px; text-transform:uppercase; letter-spacing:.3px;
-    text-align:center; border-right:1px solid #0f2342;
-    font-weight:700; white-space:nowrap;
-}
-table.mg-byclass thead th.day-th    { background:#0f2342; }
-table.mg-byclass thead th.period-th { background:#1E293B; }
-table.mg-byclass thead th.time-th   { background:#334155; font-weight:500; font-size:10.5px; }
-
-table.mg-byclass td {
-    border:1px solid var(--mg-border);
-    padding:4px 6px; text-align:center; vertical-align:middle;
-    font-size:11.5px; line-height:1.25;
-}
-table.mg-byclass td.day-col {
-    background:#1E293B; color:#fff; font-weight:700;
-    text-transform:uppercase; letter-spacing:.5px;
-    font-size:11px; white-space:nowrap;
-    position:sticky; left:0; z-index:2;
-}
-table.mg-byclass td.period-col { background:#F1F5F9; font-weight:700; font-size:11.5px; white-space:nowrap; }
-table.mg-byclass td.time-col   { background:#F8FAFC; font-size:10.5px; color:#64748B; white-space:nowrap; }
-
-table.mg-byclass tr.day-sep td { border-top:2px solid #0f2342; }
-
-td.cell-na    { background:#F8FAFC; color:#CBD5E1; }
-td.cell-free  { color:#CBD5E1; font-style:italic; font-size:10.5px; }
-td.cell-break { background:#FFFBEB; color:#D97706; font-weight:700; font-size:10.5px; }
-td.cell-lesson { padding:3px 5px; }
-td.cell-lesson .s { font-weight:700; color:#0f2342; font-size:11.5px; }
-td.cell-lesson .t { color:#475569; font-size:10.5px; }
-td.cell-lesson .r { color:#94A3B8; font-size:10px; }
-
-@media print {
-    .no-print { display:none !important; }
-    .mg-scroll { max-height:none; overflow:visible; }
-    table.mg-byclass thead th { position:static; }
-    table.mg-byclass td.day-col { position:static; }
-    .mg-card { box-shadow:none; }
-    .mg-hero { display:none; }
-}
+    :root { --border:#E2E8F0; }
+    * { box-sizing:border-box; }
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin:0; padding:24px; background:#F8FAFC; color:#1E293B; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+    .toolbar h1 { font-size:18px; margin:0; }
+    .toolbar .sub { font-size:13px; color:#64748B; }
+    .btn { border:1px solid var(--border); background:#fff; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; }
+    .btn:hover { background:#F1F5F9; }
+    .grid-wrap { overflow-x:auto; background:#fff; border:1px solid var(--border); border-radius:12px; }
+    table { border-collapse:collapse; width:100%; min-width:900px; }
+    th, td { border:1px solid var(--border); padding:8px; vertical-align:top; font-size:12px; }
+    thead th { color:#fff; position:sticky; top:0; text-align:left; }
+    th.day-col, td.day-col { width:70px; text-align:center; font-weight:700; color:#fff; }
+    th.time-col, td.time-col { width:110px; }
+    .cell-lesson { border-left:3px solid #999; padding:5px 7px; border-radius:4px; background:#F8FAFC; }
+    .cell-lesson .subj { font-weight:700; display:block; }
+    .cell-lesson .meta { color:#64748B; font-size:11px; }
+    .cell-break { text-align:center; color:#D97706; font-weight:600; }
+    .cell-free { text-align:center; color:#CBD5E1; }
+    .cell-na { background:#F8FAFC; }
+    .footer-note { margin-top:10px; font-size:11px; color:#94A3B8; }
+    @media print {
+        .toolbar .btn { display:none; }
+        body { background:#fff; padding:0; }
+    }
 </style>
-
-<div class="main-content"><div class="page-content"><div class="container-fluid">
-
-<div class="mg-hero no-print">
-    <div>
-        <h1><i class="ri-table-2 me-2"></i>Master Timetable — Classes as Columns</h1>
-        <p>{{ $schoolInfo->school_name ?? 'School' }} · {{ $sessionName }} · {{ $termName }} · Generated {{ $generatedAt }}</p>
-        <p style="margin-top:6px;"><i class="ri-layout-column-line me-1"></i>{{ count($classList) }} classes · rows walk down the week chronologically</p>
-    </div>
-    <button class="mg-print-btn" onclick="window.print()"><i class="ri-printer-line me-1"></i>Print / Save PDF</button>
-</div>
-
-@if(!empty($runMeta))
-<div class="run-meta-block no-print">
-    <div class="run-meta-header">
+</head>
+<body>
+    <div class="toolbar">
         <div>
-            <strong class="run-meta-name">{{ $runMeta['name'] }}</strong>
-            <span class="run-meta-code">Run {{ $runMeta['run_code'] }}</span>
+            <h1>{{ $pagetitle ?? 'Merged Timetable' }} — Columns per Class</h1>
+            <div class="sub">{{ $sessionName }} &middot; {{ $termName }}</div>
         </div>
-        <div class="run-meta-right">
-            {{ $runMeta['creator'] }} · {{ $runMeta['created_at'] }}
-            @if($runMeta['seed']) · seed {{ $runMeta['seed'] }} @endif
-        </div>
+        <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
     </div>
-    @if(!empty($runMeta['description']))
-        <div class="run-meta-desc">{{ $runMeta['description'] }}</div>
-    @endif
-</div>
-@endif
 
-@if(!empty($runRules))
-<div class="run-rules-block no-print">
-    <strong>Generation rules used:</strong>
-    @foreach($runRules as $key => $value)
-        <span class="run-rule-item">
-            {{ $key }} = {{ is_array($value) ? json_encode($value) : (is_bool($value) ? ($value ? 'true' : 'false') : $value) }}
-        </span>
-    @endforeach
-</div>
-@endif
+    @php
+        $dayRowSpans = [];
+        $lastDay = null; $groupStart = -1;
+        foreach ($rows as $i => $r) {
+            if ($r['day'] !== $lastDay) {
+                $groupStart = $i;
+                $dayRowSpans[$groupStart] = 1;
+                $lastDay = $r['day'];
+            } else {
+                $dayRowSpans[$groupStart]++;
+            }
+        }
+    @endphp
 
-<div class="mg-legend no-print">
-    <strong style="font-size:12px;color:#0f2342;margin-right:6px;">Classes:</strong>
-    @foreach($classColors as $cls => $color)
-        <span class="mg-legend-chip" style="background:{{ $color }}">{{ $cls }}</span>
-    @endforeach
-</div>
-
-<div class="mg-card">
-    <div class="mg-scroll">
-        <table class="mg-byclass">
-            <thead>
+    <div class="grid-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th class="day-col" style="background:#1E293B">Day</th>
+                <th class="time-col" style="background:#1E293B">Period</th>
+                @foreach($classList as $cls)
+                    <th style="background: {{ $classColors[$cls] ?? '#1E293B' }}">{{ $cls }}</th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($rows as $i => $row)
                 <tr>
-                    <th class="day-th" style="width:70px">Day</th>
-                    <th class="period-th" style="width:90px">Period</th>
-                    <th class="time-th" style="width:100px">Time</th>
+                    @if(isset($dayRowSpans[$i]))
+                        <td class="day-col" rowspan="{{ $dayRowSpans[$i] }}" style="background: {{ $dayColors[$row['day']] ?? '#334155' }};">{{ $row['day'] }}</td>
+                    @endif
+                    <td class="time-col">
+                        <strong>{{ $row['label'] }}</strong><br>
+                        <span style="color:#94A3B8">{{ $row['time'] }}</span>
+                    </td>
                     @foreach($classList as $cls)
-                        <th style="background:{{ $classColors[$cls] }}">{{ $cls }}</th>
+                        @php $cell = $row['cells'][$cls] ?? ['state' => 'na']; @endphp
+                        @if($cell['state'] === 'na')
+                            <td class="cell-na"></td>
+                        @elseif($cell['state'] === 'break')
+                            <td class="cell-break">☕ Break</td>
+                        @elseif($cell['state'] === 'free')
+                            <td class="cell-free">Free</td>
+                        @else
+                            <td>
+                                <div class="cell-lesson" style="border-left-color: {{ $classColors[$cls] ?? '#999' }}">
+                                    <span class="subj">{{ $cell['subject'] ?? '—' }}</span>
+                                    <span class="meta">{{ trim(($cell['teacher'] ?? '') . ($cell['room'] ? ' · ' . $cell['room'] : '')) }}{{ !empty($cell['is_double']) ? ' · Double' : '' }}</span>
+                                </div>
+                            </td>
+                        @endif
                     @endforeach
                 </tr>
-            </thead>
-            <tbody>
-                @php
-                    $lastDay = null;
-                    $dayRowCounts = collect($rows)->countBy('day')->toArray();
-                @endphp
-                @foreach($rows as $row)
-                    @php
-                        $isNewDay = $row['day'] !== $lastDay;
-                        $lastDay  = $row['day'];
-                        $rowspan  = $isNewDay ? ($dayRowCounts[$row['day']] ?? 1) : 0;
-                    @endphp
-                    <tr class="{{ $isNewDay && !$loop->first ? 'day-sep' : '' }}">
-                        @if($isNewDay)
-                            <td class="day-col" rowspan="{{ $rowspan }}">{{ $row['day'] }}</td>
-                        @endif
-                        <td class="period-col">{{ $row['label'] }}</td>
-                        <td class="time-col">{{ $row['time'] }}</td>
-
-                        @foreach($classList as $cls)
-                            @php $cell = $row['cells'][$cls] ?? ['state' => 'na']; @endphp
-                            @if($cell['state'] === 'na')
-                                <td class="cell-na">—</td>
-                            @elseif($cell['state'] === 'break')
-                                <td class="cell-break">Break</td>
-                            @elseif($cell['state'] === 'free')
-                                <td class="cell-free">Free</td>
-                            @else
-                                <td class="cell-lesson"
-                                    style="background:{{ $classColors[$cls] }}15;border-left:3px solid {{ $classColors[$cls] }}">
-                                    <div class="s">{{ $cell['subject'] ?? '—' }}</div>
-                                    @if(!empty($cell['teacher']))<div class="t">{{ $cell['teacher'] }}</div>@endif
-                                    @if(!empty($cell['room']))<div class="r">{{ $cell['room'] }}</div>@endif
-                                </td>
-                            @endif
-                        @endforeach
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+            @endforeach
+        </tbody>
+    </table>
     </div>
-</div>
 
-</div></div></div>
-@endsection
+    <div class="footer-note">Generated {{ $generatedAt }}</div>
+</body>
+</html>
