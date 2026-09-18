@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Holiday;
+use App\Models\Schoolsession;
 use App\Models\TimetableOverride;
 use App\Models\TimetableSetting;
 use Illuminate\Http\Request;
@@ -27,8 +28,9 @@ class HolidayController extends Controller
         $pagetitle = 'Holiday Management';
         $holidays = Holiday::orderBy('start_date', 'desc')->paginate(15);
         $upcomingHolidays = Holiday::where('start_date', '>=', now())->orderBy('start_date')->take(5)->get();
+        $sessions = Schoolsession::orderByDesc('id')->get();
 
-        return view('holidays.index', compact('pagetitle', 'holidays', 'upcomingHolidays'));
+        return view('holidays.index', compact('pagetitle', 'holidays', 'upcomingHolidays', 'sessions'));
     }
 
     /**
