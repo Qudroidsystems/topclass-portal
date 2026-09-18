@@ -22,6 +22,8 @@ use App\Models\TimetableConstraint;
 use App\Models\TimetableNotification;
 use App\Models\TimetablePeriod;
 use App\Models\TimetablePeriodLimit;
+use App\Models\TimetablePeriodAllocation;
+use App\Models\TimetablePeriodAllocationSet;
 use App\Models\TimetableReport;
 use App\Models\TimetableSetting;
 use App\Models\TimetableSlot;
@@ -106,7 +108,7 @@ class TimetableController extends Controller
         $this->middleware('permission:Generate timetable', ['only' => ['autoGenerate', 'autoGenerateWholeSchool', 'applyGenerationTemplate', 'getTeacherAssignments', 'getGenerationWizardData', 'previewGeneration']]);
         $this->middleware('permission:View my timetable', ['only' => ['teacherView', 'exportTeacherTimetable']]);
         $this->middleware('permission:Manage timetable settings', ['only' => ['saveSettings', 'rebuildPeriodsFromAnchors', 'saveHalfDays', 'saveFreePeriods']]);
-        $this->middleware('permission:Manage timetable constraints', ['only' => ['saveConstraints']]);
+        $this->middleware('permission:Manage timetable constraints', ['only' => ['saveConstraints', 'getPeriodAllocationGrid', 'listPeriodAllocationSets', 'getPeriodAllocationSetDetail', 'savePeriodAllocationSet', 'deletePeriodAllocationSet']]);
         $this->middleware('permission:View timetable reports', ['only' => ['workloadDashboard', 'generateAnalytics']]);
         $this->middleware('permission:Export timetable', ['only' => ['export', 'exportWholeSchool', 'exportWholeSchoolWeb', 'exportMergedGrid', 'mergedGridWeb']]);
         $this->middleware('permission:Request substitute', ['only' => ['requestSubstitute']]);
@@ -1456,6 +1458,264 @@ class TimetableController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    // =========================================================================
+    // PERIOD ALLOCATION (reusable class × subject × periods/week presets)
+    // =========================================================================
+
+    /**
+     * Class/subject/teacher grid for building or editing a period allocation
+     * set. Independent of any TimetableSetting — sourced purely from
+     * SubjectTeacher assignments for the given session/term, so it works
+     * even before any class timetable has been set up.
+     */
+    public function getPeriodAllocationGrid(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id'         => 'required|exists:schoolsession,id',
+            'term_id'            => 'nullable|exists:schoolterm,id',
+            'schoolclass_ids'    => 'nullable|array',
+            'schoolclass_ids.*'  => 'exists:schoolclass,id',
+        ]);
+
+        $sessionId = (int) $validated['session_id'];
+        $termId    = $validated['term_id'] ?? null;
+        $classIds  = $validated['schoolclass_ids'] ?? null;
+
+        $subjectTeachers = SubjectTeacher::where('sessionid', $sessionId)
+            ->when($termId, fn($q) => $q->where('termid', $termId))
+            ->when($classIds, fn($q) => $q->whereHas('subjectclass', fn($q2) => $q2->whereIn('schoolclassid', $classIds)))
+            ->with(['subject', 'staff', 'subjectclass'])
+            ->get()
+            ->filter(fn($st) => $st->subjectclass)
+            ->groupBy(fn($st) => $st->subjectclass->schoolclassid);
+
+        if ($subjectTeachers->isEmpty()) {
+            return response()->json(['success' => true, 'classes' => []]);
+        }
+
+        $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+            ->whereIn('schoolclass.id', $subjectTeachers->keys())
+            ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
+            ->get();
+
+        $classPayload = [];
+        foreach ($classes as $classMeta) {
+            $classId = $classMeta->id;
+            $stForClass = $subjectTeachers->get($classId);
+            if (!$stForClass) continue;
+
+            $className = trim(($classMeta->schoolclass ?? '') . ' ' . ($classMeta->arm_name ?? ''));
+
+            $subjectRows = $stForClass->unique('subjectid')
+                ->map(fn($st) => [
+                    'subject_id'   => $st->subjectid,
+                    'subject_name' => $st->subject?->subject ?? 'Unknown',
+                    'subject_code' => $st->subject?->subject_code,
+                    'teacher_id'   => $st->staffid,
+                    'teacher_name' => $st->staff?->name ?? 'Unassigned',
+                ])
+                ->sortBy('subject_name')
+                ->values();
+
+            $classPayload[] = [
+                'schoolclass_id' => $classId,
+                'class_name'     => $className ?: 'Class #' . $classId,
+                'subjects'       => $subjectRows,
+            ];
+        }
+
+        return response()->json(['success' => true, 'classes' => $classPayload]);
+    }
+
+    /**
+     * Saved period-allocation sets for a session/term, for the picker in
+     * both the standalone Period Allocation modal and the Generation
+     * Wizard's "use a saved allocation" control.
+     */
+    public function listPeriodAllocationSets(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => 'required|exists:schoolsession,id',
+            'term_id'    => 'nullable|exists:schoolterm,id',
+        ]);
+
+        $sessionId = (int) $validated['session_id'];
+        $termId    = $validated['term_id'] ?? null;
+
+        $sets = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
+            ->withCount('allocations')
+            ->with('updater:id,name')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $classCounts = TimetablePeriodAllocation::whereIn('set_id', $sets->pluck('id'))
+            ->select('set_id', DB::raw('COUNT(DISTINCT schoolclass_id) as cnt'))
+            ->groupBy('set_id')
+            ->pluck('cnt', 'set_id');
+
+        return response()->json([
+            'success' => true,
+            'sets'    => $sets->map(fn($s) => [
+                'id'               => $s->id,
+                'name'             => $s->name,
+                'description'      => $s->description,
+                'term_id'          => $s->term_id,
+                'is_all_terms'     => is_null($s->term_id),
+                'allocation_count' => $s->allocations_count,
+                'class_count'      => (int) ($classCounts[$s->id] ?? 0),
+                'updated_at'       => $s->updated_at->format('d M Y, H:i'),
+                'updated_by'       => $s->updater?->name,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * A single set's rows, for prefilling either the Period Allocation
+     * modal (to edit it) or the Generation Wizard's Subjects & Priority
+     * panel (to apply it before generating).
+     */
+    public function getPeriodAllocationSetDetail(int $setId): JsonResponse
+    {
+        $set = TimetablePeriodAllocationSet::with('allocations')->findOrFail($setId);
+
+        return response()->json([
+            'success' => true,
+            'set' => [
+                'id'          => $set->id,
+                'session_id'  => $set->session_id,
+                'term_id'     => $set->term_id,
+                'name'        => $set->name,
+                'description' => $set->description,
+            ],
+            'allocations' => $set->allocations->map(fn($a) => [
+                'schoolclass_id'              => $a->schoolclass_id,
+                'subject_id'                  => $a->subject_id,
+                'periods_per_week'            => $a->periods_per_week,
+                'allow_double_period'         => $a->allow_double_period,
+                'max_double_periods_per_week' => $a->max_double_periods_per_week,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Create or update a named period-allocation set. A set's session/term
+     * scope is fixed at creation — updating only ever changes its name,
+     * description and rows.
+     */
+    public function savePeriodAllocationSet(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'set_id'                               => 'nullable|exists:timetable_period_allocation_sets,id',
+            'session_id'                           => 'required|exists:schoolsession,id',
+            'term_id'                              => 'nullable|exists:schoolterm,id',
+            'name'                                 => 'required|string|max:150',
+            'description'                          => 'nullable|string|max:1000',
+            'allocations'                          => 'required|array|min:1',
+            'allocations.*.schoolclass_id'         => 'required|exists:schoolclass,id',
+            'allocations.*.subject_id'             => 'required|exists:subject,id',
+            'allocations.*.periods_per_week'       => 'required|integer|min:1|max:20',
+            'allocations.*.allow_double_period'    => 'boolean',
+            'allocations.*.max_double_periods_per_week' => 'integer|min:0|max:5',
+        ]);
+
+        // Two rows can't target the same (class, subject) pair — the unique
+        // index would reject the bulk insert below, so fail fast with a
+        // clear message instead of a raw DB error.
+        $dupeKey = collect($request->input('allocations', []))
+            ->map(fn($r) => ($r['schoolclass_id'] ?? '') . ':' . ($r['subject_id'] ?? ''))
+            ->duplicates();
+        if ($dupeKey->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The same class/subject appears more than once in this set — each class/subject pair can only have one periods-per-week value.',
+            ], 422);
+        }
+
+        $sessionId = (int) $validated['session_id'];
+        $termId    = $validated['term_id'] ?? null;
+
+        // forScope() OR-includes the session's "All Terms" sets alongside this
+        // specific term, so this also stops a term-specific set from shadowing
+        // an all-terms one with the same name (they'd otherwise both show up
+        // side by side in the same picker).
+        $nameTaken = TimetablePeriodAllocationSet::forScope($sessionId, $termId)
+            ->where('name', $validated['name'])
+            ->when(!empty($validated['set_id']), fn($q) => $q->where('id', '!=', $validated['set_id']))
+            ->exists();
+
+        if ($nameTaken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A period allocation set named "' . $validated['name'] . '" already exists for this session/term. Choose a different name.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            if (!empty($validated['set_id'])) {
+                $set = TimetablePeriodAllocationSet::findOrFail($validated['set_id']);
+                if ((int) $set->session_id !== $sessionId || $set->term_id != $termId) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'That set belongs to a different session/term.'], 422);
+                }
+                $set->update([
+                    'name'        => $validated['name'],
+                    'description' => $validated['description'] ?? null,
+                    'updated_by'  => Auth::id(),
+                ]);
+            } else {
+                $set = TimetablePeriodAllocationSet::create([
+                    'session_id'  => $sessionId,
+                    'term_id'     => $termId,
+                    'name'        => $validated['name'],
+                    'description' => $validated['description'] ?? null,
+                    'created_by'  => Auth::id(),
+                    'updated_by'  => Auth::id(),
+                ]);
+            }
+
+            TimetablePeriodAllocation::where('set_id', $set->id)->delete();
+
+            $now  = now();
+            $rows = collect($validated['allocations'])
+                ->map(fn($r) => [
+                    'set_id'                      => $set->id,
+                    'schoolclass_id'              => $r['schoolclass_id'],
+                    'subject_id'                   => $r['subject_id'],
+                    'periods_per_week'             => $r['periods_per_week'],
+                    'allow_double_period'          => !empty($r['allow_double_period']),
+                    'max_double_periods_per_week'  => $r['max_double_periods_per_week'] ?? 1,
+                    'created_at'                   => $now,
+                    'updated_at'                   => $now,
+                ])->values()->all();
+
+            if (!empty($rows)) {
+                TimetablePeriodAllocation::insert($rows);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'set_id'  => $set->id,
+                'message' => 'Period allocation set saved.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('savePeriodAllocationSet failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function deletePeriodAllocationSet(int $setId): JsonResponse
+    {
+        $set = TimetablePeriodAllocationSet::findOrFail($setId);
+        $set->delete(); // cascades to timetable_period_allocations via FK
+
+        return response()->json(['success' => true]);
     }
 
     // =========================================================================
