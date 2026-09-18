@@ -801,7 +801,9 @@ $(document).ready(function () {
             zeroRecords:     'No matching assignments',
             emptyTable:      'No subject teacher assignments yet',
         },
-        order: [[1, 'asc']],
+        // Server already returns data ordered by created_at DESC.
+        // We keep the index column ordering neutral so the "latest first" order is preserved.
+        order: [],
         pageLength: 15,
         responsive: true,
         drawCallback: function() {
@@ -1118,7 +1120,7 @@ $(document).ready(function () {
         $('.row-checkbox:checked').each(function() {
             ids.push($(this).val());
         });
-        
+
         if (ids.length === 0) {
             toast('warning', 'No Selection', 'Please select at least one assignment to delete.');
             return;
@@ -1137,7 +1139,7 @@ $(document).ready(function () {
             preConfirm: function() {
                 return new Promise(function(resolve, reject) {
                     PageLoader.show('Deleting assignments…');
-                    
+
                     $.ajax({
                         url: '{{ route("subjectteacher.bulk-destroy") }}',
                         type: 'POST',

@@ -228,13 +228,16 @@
                                            name="subjectteacherid[]"
                                            id="add-t-{{ $teacher->id }}"
                                            value="{{ $teacher->id }}"
-                                           data-label="{{ $teacher->teachername }} {{ $teacher->subject }}">
+                                           data-label="{{ $teacher->teachername }} {{ $teacher->subject }} {{ $teacher->sessionname }}">
                                     <label class="form-check-label" for="add-t-{{ $teacher->id }}">
                                         <strong>{{ $teacher->teachername }}</strong>
                                         — {{ $teacher->subject }}
                                         <small class="text-muted">({{ $teacher->subjectcode }})</small>
                                         <span class="ms-1" style="color:{{ $tColor }};font-size:11px;font-weight:600;">
                                             {{ $teacher->termname }}
+                                        </span>
+                                        <span class="ms-1 sc-badge sc-badge-session" style="font-size:10px;">
+                                            {{ $teacher->sessionname }}
                                         </span>
                                     </label>
                                 </div>
@@ -404,7 +407,6 @@ $(document).ready(function () {
             url: '{{ route("subjectclass.data") }}',
             type: 'GET',
             dataSrc: function(json) {
-                // If the server returned an error payload, surface it
                 if (json && json.error) {
                     toast('error', 'Load Error', json.error);
                     return [];

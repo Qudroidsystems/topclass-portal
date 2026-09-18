@@ -254,7 +254,7 @@ td.ttw-dimmed { opacity:.25; }
                             @else
                                 <td>
                                     
-                                        @foreach($cell['entries'] as $e)
+                                     @foreach($cell['entries'] as $e)
                                         <div class="entry
                                                     {{ !empty($e['is_conflict']) ? 'conflict' : '' }}
                                                     {{ ($e['double_role'] ?? null) === 'start'    ? 'double-start'    : '' }}

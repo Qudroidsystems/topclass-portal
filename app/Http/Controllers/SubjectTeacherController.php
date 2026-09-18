@@ -39,9 +39,13 @@ class SubjectTeacherController extends Controller
             $terms = Schoolterm::orderBy('term', 'asc')->get();
             $schoolsessions = Schoolsession::orderBy('session', 'asc')->get();
             $subjects = Subject::orderBy('subject', 'asc')->get();
+
+            // Alphabetical order for teachers in Add/Edit modal
             $staffs = User::whereHas('roles', function ($q) {
                 $q->where('name', '!=', 'Student');
-            })->get(['users.id as userid', 'users.name as name', 'users.avatar as avatar']);
+            })
+                ->orderBy('name', 'asc')
+                ->get(['users.id as userid', 'users.name as name', 'users.avatar as avatar']);
 
             return view('subjectteacher.index')
                 ->with('terms', $terms)
@@ -81,7 +85,9 @@ class SubjectTeacherController extends Controller
                     'schoolsession.session as sessionname',
                     'subjectteacher.created_at',
                     'subjectteacher.updated_at'
-                ]);
+                ])
+                // Latest records first
+                ->orderBy('subjectteacher.created_at', 'desc');
 
             return DataTables::of($subjectteacher)
                 ->addIndexColumn()
@@ -224,7 +230,7 @@ class SubjectTeacherController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'error' => $e->getMessage()
             ], 500);
@@ -528,7 +534,7 @@ class SubjectTeacherController extends Controller
 
             // Check if this subject teacher is assigned to any classes
             $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
-            
+
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -575,7 +581,7 @@ class SubjectTeacherController extends Controller
         try {
             $id = $request->subjectteacherid;
             $subjectteacher = SubjectTeacher::find($id);
-            
+
             if (!$subjectteacher) {
                 return response()->json([
                     'success' => false,
@@ -585,7 +591,7 @@ class SubjectTeacherController extends Controller
 
             // Check if this subject teacher is assigned to any classes
             $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
-            
+
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -620,7 +626,7 @@ class SubjectTeacherController extends Controller
     {
         try {
             $ids = $request->input('ids', []);
-            
+
             if (empty($ids)) {
                 return response()->json([
                     'success' => false,
@@ -630,7 +636,7 @@ class SubjectTeacherController extends Controller
 
             $existingIds = SubjectTeacher::whereIn('id', $ids)->pluck('id')->toArray();
             $invalidIds = array_diff($ids, $existingIds);
-            
+
             if (!empty($invalidIds)) {
                 return response()->json([
                     'success' => false,
@@ -640,7 +646,7 @@ class SubjectTeacherController extends Controller
 
             // Check if any are in use
             $inUse = Subjectclass::whereIn('subjectteacherid', $ids)->exists();
-            
+
             if ($inUse) {
                 return response()->json([
                     'success' => false,
