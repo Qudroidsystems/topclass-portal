@@ -598,7 +598,13 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/{id}/related', [SchoolBillTermSessionController::class, 'getRelated'])->name('related');
         Route::post('/bulk-destroy', [SchoolBillTermSessionController::class, 'bulkDestroy'])->name('bulk-destroy');
     });
-    Route::resource('schoolbilltermsession', SchoolBillTermSessionController::class);
+    // index/store/edit/update/destroy are excluded: the explicit
+    // prefix('schoolbilltermsession')->name('schoolbilltermsession.') group
+    // above already defines all of those under the same names. Without
+    // ->except([...]) here, this resource() call registered duplicates,
+    // which made `php artisan route:cache` fail with a duplicate-route-name
+    // LogicException (first surfaced on 'schoolbilltermsession.store').
+    Route::resource('schoolbilltermsession', SchoolBillTermSessionController::class)->except(['index', 'store', 'edit', 'update', 'destroy']);
     Route::get('/schoolbilltermsessionid/{schoolbilltermsessionid}', [SchoolBillTermSessionController::class, 'deleteschoolbilltermsession'])->name('schoolbilltermsession.deleteschoolbilltermsession');
     Route::post('schoolbilltermsessionbid', [SchoolBillTermSessionController::class, 'updateschoolbilltermsession'])->name('schoolbilltermsession.updateschoolbilltermsession');
 
@@ -665,16 +671,22 @@ Route::group(['middleware' => ['auth']], function () {
     // PAYMENTS
     // ===================================================================
     Route::prefix('payment')->name('payment.')->group(function () {
-        Route::get('/', [SchoolPaymentController::class, 'index'])->name('index');
+        // Renamed from 'index': collided with the later payment.* group
+        // (EnhancedSchoolPaymentController), which already wins 'payment.index'
+        // today (last-registered name wins) — this only removes the
+        // route:cache collision, route('payment.index') is unaffected.
+        Route::get('/', [SchoolPaymentController::class, 'index'])->name('legacy-index');
         Route::get('/data', [SchoolPaymentController::class, 'data'])->name('data');
         Route::get('/stats', [SchoolPaymentController::class, 'stats'])->name('stats');
         Route::get('/term-session/{id}', [SchoolPaymentController::class, 'termSession'])->name('termsession');
-        Route::get('/details/{studentId}/{classId}/{termId}/{sessionId}', [SchoolPaymentController::class, 'showPaymentDetails'])->name('details');
+        // Renamed from 'details' — see note above 'legacy-index'.
+        Route::get('/details/{studentId}/{classId}/{termId}/{sessionId}', [SchoolPaymentController::class, 'showPaymentDetails'])->name('legacy-details');
         Route::get('/get-payment-details', [SchoolPaymentController::class, 'getPaymentDetailsAjax'])->name('getPaymentDetailsAjax');
         Route::post('/store', [SchoolPaymentController::class, 'store'])->name('store');
         Route::post('/bulk-store', [SchoolPaymentController::class, 'bulkStore'])->name('bulk-store');
         Route::post('/delete/{recordId}', [SchoolPaymentController::class, 'deletestudentpayment'])->name('delete');
-        Route::get('/invoice/{studentId}/{schoolclassid}/{termid}/{sessionid}', [SchoolPaymentController::class, 'invoice'])->name('invoice');
+        // Renamed from 'invoice' — see note above 'legacy-index'.
+        Route::get('/invoice/{studentId}/{schoolclassid}/{termid}/{sessionid}', [SchoolPaymentController::class, 'invoice'])->name('legacy-invoice');
         Route::post('/invoice/confirm/{studentId}/{schoolclassid}/{termid}/{sessionid}', [SchoolPaymentController::class, 'confirmInvoice'])->name('confirmInvoice');
         Route::get('/statement/{studentId}/{schoolclassid}/{termid}/{sessionid}', [SchoolPaymentController::class, 'statement'])->name('statement');
         Route::get('/termsessionpayments', [SchoolPaymentController::class, 'termsessionpayments'])->name('termsessionpayments');
@@ -773,7 +785,11 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/high-outstanding', [AnalysisReportController::class, 'getHighOutstandingAlerts'])->name('high-outstanding');
         Route::post('/send-reminders', [AnalysisReportController::class, 'sendPaymentReminders'])->name('send-reminders');
         Route::post('/clear-cache', [AnalysisReportController::class, 'clearReportCache'])->name('clear-cache');
-        Route::post('/send-reminders', [ReminderController::class, 'sendReminders'])->name('send-reminders');
+        // Renamed from 'send-reminders': identical URI+method to the
+        // AnalysisReportController route above (registered earlier), which
+        // already handles every real request here — this route was already
+        // unreachable. Renamed only to unblock route:cache.
+        Route::post('/send-reminders', [ReminderController::class, 'sendReminders'])->name('send-reminders-legacy');
     });
 
     // ===================================================================
@@ -1020,7 +1036,11 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/questions/bulk-update', [QuestionController::class, 'bulkUpdate'])->name('questions.bulk.update');
     Route::get('/questions/reusable/list', [QuestionController::class, 'getReusableQuestions'])->name('questions.reusable.list');
     Route::delete('/questions/bulk-destroy', [QuestionController::class, 'bulkDestroy'])->name('questions.bulk.destroy');
-    Route::resource('questions', QuestionController::class);
+    // 'edit' is excluded: an explicit questions.edit route with the same
+    // URI (/questions/{question}/edit) is defined a few lines below.
+    // Without ->except(['edit']) here, this resource() call registered a
+    // duplicate 'questions.edit', which made `php artisan route:cache` fail.
+    Route::resource('questions', QuestionController::class)->except(['edit']);
     Route::get('/questions/{question}/details', [QuestionController::class, 'showDetails']);
     Route::get('/{question}/details', [QuestionController::class, 'details'])->name('questions.details');
     Route::get('/questions/{question}/edit', [QuestionController::class, 'edit'])->name('questions.edit');
