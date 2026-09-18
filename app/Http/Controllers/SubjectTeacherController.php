@@ -62,6 +62,9 @@ class SubjectTeacherController extends Controller
 
     // =========================================================================
     // DATATABLE — AJAX
+    //
+    // Grouped so that one row = one teacher + subject + session.
+    // The `term_info` column lists every term this group covers.
     // =========================================================================
 
     public function data(Request $request)
@@ -72,22 +75,36 @@ class SubjectTeacherController extends Controller
                 ->leftJoin('schoolterm', 'schoolterm.id', '=', 'subjectteacher.termid')
                 ->leftJoin('schoolsession', 'schoolsession.id', '=', 'subjectteacher.sessionid')
                 ->select([
-                    'subjectteacher.id as id',
+                    // Representative row ID so edit/delete still work
+                    DB::raw('MIN(subjectteacher.id) as id'),
+                    'subjectteacher.staffid as staffid',
+                    'subjectteacher.subjectid as subjectid',
+                    'subjectteacher.sessionid as sessionid',
+
                     'users.id as userid',
                     'users.name as staffname',
                     'users.avatar as avatar',
-                    'subject.id as subjectid',
+
                     'subject.subject as subjectname',
                     'subject.subject_code as subjectcode',
-                    'schoolterm.id as termid',
-                    'schoolterm.term as termname',
-                    'schoolsession.id as sessionid',
+
                     'schoolsession.session as sessionname',
-                    'subjectteacher.created_at',
-                    'subjectteacher.updated_at'
+
+                    DB::raw('MAX(subjectteacher.created_at) as created_at'),
+                    DB::raw('MAX(subjectteacher.updated_at) as updated_at'),
                 ])
-                // Latest records first
-                ->orderBy('subjectteacher.created_at', 'desc');
+                ->groupBy([
+                    'subjectteacher.staffid',
+                    'subjectteacher.subjectid',
+                    'subjectteacher.sessionid',
+                    'users.id',
+                    'users.name',
+                    'users.avatar',
+                    'subject.subject',
+                    'subject.subject_code',
+                    'schoolsession.session',
+                ])
+                ->orderByDesc(DB::raw('MAX(subjectteacher.created_at)'));
 
             return DataTables::of($subjectteacher)
                 ->addIndexColumn()
@@ -142,11 +159,13 @@ class SubjectTeacherController extends Controller
                     </div>';
                 })
 
+                // Show ALL terms for this teacher+subject+session as badges
                 ->addColumn('term_info', function ($row) {
-                    $terms = SubjectTeacher::where('staffid', $row->userid)
+                    $terms = SubjectTeacher::where('staffid', $row->staffid)
                         ->where('subjectid', $row->subjectid)
                         ->where('sessionid', $row->sessionid)
                         ->join('schoolterm', 'schoolterm.id', '=', 'subjectteacher.termid')
+                        ->orderBy('schoolterm.term', 'asc')
                         ->pluck('schoolterm.term', 'subjectteacher.termid')
                         ->toArray();
 
@@ -177,7 +196,8 @@ class SubjectTeacherController extends Controller
                 })
 
                 ->addColumn('action', function ($row) {
-                    $termIds = SubjectTeacher::where('staffid', $row->userid)
+                    // All term IDs for this teacher+subject+session
+                    $termIds = SubjectTeacher::where('staffid', $row->staffid)
                         ->where('subjectid', $row->subjectid)
                         ->where('sessionid', $row->sessionid)
                         ->pluck('termid')
@@ -401,6 +421,7 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
+            // Delete ALL records for this teacher+subject+session (all terms)
             SubjectTeacher::where('staffid', $current->staffid)
                 ->where('subjectid', $current->subjectid)
                 ->where('sessionid', $current->sessionid)
@@ -505,6 +526,10 @@ class SubjectTeacherController extends Controller
 
     // =========================================================================
     // DESTROY (single)
+    //
+    // NOTE: because the DataTable row represents a GROUP (teacher + subject +
+    // session, possibly spanning multiple terms), deleting a row deletes ALL
+    // term records that belong to that group.
     // =========================================================================
 
     public function destroy($id)
@@ -518,7 +543,15 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
-            $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
+            // Every record in the group
+            $groupIds = SubjectTeacher::where('staffid', $subjectteacher->staffid)
+                ->where('subjectid', $subjectteacher->subjectid)
+                ->where('sessionid', $subjectteacher->sessionid)
+                ->pluck('id')
+                ->toArray();
+
+            // Block if ANY of them is used by a Subjectclass
+            $inUse = Subjectclass::whereIn('subjectteacherid', $groupIds)->exists();
 
             if ($inUse) {
                 return response()->json([
@@ -527,14 +560,14 @@ class SubjectTeacherController extends Controller
                 ], 422);
             }
 
-            $subjectteacher->delete();
+            SubjectTeacher::whereIn('id', $groupIds)->delete();
 
-            Log::info('SubjectTeacher deleted:', ['id' => $id]);
+            Log::info('SubjectTeacher group deleted:', ['ids' => $groupIds]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Subject Teacher deleted successfully.',
-                'data' => ['id' => $id]
+                'data' => ['ids' => $groupIds]
             ], 200);
 
         } catch (\Exception $e) {
@@ -574,7 +607,13 @@ class SubjectTeacherController extends Controller
                 ], 404);
             }
 
-            $inUse = Subjectclass::where('subjectteacherid', $id)->exists();
+            $groupIds = SubjectTeacher::where('staffid', $subjectteacher->staffid)
+                ->where('subjectid', $subjectteacher->subjectid)
+                ->where('sessionid', $subjectteacher->sessionid)
+                ->pluck('id')
+                ->toArray();
+
+            $inUse = Subjectclass::whereIn('subjectteacherid', $groupIds)->exists();
 
             if ($inUse) {
                 return response()->json([
@@ -583,14 +622,14 @@ class SubjectTeacherController extends Controller
                 ], 422);
             }
 
-            $subjectteacher->delete();
+            SubjectTeacher::whereIn('id', $groupIds)->delete();
 
-            Log::info('SubjectTeacher deleted via AJAX:', ['id' => $id]);
+            Log::info('SubjectTeacher group deleted via AJAX:', ['ids' => $groupIds]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Subject Teacher has been removed.',
-                'data' => ['id' => $id]
+                'data' => ['ids' => $groupIds]
             ], 200);
 
         } catch (\Exception $e) {
@@ -604,6 +643,9 @@ class SubjectTeacherController extends Controller
 
     // =========================================================================
     // BULK DESTROY
+    //
+    // Each incoming ID is a representative group ID; we expand each into its
+    // full group before checking usage and deleting.
     // =========================================================================
 
     public function deleteMultiple(Request $request)
@@ -628,7 +670,23 @@ class SubjectTeacherController extends Controller
                 ], 400);
             }
 
-            $inUse = Subjectclass::whereIn('subjectteacherid', $ids)->exists();
+            // Expand each representative ID into its full group
+            $allGroupIds = [];
+            foreach ($existingIds as $repId) {
+                $rep = SubjectTeacher::find($repId);
+                if (!$rep) continue;
+
+                $groupIds = SubjectTeacher::where('staffid', $rep->staffid)
+                    ->where('subjectid', $rep->subjectid)
+                    ->where('sessionid', $rep->sessionid)
+                    ->pluck('id')
+                    ->toArray();
+
+                $allGroupIds = array_merge($allGroupIds, $groupIds);
+            }
+            $allGroupIds = array_unique($allGroupIds);
+
+            $inUse = Subjectclass::whereIn('subjectteacherid', $allGroupIds)->exists();
 
             if ($inUse) {
                 return response()->json([
@@ -638,17 +696,18 @@ class SubjectTeacherController extends Controller
             }
 
             DB::beginTransaction();
-            $deleted = SubjectTeacher::whereIn('id', $ids)->delete();
+            $deleted = SubjectTeacher::whereIn('id', $allGroupIds)->delete();
             DB::commit();
 
             Log::info('Bulk delete completed', [
-                'total' => count($ids),
-                'deleted' => $deleted
+                'total_groups' => count($ids),
+                'total_rows'   => count($allGroupIds),
+                'deleted'      => $deleted
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => $deleted . ' subject teacher(s) deleted successfully.',
+                'message' => $deleted . ' subject teacher record(s) deleted successfully.',
                 'deleted_count' => $deleted
             ], 200);
 
