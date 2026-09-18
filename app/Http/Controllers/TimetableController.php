@@ -101,23 +101,23 @@ class TimetableController extends Controller
 
     public function __construct()
     {
-        // $this->middleware('permission:View timetable|Create timetable|Edit timetable|Delete timetable|Generate timetable', ['only' => ['index', 'getSetting', 'getGrid', 'heartbeat', 'releaseEditing', 'getSavedTimetables']]);
-        // $this->middleware('permission:Create timetable', ['only' => ['setup', 'saveSettings']]);
-        // $this->middleware('permission:Edit timetable', ['only' => ['saveSlot', 'bulkUpdateSlots', 'cloneSetting', 'resolveConflict']]);
-        // $this->middleware('permission:Delete timetable', ['only' => ['deleteSetting']]);
-        // $this->middleware('permission:Generate timetable', ['only' => ['autoGenerate', 'autoGenerateWholeSchool', 'applyGenerationTemplate', 'getTeacherAssignments', 'getGenerationWizardData', 'previewGeneration']]);
-        // $this->middleware('permission:View my timetable', ['only' => ['teacherView', 'exportTeacherTimetable']]);
-        // $this->middleware('permission:Manage timetable settings', ['only' => ['saveSettings', 'rebuildPeriodsFromAnchors', 'saveHalfDays', 'saveFreePeriods']]);
+        $this->middleware('permission:View timetable|Create timetable|Edit timetable|Delete timetable|Generate timetable', ['only' => ['index', 'getSetting', 'getGrid', 'heartbeat', 'releaseEditing', 'getSavedTimetables']]);
+        $this->middleware('permission:Create timetable', ['only' => ['setup', 'saveSettings']]);
+        $this->middleware('permission:Edit timetable', ['only' => ['saveSlot', 'bulkUpdateSlots', 'cloneSetting', 'resolveConflict']]);
+        $this->middleware('permission:Delete timetable', ['only' => ['deleteSetting']]);
+        $this->middleware('permission:Generate timetable', ['only' => ['autoGenerate', 'autoGenerateWholeSchool', 'applyGenerationTemplate', 'getTeacherAssignments', 'getGenerationWizardData', 'previewGeneration']]);
+        $this->middleware('permission:View my timetable', ['only' => ['teacherView', 'exportTeacherTimetable']]);
+        $this->middleware('permission:Manage timetable settings', ['only' => ['saveSettings', 'rebuildPeriodsFromAnchors', 'saveHalfDays', 'saveFreePeriods']]);
         // $this->middleware('permission:Manage timetable constraints', ['only' => ['saveConstraints', 'getPeriodAllocationGrid', 'listPeriodAllocationSets', 'getPeriodAllocationSetDetail', 'savePeriodAllocationSet', 'deletePeriodAllocationSet']]);
-        // $this->middleware('permission:View timetable reports', ['only' => ['workloadDashboard', 'generateAnalytics']]);
-        // $this->middleware('permission:Export timetable', ['only' => ['export', 'exportWholeSchool', 'exportWholeSchoolWeb', 'exportMergedGrid', 'mergedGridWeb']]);
-        // $this->middleware('permission:Request substitute', ['only' => ['requestSubstitute']]);
-        // $this->middleware('permission:Approve substitute', ['only' => ['approveSubstitute']]);
-        // $this->middleware('permission:View substitute requests', ['only' => ['getSubstituteRequests']]);
-        // $this->middleware('permission:Manage teacher availability', ['only' => ['saveTeacherAvailability', 'getTeacherAvailability']]);
-        // $this->middleware('permission:Check timetable conflicts', ['only' => ['checkConflicts', 'checkConflictsScope']]);
-        // $this->middleware('permission:Send timetable notifications', ['only' => ['sendNotifications', 'publishAndNotify']]);
-        // $this->middleware('permission:Publish timetable', ['only' => ['publishSetting', 'unpublishSetting', 'publishAndNotify', 'publishAndSaveSnapshot']]);
+        $this->middleware('permission:View timetable reports', ['only' => ['workloadDashboard', 'generateAnalytics']]);
+        $this->middleware('permission:Export timetable', ['only' => ['export', 'exportWholeSchool', 'exportWholeSchoolWeb', 'exportMergedGrid', 'mergedGridWeb']]);
+        $this->middleware('permission:Request substitute', ['only' => ['requestSubstitute']]);
+        $this->middleware('permission:Approve substitute', ['only' => ['approveSubstitute']]);
+        $this->middleware('permission:View substitute requests', ['only' => ['getSubstituteRequests']]);
+        $this->middleware('permission:Manage teacher availability', ['only' => ['saveTeacherAvailability', 'getTeacherAvailability']]);
+        $this->middleware('permission:Check timetable conflicts', ['only' => ['checkConflicts', 'checkConflictsScope']]);
+        $this->middleware('permission:Send timetable notifications', ['only' => ['sendNotifications', 'publishAndNotify']]);
+        $this->middleware('permission:Publish timetable', ['only' => ['publishSetting', 'unpublishSetting', 'publishAndNotify', 'publishAndSaveSnapshot']]);
     }
 
     // =========================================================================
