@@ -4382,10 +4382,11 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
             const dbl = ov ? !!ov.allow_double_period : false;
             const max = ov ? ov.max_double_periods_per_week : 1;
 
+            const noTeacher = !s.teacher_id;
             html += `<div class="pa-subj-row" data-class-id="${classId}" data-subject-id="${sid}">
                 <div>
-                    <div class="pa-subj-name">${escapeHtml(s.subject_name)}</div>
-                    <div class="pa-subj-teacher">${escapeHtml(s.teacher_name)}</div>
+                    <div class="pa-subj-name">${escapeHtml(s.subject_name)}${s.is_compulsory ? ' <span class="wiz-compulsory-badge">COMPULSORY</span>' : ''}</div>
+                    <div class="pa-subj-teacher${noTeacher ? ' text-danger' : ''}">${noTeacher ? 'No teacher assigned yet' : escapeHtml(s.teacher_name)}</div>
                 </div>
                 <div>
                     <input type="number" class="form-control form-control-sm pa-subj-num"
