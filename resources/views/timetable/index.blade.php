@@ -287,6 +287,26 @@
 .pa-subj-teacher { color: #64748B; font-size: 11.5px; }
 .pa-subj-num { width: 100%; }
 
+.pa-class-summary {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; background: #F8FAFC; border-bottom: 1px solid #F1F5F9;
+}
+.pa-class-summary-input { display: flex; align-items: center; gap: 6px; }
+.pa-class-summary-input label { font-size: 11px; color: #64748B; font-weight: 600; white-space: nowrap; }
+.pa-class-summary-input input { width: 72px; }
+.pa-class-summary-badge {
+    font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.pa-class-summary-badge.neutral { background: #F1F5F9; color: #64748B; font-weight: 500; }
+.pa-class-summary-badge.ok      { background: #DCFCE7; color: #15803D; }
+.pa-class-summary-badge.exact   { background: #DBEAFE; color: #1D4ED8; }
+.pa-class-summary-badge.over    { background: #FEE2E2; color: #B91C1C; }
+
+.wiz-class-card.pa-class-over { border-color: #DC2626; }
+.wiz-class-card.pa-class-over .wiz-class-hdr { background: linear-gradient(135deg, #DC2626, #B91C1C); }
+.pa-class-over-pill { font-size: 10px; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; }
+
 .pa-set-row {
     display: flex; align-items: center; gap: 10px;
     background: #fff; border: 1px solid var(--tt-border); border-radius: 10px;
@@ -4455,10 +4475,25 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
     let html = '';
     classes.forEach(cls => {
         const classId = cls.schoolclass_id;
-        html += `<div class="wiz-class-card">
+        html += `<div class="wiz-class-card" id="paClassCard_${classId}">
             <div class="wiz-class-hdr" onclick="togglePaClassCard(${classId})">
                 <h6><i class="ri-arrow-down-s-line me-1 pa-caret" id="paCaret_${classId}"></i>${escapeHtml(cls.class_name)}</h6>
-                <span class="badge bg-light text-dark">${cls.subjects.length} subjects</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger pa-class-over-pill" id="paClassOverPill_${classId}" style="display:none">
+                        <i class="ri-error-warning-line"></i><span id="paClassOverPillText_${classId}"></span>
+                    </span>
+                    <span class="badge bg-light text-dark">${cls.subjects.length} subjects</span>
+                </div>
+            </div>
+            <div class="pa-class-summary">
+                <div class="pa-class-summary-input">
+                    <label for="paTotalPeriods_${classId}">Total periods/wk</label>
+                    <input type="number" class="form-control form-control-sm" id="paTotalPeriods_${classId}"
+                           min="1" max="60" placeholder="e.g. 30" oninput="updatePaClassSummary(${classId})">
+                </div>
+                <div class="pa-class-summary-badge neutral" id="paClassSummaryBadge_${classId}">
+                    Set a total to track remaining periods
+                </div>
             </div>
             <div class="wiz-class-body" id="paClassBody_${classId}" style="display:none">`;
 
@@ -4477,7 +4512,8 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
                 </div>
                 <div>
                     <input type="number" class="form-control form-control-sm pa-subj-num"
-                           min="1" max="20" id="paPpw_${classId}_${sid}" value="${ppw}">
+                           min="1" max="20" id="paPpw_${classId}_${sid}" value="${ppw}"
+                           oninput="updatePaClassSummary(${classId})">
                     <small class="text-muted">periods/wk</small>
                 </div>
                 <div class="form-check">
@@ -4498,6 +4534,11 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
     });
 
     panel.innerHTML = html;
+
+    // Prime the live "used / remaining" summary for every class now that
+    // its inputs exist in the DOM (covers both a fresh load and an
+    // overlay from a saved set).
+    classes.forEach(cls => updatePaClassSummary(cls.schoolclass_id));
 }
 
 function togglePaClassCard(classId) {
@@ -4512,6 +4553,91 @@ function togglePaClassCard(classId) {
 function togglePaDouble(classId, subjectId, checked) {
     const el = document.getElementById(`paMaxDouble_${classId}_${subjectId}`);
     if (el) el.disabled = !checked;
+}
+
+// Recomputes, for one class card, how many periods/week have been entered
+// across its subjects vs. the "Total periods/wk" the user typed in for
+// that class, and updates the live badge (and the header's over-limit
+// pill) to match. Called on every keystroke in either field, so the
+// remaining-periods count is always current -- no need to click anything.
+function updatePaClassSummary(classId) {
+    const totalEl = document.getElementById(`paTotalPeriods_${classId}`);
+    const badge   = document.getElementById(`paClassSummaryBadge_${classId}`);
+    const card    = document.getElementById(`paClassCard_${classId}`);
+    const pill    = document.getElementById(`paClassOverPill_${classId}`);
+    const pillTxt = document.getElementById(`paClassOverPillText_${classId}`);
+    if (!totalEl || !badge || !card) return;
+
+    let used = 0;
+    document.querySelectorAll(`input[id^="paPpw_${classId}_"]`).forEach(el => {
+        used += parseInt(el.value) || 0;
+    });
+
+    const totalRaw = totalEl.value.trim();
+    card.classList.remove('pa-class-over', 'pa-class-ok', 'pa-class-exact');
+
+    if (totalRaw === '') {
+        badge.className = 'pa-class-summary-badge neutral';
+        badge.innerHTML = `Used: <strong>${used}</strong> &middot; set a total to track remaining`;
+        if (pill) pill.style.display = 'none';
+        return;
+    }
+
+    const total     = parseInt(totalRaw) || 0;
+    const remaining = total - used;
+
+    if (remaining < 0) {
+        card.classList.add('pa-class-over');
+        badge.className = 'pa-class-summary-badge over';
+        badge.innerHTML = `<i class="ri-error-warning-line"></i> Over by <strong>${-remaining}</strong> period${-remaining === 1 ? '' : 's'} (${used} of ${total} used)`;
+        if (pill && pillTxt) { pillTxt.textContent = `Over by ${-remaining}`; pill.style.display = ''; }
+    } else if (remaining === 0) {
+        card.classList.add('pa-class-exact');
+        badge.className = 'pa-class-summary-badge exact';
+        badge.innerHTML = `<i class="ri-checkbox-circle-line"></i> All ${total} periods allocated`;
+        if (pill) pill.style.display = 'none';
+    } else {
+        card.classList.add('pa-class-ok');
+        badge.className = 'pa-class-summary-badge ok';
+        badge.innerHTML = `<strong>${remaining}</strong> period${remaining === 1 ? '' : 's'} remaining (${used} of ${total} used)`;
+        if (pill) pill.style.display = 'none';
+    }
+}
+
+// Fresh, save-time re-check (independent of the live badges above) of
+// every class that has a total set: which ones currently have more
+// periods entered than their total allows. Used to block the actual save.
+function computePaClassOverages() {
+    const overages = [];
+    paState.classes.forEach(cls => {
+        const classId = cls.schoolclass_id;
+        const totalEl = document.getElementById(`paTotalPeriods_${classId}`);
+        if (!totalEl || totalEl.value.trim() === '') return;
+        const total = parseInt(totalEl.value) || 0;
+
+        let used = 0;
+        cls.subjects.forEach(s => {
+            const ppwEl = document.getElementById(`paPpw_${classId}_${s.subject_id}`);
+            if (ppwEl) used += parseInt(ppwEl.value) || 0;
+        });
+
+        if (used > total) {
+            overages.push({ classId, className: cls.class_name, used, total, over: used - total });
+        }
+    });
+    return overages;
+}
+
+function expandPaClassCard(classId) {
+    const body  = document.getElementById('paClassBody_' + classId);
+    const caret = document.getElementById('paCaret_' + classId);
+    if (body)  body.style.display = '';
+    if (caret) caret.className = 'ri-arrow-down-s-line me-1 pa-caret';
+}
+
+function scrollToPaClassCard(classId) {
+    const card = document.getElementById('paClassCard_' + classId);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function collectPeriodAllocationRows() {
@@ -4590,6 +4716,17 @@ async function savePeriodAllocationSet() {
 
     const allocations = collectPeriodAllocationRows();
     if (!allocations.length) return AppleAlert.warning('Nothing to save', 'No subject rows to save.');
+
+    const overages = computePaClassOverages();
+    if (overages.length) {
+        overages.forEach(o => expandPaClassCard(o.classId));
+        scrollToPaClassCard(overages[0].classId);
+        const list = overages
+            .map(o => `<strong>${escapeHtml(o.className)}</strong>: ${o.used} used vs ${o.total} total (over by ${o.over})`)
+            .join('<br>');
+        AppleAlert.error('Fix periods before saving', `These classes exceed their total periods/week:<br>${list}`);
+        return;
+    }
 
     showLoader();
     try {
