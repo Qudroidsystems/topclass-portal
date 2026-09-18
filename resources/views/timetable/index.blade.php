@@ -307,6 +307,22 @@
 .wiz-class-card.pa-class-over .wiz-class-hdr { background: linear-gradient(135deg, #DC2626, #B91C1C); }
 .pa-class-over-pill { font-size: 10px; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; }
 
+.pa-subj-row-pending, .wiz-subj-row.wiz-subj-row-pending {
+    border-left: 3px solid #F59E0B; padding-left: 10px; background: #FFFBEB;
+}
+.pa-pending-badge {
+    display: inline-flex; align-items: center;
+    background: #FEF3C7; color: #92400E;
+    font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+    margin-left: 6px; vertical-align: middle;
+}
+.pa-pending-divider {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; color: #92400E;
+    margin: 10px 0 4px; padding-top: 8px; border-top: 1px dashed #FDE68A;
+}
+.pa-pending-include, .wiz-pending-include { margin-right: 6px; }
+
 .pa-set-row {
     display: flex; align-items: center; gap: 10px;
     background: #fff; border: 1px solid var(--tt-border); border-radius: 10px;
@@ -1732,6 +1748,14 @@
             </button>
         </div>
 
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="wizIncludeUnassigned" onchange="loadWizardSubjects()">
+          <label class="form-check-label" for="wizIncludeUnassigned" style="font-size:12.5px">
+            Also show subjects not yet assigned to a class
+            <span class="text-muted">— tick "Include" on a row (or apply a saved set that has one) to generate it for this class</span>
+          </label>
+        </div>
+
         <div id="wizAllocationSetWrap" class="wiz-saved-allocation-box" style="display:none">
             <div class="wiz-saved-allocation-icon"><i class="ri-flashlight-line"></i></div>
             <div class="wiz-saved-allocation-text">
@@ -2047,6 +2071,14 @@
           <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadPeriodAllocationGrid()">
             <i class="ri-refresh-line me-1"></i>Load Classes
           </button>
+        </div>
+
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="paIncludeUnassigned" onchange="loadPeriodAllocationGrid()">
+          <label class="form-check-label" for="paIncludeUnassigned" style="font-size:12.5px">
+            Also show subjects not yet assigned to a class
+            <span class="text-muted">— tick "Include" on a row to plan periods for it here; it won't create a Subject-Class assignment</span>
+          </label>
         </div>
 
         <div id="paGridPanel">
@@ -4210,6 +4242,7 @@ async function loadWizardSubjects() {
         params.set('session_id', sessionId);
         if (termId) params.set('term_id', termId);
         effectiveClassIds.forEach(id => params.append('schoolclass_ids[]', id));
+        if (document.getElementById('wizIncludeUnassigned')?.checked) params.set('include_unassigned', '1');
 
         const res = await fetch(`${ROUTES.wizardData}?${params.toString()}`, {
             headers: { 'Accept': 'application/json' },
@@ -4274,10 +4307,17 @@ function renderWizardSubjectsPanel(classes, levels) {
                 return `<option value="${level}" ${selected ? 'selected' : ''}>Level ${level} — ${label}</option>`;
             }).join('');
 
-            html += `<div class="wiz-subj-row ${s.is_compulsory ? 'is-compulsory' : ''}" data-class-id="${classId}" data-subject-id="${sid}">
-                <div>${s.is_compulsory ? '<span class="wiz-compulsory-badge">COMP</span>' : ''}</div>
+            const isPending  = !!s.is_pending;
+            const rowClasses = `wiz-subj-row ${s.is_compulsory ? 'is-compulsory' : ''} ${isPending ? 'wiz-subj-row-pending' : ''}`.trim();
+            const leadCell   = isPending
+                ? `<input type="checkbox" class="form-check-input wiz-pending-include" id="wizPendingInclude_${classId}_${sid}"
+                          onchange="toggleWizPendingInclude(${classId}, ${sid}, this.checked)">`
+                : (s.is_compulsory ? '<span class="wiz-compulsory-badge">COMP</span>' : '');
+
+            html += `<div class="${rowClasses}" data-class-id="${classId}" data-subject-id="${sid}">
+                <div>${leadCell}</div>
                 <div>
-                    <div class="wiz-subj-name">${escapeHtml(s.subject_name)}</div>
+                    <div class="wiz-subj-name">${escapeHtml(s.subject_name)}${isPending ? '<span class="pa-pending-badge">Not yet assigned</span>' : ''}</div>
                     <div class="wiz-subj-teacher">${escapeHtml(s.teacher_name)}</div>
                     ${roomHint}
                 </div>
@@ -4285,14 +4325,14 @@ function renderWizardSubjectsPanel(classes, levels) {
                     <input type="number" class="form-control form-control-sm wiz-subj-num"
                            min="1" max="20"
                            id="wizPpw_${classId}_${sid}"
-                           value="${s.periods_per_week}">
+                           value="${s.periods_per_week}" ${isPending ? 'disabled' : ''}>
                     <small class="text-muted">periods/week</small>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox"
                            id="wizDouble_${classId}_${sid}"
                            ${s.allow_double_period ? 'checked' : ''}
-                           onchange="toggleWizDouble(${classId}, ${sid}, this.checked)">
+                           onchange="toggleWizDouble(${classId}, ${sid}, this.checked)" ${isPending ? 'disabled' : ''}>
                     <label class="form-check-label" for="wizDouble_${classId}_${sid}" style="font-size:11px;">Doubles</label>
                 </div>
                 <div>
@@ -4300,13 +4340,13 @@ function renderWizardSubjectsPanel(classes, levels) {
                            min="0" max="5"
                            id="wizMaxDouble_${classId}_${sid}"
                            value="${s.max_double_periods_per_week}"
-                           ${s.allow_double_period ? '' : 'disabled'}>
+                           ${s.allow_double_period && !isPending ? '' : 'disabled'}>
                     <small class="text-muted">max</small>
                 </div>
                 <div>
                     <select class="form-select form-select-sm wiz-priority-select"
                             id="wizPrio_${classId}_${sid}"
-                            onchange="onWizPriorityChange(${classId}, ${sid}, this.value)">
+                            onchange="onWizPriorityChange(${classId}, ${sid}, this.value)" ${isPending ? 'disabled' : ''}>
                         <option value="">Use Priority: Off</option>
                         ${priorityOptions}
                     </select>
@@ -4350,6 +4390,21 @@ function toggleWizClassCard(key) {
 function toggleWizDouble(classId, subjectId, checked) {
     const el = document.getElementById(`wizMaxDouble_${classId}_${subjectId}`);
     if (el) el.disabled = !checked;
+}
+
+// A "pending" row (a subject-teacher pairing with no `subjectclass` link
+// to this class yet) stays disabled until the admin opts it in here --
+// this never creates or touches a `subjectclass` row, it only controls
+// whether this row is generated for.
+function toggleWizPendingInclude(classId, subjectId, checked) {
+    const ppwEl  = document.getElementById(`wizPpw_${classId}_${subjectId}`);
+    const dblEl  = document.getElementById(`wizDouble_${classId}_${subjectId}`);
+    const maxEl  = document.getElementById(`wizMaxDouble_${classId}_${subjectId}`);
+    const prioEl = document.getElementById(`wizPrio_${classId}_${subjectId}`);
+    if (ppwEl)  ppwEl.disabled  = !checked;
+    if (dblEl)  dblEl.disabled  = !checked;
+    if (maxEl)  maxEl.disabled  = !checked || !dblEl?.checked;
+    if (prioEl) prioEl.disabled = !checked;
 }
 
 function onWizPriorityChange(classId, subjectId, value) {
@@ -4450,6 +4505,7 @@ async function loadPeriodAllocationGrid() {
         const params = new URLSearchParams({ session_id: sessionId });
         if (termId) params.set('term_id', termId);
         classIds.forEach(id => params.append('schoolclass_ids[]', id));
+        if (document.getElementById('paIncludeUnassigned')?.checked) params.set('include_unassigned', '1');
 
         const res  = await fetch(`${ROUTES.periodAllocationGrid}?${params.toString()}`, {
             headers: { 'Accept': 'application/json' },
@@ -4471,6 +4527,52 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
         panel.innerHTML = '<div class="text-center py-4 text-muted"><i class="ri-information-line ri-2x d-block mb-2 opacity-30"></i>No subjects assigned to any class in this scope.</div>';
         return;
     }
+
+    // One subject row. Pending rows (not yet linked to this class via
+    // Subject-Class assignment) start disabled — the admin opts each one
+    // in per class with the "Include" checkbox — unless a saved set being
+    // loaded for edit already included it (overlay match), in which case
+    // it opens pre-checked with its saved values.
+    const renderPaSubjRow = (classId, s, isPending) => {
+        const sid = s.subject_id;
+        const ov  = overlay ? overlay[`${classId}:${sid}`] : null;
+        const ppw = ov ? ov.periods_per_week : 2;
+        const dbl = ov ? !!ov.allow_double_period : false;
+        const max = ov ? ov.max_double_periods_per_week : 1;
+        const included = !isPending || !!ov;
+
+        const noTeacher = !s.teacher_id;
+        const rowClass  = isPending ? 'pa-subj-row pa-subj-row-pending' : 'pa-subj-row';
+        const leadCell  = isPending
+            ? `<input type="checkbox" class="form-check-input pa-pending-include" id="paPendingInclude_${classId}_${sid}"
+                      ${included ? 'checked' : ''}
+                      onchange="togglePaPendingInclude(${classId}, ${sid}, this.checked)">`
+            : '';
+
+        return `<div class="${rowClass}" data-class-id="${classId}" data-subject-id="${sid}">
+                <div>
+                    ${leadCell}<span class="pa-subj-name">${escapeHtml(s.subject_name)}</span>${isPending ? '<span class="pa-pending-badge">Not yet assigned</span>' : ''}
+                    <div class="pa-subj-teacher${noTeacher ? ' text-danger' : ''}">${noTeacher ? 'No teacher assigned yet' : escapeHtml(s.teacher_name)}</div>
+                </div>
+                <div>
+                    <input type="number" class="form-control form-control-sm pa-subj-num"
+                           min="1" max="20" id="paPpw_${classId}_${sid}" value="${ppw}"
+                           oninput="updatePaClassSummary(${classId})" ${included ? '' : 'disabled'}>
+                    <small class="text-muted">periods/wk</small>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="paDouble_${classId}_${sid}"
+                           ${dbl ? 'checked' : ''} onchange="togglePaDouble(${classId}, ${sid}, this.checked)" ${included ? '' : 'disabled'}>
+                    <label class="form-check-label" for="paDouble_${classId}_${sid}" style="font-size:11px;">Doubles</label>
+                </div>
+                <div>
+                    <input type="number" class="form-control form-control-sm pa-subj-num"
+                           min="0" max="5" id="paMaxDouble_${classId}_${sid}" value="${max}"
+                           ${dbl && included ? '' : 'disabled'}>
+                    <small class="text-muted">max</small>
+                </div>
+            </div>`;
+    };
 
     let html = '';
     classes.forEach(cls => {
@@ -4497,38 +4599,13 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
             </div>
             <div class="wiz-class-body" id="paClassBody_${classId}" style="display:none">`;
 
-        cls.subjects.forEach(s => {
-            const sid = s.subject_id;
-            const ov  = overlay ? overlay[`${classId}:${sid}`] : null;
-            const ppw = ov ? ov.periods_per_week : 2;
-            const dbl = ov ? !!ov.allow_double_period : false;
-            const max = ov ? ov.max_double_periods_per_week : 1;
+        cls.subjects.forEach(s => { html += renderPaSubjRow(classId, s, false); });
 
-            const noTeacher = !s.teacher_id;
-            html += `<div class="pa-subj-row" data-class-id="${classId}" data-subject-id="${sid}">
-                <div>
-                    <div class="pa-subj-name">${escapeHtml(s.subject_name)}</div>
-                    <div class="pa-subj-teacher${noTeacher ? ' text-danger' : ''}">${noTeacher ? 'No teacher assigned yet' : escapeHtml(s.teacher_name)}</div>
-                </div>
-                <div>
-                    <input type="number" class="form-control form-control-sm pa-subj-num"
-                           min="1" max="20" id="paPpw_${classId}_${sid}" value="${ppw}"
-                           oninput="updatePaClassSummary(${classId})">
-                    <small class="text-muted">periods/wk</small>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="paDouble_${classId}_${sid}"
-                           ${dbl ? 'checked' : ''} onchange="togglePaDouble(${classId}, ${sid}, this.checked)">
-                    <label class="form-check-label" for="paDouble_${classId}_${sid}" style="font-size:11px;">Doubles</label>
-                </div>
-                <div>
-                    <input type="number" class="form-control form-control-sm pa-subj-num"
-                           min="0" max="5" id="paMaxDouble_${classId}_${sid}" value="${max}"
-                           ${dbl ? '' : 'disabled'}>
-                    <small class="text-muted">max</small>
-                </div>
-            </div>`;
-        });
+        const pending = cls.pending_subjects || [];
+        if (pending.length) {
+            html += `<div class="pa-pending-divider"><i class="ri-time-line"></i>Not yet assigned to any class — tick to include for this class</div>`;
+            pending.forEach(s => { html += renderPaSubjRow(classId, s, true); });
+        }
 
         html += `</div></div>`;
     });
@@ -4555,6 +4632,20 @@ function togglePaDouble(classId, subjectId, checked) {
     if (el) el.disabled = !checked;
 }
 
+// A "pending" row (a subject-teacher pairing not yet linked to this class
+// via Subject-Class assignment) stays disabled until the admin explicitly
+// opts it in for this class. Toggling it on/off just enables/disables its
+// inputs -- it never creates or touches a `subjectclass` row.
+function togglePaPendingInclude(classId, subjectId, checked) {
+    const ppwEl = document.getElementById(`paPpw_${classId}_${subjectId}`);
+    const dblEl = document.getElementById(`paDouble_${classId}_${subjectId}`);
+    const maxEl = document.getElementById(`paMaxDouble_${classId}_${subjectId}`);
+    if (ppwEl) ppwEl.disabled = !checked;
+    if (dblEl) dblEl.disabled = !checked;
+    if (maxEl) maxEl.disabled = !checked || !dblEl?.checked;
+    updatePaClassSummary(classId);
+}
+
 // Recomputes, for one class card, how many periods/week have been entered
 // across its subjects vs. the "Total periods/wk" the user typed in for
 // that class, and updates the live badge (and the header's over-limit
@@ -4570,6 +4661,7 @@ function updatePaClassSummary(classId) {
 
     let used = 0;
     document.querySelectorAll(`input[id^="paPpw_${classId}_"]`).forEach(el => {
+        if (el.disabled) return; // a not-yet-included pending row doesn't count
         used += parseInt(el.value) || 0;
     });
 
@@ -4616,9 +4708,9 @@ function computePaClassOverages() {
         const total = parseInt(totalEl.value) || 0;
 
         let used = 0;
-        cls.subjects.forEach(s => {
+        [...cls.subjects, ...(cls.pending_subjects || [])].forEach(s => {
             const ppwEl = document.getElementById(`paPpw_${classId}_${s.subject_id}`);
-            if (ppwEl) used += parseInt(ppwEl.value) || 0;
+            if (ppwEl && !ppwEl.disabled) used += parseInt(ppwEl.value) || 0;
         });
 
         if (used > total) {
@@ -4643,9 +4735,9 @@ function scrollToPaClassCard(classId) {
 function collectPeriodAllocationRows() {
     const rows = [];
     paState.classes.forEach(cls => {
-        cls.subjects.forEach(s => {
+        [...cls.subjects, ...(cls.pending_subjects || [])].forEach(s => {
             const ppwEl = document.getElementById(`paPpw_${cls.schoolclass_id}_${s.subject_id}`);
-            if (!ppwEl) return;
+            if (!ppwEl || ppwEl.disabled) return; // not-included pending rows are left out
             rows.push({
                 schoolclass_id:               cls.schoolclass_id,
                 subject_id:                   s.subject_id,
@@ -4677,9 +4769,14 @@ async function loadPeriodAllocationSetIntoForm(setId) {
 
         // Load (or re-render, if already loaded) the grid for this set's
         // scope, then overlay its saved periods-per-week values onto it.
+        // Always request pending (not-yet-assigned) subjects too, in case
+        // this set includes any -- otherwise those rows, and their saved
+        // periods, would silently disappear while editing.
         const sessionId = data.set.session_id;
         const termId    = data.set.term_id;
-        const params = new URLSearchParams({ session_id: sessionId });
+        const includeUnassignedEl = document.getElementById('paIncludeUnassigned');
+        if (includeUnassignedEl) includeUnassignedEl.checked = true;
+        const params = new URLSearchParams({ session_id: sessionId, include_unassigned: '1' });
         if (termId) params.set('term_id', termId);
         const gridRes  = await fetch(`${ROUTES.periodAllocationGrid}?${params.toString()}`, { headers: { 'Accept': 'application/json' } });
         const gridData = await gridRes.json();
@@ -4829,10 +4926,23 @@ async function applyWizardPeriodAllocationSet() {
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'Failed to load that set.');
 
-        let applied = 0, skipped = 0;
+        let applied = 0, skipped = 0, skippedPending = 0;
         data.allocations.forEach(a => {
             const ppwEl = document.getElementById(`wizPpw_${a.schoolclass_id}_${a.subject_id}`);
-            if (!ppwEl) { skipped++; return; }
+            if (!ppwEl) {
+                skipped++;
+                if (a.is_pending) skippedPending++;
+                return;
+            }
+
+            // A pending row is disabled until opted in -- applying a saved
+            // set that planned periods for it counts as that opt-in.
+            const includeEl = document.getElementById(`wizPendingInclude_${a.schoolclass_id}_${a.subject_id}`);
+            if (includeEl) {
+                includeEl.checked = true;
+                toggleWizPendingInclude(a.schoolclass_id, a.subject_id, true);
+            }
+
             ppwEl.value = a.periods_per_week;
 
             const dblEl = document.getElementById(`wizDouble_${a.schoolclass_id}_${a.subject_id}`);
@@ -4846,10 +4956,13 @@ async function applyWizardPeriodAllocationSet() {
             applied++;
         });
 
-        const skipNote = skipped
-            ? ` ${skipped} row(s) in that set aren't in the classes currently loaded here, so they were left as-is.`
+        const pendingNote = skippedPending
+            ? ` ${skippedPending} of those aren't linked to a class yet -- turn on "Also show subjects not yet assigned to a class" above, click Load Subjects, then re-apply this set.`
             : '';
-        AppleAlert.saved(`Applied periods/week for ${applied} subject(s).${skipNote}`);
+        const skipNote = (skipped - skippedPending) > 0
+            ? ` ${skipped - skippedPending} row(s) in that set aren't in the classes currently loaded here, so they were left as-is.`
+            : '';
+        AppleAlert.saved(`Applied periods/week for ${applied} subject(s).${pendingNote}${skipNote}`);
     } catch (e) {
         AppleAlert.error('Could not apply set', e.message);
     }
@@ -5215,7 +5328,12 @@ function collectWizardAdvancedRules() {
 // ============================================================================
 function collectWizardPriorityPayload() {
     return Object.entries(wizardSubjectsState).flatMap(([classId, info]) =>
-        (info.subjects || []).map(s => {
+        (info.subjects || [])
+            .filter(s => {
+                if (!s.is_pending) return true;
+                return !!document.getElementById(`wizPendingInclude_${classId}_${s.subject_id}`)?.checked;
+            })
+            .map(s => {
             const prioEl  = document.getElementById(`wizPrio_${classId}_${s.subject_id}`);
             const usePrio = prioEl && prioEl.value !== '';
             return {

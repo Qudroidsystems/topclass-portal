@@ -1141,15 +1141,17 @@ class TimetableController extends Controller
     public function getGenerationWizardData(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'session_id'        => 'required|exists:schoolsession,id',
-            'term_id'           => 'nullable|exists:schoolterm,id',
-            'schoolclass_ids'   => 'required|array|min:1',
-            'schoolclass_ids.*' => 'exists:schoolclass,id',
+            'session_id'          => 'required|exists:schoolsession,id',
+            'term_id'             => 'nullable|exists:schoolterm,id',
+            'schoolclass_ids'     => 'required|array|min:1',
+            'schoolclass_ids.*'   => 'exists:schoolclass,id',
+            'include_unassigned'  => 'boolean',
         ]);
 
         $sessionId = (int) $validated['session_id'];
         $termId    = $validated['term_id'] ?? null;
         $classIds  = $validated['schoolclass_ids'];
+        $includeUnassigned = $validated['include_unassigned'] ?? false;
 
         $settings = TimetableSetting::where('session_id', $sessionId)
             ->when($termId, fn($q) => $q->where('term_id', $termId))
@@ -1172,6 +1174,22 @@ class TimetableController extends Controller
             ->with(['subject', 'staff', 'subjectclass'])
             ->get()
             ->groupBy(fn($st) => $st->subjectclass->schoolclassid);
+
+        // Subject-teacher pairings for this session/term with no
+        // `subjectclass` link at all yet. Shown only when the admin opts
+        // in — this is what lets a period allocation set built for a
+        // not-yet-assigned subject actually drive generation here,
+        // without ever touching `subjectclass`.
+        $pendingSubjectTeachers = collect();
+        if ($includeUnassigned) {
+            $pendingSubjectTeachers = SubjectTeacher::with(['subject', 'staff'])
+                ->where('sessionid', $sessionId)
+                ->when($termId, fn($q) => $q->where('termid', $termId))
+                ->whereDoesntHave('subjectclass')
+                ->get()
+                ->unique('subjectid')
+                ->values();
+        }
 
         $compulsory = CompulsorySubjectClass::where('sessionid', $sessionId)
             ->when($termId, fn($q) => $q->where('termid', $termId))
@@ -1214,9 +1232,11 @@ class TimetableController extends Controller
             $prioritiesBySubject  = $setting ? $setting->subjectPriorities->keyBy('subject_id') : collect();
 
             $subjectRows = [];
+            $seenSubjectIds = [];
 
             foreach (($subjectTeachers->get($classId) ?? collect()) as $st) {
                 $subjectId  = $st->subjectid;
+                $seenSubjectIds[$subjectId] = true;
                 $constraint = $constraintsBySubject->get($subjectId);
                 $priority   = $prioritiesBySubject->get($subjectId);
                 $compKey    = $classId . ':' . $subjectId;
@@ -1228,6 +1248,39 @@ class TimetableController extends Controller
                     'teacher_id'    => $st->staffid,
                     'teacher_name'  => $st->staff?->name ?? 'Unassigned',
                     'is_compulsory' => $compulsory->has($compKey),
+                    'is_pending'    => false,
+
+                    'periods_per_week'            => $constraint?->periods_per_week ?? 2,
+                    'allow_double_period'         => (bool) ($constraint?->allow_double_period ?? false),
+                    'max_double_periods_per_week' => $constraint?->max_double_periods_per_week ?? 1,
+
+                    'priority_level'       => $priority?->priority_level ?? 3,
+                    'use_priority'         => (bool) ($priority?->use_priority ?? false),
+                    'affects_ordering'     => (bool) ($priority?->affects_ordering ?? true),
+                    'affects_slot_quality' => (bool) ($priority?->affects_slot_quality ?? false),
+                    'is_protected'         => (bool) ($priority?->is_protected ?? false),
+
+                    'mapped_rooms_subject' => $roomsByClassAndSubject[$compKey] ?? [],
+                    'mapped_rooms_generic' => $roomsByClassGeneric[$classId] ?? [],
+                ];
+            }
+
+            foreach ($pendingSubjectTeachers as $st) {
+                $subjectId = $st->subjectid;
+                if (isset($seenSubjectIds[$subjectId])) continue;
+
+                $constraint = $constraintsBySubject->get($subjectId);
+                $priority   = $prioritiesBySubject->get($subjectId);
+                $compKey    = $classId . ':' . $subjectId;
+
+                $subjectRows[] = [
+                    'subject_id'    => $subjectId,
+                    'subject_name'  => $st->subject?->subject ?? 'Unknown',
+                    'subject_code'  => $st->subject?->subject_code,
+                    'teacher_id'    => $st->staffid,
+                    'teacher_name'  => $st->staff?->name ?? 'Unassigned',
+                    'is_compulsory' => $compulsory->has($compKey),
+                    'is_pending'    => true,
 
                     'periods_per_week'            => $constraint?->periods_per_week ?? 2,
                     'allow_double_period'         => (bool) ($constraint?->allow_double_period ?? false),
@@ -1480,16 +1533,18 @@ class TimetableController extends Controller
     public function getPeriodAllocationGrid(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'session_id'         => 'required|exists:schoolsession,id',
-            'term_id'            => 'nullable|exists:schoolterm,id',
-            'schoolclass_ids'    => 'nullable|array',
-            'schoolclass_ids.*'  => 'exists:schoolclass,id',
+            'session_id'          => 'required|exists:schoolsession,id',
+            'term_id'             => 'nullable|exists:schoolterm,id',
+            'schoolclass_ids'     => 'nullable|array',
+            'schoolclass_ids.*'   => 'exists:schoolclass,id',
+            'include_unassigned'  => 'boolean',
         ]);
 
         try {
             $classIds  = $validated['schoolclass_ids'] ?? null;
             $sessionId = $validated['session_id'];
             $termId    = $validated['term_id'] ?? null;
+            $includeUnassigned = $validated['include_unassigned'] ?? false;
 
             $subjectClasses = Subjectclass::with(['subject', 'subjectTeacher.staff'])
                 ->when($classIds, fn($q) => $q->whereIn('schoolclassid', $classIds))
@@ -1502,13 +1557,54 @@ class TimetableController extends Controller
                 ->get()
                 ->groupBy(fn($sc) => (int) $sc->schoolclassid);
 
-            if ($subjectClasses->isEmpty()) {
+            // Subject-teacher pairings that exist for this session/term but
+            // aren't linked to ANY class yet (no `subjectclass` row at all
+            // — this only ever reads that table, never writes it). Shown
+            // only when the admin ticks "Also show subjects not yet
+            // assigned to a class", so periods can be planned for them
+            // ahead of the formal Subject-Class assignment.
+            $pendingSubjects = collect();
+            if ($includeUnassigned) {
+                $pendingSubjects = SubjectTeacher::with(['subject', 'staff'])
+                    ->where('sessionid', $sessionId)
+                    ->when($termId, fn($q) => $q->where('termid', $termId))
+                    ->whereDoesntHave('subjectclass')
+                    ->get()
+                    ->unique('subjectid')
+                    ->map(fn($st) => [
+                        'subject_id'   => (int) $st->subjectid,
+                        'subject_name' => $st->subject?->subject ?? 'Unknown',
+                        'subject_code' => $st->subject?->subject_code,
+                        'teacher_id'   => $st->staffid,
+                        'teacher_name' => $st->staff?->name ?? 'Unassigned',
+                        'is_pending'   => true,
+                    ])
+                    ->sortBy('subject_name')
+                    ->values();
+            }
+
+            if ($subjectClasses->isEmpty() && $pendingSubjects->isEmpty()) {
+                return response()->json(['success' => true, 'classes' => []]);
+            }
+
+            // Which classes to build cards for: an explicit filter always
+            // wins; otherwise every class that already has something
+            // assigned, plus — only when pending subjects are being shown
+            // with no explicit filter — every class in the school, since a
+            // pending subject isn't tied to one yet and could apply to any
+            // of them.
+            $classIdsForMeta = $classIds
+                ?: (($includeUnassigned && $pendingSubjects->isNotEmpty())
+                    ? Schoolclass::pluck('id')->all()
+                    : $subjectClasses->keys()->all());
+
+            if (empty($classIdsForMeta)) {
                 return response()->json(['success' => true, 'classes' => []]);
             }
 
             $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
                 ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
-                ->whereIn('schoolclass.id', $subjectClasses->keys())
+                ->whereIn('schoolclass.id', $classIdsForMeta)
                 ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
                 ->get();
 
@@ -1526,14 +1622,25 @@ class TimetableController extends Controller
                         'subject_code' => $sc->subject?->subject_code,
                         'teacher_id'   => $sc->subjectTeacher?->staffid,
                         'teacher_name' => $sc->subjectTeacher?->staff?->name ?? 'Unassigned',
+                        'is_pending'   => false,
                     ])
                     ->sortBy('subject_name')
                     ->values();
 
+                $assignedSubjectIds = $subjectRows->pluck('subject_id')->all();
+
+                // Same pending list on every class card, minus any subject
+                // this class already has via a normal Subject-Class
+                // assignment (avoids a duplicate row / a DOM id clash).
+                $pendingForClass = $pendingSubjects
+                    ->reject(fn($p) => in_array($p['subject_id'], $assignedSubjectIds, true))
+                    ->values();
+
                 $classPayload[] = [
-                    'schoolclass_id' => $classId,
-                    'class_name'     => $className ?: 'Class #' . $classId,
-                    'subjects'       => $subjectRows,
+                    'schoolclass_id'   => $classId,
+                    'class_name'       => $className ?: 'Class #' . $classId,
+                    'subjects'         => $subjectRows,
+                    'pending_subjects' => $pendingForClass,
                 ];
             }
 
@@ -1601,6 +1708,28 @@ class TimetableController extends Controller
         try {
             $set = TimetablePeriodAllocationSet::with('allocations')->findOrFail($setId);
 
+            $subjectIds = $set->allocations->pluck('subject_id')->unique()->values();
+            $classIds   = $set->allocations->pluck('schoolclass_id')->unique()->values();
+
+            $subjects = Subject::whereIn('id', $subjectIds)->get()->keyBy('id');
+
+            // Which (class, subject) pairs already have a real Subject-Class
+            // assignment, and who's currently teaching each subject for
+            // this set's session/term — used only to label a row for the
+            // admin (pending vs. already assigned); never written to.
+            $linkedPairs = Subjectclass::whereIn('schoolclassid', $classIds)
+                ->whereIn('subjectid', $subjectIds)
+                ->with('subjectTeacher.staff')
+                ->get();
+            $linkedByPair = $linkedPairs->keyBy(fn($sc) => $sc->schoolclassid . ':' . $sc->subjectid);
+
+            $teachersBySubject = SubjectTeacher::with('staff')
+                ->where('sessionid', $set->session_id)
+                ->when($set->term_id, fn($q) => $q->where('termid', $set->term_id))
+                ->whereIn('subjectid', $subjectIds)
+                ->get()
+                ->groupBy('subjectid');
+
             return response()->json([
                 'success' => true,
                 'set' => [
@@ -1610,13 +1739,22 @@ class TimetableController extends Controller
                     'name'        => $set->name,
                     'description' => $set->description,
                 ],
-                'allocations' => $set->allocations->map(fn($a) => [
-                    'schoolclass_id'              => $a->schoolclass_id,
-                    'subject_id'                  => $a->subject_id,
-                    'periods_per_week'            => $a->periods_per_week,
-                    'allow_double_period'         => $a->allow_double_period,
-                    'max_double_periods_per_week' => $a->max_double_periods_per_week,
-                ])->values(),
+                'allocations' => $set->allocations->map(function ($a) use ($subjects, $linkedByPair, $teachersBySubject) {
+                    $pairKey = $a->schoolclass_id . ':' . $a->subject_id;
+                    $linked  = $linkedByPair->get($pairKey);
+                    $teacher = $linked?->subjectTeacher ?? $teachersBySubject->get($a->subject_id)?->first();
+
+                    return [
+                        'schoolclass_id'              => $a->schoolclass_id,
+                        'subject_id'                  => $a->subject_id,
+                        'periods_per_week'            => $a->periods_per_week,
+                        'allow_double_period'         => $a->allow_double_period,
+                        'max_double_periods_per_week' => $a->max_double_periods_per_week,
+                        'subject_name'                => $subjects->get($a->subject_id)?->subject ?? 'Unknown',
+                        'teacher_name'                => $teacher?->staff?->name ?? 'Unassigned',
+                        'is_pending'                  => !$linked,
+                    ];
+                })->values(),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['success' => false, 'message' => 'That period allocation set no longer exists.'], 404);
@@ -2988,6 +3126,31 @@ class TimetableController extends Controller
             ->with(['subject', 'staff'])
             ->get()
             ->groupBy('subjectid');
+
+        // A subject this timetable's constraints ask for but that has no
+        // `subjectclass` row for this class yet (planned via a period
+        // allocation set or the Generation Wizard before the formal
+        // Subject-Class assignment) still needs a teacher to schedule
+        // lessons with. Fall back to a SubjectTeacher record for the same
+        // subject/session/term that isn't linked to ANY class — read-only,
+        // never touches `subjectclass`.
+        $pendingConstraintSubjectIds = $constraints->pluck('subject_id')
+            ->diff($subjectTeachers->keys())
+            ->values();
+
+        if ($pendingConstraintSubjectIds->isNotEmpty()) {
+            $pendingSubjectTeachersForClass = SubjectTeacher::where('sessionid', $sessionId)
+                ->when($termId, fn($q) => $q->where('termid', $termId))
+                ->whereIn('subjectid', $pendingConstraintSubjectIds)
+                ->whereDoesntHave('subjectclass')
+                ->with(['subject', 'staff'])
+                ->get()
+                ->groupBy('subjectid');
+
+            foreach ($pendingSubjectTeachersForClass as $subjectId => $rows) {
+                $subjectTeachers->put($subjectId, $rows);
+            }
+        }
 
         $availableRoomIds = [];
         $strictRoomMap    = [];
