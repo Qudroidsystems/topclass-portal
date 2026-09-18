@@ -1,34 +1,39 @@
 <?php
 // database/seeders/PeriodAllocationPermissionSeeder.php
-//
-// Creates the "Manage timetable constraints" permission — the one that
-// guards the Period Allocation endpoints in TimetableController
-// (getPeriodAllocationGrid, listPeriodAllocationSets,
-// getPeriodAllocationSetDetail, savePeriodAllocationSet,
-// deletePeriodAllocationSet). It existed already via
-// TimetablePermissionTableSeeder but was never assigned to any role, so
-// this just guarantees the permission row is there and ready to be
-// assigned by hand from Roles & Permissions in the app. Idempotent — safe
-// to run more than once. No role assignment here on purpose; assign it to
-// whichever role(s) you choose from the UI.
 
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PeriodAllocationPermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        $permissionName = 'Manage timetable constraints';
+        // Period Allocation Permission
+        $periodAllocationPermissions = [
+            'Manage timetable constraints',
+        ];
 
-        Permission::firstOrCreate([
-            'name' => $permissionName,
-            'guard_name' => 'web',
-        ]);
+        // Create period allocation permission
+        foreach ($periodAllocationPermissions as $permission) {
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web'
+            ]);
+        }
 
-        $this->command->info("✓ Permission ready: {$permissionName}");
-        $this->command->info('Assign it to your role(s) from Roles & Permissions in the app.');
+        // Assign period allocation permission to admin role
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole->givePermissionTo($periodAllocationPermissions);
+
+        // Also assign to super-admin if exists
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        if ($superAdminRole->exists) {
+            $superAdminRole->givePermissionTo($periodAllocationPermissions);
+        }
+
+        $this->command->info('✅ Period allocation permissions seeded successfully.');
     }
 }

@@ -108,7 +108,7 @@ class TimetableController extends Controller
         $this->middleware('permission:Generate timetable', ['only' => ['autoGenerate', 'autoGenerateWholeSchool', 'applyGenerationTemplate', 'getTeacherAssignments', 'getGenerationWizardData', 'previewGeneration']]);
         $this->middleware('permission:View my timetable', ['only' => ['teacherView', 'exportTeacherTimetable']]);
         $this->middleware('permission:Manage timetable settings', ['only' => ['saveSettings', 'rebuildPeriodsFromAnchors', 'saveHalfDays', 'saveFreePeriods']]);
-        // $this->middleware('permission:Manage timetable constraints', ['only' => ['saveConstraints', 'getPeriodAllocationGrid', 'listPeriodAllocationSets', 'getPeriodAllocationSetDetail', 'savePeriodAllocationSet', 'deletePeriodAllocationSet']]);
+        $this->middleware('permission:Manage timetable constraints', ['only' => ['saveConstraints', 'getPeriodAllocationGrid', 'listPeriodAllocationSets', 'getPeriodAllocationSetDetail', 'savePeriodAllocationSet', 'deletePeriodAllocationSet']]);
         $this->middleware('permission:View timetable reports', ['only' => ['workloadDashboard', 'generateAnalytics']]);
         $this->middleware('permission:Export timetable', ['only' => ['export', 'exportWholeSchool', 'exportWholeSchoolWeb', 'exportMergedGrid', 'mergedGridWeb']]);
         $this->middleware('permission:Request substitute', ['only' => ['requestSubstitute']]);
