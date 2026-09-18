@@ -4576,12 +4576,19 @@ async function savePeriodAllocationSet() {
     showLoader();
     try {
         const res  = await apiFetch(ROUTES.periodAllocationSetSave, 'POST', {
-            set_id:      paState.currentSetId,
-            session_id:  sessionId,
-            term_id:     document.getElementById('paTermId').value || null,
+            set_id:           paState.currentSetId,
+            session_id:       sessionId,
+            term_id:          document.getElementById('paTermId').value || null,
             name,
-            description: document.getElementById('paSetDescription').value.trim() || null,
-            allocations,
+            description:      document.getElementById('paSetDescription').value.trim() || null,
+            // Sent as one JSON-encoded string instead of a native array of
+            // objects: a large set repeats the same field names
+            // (schoolclass_id, subject_id, ...) once per row, and some
+            // hosting WAFs (Comodo's ruleset on cPanel, in particular) flag
+            // that shape as too many / duplicate arguments and block the
+            // request with a 406 before it ever reaches Laravel. One string
+            // field sidesteps that without changing what gets saved.
+            allocations_json: JSON.stringify(allocations),
         });
         const data = await res.json();
         hideLoader();

@@ -1633,6 +1633,20 @@ class TimetableController extends Controller
      */
     public function savePeriodAllocationSet(Request $request): JsonResponse
     {
+        // 'allocations' is sent as a single JSON-encoded string
+        // (allocations_json) instead of a native JSON array of objects.
+        // A large set can have 50+ rows, each repeating the same field
+        // names (schoolclass_id, subject_id, periods_per_week, ...) — on
+        // some hosts, a WAF (Comodo's ruleset on cPanel, in particular)
+        // flags that shape as too many / duplicate arguments and blocks
+        // the request with a 406 before it ever reaches this method.
+        // Decoding it back into 'allocations' here keeps everything below
+        // — validation, the dupe check, the insert — unchanged.
+        if ($request->has('allocations_json') && !$request->has('allocations')) {
+            $decodedAllocations = json_decode((string) $request->input('allocations_json'), true);
+            $request->merge(['allocations' => is_array($decodedAllocations) ? $decodedAllocations : []]);
+        }
+
         $validated = $request->validate([
             'set_id'                               => 'nullable|exists:timetable_period_allocation_sets,id',
             'session_id'                           => 'required|exists:schoolsession,id',
