@@ -14,60 +14,18 @@
 .mg-print-btn:hover { background:rgba(255,255,255,.28); }
 
 /* ── Run metadata block (web) ── */
-.run-meta-block {
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-left: 4px solid #1565C0;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-}
-.run-meta-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-.run-meta-name {
-    font-size: 14px;
-    color: #0f2342;
-}
-.run-meta-code {
-    color: #64748B;
-    margin-left: 8px;
-    font-family: monospace;
-    font-size: 12px;
-    letter-spacing: 0.5px;
-}
-.run-meta-right {
-    color: #64748B;
-    font-size: 12px;
-}
-.run-meta-desc {
-    margin-top: 6px;
-    color: #475569;
-    font-size: 13px;
-    line-height: 1.4;
-}
-.run-rules-block {
-    background: #FFFBEB;
-    border: 1px solid #FDE68A;
-    border-radius: 10px;
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    font-size: 12.5px;
-    color: #92400E;
-}
-.run-rule-item {
-    display: inline-block;
-    margin-left: 10px;
-    margin-right: 2px;
-    white-space: nowrap;
-}
+.run-meta-block { background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #1565C0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+.run-meta-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.run-meta-name { font-size: 14px; color: #0f2342; }
+.run-meta-code { color: #64748B; margin-left: 8px; font-family: monospace; font-size: 12px; letter-spacing: 0.5px; }
+.run-meta-right { color: #64748B; font-size: 12px; }
+.run-meta-desc { margin-top: 6px; color: #475569; font-size: 13px; line-height: 1.4; }
+.run-rules-block { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; font-size: 12.5px; color: #92400E; }
+.run-rule-item { display: inline-block; margin-left: 10px; margin-right: 2px; white-space: nowrap; }
 
 .mg-legend { display:flex; flex-wrap:wrap; gap:6px; background:#fff; border:1px solid var(--mg-border); border-radius:10px; padding:12px 16px; margin-bottom:18px; }
 .mg-legend-chip { border-radius:14px; padding:4px 12px; font-size:11px; font-weight:700; color:#fff; cursor:pointer; }
+.mg-legend-chip.dimmed { opacity:.25; }
 
 .mg-filter { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
 .mg-filter select { border:1.5px solid var(--mg-border); border-radius:10px; padding:8px 12px; font-size:13px; min-width:200px; }
@@ -79,7 +37,6 @@
 .mg-staff-summary .mini { background:#F8FAFC; border:1px solid var(--mg-border); border-radius:10px; padding:10px 12px; }
 .mg-staff-summary .mini .v { font-size:20px; font-weight:700; color:var(--mg-navy); }
 .mg-staff-summary .mini .l { font-size:10.5px; color:#94a3b8; text-transform:uppercase; margin-top:2px; }
-
 #mgStaffDetail { display:none; }
 #mgStaffDetail.active { display:block; }
 .mg-freq-list { display:flex; flex-direction:column; gap:6px; }
@@ -96,7 +53,6 @@
 .mg-daily-chip .n { font-size:15px; font-weight:700; color:var(--mg-navy); }
 .mg-daily-chip.busiest { background:#FFFBEB; border-color:#fbbf24; }
 .mg-conflict-banner { background:#FEF2F2; border:1px solid #fecaca; color:#b91c1c; border-radius:10px; padding:8px 14px; font-size:12.5px; font-weight:600; margin-top:10px; }
-
 .mg-board { width:100%; border-collapse:collapse; font-size:12.5px; }
 .mg-board th { text-align:left; padding:8px 10px; font-size:10.5px; text-transform:uppercase; color:#94a3b8; border-bottom:2px solid var(--mg-border); }
 .mg-board td { padding:8px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
@@ -104,7 +60,6 @@
 .mg-board tr.mg-board-row:hover { background:#F8FAFC; }
 .mg-board tr.mg-board-selected { background:#EFF6FF; }
 .mg-board .conflict-cell { color:#dc2626; font-weight:700; }
-
 .mg-card { background:#fff; border:1px solid var(--mg-border); border-radius:var(--mg-radius); box-shadow:var(--mg-shadow); overflow:hidden; }
 table.mg-grid { width:100%; border-collapse:collapse; font-size:12px; }
 table.mg-grid th { background:#0f2342; color:#fff; padding:10px 6px; text-align:center; font-size:11px; text-transform:uppercase; }
@@ -116,7 +71,6 @@ table.mg-grid.is-vertical td.period-col { white-space: nowrap; min-width: 90px; 
 .mg-break { background:#FFFBEB; color:#d97706; font-weight:700; font-size:11px; text-align:center; }
 .mg-free  { color:#cbd5e1; font-size:11px; text-align:center; }
 .mg-na    { color:#e2e8f0; text-align:center; }
-
 .mg-chip { border-radius:6px; padding:4px 8px; margin-bottom:4px; font-size:11px; line-height:1.3; transition:transform .15s ease, box-shadow .15s ease; border-left:3px solid transparent; }
 .mg-chip:hover { transform:translateX(2px); }
 .mg-chip .cls { font-weight:700; }
@@ -125,7 +79,6 @@ table.mg-grid.is-vertical td.period-col { white-space: nowrap; min-width: 90px; 
 .mg-chip.dimmed { opacity:.15; }
 .mg-chip.mg-conflict-chip { box-shadow: inset 0 0 0 1px #fecaca; }
 .mg-chip.mg-staff-highlight { box-shadow: 0 0 0 2px #dc2626 inset; }
-
 @media print {
     .no-print { display:none !important; }
     .mg-card { box-shadow:none; }
@@ -143,7 +96,6 @@ table.mg-grid.is-vertical td.period-col { white-space: nowrap; min-width: 90px; 
     <button class="mg-print-btn no-print" onclick="window.print()"><i class="ri-printer-line me-1"></i>Print / Save PDF</button>
 </div>
 
-{{-- Run metadata block — only present when exporting a saved generation run. --}}
 @if(!empty($runMeta))
 <div class="run-meta-block">
     <div class="run-meta-header">
@@ -162,7 +114,6 @@ table.mg-grid.is-vertical td.period-col { white-space: nowrap; min-width: 90px; 
 </div>
 @endif
 
-{{-- Advanced-rules appendix — only when the caller requested it. --}}
 @if(!empty($runRules))
 <div class="run-rules-block">
     <strong>Generation rules used:</strong>
@@ -364,6 +315,9 @@ window.STAFF_ANALYTICS = @json(collect($staffAnalytics['staff'] ?? [])->keyBy('i
 function mgFilterClass(cls) {
     document.getElementById('mgClassFilter').value = cls;
     document.querySelectorAll('.mg-chip').forEach(chip => {
+        chip.classList.toggle('dimmed', !!cls && chip.dataset.cls !== cls);
+    });
+    document.querySelectorAll('.mg-legend-chip').forEach(chip => {
         chip.classList.toggle('dimmed', !!cls && chip.dataset.cls !== cls);
     });
 }
