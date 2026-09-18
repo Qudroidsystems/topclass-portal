@@ -94,6 +94,9 @@ td.ttw-dimmed { opacity:.25; }
 .run-meta-code { color:#64748B; margin-left:8px; font-family:monospace; font-size:12px; letter-spacing:.5px; }
 .run-meta-right { color:#64748B; font-size:12px; }
 .run-meta-desc { margin-top:6px; color:#475569; font-size:13px; line-height:1.4; }
+.entry.double-start { border-left-width:4px; }
+.entry.double-continue { opacity:.88; border-top:2px dashed #0d9488; margin-top:-1px; }
+.double-icon { font-size:10px; color:#0d9488; margin-right:3px; vertical-align:middle; }
 
 @media print {
     .no-print { display:none !important; }
@@ -250,10 +253,19 @@ td.ttw-dimmed { opacity:.25; }
                                 <td></td>
                             @else
                                 <td>
-                                    @foreach($cell['entries'] as $e)
-                                        <div class="entry {{ !empty($e['is_conflict']) ? 'conflict' : '' }}"
-                                             style="border-left-color: {{ $e['color'] ?? '#999' }};"
-                                             data-teacher-id="{{ $e['teacher_id'] ?? '' }}">
+                                    
+                                        @foreach($cell['entries'] as $e)
+                                        <div class="entry
+                                                    {{ !empty($e['is_conflict']) ? 'conflict' : '' }}
+                                                    {{ ($e['double_role'] ?? null) === 'start'    ? 'double-start'    : '' }}
+                                                    {{ ($e['double_role'] ?? null) === 'continue' ? 'double-continue' : '' }}"
+                                            style="border-left-color: {{ $e['color'] ?? '#999' }};"
+                                            data-teacher-id="{{ $e['teacher_id'] ?? '' }}">
+                                            @if(($e['double_role'] ?? null) === 'start')
+                                                <span class="double-icon" title="Double period">🔗</span>
+                                            @elseif(($e['double_role'] ?? null) === 'continue')
+                                                <span class="double-icon" title="Continued double period">↳</span>
+                                            @endif
                                             <span class="cls">{{ $e['class'] }}</span>
                                             <span class="subj">{{ $e['subject'] }}</span>
                                             <span class="meta">{{ trim(($e['teacher'] ?? '') . ($e['room'] ? ' · ' . $e['room'] : '')) }}</span>

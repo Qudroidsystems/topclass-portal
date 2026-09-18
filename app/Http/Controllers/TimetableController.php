@@ -2833,6 +2833,36 @@ class TimetableController extends Controller
                 if (isset($placed[$key])) continue;
                 if ($maxPerDay && ($lessonsPlacedByDay[$day] ?? 0) >= $maxPerDay) continue;
 
+                // =================================================================
+                // GUARD: re-validate the same-day / adjacency rule against the
+                // LIVE state of $subjectDayPeriods at placement time. $candidates
+                // was built in a single pass, before any of this subject's
+                // periods were actually placed — so several non-adjacent
+                // same-day slots (e.g. Period 1, Period 4, Period 8) could all
+                // pass the check simultaneously during candidate-building and
+                // then get placed back-to-back here, producing a subject/
+                // teacher that appears more than once on the same day in
+                // unrelated periods instead of as a genuine, adjacent double
+                // period.
+                // =================================================================
+                $existingTodayNow = $subjectDayPeriods[$subjectId][$day] ?? [];
+                if (!empty($existingTodayNow)) {
+                    if (!$rules['join_double_periods']) {
+                        continue;
+                    }
+                    $adjacentOkNow = false;
+                    foreach ($existingTodayNow as $existingPeriodId) {
+                        $next = $this->getNextLessonPeriod($lessonPeriods, $existingPeriodId);
+                        $prev = $this->getPreviousLessonPeriod($lessonPeriods, $existingPeriodId);
+                        if (($next && $next->id === $periodId) || ($prev && $prev->id === $periodId)) {
+                            $adjacentOkNow = true;
+                            break;
+                        }
+                    }
+                    if (!$adjacentOkNow) continue;
+                }
+                // =================================================================
+
                 $roomPick = $this->pickRoomForLesson(
                     $includeRooms, $strictRoomMap, $availableRoomIds, $subjectId,
                     $day, $timeSig, $roomOccupied
@@ -3020,7 +3050,8 @@ class TimetableController extends Controller
                     $constraints, $priorities, $rules,
                     $slotPool, $forcedFreeKeys,
                     $teacherDaySlot, $crossOccupied, $roomOccupied,
-                    $strictRoomMap, $availableRoomIds, $includeRooms
+                    $strictRoomMap, $availableRoomIds, $includeRooms,
+                    $subjectDayPeriods, $lessonPeriods
                 );
                 $unp['placed'] += $evicted;
             }
@@ -3043,6 +3074,13 @@ class TimetableController extends Controller
         ];
     }
 
+    /**
+     * Attempt to place a protected, still-unplaced subject by evicting a
+     * lower-priority occupant from a slot. Guards the same-day / adjacency
+     * rule against the live state of $subjectDayPeriods (shared with the
+     * main placement loop) so eviction can't scatter a protected subject
+     * into a second, non-adjacent slot on a day it's already teaching.
+     */
     private function tryEvictForProtected(
         TimetableSetting $setting,
         int $protectedSubjectId,
@@ -3058,7 +3096,9 @@ class TimetableController extends Controller
         array &$roomOccupied,
         array $strictRoomMap,
         array $availableRoomIds,
-        bool $includeRooms
+        bool $includeRooms,
+        array &$subjectDayPeriods,
+        $lessonPeriods
     ): int {
         $needed = ($unplaced['needed'] ?? 0) - ($unplaced['placed'] ?? 0);
         if ($needed <= 0) return 0;
@@ -3080,6 +3120,32 @@ class TimetableController extends Controller
             $key = $day . '_' . $periodId;
 
             if (isset($forcedFreeKeys[$key])) continue;
+
+            // =====================================================================
+            // GUARD: don't place a second, non-adjacent occurrence of the
+            // protected subject on a day it's already teaching. Mirrors the
+            // same-day/adjacency check used in the main placement loop —
+            // without it, eviction could scatter a protected subject across
+            // multiple periods on one day (e.g. Period 1 and Period 6)
+            // instead of only ever doubling into an adjacent period.
+            // =====================================================================
+            $existingToday = $subjectDayPeriods[$protectedSubjectId][$day] ?? [];
+            if (!empty($existingToday)) {
+                if (!$rules['join_double_periods']) {
+                    continue;
+                }
+                $adjacentOk = false;
+                foreach ($existingToday as $existingPeriodId) {
+                    $next = $this->getNextLessonPeriod($lessonPeriods, $existingPeriodId);
+                    $prev = $this->getPreviousLessonPeriod($lessonPeriods, $existingPeriodId);
+                    if (($next && $next->id === $periodId) || ($prev && $prev->id === $periodId)) {
+                        $adjacentOk = true;
+                        break;
+                    }
+                }
+                if (!$adjacentOk) continue;
+            }
+            // =====================================================================
 
             $occupant = TimetableSlot::where('setting_id', $setting->id)
                 ->where('period_id', $periodId)
@@ -3132,6 +3198,11 @@ class TimetableController extends Controller
                     'is_free' => false,
                 ]
             );
+
+            // Record this placement so later iterations in this same
+            // eviction pass (and any later evictions for this subject)
+            // see it too.
+            $subjectDayPeriods[$protectedSubjectId][$day][] = $periodId;
 
             if ($teacherId) {
                 $teacherDaySlot[$teacherId][$day][] = $periodId;
@@ -4099,6 +4170,7 @@ class TimetableController extends Controller
                     'teacher_id' => $slot->teacher_id,
                     'room'       => $slot->room?->room_name,
                     'is_free'    => $slot->is_free ?? !$slot->subject_id,
+                    'is_double'  => $slot->is_double,
                 ];
             }
 
@@ -4157,6 +4229,7 @@ class TimetableController extends Controller
                         'room'        => $slotInfo['room'] ?? '',
                         'color'       => $classColors[$className],
                         'is_conflict' => false,
+                        'is_double'   => $slotInfo['is_double'] ?? false,
                     ];
                 }
 
@@ -4180,6 +4253,8 @@ class TimetableController extends Controller
             $mergedRows[] = ['label' => $label, 'time' => $info['start'] . ' – ' . $info['end'], 'days' => $rowEntries];
         }
 
+        $this->markDoublePeriodEntries($mergedRows, $allDaysUnion);
+
         return [
             'rows'           => $mergedRows,
             'days'           => $allDaysUnion,
@@ -4192,6 +4267,45 @@ class TimetableController extends Controller
             'dayColors'      => self::DAY_COLORS,
             'staffAnalytics' => $this->buildStaffAnalytics((int) $sessionId, $termId ? (int) $termId : null),
         ];
+    }
+
+    /**
+     * For the overlay ("days as rows") merged grid, mark each entry that is
+     * part of a double period as either the first half ('start') or second
+     * half ('continue'), by matching it against the same class/subject/
+     * teacher/room in the immediately following period row, same day.
+     * A td in this layout can stack several classes' entries at once, so
+     * this marks individual entries rather than merging whole table cells.
+     */
+    private function markDoublePeriodEntries(array &$rows, array $days): void
+    {
+        $rowCount = count($rows);
+        for ($i = 0; $i < $rowCount - 1; $i++) {
+            foreach ($days as $day) {
+                $currentEntries = $rows[$i]['days'][$day]['entries'] ?? [];
+                $nextEntries    = $rows[$i + 1]['days'][$day]['entries'] ?? [];
+                if (empty($currentEntries) || empty($nextEntries)) continue;
+
+                foreach ($currentEntries as $ci => $curEntry) {
+                    if (empty($curEntry['is_double']) || !empty($curEntry['double_role'])) continue;
+
+                    foreach ($nextEntries as $ni => $nextEntry) {
+                        if (empty($nextEntry['is_double']) || !empty($nextEntry['double_role'])) continue;
+
+                        $matches = $curEntry['class'] === $nextEntry['class']
+                            && $curEntry['subject'] === $nextEntry['subject']
+                            && ($curEntry['teacher_id'] ?? null) === ($nextEntry['teacher_id'] ?? null)
+                            && $curEntry['room'] === $nextEntry['room'];
+
+                        if ($matches) {
+                            $rows[$i]['days'][$day]['entries'][$ci]['double_role']     = 'start';
+                            $rows[$i + 1]['days'][$day]['entries'][$ni]['double_role'] = 'continue';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // =========================================================================
@@ -4249,7 +4363,6 @@ class TimetableController extends Controller
                     'teacher_id' => $slot->teacher_id,
                     'room'       => $slot->room?->room_name,
                     'is_free'    => $slot->is_free ?? !$slot->subject_id,
-                    'is_double'  => $slot->is_double,
                 ];
             }
 
@@ -6198,6 +6311,7 @@ class TimetableController extends Controller
                     'teacher_id' => $slot['teacher_id'],
                     'room'       => $slot['room_id']    ? (Room::find($slot['room_id'])?->room_name)   : null,
                     'is_free'    => $slot['is_free'] ?? false,
+                    'is_double'  => $slot['is_double'] ?? false,
                 ];
             }
 
@@ -6260,6 +6374,7 @@ class TimetableController extends Controller
                         'room'        => $slotInfo['room'] ?? '',
                         'color'       => $classColors[$className],
                         'is_conflict' => false,
+                        'is_double'   => $slotInfo['is_double'] ?? false,
                     ];
                 }
 
@@ -6272,6 +6387,8 @@ class TimetableController extends Controller
 
             $mergedRows[] = ['label' => $label, 'time' => $info['start'] . ' – ' . $info['end'], 'days' => $rowEntries];
         }
+
+        $this->markDoublePeriodEntries($mergedRows, $allDaysUnion);
 
         return [
             'rows'           => $mergedRows,
