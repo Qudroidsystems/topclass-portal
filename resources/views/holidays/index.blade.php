@@ -94,6 +94,8 @@
 }
 </style>
 
+<div class="main-content">
+<div class="page-content">
 <div class="container-fluid">
 
     <div class="hol-hero">
@@ -254,6 +256,8 @@
         </div>
         @endif
     </div>
+</div>
+</div>
 </div>
 
 <!-- Add Holiday Modal -->
