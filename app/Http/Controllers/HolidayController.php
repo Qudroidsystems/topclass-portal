@@ -23,14 +23,41 @@ class HolidayController extends Controller
         $this->middleware('permission:Delete holidays', ['only' => ['destroy']]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $pagetitle = 'Holiday Management';
-        $holidays = Holiday::orderBy('start_date', 'desc')->paginate(15);
-        $upcomingHolidays = Holiday::where('start_date', '>=', now())->orderBy('start_date')->take(5)->get();
+
+        $query = Holiday::with(['session', 'term'])->orderBy('date', 'desc');
+
+        if ($search = trim((string) $request->query('search'))) {
+            $query->where('title', 'like', '%' . $search . '%');
+        }
+
+        if (in_array($request->query('type'), ['full', 'half'], true)) {
+            $query->where('is_full_day', $request->query('type') === 'full');
+        }
+
+        if ($sessionId = $request->query('session_id')) {
+            $query->where('session_id', $sessionId);
+        }
+
+        $holidays = $query->paginate(15)->appends($request->query());
+
+        $upcomingHolidays = Holiday::where('date', '>=', now()->toDateString())
+            ->orderBy('date')
+            ->take(5)
+            ->get();
+
         $sessions = Schoolsession::orderByDesc('id')->get();
 
-        return view('holidays.index', compact('pagetitle', 'holidays', 'upcomingHolidays', 'sessions'));
+        $stats = [
+            'total'    => Holiday::count(),
+            'upcoming' => Holiday::where('date', '>=', now()->toDateString())->count(),
+            'full_day' => Holiday::where('is_full_day', true)->count(),
+            'half_day' => Holiday::where('is_full_day', false)->count(),
+        ];
+
+        return view('holidays.index', compact('pagetitle', 'holidays', 'upcomingHolidays', 'sessions', 'stats'));
     }
 
     /**
@@ -46,18 +73,29 @@ class HolidayController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'type' => 'required|in:public_holiday,school_holiday,exam_period,special_event',
+            'date'              => 'required|date',
+            'title'             => 'required|string|max:200',
+            'is_full_day'       => 'boolean',
+            'cutoff_time'       => 'nullable|date_format:H:i|required_if:is_full_day,false',
+            'session_id'        => 'nullable|exists:schoolsession,id',
+            'term_id'           => 'nullable|exists:schoolterm,id',
             'affects_timetable' => 'boolean',
-            'description' => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $holiday = Holiday::create($validated);
+            $isFullDay = $validated['is_full_day'] ?? true;
+
+            $holiday = Holiday::create([
+                'date'        => $validated['date'],
+                'title'       => $validated['title'],
+                'is_full_day' => $isFullDay,
+                'cutoff_time' => $isFullDay ? null : ($validated['cutoff_time'] ?? null),
+                'session_id'  => $validated['session_id'] ?? null,
+                'term_id'     => $validated['term_id'] ?? null,
+                'created_by'  => Auth::id(),
+            ]);
 
             if ($validated['affects_timetable'] ?? false) {
                 $this->createHolidayOverrides($holiday);
@@ -76,24 +114,35 @@ class HolidayController extends Controller
         $holiday = Holiday::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'type' => 'required|in:public_holiday,school_holiday,exam_period,special_event',
+            'date'              => 'required|date',
+            'title'             => 'required|string|max:200',
+            'is_full_day'       => 'boolean',
+            'cutoff_time'       => 'nullable|date_format:H:i|required_if:is_full_day,false',
+            'session_id'        => 'nullable|exists:schoolsession,id',
+            'term_id'           => 'nullable|exists:schoolterm,id',
             'affects_timetable' => 'boolean',
-            'description' => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Remove old overrides for this holiday's date range
-            TimetableOverride::where('override_date', '>=', $holiday->start_date)
-                ->where('override_date', '<=', $holiday->end_date)
-                ->where('override_type', 'holiday')
+            // Remove overrides previously generated for this holiday's OLD
+            // date/title, before either changes below.
+            TimetableOverride::where('override_type', 'holiday')
+                ->where('override_date', $holiday->date)
+                ->where('title', $holiday->title)
                 ->delete();
 
-            $holiday->update($validated);
+            $isFullDay = $validated['is_full_day'] ?? true;
+
+            $holiday->update([
+                'date'        => $validated['date'],
+                'title'       => $validated['title'],
+                'is_full_day' => $isFullDay,
+                'cutoff_time' => $isFullDay ? null : ($validated['cutoff_time'] ?? null),
+                'session_id'  => $validated['session_id'] ?? null,
+                'term_id'     => $validated['term_id'] ?? null,
+            ]);
 
             if ($validated['affects_timetable'] ?? false) {
                 $this->createHolidayOverrides($holiday);
@@ -111,9 +160,9 @@ class HolidayController extends Controller
     {
         $holiday = Holiday::findOrFail($id);
 
-        TimetableOverride::where('override_date', '>=', $holiday->start_date)
-            ->where('override_date', '<=', $holiday->end_date)
-            ->where('override_type', 'holiday')
+        TimetableOverride::where('override_type', 'holiday')
+            ->where('override_date', $holiday->date)
+            ->where('title', $holiday->title)
             ->delete();
 
         $holiday->delete();
@@ -132,42 +181,45 @@ class HolidayController extends Controller
         }
     }
 
-    private function createHolidayOverrides($holiday): void
+    /**
+     * Create/refresh a `timetable_overrides` row (holiday type) for every
+     * active TimetableSetting whose active_days include this holiday's
+     * weekday — scoped to the holiday's session/term when one is set, or
+     * every session/term when it's left as "All Sessions"/"All Terms".
+     */
+    private function createHolidayOverrides(Holiday $holiday): void
     {
-        $startDate = Carbon::parse($holiday->start_date);
-        $endDate = Carbon::parse($holiday->end_date);
-        $currentDate = $startDate->copy();
+        $date      = Carbon::parse($holiday->date);
+        $dayOfWeek = $date->format('l');
 
-        $settings = TimetableSetting::where('is_active', true)->get();
+        $settings = TimetableSetting::where('is_active', true)
+            ->when($holiday->session_id, fn($q) => $q->where('session_id', $holiday->session_id))
+            ->when($holiday->term_id, fn($q) => $q->where('term_id', $holiday->term_id))
+            ->get();
 
-        while ($currentDate <= $endDate) {
-            $dayOfWeek = $currentDate->format('l');
-
-            foreach ($settings as $setting) {
-                $activeDays = $setting->active_days ?? TimetableController::DAYS;
-                if (!in_array($dayOfWeek, $activeDays)) {
-                    $currentDate->addDay();
-                    continue;
-                }
-
-                TimetableOverride::updateOrCreate(
-                    [
-                        'setting_id' => $setting->id,
-                        'override_date' => $currentDate->toDateString(),
-                    ],
-                    [
-                        'override_type' => 'holiday',
-                        'title' => $holiday->name,
-                        'description' => $holiday->description,
-                        'cancel_all_classes' => true,
-                        'cancellation_reason' => $holiday->name,
-                        'status' => 'approved',
-                        'created_by' => Auth::id(),
-                    ]
-                );
+        foreach ($settings as $setting) {
+            $activeDays = $setting->active_days ?? TimetableController::DAYS;
+            if (!in_array($dayOfWeek, $activeDays)) {
+                continue;
             }
 
-            $currentDate->addDay();
+            TimetableOverride::updateOrCreate(
+                [
+                    'setting_id'    => $setting->id,
+                    'override_date' => $date->toDateString(),
+                ],
+                [
+                    'override_type'       => 'holiday',
+                    'title'               => $holiday->title,
+                    'description'         => $holiday->is_full_day
+                        ? null
+                        : 'Half day — classes end by ' . ($holiday->cutoff_time ? Carbon::parse($holiday->cutoff_time)->format('H:i') : 'the scheduled cut-off time'),
+                    'cancel_all_classes'  => (bool) $holiday->is_full_day,
+                    'cancellation_reason' => $holiday->title,
+                    'status'              => 'approved',
+                    'created_by'          => Auth::id(),
+                ]
+            );
         }
     }
 }
