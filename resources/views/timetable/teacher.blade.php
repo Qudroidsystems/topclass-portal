@@ -549,17 +549,7 @@
                                                         title="<div class='text-start' style='max-width:280px;'>{!! $tooltipHtml !!}</div>"
                                                     @endif
                                                 >
-                                                    @if($effectiveType === 'assembly')
-                                                        <span class="text-muted">
-                                                            <i class="ri-flag-line me-1"></i> Assembly
-                                                        </span>
-                                                    @elseif($period->is_break || $effectiveType === 'short_break' || $effectiveType === 'long_break')
-                                                        <span class="text-muted">
-                                                            <i class="ri-coffee-line me-1"></i> Break
-                                                        </span>
-                                                    @elseif(!$isApplicable)
-                                                        <span class="text-muted">—</span>
-                                                    @elseif($hasClass)
+                                                    @if($hasClass)
                                                         @foreach($classSlots as $currentSlot)
                                                             @php
                                                                 $isCombined = ($currentSlot->combined_count ?? 0) > 1;
@@ -594,6 +584,16 @@
                                                                 @endif
                                                             </div>
                                                         @endforeach
+                                                    @elseif($effectiveType === 'assembly')
+                                                        <span class="text-muted">
+                                                            <i class="ri-flag-line me-1"></i> Assembly
+                                                        </span>
+                                                    @elseif($period->is_break || $effectiveType === 'short_break' || $effectiveType === 'long_break')
+                                                        <span class="text-muted">
+                                                            <i class="ri-coffee-line me-1"></i> Break
+                                                        </span>
+                                                    @elseif(!$isApplicable)
+                                                        <span class="text-muted">—</span>
                                                     @else
                                                         <span class="text-muted free-period">
                                                             <i class="ri-subtract-line"></i>
