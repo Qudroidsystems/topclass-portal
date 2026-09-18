@@ -1466,11 +1466,12 @@ class TimetableController extends Controller
 
     /**
      * Class/subject/teacher grid for building or editing a period allocation
-     * set. Independent of any TimetableSetting — sourced from SubjectTeacher
-     * assignments for the given session/term, unioned with compulsory
-     * subjects (compulsory_subject_classes) for the same classes so a
-     * compulsory subject that has no teacher assigned yet still shows up
-     * for allocation instead of silently disappearing.
+     * set. Loads every subject-class assignment straight from the
+     * subjectclass table for the requested classes — the same source the
+     * Subject Class management screens use — instead of filtering through
+     * SubjectTeacher's own session/term columns, which silently dropped
+     * subjects whenever their teacher assignment didn't exactly match the
+     * session/term picked here. Compulsory-subject data is not used.
      */
     public function getPeriodAllocationGrid(Request $request): JsonResponse
     {
@@ -1481,94 +1482,40 @@ class TimetableController extends Controller
             'schoolclass_ids.*'  => 'exists:schoolclass,id',
         ]);
 
-        $sessionId = (int) $validated['session_id'];
-        $termId    = $validated['term_id'] ?? null;
-        $classIds  = $validated['schoolclass_ids'] ?? null;
+        $classIds = $validated['schoolclass_ids'] ?? null;
 
-        $subjectTeachers = SubjectTeacher::where('sessionid', $sessionId)
-            ->when($termId, fn($q) => $q->where('termid', $termId))
-            ->when($classIds, fn($q) => $q->whereHas('subjectclass', fn($q2) => $q2->whereIn('schoolclassid', $classIds)))
-            ->with(['subject', 'staff', 'subjectclass'])
+        $subjectClasses = Subjectclass::with(['subject', 'subjectTeacher.staff'])
+            ->when($classIds, fn($q) => $q->whereIn('schoolclassid', $classIds))
             ->get()
-            ->filter(fn($st) => $st->subjectclass)
-            ->groupBy(fn($st) => (int) $st->subjectclass->schoolclassid);
+            ->groupBy(fn($sc) => (int) $sc->schoolclassid);
 
-        // Compulsory subjects are assigned to a class independent of any
-        // teacher, so they live in their own table and must be unioned in
-        // here explicitly — otherwise a compulsory subject with no teacher
-        // assigned yet never appears in this grid at all. A null termid on
-        // a compulsory row means "applies to every term" (mirrors
-        // TimetablePeriodLimit/TimetablePeriodAllocationSet's scopeForScope).
-        $compulsoryQuery = CompulsorySubjectClass::where('sessionid', $sessionId)
-            ->where(function ($q) use ($termId) {
-                $q->whereNull('termid');
-                if ($termId) {
-                    $q->orWhere('termid', $termId);
-                }
-            })
-            ->with('subject');
-        if ($classIds) {
-            $compulsoryQuery->whereIn('schoolclassid', $classIds);
-        }
-        $compulsory = $compulsoryQuery->get();
-
-        $compulsoryByClass = $compulsory->groupBy(fn($c) => (int) $c->schoolclassid);
-        $compulsorySet     = $compulsory->map(fn($c) => ((int) $c->schoolclassid) . ':' . ((int) $c->subjectId))->flip();
-
-        $allClassIds = $subjectTeachers->keys()->merge($compulsoryByClass->keys())->unique()->values();
-
-        if ($allClassIds->isEmpty()) {
+        if ($subjectClasses->isEmpty()) {
             return response()->json(['success' => true, 'classes' => []]);
         }
 
         $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
-            ->whereIn('schoolclass.id', $allClassIds)
+            ->whereIn('schoolclass.id', $subjectClasses->keys())
             ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
             ->get();
 
         $classPayload = [];
         foreach ($classes as $classMeta) {
-            $classId    = $classMeta->id;
-            $stForClass = $subjectTeachers->get($classId) ?? collect();
+            $classId      = $classMeta->id;
+            $rowsForClass = $subjectClasses->get($classId) ?? collect();
 
             $className = trim(($classMeta->schoolclass ?? '') . ' ' . ($classMeta->arm_name ?? ''));
 
-            $subjectRows = $stForClass->unique('subjectid')
-                ->map(fn($st) => [
-                    'subject_id'    => (int) $st->subjectid,
-                    'subject_name'  => $st->subject?->subject ?? 'Unknown',
-                    'subject_code'  => $st->subject?->subject_code,
-                    'teacher_id'    => $st->staffid,
-                    'teacher_name'  => $st->staff?->name ?? 'Unassigned',
-                    'is_compulsory' => $compulsorySet->has($classId . ':' . ((int) $st->subjectid)),
+            $subjectRows = $rowsForClass->unique('subjectid')
+                ->map(fn($sc) => [
+                    'subject_id'   => (int) $sc->subjectid,
+                    'subject_name' => $sc->subject?->subject ?? 'Unknown',
+                    'subject_code' => $sc->subject?->subject_code,
+                    'teacher_id'   => $sc->subjectTeacher?->staffid,
+                    'teacher_name' => $sc->subjectTeacher?->staff?->name ?? 'Unassigned',
                 ])
+                ->sortBy('subject_name')
                 ->values();
-
-            // Add compulsory subjects for this class that don't already have
-            // a SubjectTeacher row, so they still show up here.
-            $seenSubjectIds = $subjectRows->pluck('subject_id')->flip();
-            foreach (($compulsoryByClass->get($classId) ?? collect()) as $c) {
-                $subjectId = (int) $c->subjectId;
-                if ($seenSubjectIds->has($subjectId)) continue;
-
-                $subjectRows->push([
-                    'subject_id'    => $subjectId,
-                    'subject_name'  => $c->subject?->subject ?? 'Unknown',
-                    'subject_code'  => $c->subject?->subject_code,
-                    'teacher_id'    => null,
-                    'teacher_name'  => 'Unassigned',
-                    'is_compulsory' => true,
-                ]);
-                $seenSubjectIds->put($subjectId, true);
-            }
-
-            $subjectRows = $subjectRows->sort(function ($a, $b) {
-                if ($a['is_compulsory'] !== $b['is_compulsory']) {
-                    return $b['is_compulsory'] <=> $a['is_compulsory'];
-                }
-                return strcmp($a['subject_name'], $b['subject_name']);
-            })->values();
 
             $classPayload[] = [
                 'schoolclass_id' => $classId,
