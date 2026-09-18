@@ -729,6 +729,22 @@ $(document).ready(function () {
         );
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // SAFETY NET — reset loading state whenever either modal closes
+    // ─────────────────────────────────────────────────────────────
+    $('#addSubjectTeacherModal').on('hidden.bs.modal', function () {
+        btnReset('#add-btn');
+        hideModalLoader('add');
+        updateAddBtn();
+    });
+    $('#editModal').on('hidden.bs.modal', function () {
+        btnReset('#update-btn');
+        hideModalLoader('edit');
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    // DATATABLE
+    // ─────────────────────────────────────────────────────────────
     var table = $('#subjectTeacherTable').DataTable({
         processing: true,
         serverSide: true,
@@ -839,6 +855,7 @@ $(document).ready(function () {
         $('#add-subject-search').val('');
         $('#add-subject-list .subject-item').show();
         hideModalLoader('add');
+        btnReset('#add-btn');
         new bootstrap.Modal(document.getElementById('addSubjectTeacherModal')).show();
     });
 
@@ -907,6 +924,11 @@ $(document).ready(function () {
 
             success: function(res) {
                 if (res.success) {
+                    // ✅ reset BEFORE hiding so next open is clean
+                    btnReset('#add-btn');
+                    hideModalLoader('add');
+                    updateAddBtn();
+
                     $('#addSubjectTeacherModal').modal('hide');
                     toast('success', 'Added!', res.message);
                     table.ajax.reload();
@@ -967,6 +989,10 @@ $(document).ready(function () {
 
             success: function(res) {
                 if (res.success) {
+                    // ✅ reset BEFORE hiding
+                    btnReset('#update-btn');
+                    hideModalLoader('edit');
+
                     $('#editModal').modal('hide');
                     toast('success', 'Updated!', res.message);
                     table.ajax.reload();

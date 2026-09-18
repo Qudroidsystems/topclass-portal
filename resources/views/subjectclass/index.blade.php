@@ -76,7 +76,7 @@
 .checkbox-scroll .form-check-label { font-size:13px; cursor:pointer; }
 .checkbox-scroll .form-check-input:checked { background-color:var(--sc-accent); border-color:var(--sc-accent); }
 
-/* NEW — filter chip group */
+/* Filter chip group */
 .filter-chip-group {
     display:flex; flex-wrap:wrap; gap:6px;
     padding:10px 12px;
@@ -157,6 +157,7 @@
 .btn-loading .btn-text { visibility:hidden; }
 .btn-loading::after { content:''; position:absolute; inset:0; margin:auto; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:sc-spin .65s linear infinite; }
 
+/* Modal loader overlay */
 .modal-body-loader { display:none; position:absolute; inset:0; background:rgba(255,255,255,.85); z-index:5; align-items:center; justify-content:center; }
 .modal-body-loader.active { display:flex; }
 .modal-body-loader .inner { text-align:center; }
@@ -260,7 +261,7 @@
                         </select>
                     </div>
 
-                    {{-- ═════════════ FILTER TOOLBAR ═════════════ --}}
+                    {{-- FILTER TOOLBAR --}}
                     <div class="mb-3">
                         <label class="form-label">Filter Subject Teachers</label>
 
@@ -312,7 +313,6 @@
                             </div>
                         </div>
 
-                        {{-- Live filter summary --}}
                         <div class="filter-summary" id="add-filter-summary" style="display:none;">
                             <i class="ri-filter-3-line"></i>
                             <span id="add-filter-summary-text">Showing all teachers</span>
@@ -322,7 +322,7 @@
                         </div>
                     </div>
 
-                    {{-- ═════════════ TEACHER LIST ═════════════ --}}
+                    {{-- TEACHER LIST --}}
                     <div class="mb-3">
                         <label class="form-label">
                             Subject Teachers <span class="text-danger">*</span>
@@ -528,10 +528,23 @@ $(document).ready(function () {
     function btnReset($b) { var o = $b.data('orig'); if (o) $b.html(o); $b.prop('disabled', false).removeClass('btn-loading'); }
     function showErr(sel, m) { $(sel).removeClass('d-none').html('<i class="ri-error-warning-line me-1"></i>' + m); }
 
-    // ═══════════════════════════════════════════════════════════
-    //  ADD MODAL — LIVE FILTER (Text + Session + Term)
-    // ═══════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────
+    // SAFETY NET — reset loading state whenever either modal closes,
+    // regardless of how it was closed (X, Esc, Cancel, backdrop, etc.)
+    // ─────────────────────────────────────────────────────────────
+    $('#addSubjectClassModal').on('hidden.bs.modal', function () {
+        btnReset($('#add-btn'));
+        $('#add-modal-loader').removeClass('active');
+        updateAddBtn();
+    });
+    $('#editModal').on('hidden.bs.modal', function () {
+        btnReset($('#update-btn'));
+        $('#edit-modal-loader').removeClass('active');
+    });
 
+    // ─────────────────────────────────────────────────────────────
+    // ADD MODAL — LIVE FILTER (Text + Session + Term)
+    // ─────────────────────────────────────────────────────────────
     function getCheckedValues(selector) {
         return $(selector).map(function () { return String(this.value); }).get();
     }
@@ -553,12 +566,10 @@ $(document).ready(function () {
 
             let show = true;
 
-            // Text search
             if (q && searchText.indexOf(q) === -1) {
                 show = false;
             }
 
-            // Session filter (by ID and by text fallback)
             if (show && sessions.length > 0) {
                 if (sessions.indexOf(itemSession) === -1) {
                     const itemSessTx = String($item.data('session-text') || '');
@@ -569,7 +580,6 @@ $(document).ready(function () {
                 }
             }
 
-            // Term filter (by ID and by text fallback)
             if (show && terms.length > 0) {
                 if (terms.indexOf(itemTerm) === -1) {
                     const itemTermTx = String($item.data('term-text') || '');
@@ -608,12 +618,10 @@ $(document).ready(function () {
         );
     }
 
-    // Bind: text search + session + term checkboxes
     $('#add-teacher-search').on('input', applyAddFilters);
     $('#add-session-filter').on('change', '.add-session-filter-cb', applyAddFilters);
     $('#add-term-filter').on('change', '.add-term-filter-cb', applyAddFilters);
 
-    // Clear filter button
     $('#add-clear-filters').on('click', function () {
         $('#add-teacher-search').val('');
         $('#add-session-filter .add-session-filter-cb').prop('checked', false);
@@ -621,10 +629,9 @@ $(document).ready(function () {
         applyAddFilters();
     });
 
-    // ═══════════════════════════════════════════════════════════
-    //  DATATABLE
-    // ═══════════════════════════════════════════════════════════
-
+    // ─────────────────────────────────────────────────────────────
+    // DATATABLE
+    // ─────────────────────────────────────────────────────────────
     var table = $('#subjectClassTable').DataTable({
         processing: true,
         serverSide: true,
@@ -707,7 +714,6 @@ $(document).ready(function () {
         if (c === 0) $('#selectAll').prop('checked', false);
     }
 
-    // Update selected-teacher counter
     $('#add-teacher-list').on('change', '.add-teacher-checkbox', function () {
         $('#add-selected-count').text($('.add-teacher-checkbox:checked').length);
         updateAddBtn();
@@ -720,7 +726,6 @@ $(document).ready(function () {
         $('#add-btn').prop('disabled', !ok);
     }
 
-    // Open ADD modal — reset everything
     $('#createSubjectClassBtn').on('click', function() {
         $('#add-schoolclassid').val('');
         $('.add-teacher-checkbox').prop('checked', false);
@@ -728,17 +733,16 @@ $(document).ready(function () {
         $('#add-btn').prop('disabled', true);
         $('#add-error-msg').addClass('d-none').html('');
 
-        // Reset filter controls
         $('#add-teacher-search').val('');
         $('#add-session-filter .add-session-filter-cb').prop('checked', false);
         $('#add-term-filter .add-term-filter-cb').prop('checked', false);
         applyAddFilters();
 
         btnReset($('#add-btn'));
+        $('#add-modal-loader').removeClass('active');
         new bootstrap.Modal(document.getElementById('addSubjectClassModal')).show();
     });
 
-    // ── EDIT modal ─────────────────────────────────────────────
     $(document).on('click', '.edit-sc-btn', function () {
         var $b = $(this);
         $('#edit-id').val($b.data('id'));
@@ -753,6 +757,7 @@ $(document).ready(function () {
         $('#edit-staff-change-warning').addClass('d-none');
         $('#edit-error-msg').addClass('d-none').html('');
         btnReset($('#update-btn'));
+        $('#edit-modal-loader').removeClass('active');
         new bootstrap.Modal(document.getElementById('editModal')).show();
     });
 
@@ -792,17 +797,26 @@ $(document).ready(function () {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             success: function(res) {
                 if (res.success) {
+                    // ✅ reset BEFORE hiding so next open is clean
+                    btnReset($('#add-btn'));
+                    $('#add-modal-loader').removeClass('active');
+                    updateAddBtn();
+
                     $('#addSubjectClassModal').modal('hide');
                     toast('success', 'Added!', res.message);
                     table.ajax.reload(null, false);
                     loadStats();
                 } else {
-                    btnReset($('#add-btn')); updateAddBtn();
+                    btnReset($('#add-btn'));
+                    $('#add-modal-loader').removeClass('active');
+                    updateAddBtn();
                     showErr('#add-error-msg', res.message || 'Failed.');
                 }
             },
             error: function(xhr) {
-                btnReset($('#add-btn')); updateAddBtn();
+                btnReset($('#add-btn'));
+                $('#add-modal-loader').removeClass('active');
+                updateAddBtn();
                 var j = xhr.responseJSON;
                 var m = (j && j.message) || (j && j.errors && Object.values(j.errors).flat().join(', ')) || 'An error occurred.';
                 showErr('#add-error-msg', m);
@@ -831,17 +845,23 @@ $(document).ready(function () {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 success: function(res) {
                     if (res.success) {
+                        // ✅ reset BEFORE hiding
+                        btnReset($('#update-btn'));
+                        $('#edit-modal-loader').removeClass('active');
+
                         $('#editModal').modal('hide');
                         toast('success', 'Updated!', res.message);
                         table.ajax.reload(null, false);
                         loadStats();
                     } else {
                         btnReset($('#update-btn'));
+                        $('#edit-modal-loader').removeClass('active');
                         showErr('#edit-error-msg', res.message || 'Failed.');
                     }
                 },
                 error: function(xhr) {
                     btnReset($('#update-btn'));
+                    $('#edit-modal-loader').removeClass('active');
                     var j = xhr.responseJSON;
                     var m = (j && j.message) || (j && j.errors && Object.values(j.errors).flat().join(', ')) || 'An error occurred.';
                     showErr('#edit-error-msg', m);
