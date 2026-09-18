@@ -656,4 +656,29 @@ const AppleAlert = (function () {
         _fireToast:  fireToast,
     };
 })();
+
+/* ------------------------------------------------------------------
+   Fix: an AppleAlert dialog opened while a Bootstrap modal is open
+   can look "stuck" — clicking OK/Delete/Cancel seems to do nothing.
+
+   Cause: Bootstrap 5's Modal enforces focus by listening for
+   `focusin` on document and yanking focus straight back into the
+   modal whenever something outside it gets focused. SweetAlert2
+   renders its popup as a sibling of the modal (appended to <body>)
+   and auto-focuses its own confirm button when it opens, so the two
+   fight over focus every time the dialog opens or a button is
+   clicked, which is what makes the dialog's buttons appear unrespon-
+   sive without actually being broken.
+
+   Fix: intercept `focusin` in the capture phase — which always runs
+   before Bootstrap's own bubble-phase listener — and stop it from
+   propagating whenever focus is moving inside a SweetAlert2 popup.
+   Bootstrap's handler never sees the event, so it stops fighting
+   SweetAlert2 for focus and the dialog's buttons work normally.
+------------------------------------------------------------------ */
+document.addEventListener('focusin', function (e) {
+    if (e.target && e.target.closest && e.target.closest('.swal2-container')) {
+        e.stopImmediatePropagation();
+    }
+}, true);
 </script>
