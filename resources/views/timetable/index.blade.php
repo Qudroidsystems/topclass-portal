@@ -2526,10 +2526,43 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 }
 
-function apiFetch(endpoint, method = 'GET', body = null) {
-    const opts = { method, headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF } };
-    if (body && method !== 'GET') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-    return fetch(endpoint, opts);
+// function apiFetch(endpoint, method = 'GET', body = null) {
+//     const opts = { method, headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF } };
+//     if (body && method !== 'GET') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+//     return fetch(endpoint, opts);
+// }
+
+async function apiFetch(endpoint, method = 'GET', body = null) {
+    const opts = {
+        method,
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': CSRF,
+        },
+    };
+    if (body && method !== 'GET') {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(endpoint, opts);
+    const ct  = res.headers.get('content-type') || '';
+
+    if (!ct.includes('application/json')) {
+        const text = await res.text();
+        console.error('[apiFetch] Non-JSON response', {
+            url:    endpoint,
+            method: method,
+            status: res.status,
+            body:   text.slice(0, 1500),
+        });
+        throw new Error(
+            `Server returned ${res.status} ${res.statusText} (not JSON). ` +
+            `Check the browser console for the raw body, and storage/logs/laravel.log.`
+        );
+    }
+    return res;
 }
 
 function showLoader() { AppleAlert.loading('Processing…'); }
