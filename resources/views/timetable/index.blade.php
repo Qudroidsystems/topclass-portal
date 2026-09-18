@@ -1506,7 +1506,7 @@
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label fw-semibold">Session <span class="text-danger">*</span></label>
-            <select class="form-select" id="wizSessionId">
+            <select class="form-select" id="wizSessionId" onchange="refreshWizardAllocationPicker()">
               <option value="">— Select —</option>
               @foreach($schoolsessions as $session)
                 <option value="{{ $session->id }}">{{ $session->session }}</option>
@@ -1515,7 +1515,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label fw-semibold">Term <span class="text-muted fw-normal">(optional)</span></label>
-            <select class="form-select" id="wizTermId">
+            <select class="form-select" id="wizTermId" onchange="refreshWizardAllocationPicker()">
               <option value="">All Terms</option>
               @foreach($schoolterms as $term)
                 <option value="{{ $term->id }}">{{ $term->term }}</option>
@@ -4018,6 +4018,10 @@ function openGenerationWizardModal() {
     if (progressEl) progressEl.style.display = 'none';
     if (previewEl)  previewEl.style.display = 'none';
     new bootstrap.Modal(document.getElementById('generationWizardModal')).show();
+    // In case a session was already picked before the modal was reopened
+    // (e.g. the select kept its value), refresh the saved-set picker right
+    // away instead of waiting for "Load Subjects" to be clicked.
+    refreshWizardAllocationPicker();
 }
 
 function toggleWizardClassPicker() {
