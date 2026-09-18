@@ -1466,12 +1466,16 @@ class TimetableController extends Controller
 
     /**
      * Class/subject/teacher grid for building or editing a period allocation
-     * set. Loads every subject-class assignment straight from the
-     * subjectclass table for the requested classes — the same source the
-     * Subject Class management screens use — instead of filtering through
-     * SubjectTeacher's own session/term columns, which silently dropped
-     * subjects whenever their teacher assignment didn't exactly match the
-     * session/term picked here. Compulsory-subject data is not used.
+     * set. Loads subject-class assignments for the requested classes,
+     * scoped to the session (required) and term (optional — omitted means
+     * "any term in this session") picked in the modal.
+     *
+     * subjectclass.termid / subjectclass.session are NOT used for this —
+     * SubjectClassController never populates them (see its store()), so
+     * they're always null in practice. The real session/term for an
+     * assignment lives on the related subjectteacher row, the same source
+     * the Subject Class management screens filter/display by, so we filter
+     * through that relationship instead.
      */
     public function getPeriodAllocationGrid(Request $request): JsonResponse
     {
@@ -1483,10 +1487,18 @@ class TimetableController extends Controller
         ]);
 
         try {
-            $classIds = $validated['schoolclass_ids'] ?? null;
+            $classIds  = $validated['schoolclass_ids'] ?? null;
+            $sessionId = $validated['session_id'];
+            $termId    = $validated['term_id'] ?? null;
 
             $subjectClasses = Subjectclass::with(['subject', 'subjectTeacher.staff'])
                 ->when($classIds, fn($q) => $q->whereIn('schoolclassid', $classIds))
+                ->whereHas('subjectTeacher', function ($q) use ($sessionId, $termId) {
+                    $q->where('sessionid', $sessionId);
+                    if ($termId) {
+                        $q->where('termid', $termId);
+                    }
+                })
                 ->get()
                 ->groupBy(fn($sc) => (int) $sc->schoolclassid);
 
