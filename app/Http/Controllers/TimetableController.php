@@ -708,47 +708,48 @@ class TimetableController extends Controller
     // =========================================================================
     // INDEX
     // =========================================================================
-  public function index()
-{
-    $pagetitle = 'Timetable Management';
+    public function index()
+    {
+        $pagetitle = 'Timetable Management';
 
-    $this->sweepExpiredPreviews();
+        $this->sweepExpiredPreviews();
 
-    $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-        ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
-        ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
+        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+            ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
 
-    $schoolsessions = Schoolsession::orderByDesc('id')->get(); // renamed from $schoolsession
-    $schoolterms    = Schoolterm::all();
+        $schoolsessions = Schoolsession::orderByDesc('id')->get();
+        $schoolterms    = Schoolterm::all();
 
-    $subjectsWithTeachers = SubjectTeacher::with(['subject', 'staff'])->get()
-        ->map(fn($st) => [
-            'subject_id'   => $st->subjectid,
-            'subject_name' => $st->subject->subject ?? 'Unknown',
-            'teacher_id'   => $st->staffid,
-            'teacher_name' => $st->staff->name ?? 'Unknown',
-        ]);
+        $subjectsWithTeachers = SubjectTeacher::with(['subject', 'staff'])->get()
+            ->map(fn($st) => [
+                'subject_id'   => $st->subjectid,
+                'subject_name' => $st->subject->subject ?? 'Unknown',
+                'teacher_id'   => $st->staffid,
+                'teacher_name' => $st->staff->name ?? 'Unknown',
+            ]);
 
-    $settings = TimetableSetting::with(['session', 'term', 'creator', 'updater'])
-        ->join('schoolclass', 'schoolclass.id', '=', 'timetable_settings.schoolclass_id')
-        ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-        ->select([
-            'timetable_settings.*',
-            'schoolclass.schoolclass as _class_name',
-            'schoolarm.arm as _arm_name',
-        ])
-        ->where('timetable_settings.is_active', true)
-        ->where('timetable_settings.is_preview', false)
-        ->orderByDesc('timetable_settings.updated_at')
-        ->get()
-        ->each(function ($s) {
-            $s->resolved_class_name = trim(($s->_class_name ?? '') . ' ' . ($s->_arm_name ?? ''));
-        });
+        $settings = TimetableSetting::with(['session', 'term', 'creator', 'updater'])
+            ->join('schoolclass', 'schoolclass.id', '=', 'timetable_settings.schoolclass_id')
+            ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select([
+                'timetable_settings.*',
+                'schoolclass.schoolclass as _class_name',
+                'schoolarm.arm as _arm_name',
+            ])
+            ->where('timetable_settings.is_active', true)
+            ->where('timetable_settings.is_preview', false)
+            ->orderByDesc('timetable_settings.updated_at')
+            ->get()
+            ->each(function ($s) {
+                $s->resolved_class_name = trim(($s->_class_name ?? '') . ' ' . ($s->_arm_name ?? ''));
+            });
 
-    return view('timetable.index', compact(
-        'pagetitle', 'schoolclasses', 'schoolsessions', 'schoolterms', 'settings', 'subjectsWithTeachers' // renamed here too
-    ));
-}
+        return view('timetable.index', compact(
+            'pagetitle', 'schoolclasses', 'schoolsessions', 'schoolterms', 'settings', 'subjectsWithTeachers'
+        ));
+    }
+
     // =========================================================================
     // EDITING PRESENCE
     // =========================================================================
@@ -2703,7 +2704,7 @@ class TimetableController extends Controller
         $teacherClassTotal = [];
         $teacherDayTotal   = [];
         $classWeekTotal    = 0;
-        $subjectDayPeriods = []; // [subjectId][day] => [period_id, ...]
+        $subjectDayPeriods = [];
 
         $requirements = $constraints
             ->shuffle()
@@ -2747,7 +2748,6 @@ class TimetableController extends Controller
                 if (isset($placed[$key])) continue;
                 if (isset($forcedFreeKeys[$key])) continue;
 
-                // ── Subject-day repeat guard ──────────────────────────────
                 $existingToday = $subjectDayPeriods[$subjectId][$day] ?? [];
                 if (!empty($existingToday)) {
                     if (!$rules['join_double_periods']) {
@@ -2764,7 +2764,6 @@ class TimetableController extends Controller
                     }
                     if (!$adjacentOk) continue;
                 }
-                // ──────────────────────────────────────────────────────────
 
                 if ($teacherId) {
                     if (in_array($periodId, $teacherDaySlot[$teacherId][$day] ?? [])) continue;
@@ -2867,7 +2866,6 @@ class TimetableController extends Controller
                 $classWeekTotal++;
                 $placedThisSubject++;
 
-                // ── Record subject-day placement + promote to double if adjacent
                 $subjectDayPeriods[$subjectId][$day][] = $periodId;
                 if (count($subjectDayPeriods[$subjectId][$day]) > 1 && $rules['join_double_periods']) {
                     TimetableSlot::where('setting_id', $setting->id)
@@ -2875,7 +2873,6 @@ class TimetableController extends Controller
                         ->whereIn('period_id', $subjectDayPeriods[$subjectId][$day])
                         ->update(['is_double' => true]);
                 }
-                // ─────────────────────────────────────────────────────────
 
                 if ($teacherId) {
                     $teacherDaySlot[$teacherId][$day][] = $periodId;
@@ -4406,7 +4403,6 @@ class TimetableController extends Controller
             ];
         }
 
-        // Union of every distinct time slot across all classes.
         $timeSlotMap = [];
         foreach ($classData as $cd) {
             foreach ($cd['periods'] as $p) {
@@ -4422,7 +4418,6 @@ class TimetableController extends Controller
         }
         uasort($timeSlotMap, fn($a, $b) => strcmp($a['start'], $b['start']));
 
-        // Build rows: one row per (class, time-slot), with class cell marked for rowspan.
         $rows = [];
         foreach ($classData as $className => $cd) {
             $rowCount = count($timeSlotMap);
@@ -4471,7 +4466,6 @@ class TimetableController extends Controller
             }
         }
 
-        // Mark first row per class for rowspan rendering.
         $seen = [];
         foreach ($rows as &$row) {
             if (!isset($seen[$row['class']])) {
@@ -4484,6 +4478,176 @@ class TimetableController extends Controller
         return [
             'rows'        => $rows,
             'days'        => self::DAYS,
+            'classList'   => $classList,
+            'classColors' => $classColors,
+            'schoolInfo'  => $schoolInfo,
+            'sessionName' => $session->session ?? 'Session',
+            'termName'    => $term?->term ?? 'All Terms',
+            'generatedAt' => now()->format('d M Y, H:i'),
+            'dayColors'   => self::DAY_COLORS,
+        ];
+    }
+
+    // =========================================================================
+    // MERGED GRID — DAYS AS ROWS, GROUPED BY CLASS  ★ NEW ★
+    // =========================================================================
+    /**
+     * Produces one row per (day, class), giving each class its own visually
+     * distinct row inside the day block. This is what you get when you want
+     * "Days as Rows" but with a Class column between Day and Period.
+     *
+     * Structure:
+     *   - $daySections: [{ day, day_color, rowspan, class_rows: [
+     *         { class, class_color, cells: [ {state:'lesson'|'break'|'free'|'na', ...} ] }
+     *     ]}]
+     *   - $timeSlots:  distinct { label, start, end } columns
+     */
+    private function buildMergedGridByDayClassRows($sessionId, $termId): array
+    {
+        $settings = TimetableSetting::with(['periods'])
+            ->join('schoolclass', 'schoolclass.id', '=', 'timetable_settings.schoolclass_id')
+            ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select(['timetable_settings.*', 'schoolclass.schoolclass as _class_name', 'schoolarm.arm as _arm_name'])
+            ->where('timetable_settings.session_id', $sessionId)
+            ->when($termId, fn($q) => $q->where('timetable_settings.term_id', $termId))
+            ->where('timetable_settings.is_active', true)
+            ->where('timetable_settings.is_preview', false)
+            ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')
+            ->get();
+
+        $schoolInfo = SchoolInformation::getActiveSchool();
+        $session    = Schoolsession::find($sessionId);
+        $term       = $termId ? Schoolterm::find($termId) : null;
+
+        if ($settings->isEmpty()) {
+            return [
+                'daySections' => [],
+                'timeSlots'   => [],
+                'days'        => [],
+                'classList'   => [],
+                'classColors' => [],
+                'schoolInfo'  => $schoolInfo,
+                'sessionName' => $session->session ?? 'Session',
+                'termName'    => $term?->term ?? 'All Terms',
+                'generatedAt' => now()->format('d M Y, H:i'),
+                'dayColors'   => self::DAY_COLORS,
+            ];
+        }
+
+        $palette     = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4','#F97316','#EC4899','#14B8A6','#84CC16','#6366F1','#D946EF'];
+        $classList   = [];
+        $classColors = [];
+        $classData   = [];
+        $colorIdx    = 0;
+        $daysUnion   = [];
+
+        foreach ($settings as $setting) {
+            $className = trim(($setting->_class_name ?? '') . ' ' . ($setting->_arm_name ?? '')) ?: 'Unknown Class';
+
+            if (in_array($className, $classList, true)) {
+                continue;
+            }
+            $classList[] = $className;
+            $classColors[$className] = $palette[$colorIdx++ % count($palette)];
+
+            $slots = TimetableSlot::where('setting_id', $setting->id)->with(['subject', 'teacher', 'room'])->get();
+            $grid  = [];
+            foreach ($slots as $slot) {
+                $grid[$slot->period_id][$slot->day] = [
+                    'subject'    => $slot->subject?->subject,
+                    'teacher'    => $slot->teacher?->name,
+                    'teacher_id' => $slot->teacher_id,
+                    'room'       => $slot->room?->room_name,
+                    'is_free'    => $slot->is_free ?? !$slot->subject_id,
+                    'is_double'  => $slot->is_double,
+                ];
+            }
+
+            $days = $setting->active_days ?? self::DAYS;
+            $daysUnion = array_unique(array_merge($daysUnion, $days));
+
+            $classData[$className] = [
+                'grid'    => $grid,
+                'days'    => $days,
+                'dayMeta' => $this->computeDayPeriodMeta($setting),
+                'periods' => $setting->periods,
+            ];
+        }
+
+        // Union of every distinct period time across all classes.
+        $timeSlotMap = [];
+        foreach ($classData as $cd) {
+            foreach ($cd['periods'] as $p) {
+                $key = substr($p->start_time, 0, 5) . '-' . substr($p->end_time, 0, 5);
+                if (!isset($timeSlotMap[$key])) {
+                    $timeSlotMap[$key] = [
+                        'label' => $p->name,
+                        'start' => substr($p->start_time, 0, 5),
+                        'end'   => substr($p->end_time, 0, 5),
+                    ];
+                }
+            }
+        }
+        uasort($timeSlotMap, fn($a, $b) => strcmp($a['start'], $b['start']));
+
+        // Sort days canonically.
+        $dayOrder = self::DAYS;
+        usort($daysUnion, fn($a, $b) => array_search($a, $dayOrder) <=> array_search($b, $dayOrder));
+
+        // Build one section per day, with one row per class.
+        $daySections = [];
+        foreach ($daysUnion as $day) {
+            $classRows = [];
+            foreach ($classData as $className => $cd) {
+                $cells = [];
+                foreach ($timeSlotMap as $info) {
+                    if (!in_array($day, $cd['days'])) {
+                        $cells[] = ['state' => 'na'];
+                        continue;
+                    }
+                    $matched = $cd['periods']->first(fn($p) =>
+                        substr($p->start_time, 0, 5) === $info['start']
+                        && substr($p->end_time, 0, 5) === $info['end']
+                    );
+                    if (!$matched) {
+                        $cells[] = ['state' => 'na'];
+                        continue;
+                    }
+                    $meta = $cd['dayMeta'][$day][$matched->id] ?? null;
+                    if (!$meta || !$meta['applicable']) {
+                        $cells[] = ['state' => 'na'];
+                        continue;
+                    }
+                    if ($meta['effective_type'] !== 'lesson') {
+                        $cells[] = ['state' => 'break'];
+                        continue;
+                    }
+                    $slot = $cd['grid'][$matched->id][$day] ?? null;
+                    if (!$slot || $slot['is_free']) {
+                        $cells[] = ['state' => 'free'];
+                        continue;
+                    }
+                    $cells[] = array_merge($slot, ['state' => 'lesson']);
+                }
+
+                $classRows[] = [
+                    'class'       => $className,
+                    'class_color' => $classColors[$className],
+                    'cells'       => $cells,
+                ];
+            }
+            $daySections[] = [
+                'day'        => $day,
+                'day_color'  => self::DAY_COLORS[$day] ?? '#334155',
+                'class_rows' => $classRows,
+                'rowspan'    => count($classRows),
+            ];
+        }
+
+        return [
+            'daySections' => $daySections,
+            'timeSlots'   => array_values($timeSlotMap),
+            'days'        => $daysUnion,
             'classList'   => $classList,
             'classColors' => $classColors,
             'schoolInfo'  => $schoolInfo,
@@ -4615,7 +4779,7 @@ class TimetableController extends Controller
             'term_id'     => 'nullable|exists:schoolterm,id',
             'orientation' => 'nullable|in:horizontal,vertical',
             'paper'       => 'nullable|in:' . implode(',', self::PAPER_SIZES),
-            'layout'      => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid',
+            'layout'      => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid,days_as_rows_by_class',
         ]);
 
         $orientation = $validated['orientation'] ?? 'horizontal';
@@ -4647,6 +4811,11 @@ class TimetableController extends Controller
                 $view = 'timetable.exports.merged-grid-class-rows';
                 break;
 
+            case 'days_as_rows_by_class':
+                $data = $this->buildMergedGridByDayClassRows($sessionId, $termId);
+                $view = 'timetable.exports.merged-grid-days-by-class';
+                break;
+
             case 'overlay_horizontal':
             default:
                 $data = $this->buildMergedGridData($sessionId, $termId);
@@ -4654,7 +4823,7 @@ class TimetableController extends Controller
                 break;
         }
 
-        if (empty($data['rows'])) return response()->json(['error' => 'No timetables found'], 404);
+        if (empty($data['rows']) && empty($data['daySections'])) return response()->json(['error' => 'No timetables found'], 404);
 
         $data['orientation'] = $orientation;
         $data['paperSize']   = $paperSize;
@@ -4676,7 +4845,7 @@ class TimetableController extends Controller
             'term_id'     => 'nullable|exists:schoolterm,id',
             'orientation' => 'nullable|in:horizontal,vertical',
             'paper'       => 'nullable|in:' . implode(',', self::PAPER_SIZES),
-            'layout'      => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid',
+            'layout'      => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid,days_as_rows_by_class',
         ]);
 
         $orientation = $validated['orientation'] ?? 'horizontal';
@@ -4706,6 +4875,11 @@ class TimetableController extends Controller
                 $view = 'timetable.exports.merged-grid-class-rows-web';
                 break;
 
+            case 'days_as_rows_by_class':
+                $data = $this->buildMergedGridByDayClassRows($sessionId, $termId);
+                $view = 'timetable.exports.merged-grid-days-by-class-web';
+                break;
+
             case 'overlay_horizontal':
             default:
                 $data = $this->buildMergedGridData($sessionId, $termId);
@@ -4713,7 +4887,7 @@ class TimetableController extends Controller
                 break;
         }
 
-        if (empty($data['rows'])) abort(404, 'No timetables found for this session/term.');
+        if (empty($data['rows']) && empty($data['daySections'])) abort(404, 'No timetables found for this session/term.');
 
         return view($view, array_merge($data, [
             'pagetitle'   => 'Merged Timetable',
@@ -5827,7 +6001,7 @@ class TimetableController extends Controller
             'paper'         => 'nullable|in:' . implode(',', self::PAPER_SIZES),
             'include_meta'  => 'boolean',
             'include_rules' => 'boolean',
-            'layout'        => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid',
+            'layout'        => 'nullable|in:overlay,overlay_horizontal,overlay_vertical,class_columns,class_rows,class_grid,days_as_rows_by_class',
         ]);
 
         $run = TimetableGenerationRun::with(['session', 'term', 'creator', 'snapshots.schoolclass'])->findOrFail($runId);
@@ -5860,6 +6034,7 @@ class TimetableController extends Controller
                 'overlay_vertical' => $format === 'web' ? 'timetable.exports.merged-grid-vertical-web' : 'timetable.exports.merged-grid-vertical',
                 'class_columns'    => $format === 'web' ? 'timetable.exports.merged-grid-class-columns-web' : 'timetable.exports.merged-grid-class-columns',
                 'class_rows'       => $format === 'web' ? 'timetable.exports.merged-grid-class-rows-web' : 'timetable.exports.merged-grid-class-rows',
+                'days_as_rows_by_class' => $format === 'web' ? 'timetable.exports.merged-grid-days-by-class-web' : 'timetable.exports.merged-grid-days-by-class',
                 default            => $format === 'web' ? 'timetable.exports.merged-grid-web' : 'timetable.exports.merged-grid',
             };
 

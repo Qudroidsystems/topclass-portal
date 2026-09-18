@@ -1335,11 +1335,12 @@
                            data-bs-content="Days as Columns / Days as Rows overlay every class into one grid, colour-coded per class. Columns per Class / Rows per Class instead lay each class's own grid out side by side or stacked, one after another."></i>
                     </label>
                     <select class="form-select" id="wholeSchoolLayout">
-                        <option value="overlay_horizontal">Days as Columns</option>
-                        <option value="overlay_vertical">Days as Rows</option>
-                        <option value="class_columns">Columns per Class</option>
-                        <option value="class_rows">Rows per Class</option>
-                    </select>
+                    <option value="overlay_horizontal">Days as Columns</option>
+                    <option value="overlay_vertical">Days as Rows</option>
+                    <option value="days_as_rows_by_class">Days as Rows (Grouped by Class)</option>   {{-- NEW --}}
+                    <option value="class_columns">Columns per Class</option>
+                    <option value="class_rows">Rows per Class</option>
+                </select>
                 </div>
 
                 <div class="mb-3" id="wsOrientationWrap">
