@@ -204,7 +204,12 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/users/staff/template', [UserController::class, 'generateStaffTemplate'])->name('users.staff.template');
     Route::post('/users/staff/import', [UserController::class, 'importStaffUsers'])->name('users.staff.import');
 
-    Route::resource('users', UserController::class);
+    // 'destroy' is excluded: an explicit users.destroy route is already
+    // defined above (line ~203) — without ->except(['destroy']) here, this
+    // resource() call registers a second route also named 'users.destroy',
+    // which made `php artisan route:cache` fail with a duplicate-route-name
+    // LogicException on every deploy.
+    Route::resource('users', UserController::class)->except(['destroy']);
 
     // ===================================================================
     // STUDENT ID CARDS
