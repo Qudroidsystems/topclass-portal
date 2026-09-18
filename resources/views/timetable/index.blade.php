@@ -1324,6 +1324,24 @@
                         @endforeach
                     </select>
                 </div>
+
+                {{-- Merged-layout selector — only relevant when "Merged Grid" mode is active --}}
+                <div class="mb-3" id="wsLayoutWrap" style="display:none">
+                    <label class="form-label fw-semibold">
+                        Merged Layout
+                        <i class="ri-question-line text-muted ms-1" style="cursor:pointer;font-size:14px"
+                           data-bs-toggle="popover"
+                           data-bs-title="Merged Layout"
+                           data-bs-content="Days as Columns / Days as Rows overlay every class into one grid, colour-coded per class. Columns per Class / Rows per Class instead lay each class's own grid out side by side or stacked, one after another."></i>
+                    </label>
+                    <select class="form-select" id="wholeSchoolLayout">
+                        <option value="overlay_horizontal">Days as Columns</option>
+                        <option value="overlay_vertical">Days as Rows</option>
+                        <option value="class_columns">Columns per Class</option>
+                        <option value="class_rows">Rows per Class</option>
+                    </select>
+                </div>
+
                 <div class="mb-3" id="wsOrientationWrap">
                     <label class="form-label fw-semibold">Orientation</label>
                     <select class="form-select" id="wholeSchoolOrientation">
@@ -2979,6 +2997,8 @@ function renderGrid(options = {}) {
     }
     const dayThClasses = {Monday:'monday-th',Tuesday:'tuesday-th',Wednesday:'wednesday-th',Thursday:'thursday-th',Friday:'friday-th'};
 
+    const { skipSet, spanSet } = computeDoubleSpanMap(periods, grid, days);
+
     let html = `<table class="tt-grid"><thead><tr>
         <th class="period-th">Period</th>
         ${days.map(d => `<th class="${dayThClasses[d]||''}">${escapeHtml(d)}</th>`).join('')}
@@ -2998,6 +3018,10 @@ function renderGrid(options = {}) {
         </td>`;
 
         days.forEach(day => {
+            const key = `${period.id}|${day}`;
+            if (skipSet.has(key)) return; // second half of a merged double — no <td> in this row
+
+            const rowspanAttr = spanSet.has(key) ? ' rowspan="2"' : '';
             const slot   = grid[period.id]?.[day] || null;
             const isFree = !slot || slot.is_free || (!slot.subject_id && !slot.teacher_id);
             cellSeq++;
@@ -3006,7 +3030,7 @@ function renderGrid(options = {}) {
             if (isBreak) {
                 html += `<td><div class="tt-cell is-break"><span class="cell-break">☕ Break</span></div></td>`;
             } else if (isFree) {
-                html += `<td onclick="openSlotModal(${period.id},'${day}')">
+                html += `<td onclick="openSlotModal(${period.id},'${day}')"${rowspanAttr}>
                     <div class="tt-cell is-free" data-cell-id="${cellId}">
                         <i class="ri-add-line ri-lg text-muted opacity-30"></i>
                         <span class="cell-free">Free</span>
@@ -3017,7 +3041,7 @@ function renderGrid(options = {}) {
                 const avatarHtml  = slot.teacher_picture
                     ? `<img src="${slot.teacher_picture}" class="cell-avatar" onerror="this.style.display='none'">`
                     : `<div class="cell-avatar-placeholder"><i class="ri-user-line"></i></div>`;
-                const doubleBadge = slot.is_double ? '<span class="cell-double-badge">Double</span>' : '';
+                const doubleBadge = spanSet.has(key) ? '<span class="cell-double-badge">Double</span>' : '';
                 const roomHtml    = slot.room_name
                     ? `<span class="cell-room"><i class="ri-door-line"></i> ${escapeHtml(slot.room_name)}</span>`
                     : '';
@@ -3028,7 +3052,7 @@ function renderGrid(options = {}) {
                 const animClass = animate ? ' cell-building' : '';
                 if (animate) buildingCells.push(cellId);
 
-                html += `<td onclick="openSlotModal(${period.id},'${day}')" ${borderStyle}>
+                html += `<td onclick="openSlotModal(${period.id},'${day}')" ${borderStyle}${rowspanAttr}>
                     <div class="tt-cell has-subject${slot.is_double?' is-double':''}${animClass}" data-cell-id="${cellId}">
                         ${avatarHtml}
                         <span class="cell-subject">${escapeHtml(slot.subject_code || slot.subject || '—')}</span>
@@ -3048,6 +3072,36 @@ function renderGrid(options = {}) {
     if (animate && buildingCells.length) {
         playGridBuildAnimation(container, buildingCells);
     }
+}
+
+function computeDoubleSpanMap(periods, grid, days) {
+    const skipSet = new Set();  // "periodId|day" — second half, don't render a <td>
+    const spanSet = new Set();  // "periodId|day" — first half, render with rowspan="2"
+
+    for (let i = 0; i < periods.length - 1; i++) {
+        const cur  = periods[i];
+        const next = periods[i + 1];
+        if (next.type !== 'lesson') continue; // never merge across a break/assembly row
+
+        days.forEach(day => {
+            const curKey  = `${cur.id}|${day}`;
+            const nextKey = `${next.id}|${day}`;
+            if (skipSet.has(curKey)) return; // already consumed as someone else's second half
+
+            const s1 = grid[cur.id]?.[day];
+            const s2 = grid[next.id]?.[day];
+            if (!s1 || !s2) return;
+            if (!s1.is_double || !s2.is_double) return;
+            if (s1.is_free || s2.is_free) return;
+            if (s1.subject_id !== s2.subject_id) return;
+            if (s1.teacher_id !== s2.teacher_id) return;
+            if ((s1.room_id || null) !== (s2.room_id || null)) return;
+
+            spanSet.add(curKey);
+            skipSet.add(nextKey);
+        });
+    }
+    return { skipSet, spanSet };
 }
 
 function playGridBuildAnimation(container, cellIds) {
@@ -3658,6 +3712,9 @@ function selectWsMode(btn) {
     document.getElementById('wholeSchoolMode').value = mode;
     document.getElementById('wsOrientationWrap').style.display = '';
     document.getElementById('wsPaperWrap').style.display = '';
+    // Layout choice (Days as Columns / Days as Rows / Columns per Class / Rows per Class)
+    // only makes sense once "Merged Grid" mode is selected.
+    document.getElementById('wsLayoutWrap').style.display = (mode === 'merged') ? '' : 'none';
 }
 
 function exportWholeSchoolTimetable(type = 'pdf') {
@@ -3666,6 +3723,7 @@ function exportWholeSchoolTimetable(type = 'pdf') {
     const orientation = document.getElementById('wholeSchoolOrientation').value;
     const paper       = document.getElementById('wholeSchoolPaper').value;
     const mode        = document.getElementById('wholeSchoolMode').value;
+    const layout      = document.getElementById('wholeSchoolLayout').value;
 
     if (!sessionId) return AppleAlert.warning('Required', 'Please select a session.');
 
@@ -3676,7 +3734,8 @@ function exportWholeSchoolTimetable(type = 'pdf') {
     const qs = `?session_id=${encodeURIComponent(sessionId)}`
              + `&term_id=${encodeURIComponent(termId || '')}`
              + `&orientation=${encodeURIComponent(orientation)}`
-             + `&paper=${encodeURIComponent(paper)}`;
+             + `&paper=${encodeURIComponent(paper)}`
+             + (mode === 'merged' ? `&layout=${encodeURIComponent(layout)}` : '');
 
     window.open(base + qs, '_blank');
 }
@@ -5637,156 +5696,6 @@ async function handleVersionConflict(data) {
         await loadSetting(currentSettingId);
     }
 }
-
-
-
-
-/**
- * PATCH NOTES — apply to resources/views/timetable/index.blade.php
- * ==================================================================
- * Adds the double-period cell merging that the changelog (2.3) describes
- * but that the current renderGrid() does not actually do.
- *
- * Only merges RAW-adjacent rows (period[i] / period[i+1] with nothing,
- * not even a break, between them) — merging across a break would make
- * the rowspan overlap the break row's own <td> for that day column.
- *
- * 1) Add this new helper function anywhere above renderGrid().
- * 2) Replace the body of renderGrid() with the version below it.
- * 3) Add the CSS block at the very end to the <style> section.
- */
- 
-// ---- 1) NEW helper -------------------------------------------------------
-function computeDoubleSpanMap(periods, grid, days) {
-    const skipSet = new Set();  // "periodId|day" — second half, don't render a <td>
-    const spanSet = new Set();  // "periodId|day" — first half, render with rowspan="2"
- 
-    for (let i = 0; i < periods.length - 1; i++) {
-        const cur  = periods[i];
-        const next = periods[i + 1];
-        if (next.type !== 'lesson') continue; // never merge across a break/assembly row
- 
-        days.forEach(day => {
-            const curKey  = `${cur.id}|${day}`;
-            const nextKey = `${next.id}|${day}`;
-            if (skipSet.has(curKey)) return; // already consumed as someone else's second half
- 
-            const s1 = grid[cur.id]?.[day];
-            const s2 = grid[next.id]?.[day];
-            if (!s1 || !s2) return;
-            if (!s1.is_double || !s2.is_double) return;
-            if (s1.is_free || s2.is_free) return;
-            if (s1.subject_id !== s2.subject_id) return;
-            if (s1.teacher_id !== s2.teacher_id) return;
-            if ((s1.room_id || null) !== (s2.room_id || null)) return;
- 
-            spanSet.add(curKey);
-            skipSet.add(nextKey);
-        });
-    }
-    return { skipSet, spanSet };
-}
- 
-// ---- 2) UPDATED renderGrid() ---------------------------------------------
-function renderGrid(options = {}) {
-    const animate   = !!options.animate;
-    const container = document.getElementById(options.containerId || 'timetableGridContainer');
-    const periods   = options.periods ?? currentPeriods;
-    const grid      = options.grid    ?? currentGrid;
-    const days      = options.days    ?? currentDays;
- 
-    if (!container) return;
-    if (!periods.length) {
-        container.innerHTML = '<div class="alert alert-warning m-3">No periods configured. Save settings first.</div>';
-        return;
-    }
-    const dayThClasses = {Monday:'monday-th',Tuesday:'tuesday-th',Wednesday:'wednesday-th',Thursday:'thursday-th',Friday:'friday-th'};
- 
-    const { skipSet, spanSet } = computeDoubleSpanMap(periods, grid, days);
- 
-    let html = `<table class="tt-grid"><thead><tr>
-        <th class="period-th">Period</th>
-        ${days.map(d => `<th class="${dayThClasses[d]||''}">${escapeHtml(d)}</th>`).join('')}
-    </tr></thead><tbody>`;
- 
-    let cellSeq = 0;
-    const buildingCells = [];
- 
-    periods.forEach(period => {
-        const isBreak   = period.is_break || ['short_break','long_break'].includes(period.type);
-        const startTime = (period.start_time || '').slice(0, 5);
-        const endTime   = (period.end_time   || '').slice(0, 5);
- 
-        html += `<tr><td class="period-td">
-            <div class="pname">${escapeHtml(period.name)}</div>
-            <div class="ptime">${startTime} – ${endTime}</div>
-        </td>`;
- 
-        days.forEach(day => {
-            const key = `${period.id}|${day}`;
-            if (skipSet.has(key)) return; // second half of a merged double — no <td> in this row
- 
-            const rowspanAttr = spanSet.has(key) ? ' rowspan="2"' : '';
-            const slot   = grid[period.id]?.[day] || null;
-            const isFree = !slot || slot.is_free || (!slot.subject_id && !slot.teacher_id);
-            cellSeq++;
-            const cellId = `c${cellSeq}`;
- 
-            if (isBreak) {
-                html += `<td><div class="tt-cell is-break"><span class="cell-break">☕ Break</span></div></td>`;
-            } else if (isFree) {
-                html += `<td onclick="openSlotModal(${period.id},'${day}')"${rowspanAttr}>
-                    <div class="tt-cell is-free" data-cell-id="${cellId}">
-                        <i class="ri-add-line ri-lg text-muted opacity-30"></i>
-                        <span class="cell-free">Free</span>
-                    </div></td>`;
-            } else {
-                const sc          = getSubjectColor(slot.subject_id);
-                const borderStyle = sc ? `style="border-left:3px solid ${sc}"` : '';
-                const avatarHtml  = slot.teacher_picture
-                    ? `<img src="${slot.teacher_picture}" class="cell-avatar" onerror="this.style.display='none'">`
-                    : `<div class="cell-avatar-placeholder"><i class="ri-user-line"></i></div>`;
-                const doubleBadge = spanSet.has(key) ? '<span class="cell-double-badge">Double</span>' : '';
-                const roomHtml    = slot.room_name
-                    ? `<span class="cell-room"><i class="ri-door-line"></i> ${escapeHtml(slot.room_name)}</span>`
-                    : '';
-                const teacherHtml = slot.teacher
-                    ? `<span class="cell-teacher">${escapeHtml(slot.teacher.split(' ')[0])}</span>`
-                    : '';
- 
-                const animClass = animate ? ' cell-building' : '';
-                if (animate) buildingCells.push(cellId);
- 
-                html += `<td onclick="openSlotModal(${period.id},'${day}')" ${borderStyle}${rowspanAttr}>
-                    <div class="tt-cell has-subject${slot.is_double?' is-double':''}${animClass}" data-cell-id="${cellId}">
-                        ${avatarHtml}
-                        <span class="cell-subject">${escapeHtml(slot.subject_code || slot.subject || '—')}</span>
-                        ${teacherHtml}${roomHtml}${doubleBadge}
-                    </div></td>`;
-            }
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
- 
-    if (options.containerId === undefined) {
-        applyStaffPictureVisibility();
-    }
- 
-    if (animate && buildingCells.length) {
-        playGridBuildAnimation(container, buildingCells);
-    }
-}
- 
-/* ---- 3) NEW CSS — add to the <style> block --------------------------------
-.tt-grid td[rowspan="2"] .tt-cell { min-height: 140px; }
-@media (max-width: 576px) {
-    .tt-grid td[rowspan="2"] .tt-cell { min-height: 100px; }
-}
----------------------------------------------------------------------------- */
- 
-
 
 // ============================================================================
 // DOM INIT
