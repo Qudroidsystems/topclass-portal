@@ -2522,9 +2522,9 @@ const ROUTES = {
     // Period Allocation
     periodAllocationGrid:       '{{ route("timetable.periodAllocation.grid") }}',
     periodAllocationSetsList:   '{{ route("timetable.periodAllocation.sets") }}',
-    periodAllocationSetShow:    '{{ route("timetable.periodAllocation.sets.show", ["setId" => "__ID__"]) }}'.replace('/__ID__', ''),
+    periodAllocationSetShow:    '{{ route("timetable.periodAllocation.sets.show", ["setId" => ":id"]) }}',
     periodAllocationSetSave:    '{{ route("timetable.periodAllocation.sets.save") }}',
-    periodAllocationSetDelete:  '{{ route("timetable.periodAllocation.sets.delete", ["setId" => "__ID__"]) }}'.replace('/__ID__', ''),
+    periodAllocationSetDelete:  '{{ route("timetable.periodAllocation.sets.delete", ["setId" => ":id"]) }}',
 };
 
 const CSRF = '{{ csrf_token() }}';
