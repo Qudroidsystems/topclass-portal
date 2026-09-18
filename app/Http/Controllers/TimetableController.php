@@ -10,7 +10,7 @@ use App\Models\RoomBooking;
 use App\Models\RoomClassSubject;
 use App\Models\Schoolclass;
 use App\Models\SchoolInformation;
-use App\Models\Schoolsessions;
+use App\Models\Schoolsession;
 use App\Models\Schoolterm;
 use App\Models\Subject;
 use App\Models\Subjectclass;
@@ -350,9 +350,9 @@ class TimetableController extends Controller
     {
         $teacher = User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->findOrFail($teacherId);
 
-        $sessionId = Schoolsessions::where('status', 'Current')->value('id')
-            ?? Schoolsessions::latest('id')->value('id');
-        $session = Schoolsessions::findOrFail($sessionId);
+        $sessionId = Schoolsession::where('status', 'Current')->value('id')
+            ?? Schoolsession::latest('id')->value('id');
+        $session = Schoolsession::findOrFail($sessionId);
 
         $slots = TimetableSlot::where('teacher_id', $teacher->id)
             ->whereNotNull('subject_id')
@@ -368,7 +368,7 @@ class TimetableController extends Controller
             ->header('Cache-Control', 'no-cache');
     }
 
-    private function buildIcsFeed(User $teacher, Schoolsessions $session, $slots): string
+    private function buildIcsFeed(User $teacher, Schoolsession $session, $slots): string
     {
         $tz        = config('app.timezone', 'UTC');
         $startDate = now()->startOfWeek(Carbon::MONDAY);
@@ -718,7 +718,7 @@ class TimetableController extends Controller
             ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
             ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
 
-        $schoolsessions = Schoolsessions::orderByDesc('id')->get();
+        $schoolsession = Schoolsession::orderByDesc('id')->get();
         $schoolterms    = Schoolterm::all();
 
         $subjectsWithTeachers = SubjectTeacher::with(['subject', 'staff'])->get()
@@ -746,7 +746,7 @@ class TimetableController extends Controller
             });
 
         return view('timetable.index', compact(
-            'pagetitle', 'schoolclasses', 'schoolsessions', 'schoolterms', 'settings', 'subjectsWithTeachers'
+            'pagetitle', 'schoolclasses', 'schoolsession', 'schoolterms', 'settings', 'subjectsWithTeachers'
         ));
     }
 
@@ -3449,8 +3449,8 @@ class TimetableController extends Controller
         $pagetitle = 'My Timetable';
 
         $sessionId = $request->input('session_id')
-            ?? Schoolsessions::where('status', 'Current')->value('id')
-            ?? Schoolsessions::latest('id')->value('id');
+            ?? Schoolsession::where('status', 'Current')->value('id')
+            ?? Schoolsession::latest('id')->value('id');
 
         $termId = $request->input('term_id')
             ?? Schoolterm::where('status', true)->value('id')
@@ -3556,7 +3556,7 @@ class TimetableController extends Controller
             }
         }
 
-        $sessions = Schoolsessions::orderByDesc('id')->get();
+        $sessions = Schoolsession::orderByDesc('id')->get();
         $terms = Schoolterm::all();
         $days = self::DAYS;
         $upcomingSlots = $this->getUpcomingSlots($teacherId, $sessionId, $termId);
@@ -3658,7 +3658,7 @@ class TimetableController extends Controller
     public function exportTeacherTimetable(Request $request)
     {
         $teacherId = Auth::id();
-        $sessionId = $request->input('session_id') ?? Schoolsessions::where('status', 'Current')->value('id');
+        $sessionId = $request->input('session_id') ?? Schoolsession::where('status', 'Current')->value('id');
         $termId = $request->input('term_id')
             ?? Schoolterm::where('status', true)->value('id')
             ?? Schoolterm::latest('id')->value('id');
@@ -3805,7 +3805,7 @@ class TimetableController extends Controller
     private function exportWholeSchoolPdf(
         array $allTimetables,
         ?SchoolInformation $schoolInfo,
-        ?Schoolsessions $session,
+        ?Schoolsession $session,
         ?Schoolterm $term,
         string $orientation,
         array $overallStats = [],
@@ -4001,7 +4001,7 @@ class TimetableController extends Controller
             ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
 
         $schoolInfo = SchoolInformation::getActiveSchool();
-        $session    = Schoolsessions::find($sessionId);
+        $session    = Schoolsession::find($sessionId);
         $term       = $termId ? Schoolterm::find($termId) : null;
 
         if ($settings->isEmpty()) {
@@ -4066,7 +4066,7 @@ class TimetableController extends Controller
             ->get();
 
         $schoolInfo = SchoolInformation::getActiveSchool();
-        $session    = Schoolsessions::find($sessionId);
+        $session    = Schoolsession::find($sessionId);
         $term       = $termId ? Schoolterm::find($termId) : null;
 
         if ($settings->isEmpty()) {
@@ -4215,7 +4215,7 @@ class TimetableController extends Controller
             ->get();
 
         $schoolInfo = SchoolInformation::getActiveSchool();
-        $session    = Schoolsessions::find($sessionId);
+        $session    = Schoolsession::find($sessionId);
         $term       = $termId ? Schoolterm::find($termId) : null;
 
         if ($settings->isEmpty()) {
@@ -4355,7 +4355,7 @@ class TimetableController extends Controller
             ->get();
 
         $schoolInfo = SchoolInformation::getActiveSchool();
-        $session    = Schoolsessions::find($sessionId);
+        $session    = Schoolsession::find($sessionId);
         $term       = $termId ? Schoolterm::find($termId) : null;
 
         if ($settings->isEmpty()) {
@@ -5207,7 +5207,7 @@ class TimetableController extends Controller
 
     public function workloadDashboard(Request $request): JsonResponse
     {
-        $sessionId = $request->session_id ?? Schoolsessions::where('status', 'Current')->value('id');
+        $sessionId = $request->session_id ?? Schoolsession::where('status', 'Current')->value('id');
         $teachers  = User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->with('staffPicture')->get();
 
         $workloadData = [];
