@@ -287,18 +287,33 @@
 .pa-subj-teacher { color: #64748B; font-size: 11.5px; }
 .pa-subj-num { width: 100%; }
 
-.pa-set-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #F1F5F9; color: #334155;
-    border: 1px solid var(--tt-border); border-radius: 999px;
-    padding: 5px 12px; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: all .15s;
+.pa-set-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1px solid var(--tt-border); border-radius: 10px;
+    padding: 8px 10px; cursor: pointer; transition: all .15s;
 }
-.pa-set-pill:hover { background: #E2E8F0; }
-.pa-set-pill.active {
-    background: linear-gradient(135deg, #0d9488, #1565C0);
-    color: #fff; border-color: transparent;
+.pa-set-row:hover { background: #F8FAFC; border-color: #CBD5E1; }
+.pa-set-row.active {
+    background: linear-gradient(135deg, rgba(13,148,136,.08), rgba(21,101,192,.08));
+    border-color: #0d9488;
 }
+.pa-set-row-icon {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #F1F5F9; color: #0d9488; font-size: 15px;
+}
+.pa-set-row.active .pa-set-row-icon {
+    background: linear-gradient(135deg, #0d9488, #1565C0); color: #fff;
+}
+.pa-set-row-body { flex: 1; min-width: 0; }
+.pa-set-row-name { font-weight: 700; color: #1E293B; font-size: 13.5px; }
+.pa-set-row-desc {
+    color: #64748B; font-size: 11.5px; margin-top: 1px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pa-set-row-meta { color: #94A3B8; font-size: 11px; margin-top: 2px; }
+.pa-set-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.pa-set-row-actions .btn { padding: 4px 8px; font-size: 13px; line-height: 1; }
 
 .wiz-priority-select { font-size: 12px; padding: 3px 6px; }
 .wiz-priority-flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; }
@@ -1971,7 +1986,7 @@
 
         <div id="paSetsWrap" class="mt-3" style="display:none">
           <label class="form-label fw-semibold mb-1">Saved sets for this session/term</label>
-          <div id="paSetsPills" class="d-flex flex-wrap gap-2"></div>
+          <div id="paSetsPills" class="d-flex flex-column gap-2" style="max-height:280px; overflow-y:auto;"></div>
         </div>
 
         <hr>
@@ -4354,13 +4369,30 @@ async function loadPeriodAllocationSetsList() {
         }
 
         pills.innerHTML = data.sets.map(s => `
-            <span class="pa-set-pill ${paState.currentSetId === s.id ? 'active' : ''}"
-                  onclick="loadPeriodAllocationSetIntoForm(${s.id})"
-                  title="${escapeHtml(s.description || '')}">
-                <i class="ri-bookmark-3-line"></i>
-                ${escapeHtml(s.name)}
-                <span class="opacity-75">· ${s.class_count} class${s.class_count === 1 ? '' : 'es'}${s.is_all_terms ? ' · All Terms' : ''}</span>
-            </span>`).join('');
+            <div class="pa-set-row ${paState.currentSetId === s.id ? 'active' : ''}"
+                 onclick="loadPeriodAllocationSetIntoForm(${s.id})">
+                <div class="pa-set-row-icon"><i class="ri-bookmark-3-line"></i></div>
+                <div class="pa-set-row-body">
+                    <div class="pa-set-row-name">${escapeHtml(s.name)}</div>
+                    ${s.description ? `<div class="pa-set-row-desc">${escapeHtml(s.description)}</div>` : ''}
+                    <div class="pa-set-row-meta">
+                        ${s.class_count} class${s.class_count === 1 ? '' : 'es'}
+                        &middot; ${s.allocation_count} subject${s.allocation_count === 1 ? '' : 's'}
+                        ${s.is_all_terms ? '&middot; All Terms' : ''}
+                        &middot; Updated ${escapeHtml(s.updated_at)}${s.updated_by ? ' by ' + escapeHtml(s.updated_by) : ''}
+                    </div>
+                </div>
+                <div class="pa-set-row-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary" title="Edit this set"
+                            onclick="event.stopPropagation(); loadPeriodAllocationSetIntoForm(${s.id})">
+                        <i class="ri-pencil-line"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete this set"
+                            onclick="event.stopPropagation(); deletePeriodAllocationSetById(${s.id})">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </div>`).join('');
     } catch (e) {
         pills.innerHTML = `<span class="text-danger" style="font-size:12px">Failed: ${escapeHtml(e.message)}</span>`;
     }
@@ -4568,9 +4600,9 @@ async function savePeriodAllocationSet() {
     }
 }
 
-async function deleteCurrentPeriodAllocationSet() {
-    if (!paState.currentSetId) return;
-    const name = document.getElementById('paSetName').value || 'this set';
+async function deletePeriodAllocationSetById(setId) {
+    const set  = paState.sets.find(s => s.id === setId);
+    const name = set ? set.name : (document.getElementById('paSetName').value || 'this set');
     const ok = await AppleAlert.confirmDelete(
         'Delete this period allocation set?',
         `Permanently removes <strong>${escapeHtml(name)}</strong>. Timetables already generated from it are not affected.`
@@ -4578,17 +4610,26 @@ async function deleteCurrentPeriodAllocationSet() {
     if (!ok) return;
 
     try {
-        const res  = await apiFetch(url(ROUTES.periodAllocationSetDelete, paState.currentSetId), 'DELETE');
+        const res  = await apiFetch(url(ROUTES.periodAllocationSetDelete, setId), 'DELETE');
         const data = await res.json();
         if (data.success) {
             AppleAlert.deleted('Period allocation set deleted');
-            resetPeriodAllocationForm(false);
+            if (paState.currentSetId === setId) {
+                resetPeriodAllocationForm(false);
+            } else {
+                loadPeriodAllocationSetsList();
+            }
         } else {
             AppleAlert.error('Could not delete', data.message || 'Please try again.');
         }
     } catch (e) {
         AppleAlert.error('Could not delete', e.message);
     }
+}
+
+async function deleteCurrentPeriodAllocationSet() {
+    if (!paState.currentSetId) return;
+    await deletePeriodAllocationSetById(paState.currentSetId);
 }
 
 // ── Generation Wizard integration ──────────────────────────────────────────
