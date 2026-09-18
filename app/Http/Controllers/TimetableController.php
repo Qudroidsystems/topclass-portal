@@ -708,48 +708,47 @@ class TimetableController extends Controller
     // =========================================================================
     // INDEX
     // =========================================================================
-    public function index()
-    {
-        $pagetitle = 'Timetable Management';
+   public function index()
+{
+    $pagetitle = 'Timetable Management';
 
-        $this->sweepExpiredPreviews();
+    $this->sweepExpiredPreviews();
 
-        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
-            ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
+    $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+        ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+        ->orderBy('schoolclass.schoolclass')->orderBy('schoolarm.arm')->get();
 
-        $schoolsession = Schoolsession::orderByDesc('id')->get();
-        $schoolterms    = Schoolterm::all();
+    $schoolsessions = Schoolsession::orderByDesc('id')->get(); // renamed from $schoolsession
+    $schoolterms    = Schoolterm::all();
 
-        $subjectsWithTeachers = SubjectTeacher::with(['subject', 'staff'])->get()
-            ->map(fn($st) => [
-                'subject_id'   => $st->subjectid,
-                'subject_name' => $st->subject->subject ?? 'Unknown',
-                'teacher_id'   => $st->staffid,
-                'teacher_name' => $st->staff->name ?? 'Unknown',
-            ]);
+    $subjectsWithTeachers = SubjectTeacher::with(['subject', 'staff'])->get()
+        ->map(fn($st) => [
+            'subject_id'   => $st->subjectid,
+            'subject_name' => $st->subject->subject ?? 'Unknown',
+            'teacher_id'   => $st->staffid,
+            'teacher_name' => $st->staff->name ?? 'Unknown',
+        ]);
 
-        $settings = TimetableSetting::with(['session', 'term', 'creator', 'updater'])
-            ->join('schoolclass', 'schoolclass.id', '=', 'timetable_settings.schoolclass_id')
-            ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select([
-                'timetable_settings.*',
-                'schoolclass.schoolclass as _class_name',
-                'schoolarm.arm as _arm_name',
-            ])
-            ->where('timetable_settings.is_active', true)
-            ->where('timetable_settings.is_preview', false)
-            ->orderByDesc('timetable_settings.updated_at')
-            ->get()
-            ->each(function ($s) {
-                $s->resolved_class_name = trim(($s->_class_name ?? '') . ' ' . ($s->_arm_name ?? ''));
-            });
+    $settings = TimetableSetting::with(['session', 'term', 'creator', 'updater'])
+        ->join('schoolclass', 'schoolclass.id', '=', 'timetable_settings.schoolclass_id')
+        ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+        ->select([
+            'timetable_settings.*',
+            'schoolclass.schoolclass as _class_name',
+            'schoolarm.arm as _arm_name',
+        ])
+        ->where('timetable_settings.is_active', true)
+        ->where('timetable_settings.is_preview', false)
+        ->orderByDesc('timetable_settings.updated_at')
+        ->get()
+        ->each(function ($s) {
+            $s->resolved_class_name = trim(($s->_class_name ?? '') . ' ' . ($s->_arm_name ?? ''));
+        });
 
-        return view('timetable.index', compact(
-            'pagetitle', 'schoolclasses', 'schoolsession', 'schoolterms', 'settings', 'subjectsWithTeachers'
-        ));
-    }
-
+    return view('timetable.index', compact(
+        'pagetitle', 'schoolclasses', 'schoolsessions', 'schoolterms', 'settings', 'subjectsWithTeachers'
+    ));
+}
     // =========================================================================
     // EDITING PRESENCE
     // =========================================================================
