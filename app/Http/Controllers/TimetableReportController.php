@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
+use App\Models\Schoolarm;
 use App\Models\SchoolInformation;
 use App\Models\Schoolsession;
 use App\Models\Schoolterm;
@@ -184,6 +185,34 @@ class TimetableReportController extends Controller
             ->pluck('teacher_id');
     }
 
+    // =========================================================================
+    // CLASS NAME (schoolclass + arm) — mirrors TimetableController's helper
+    // so every report shows the arm (e.g. "JSS 1A"), not just the class.
+    // =========================================================================
+    private function resolveArmName($schoolclass): string
+    {
+        if (!$schoolclass) return '';
+        if (!empty($schoolclass->arm_name)) return ' ' . $schoolclass->arm_name;
+
+        $arm = $schoolclass->armRelation ?? null;
+        if (is_object($arm) && isset($arm->arm)) return ' ' . $arm->arm;
+
+        if (is_string($schoolclass->arm ?? null) && !is_numeric($schoolclass->arm)) return ' ' . $schoolclass->arm;
+
+        if (is_numeric($schoolclass->arm ?? null)) {
+            $armModel = Schoolarm::find($schoolclass->arm);
+            if ($armModel?->arm) return ' ' . $armModel->arm;
+        }
+
+        return '';
+    }
+
+    private function getClassName($schoolclass): string
+    {
+        if (!$schoolclass) return 'Unknown Class';
+        return ($schoolclass->schoolclass ?? '') . $this->resolveArmName($schoolclass);
+    }
+
     private function getTeacherWorkloadReport(int $sessionId, ?int $termId, ?int $onlyTeacherId = null): array
     {
         $teachers = User::whereHas('roles', fn($q) => $q->where('name', 'Teacher'))
@@ -202,7 +231,7 @@ class TimetableReportController extends Controller
             $slots = TimetableSlot::where('teacher_id', $teacher->id)
                 ->whereNotNull('subject_id')
                 ->whereHas('setting', fn($q) => $this->scopeSettingQuery($q, $sessionId, $termId))
-                ->with(['period', 'subject', 'setting.schoolclass'])
+                ->with(['period', 'subject', 'setting.schoolclass.armRelation'])
                 ->get();
 
             $dailyDistribution = [];
@@ -220,7 +249,7 @@ class TimetableReportController extends Controller
                 'thursday'        => $dailyDistribution['Thursday'],
                 'friday'          => $dailyDistribution['Friday'],
                 'subjects_taught' => $slots->pluck('subject.subject')->filter()->unique()->implode(', '),
-                'classes_taught'  => $slots->pluck('setting.schoolclass.schoolclass')->filter()->unique()->implode(', '),
+                'classes_taught'  => $slots->pluck('setting.schoolclass')->filter()->unique('id')->map(fn($c) => $this->getClassName($c))->implode(', '),
                 'total_classes'   => $slots->pluck('setting.schoolclass_id')->unique()->count(),
             ];
         }
@@ -304,7 +333,7 @@ class TimetableReportController extends Controller
                 ->unique());
         }
 
-        $settings = $settingsQuery->with(['schoolclass', 'session', 'term', 'periods', 'slots.subject', 'slots.teacher'])->get();
+        $settings = $settingsQuery->with(['schoolclass.armRelation', 'session', 'term', 'periods', 'slots.subject', 'slots.teacher'])->get();
 
         $report = [];
         foreach ($settings as $setting) {
@@ -312,7 +341,7 @@ class TimetableReportController extends Controller
             $filledSlots      = $setting->slots->whereNotNull('subject_id')->count();
 
             $report[] = [
-                'class'              => $setting->schoolclass->schoolclass ?? 'Unknown',
+                'class'              => $this->getClassName($setting->schoolclass),
                 'session'            => $setting->session->session ?? '',
                 'term'               => $setting->term->term ?? 'All Terms',
                 'total_lesson_slots' => $totalLessonSlots,
@@ -335,7 +364,7 @@ class TimetableReportController extends Controller
             ->whereNotNull('subject_id')
             ->where('is_free', false)
             ->whereHas('setting', fn($q) => $this->scopeSettingQuery($q, $sessionId, $termId))
-            ->with(['period', 'teacher', 'setting.schoolclass', 'subject'])
+            ->with(['period', 'teacher', 'setting.schoolclass.armRelation', 'subject'])
             ->get();
 
         $conflicts      = [];
@@ -350,9 +379,9 @@ class TimetableReportController extends Controller
                     'day'           => $slot->day,
                     'period'        => $slot->period->name ?? '',
                     'period_time'   => substr($slot->period->start_time ?? '', 0, 5) . ' - ' . substr($slot->period->end_time ?? '', 0, 5),
-                    'class_a'       => $teacherSlotMap[$key]->setting->schoolclass->schoolclass ?? '',
+                    'class_a'       => $this->getClassName($teacherSlotMap[$key]->setting->schoolclass),
                     'subject_a'     => $teacherSlotMap[$key]->subject->subject ?? '',
-                    'class_b'       => $slot->setting->schoolclass->schoolclass ?? '',
+                    'class_b'       => $this->getClassName($slot->setting->schoolclass),
                     'subject_b'     => $slot->subject->subject ?? '',
                 ];
             } else {
@@ -374,13 +403,13 @@ class TimetableReportController extends Controller
     {
         $slots = TimetableSlot::whereNotNull('subject_id')
             ->whereHas('setting', fn($q) => $this->scopeSettingQuery($q, $sessionId, $termId))
-            ->with(['subject', 'setting.schoolclass'])
+            ->with(['subject', 'setting.schoolclass.armRelation'])
             ->get();
 
         $subjectCount = [];
         foreach ($slots as $slot) {
             $subjectName = $slot->subject->subject ?? 'Unknown';
-            $className   = $slot->setting->schoolclass->schoolclass ?? 'Unknown';
+            $className   = $this->getClassName($slot->setting->schoolclass);
             $key         = $subjectName . '||' . $className;
 
             $subjectCount[$key] = ($subjectCount[$key] ?? 0) + 1;
