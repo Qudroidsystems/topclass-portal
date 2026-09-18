@@ -1124,6 +1124,13 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/timetable/runs/{runId}/export',  [TimetableController::class, 'exportGenerationRun'])->name('timetable.runs.export');
     Route::delete('/timetable/runs/{runId}',      [TimetableController::class, 'deleteGenerationRun'])->name('timetable.runs.delete');
 
+    // Period Allocation (reusable class x subject x periods/week presets)
+    Route::get('/timetable/period-allocation/grid', [TimetableController::class, 'getPeriodAllocationGrid'])->name('timetable.periodAllocation.grid');
+    Route::get('/timetable/period-allocation/sets', [TimetableController::class, 'listPeriodAllocationSets'])->name('timetable.periodAllocation.sets');
+    Route::get('/timetable/period-allocation/sets/{setId}', [TimetableController::class, 'getPeriodAllocationSetDetail'])->name('timetable.periodAllocation.sets.show');
+    Route::post('/timetable/period-allocation/sets', [TimetableController::class, 'savePeriodAllocationSet'])->name('timetable.periodAllocation.sets.save');
+    Route::delete('/timetable/period-allocation/sets/{setId}', [TimetableController::class, 'deletePeriodAllocationSet'])->name('timetable.periodAllocation.sets.delete');
+
 
 
 

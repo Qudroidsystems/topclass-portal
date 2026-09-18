@@ -273,6 +273,33 @@
 .wiz-subj-teacher { color: #64748B; font-size: 11.5px; }
 .wiz-subj-num { width: 100%; }
 
+/* ── Period Allocation modal ──────────────────────── */
+.pa-subj-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) 90px 90px 70px;
+    gap: 8px; align-items: center;
+    padding: 8px 4px;
+    border-bottom: 1px solid #F1F5F9;
+    font-size: 12.5px;
+}
+.pa-subj-row:last-child { border-bottom: none; }
+.pa-subj-name { font-weight: 600; color: #1E293B; }
+.pa-subj-teacher { color: #64748B; font-size: 11.5px; }
+.pa-subj-num { width: 100%; }
+
+.pa-set-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #F1F5F9; color: #334155;
+    border: 1px solid var(--tt-border); border-radius: 999px;
+    padding: 5px 12px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+}
+.pa-set-pill:hover { background: #E2E8F0; }
+.pa-set-pill.active {
+    background: linear-gradient(135deg, #0d9488, #1565C0);
+    color: #fff; border-color: transparent;
+}
+
 .wiz-priority-select { font-size: 12px; padding: 3px 6px; }
 .wiz-priority-flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; }
 .wiz-priority-flags label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -350,6 +377,7 @@
     .ws-mode-toggle { flex-direction: column; }
     .wiz-subj-row { grid-template-columns: 22px minmax(0,1fr) 60px 60px 1fr; }
     .wiz-limit-row { grid-template-columns: 1fr; }
+    .pa-subj-row { grid-template-columns: minmax(0,1fr) 70px 70px 55px; font-size: 11.5px; }
 }
 @media (max-width: 576px) {
     .tt-page-header { padding: 16px 18px; border-radius: 12px; }
@@ -666,6 +694,9 @@
             </button>
             <button class="btn btn-outline-light btn-sm" onclick="openGenerationWizardModal()">
                 <i class="ri-magic-line me-1"></i>Generation Wizard
+            </button>
+            <button class="btn btn-outline-light btn-sm" onclick="openPeriodAllocationModal()">
+                <i class="ri-grid-line me-1"></i>Period Allocation
             </button>
             <button class="btn btn-outline-light btn-sm" onclick="openConflictScopeModal()">
                 <i class="ri-shield-cross-line me-1"></i>Check Conflicts
@@ -1654,6 +1685,18 @@
             </div>
         </div>
 
+        <div id="wizAllocationSetWrap" class="d-flex flex-wrap gap-2 align-items-center mb-2" style="display:none">
+            <select class="form-select form-select-sm" id="wizAllocationSetId" style="max-width:320px">
+                <option value="">— Use a saved period allocation —</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="applyWizardPeriodAllocationSet()">
+                <i class="ri-download-2-line me-1"></i>Apply
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openPeriodAllocationModal()">
+                <i class="ri-grid-line me-1"></i>Manage Sets
+            </button>
+        </div>
+
         <div class="d-flex justify-content-end mt-2">
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadWizardSubjects()">
                 <i class="ri-refresh-line me-1"></i>Load Subjects
@@ -1879,6 +1922,106 @@
 </div>
 
 {{-- ============================================================ --}}
+{{-- ============================================================ --}}
+{{-- PERIOD ALLOCATION MODAL                                      --}}
+{{-- ============================================================ --}}
+<div class="modal fade" id="periodAllocationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0d9488,#1565C0)">
+        <h5 class="modal-title text-white"><i class="ri-grid-line me-2"></i>Period Allocation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="max-height:75vh;overflow-y:auto">
+
+        <p class="text-muted" style="font-size:13px">
+            Set how many periods a week each subject gets per class, save it as a named preset for a session
+            and term, then pick it in the Generation Wizard instead of typing it in every time.
+        </p>
+
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Session <span class="text-danger">*</span></label>
+            <select class="form-select" id="paSessionId" onchange="onPeriodAllocationScopeChange()">
+              <option value="">— Select —</option>
+              @foreach($schoolsessions as $session)
+                <option value="{{ $session->id }}">{{ $session->session }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Term <span class="text-muted fw-normal">(optional)</span></label>
+            <select class="form-select" id="paTermId" onchange="onPeriodAllocationScopeChange()">
+              <option value="">All Terms</option>
+              @foreach($schoolterms as $term)
+                <option value="{{ $term->id }}">{{ $term->term }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Classes <span class="text-muted fw-normal">(optional filter)</span></label>
+            <select class="form-select" id="paClassIds" multiple size="1">
+              @foreach($schoolclasses as $class)
+                <option value="{{ $class->id }}">{{ $class->schoolclass }}{{ $class->arm_name ? ' '.$class->arm_name : '' }}</option>
+              @endforeach
+            </select>
+            <small class="text-muted">Leave empty for every class that has subjects assigned. Ctrl/Cmd-click to select several.</small>
+          </div>
+        </div>
+
+        <div id="paSetsWrap" class="mt-3" style="display:none">
+          <label class="form-label fw-semibold mb-1">Saved sets for this session/term</label>
+          <div id="paSetsPills" class="d-flex flex-wrap gap-2"></div>
+        </div>
+
+        <hr>
+
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Set name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="paSetName" placeholder="e.g. Term 1 Standard Allocation" maxlength="150">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Description <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="paSetDescription" placeholder="Notes for other admins" maxlength="1000">
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0"><i class="ri-bookmark-3-line me-2"></i>Subjects &amp; Periods/Week</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadPeriodAllocationGrid()">
+            <i class="ri-refresh-line me-1"></i>Load Classes
+          </button>
+        </div>
+
+        <div id="paGridPanel">
+          <div class="text-center py-4 text-muted">
+            <i class="ri-grid-line ri-2x d-block mb-2 opacity-30"></i>
+            <p class="mb-0">Select a session and click <strong>Load Classes</strong> to see per-class subjects.</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer flex-wrap gap-2">
+        <span id="paEditingHint" class="text-muted me-auto" style="font-size:12px"></span>
+        <button type="button" class="btn btn-outline-danger" id="paDeleteBtn" style="display:none" onclick="deleteCurrentPeriodAllocationSet()">
+          <i class="ri-delete-bin-line me-1"></i>Delete Set
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="resetPeriodAllocationForm(true)">
+          <i class="ri-add-line me-1"></i>New Set
+        </button>
+        <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="paSaveBtn" onclick="savePeriodAllocationSet()">
+          <i class="ri-save-line me-1"></i>Save Set
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 {{-- ANCHOR REBUILD MODAL                                         --}}
 {{-- ============================================================ --}}
 <div class="modal fade" id="anchorRebuildModal" tabindex="-1" aria-hidden="true">
@@ -2360,6 +2503,13 @@ const ROUTES = {
     roomMappingsDestroy:        '{{ route("rooms.mappings.destroy", ["mappingId" => "__ID__"]) }}',
     sessionsList:               '{{ route("api.sessions-list") }}',
     termsList:                  '{{ route("api.terms-list") }}',
+
+    // Period Allocation
+    periodAllocationGrid:       '{{ route("timetable.periodAllocation.grid") }}',
+    periodAllocationSetsList:   '{{ route("timetable.periodAllocation.sets") }}',
+    periodAllocationSetShow:    '{{ route("timetable.periodAllocation.sets.show", ["setId" => "__ID__"]) }}'.replace('/__ID__', ''),
+    periodAllocationSetSave:    '{{ route("timetable.periodAllocation.sets.save") }}',
+    periodAllocationSetDelete:  '{{ route("timetable.periodAllocation.sets.delete", ["setId" => "__ID__"]) }}'.replace('/__ID__', ''),
 };
 
 const CSRF = '{{ csrf_token() }}';
@@ -3987,6 +4137,7 @@ async function loadWizardSubjects() {
         });
 
         renderWizardSubjectsPanel(data.classes, data.priority_levels);
+        refreshWizardAllocationPicker();
     } catch (e) {
         panel.innerHTML = `<div class="alert alert-danger m-0">Failed: ${escapeHtml(e.message)}</div>`;
     }
@@ -4114,6 +4265,353 @@ function toggleWizDouble(classId, subjectId, checked) {
 function onWizPriorityChange(classId, subjectId, value) {
     const flags = document.getElementById(`wizFlags_${classId}_${subjectId}`);
     if (flags) flags.style.display = value ? 'flex' : 'none';
+}
+
+// ============================================================================
+// PERIOD ALLOCATION MODAL
+// ============================================================================
+let paState = {
+    classes: [],       // last-loaded class/subject/teacher grid
+    sets: [],           // saved sets for the current session/term
+    currentSetId: null, // set being edited, or null when creating a new one
+};
+
+function openPeriodAllocationModal() {
+    resetPeriodAllocationForm(false);
+    new bootstrap.Modal(document.getElementById('periodAllocationModal')).show();
+}
+
+function onPeriodAllocationScopeChange() {
+    paState.currentSetId = null;
+    document.getElementById('paSetName').value = '';
+    document.getElementById('paSetDescription').value = '';
+    document.getElementById('paDeleteBtn').style.display = 'none';
+    document.getElementById('paEditingHint').textContent = '';
+    loadPeriodAllocationSetsList();
+}
+
+async function loadPeriodAllocationSetsList() {
+    const sessionId = document.getElementById('paSessionId').value;
+    const wrap  = document.getElementById('paSetsWrap');
+    const pills = document.getElementById('paSetsPills');
+
+    if (!sessionId) { wrap.style.display = 'none'; paState.sets = []; return; }
+
+    const termId = document.getElementById('paTermId').value;
+
+    try {
+        const params = new URLSearchParams({ session_id: sessionId });
+        if (termId) params.set('term_id', termId);
+        const res  = await fetch(`${ROUTES.periodAllocationSetsList}?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load saved sets.');
+
+        paState.sets = data.sets;
+        wrap.style.display = '';
+
+        if (!data.sets.length) {
+            pills.innerHTML = '<span class="text-muted" style="font-size:12px">No saved sets yet for this session/term.</span>';
+            return;
+        }
+
+        pills.innerHTML = data.sets.map(s => `
+            <span class="pa-set-pill ${paState.currentSetId === s.id ? 'active' : ''}"
+                  onclick="loadPeriodAllocationSetIntoForm(${s.id})"
+                  title="${escapeHtml(s.description || '')}">
+                <i class="ri-bookmark-3-line"></i>
+                ${escapeHtml(s.name)}
+                <span class="opacity-75">· ${s.class_count} class${s.class_count === 1 ? '' : 'es'}${s.is_all_terms ? ' · All Terms' : ''}</span>
+            </span>`).join('');
+    } catch (e) {
+        pills.innerHTML = `<span class="text-danger" style="font-size:12px">Failed: ${escapeHtml(e.message)}</span>`;
+    }
+}
+
+async function loadPeriodAllocationGrid() {
+    const sessionId = document.getElementById('paSessionId').value;
+    if (!sessionId) return AppleAlert.warning('Required', 'Please select a session first.');
+
+    const termId    = document.getElementById('paTermId').value;
+    const classIds  = [...document.getElementById('paClassIds').selectedOptions].map(o => o.value).filter(Boolean);
+
+    const panel = document.getElementById('paGridPanel');
+    panel.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Loading classes…</div>';
+
+    try {
+        const params = new URLSearchParams({ session_id: sessionId });
+        if (termId) params.set('term_id', termId);
+        classIds.forEach(id => params.append('schoolclass_ids[]', id));
+
+        const res  = await fetch(`${ROUTES.periodAllocationGrid}?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load classes.');
+
+        paState.classes = data.classes;
+        renderPeriodAllocationGrid(data.classes);
+        loadPeriodAllocationSetsList();
+    } catch (e) {
+        panel.innerHTML = `<div class="alert alert-danger m-0">Failed: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+function renderPeriodAllocationGrid(classes, overlay = null) {
+    const panel = document.getElementById('paGridPanel');
+    if (!classes.length) {
+        panel.innerHTML = '<div class="text-center py-4 text-muted"><i class="ri-information-line ri-2x d-block mb-2 opacity-30"></i>No subjects assigned to any class in this scope.</div>';
+        return;
+    }
+
+    let html = '';
+    classes.forEach(cls => {
+        const classId = cls.schoolclass_id;
+        html += `<div class="wiz-class-card">
+            <div class="wiz-class-hdr" onclick="togglePaClassCard(${classId})">
+                <h6><i class="ri-arrow-down-s-line me-1 pa-caret" id="paCaret_${classId}"></i>${escapeHtml(cls.class_name)}</h6>
+                <span class="badge bg-light text-dark">${cls.subjects.length} subjects</span>
+            </div>
+            <div class="wiz-class-body" id="paClassBody_${classId}" style="display:none">`;
+
+        cls.subjects.forEach(s => {
+            const sid = s.subject_id;
+            const ov  = overlay ? overlay[`${classId}:${sid}`] : null;
+            const ppw = ov ? ov.periods_per_week : 2;
+            const dbl = ov ? !!ov.allow_double_period : false;
+            const max = ov ? ov.max_double_periods_per_week : 1;
+
+            html += `<div class="pa-subj-row" data-class-id="${classId}" data-subject-id="${sid}">
+                <div>
+                    <div class="pa-subj-name">${escapeHtml(s.subject_name)}</div>
+                    <div class="pa-subj-teacher">${escapeHtml(s.teacher_name)}</div>
+                </div>
+                <div>
+                    <input type="number" class="form-control form-control-sm pa-subj-num"
+                           min="1" max="20" id="paPpw_${classId}_${sid}" value="${ppw}">
+                    <small class="text-muted">periods/wk</small>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="paDouble_${classId}_${sid}"
+                           ${dbl ? 'checked' : ''} onchange="togglePaDouble(${classId}, ${sid}, this.checked)">
+                    <label class="form-check-label" for="paDouble_${classId}_${sid}" style="font-size:11px;">Doubles</label>
+                </div>
+                <div>
+                    <input type="number" class="form-control form-control-sm pa-subj-num"
+                           min="0" max="5" id="paMaxDouble_${classId}_${sid}" value="${max}"
+                           ${dbl ? '' : 'disabled'}>
+                    <small class="text-muted">max</small>
+                </div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+    });
+
+    panel.innerHTML = html;
+}
+
+function togglePaClassCard(classId) {
+    const body  = document.getElementById('paClassBody_' + classId);
+    const caret = document.getElementById('paCaret_' + classId);
+    if (!body) return;
+    const open = body.style.display === 'none';
+    body.style.display = open ? '' : 'none';
+    if (caret) caret.className = `ri-${open ? 'arrow-down-s' : 'arrow-right-s'}-line me-1 pa-caret`;
+}
+
+function togglePaDouble(classId, subjectId, checked) {
+    const el = document.getElementById(`paMaxDouble_${classId}_${subjectId}`);
+    if (el) el.disabled = !checked;
+}
+
+function collectPeriodAllocationRows() {
+    const rows = [];
+    paState.classes.forEach(cls => {
+        cls.subjects.forEach(s => {
+            const ppwEl = document.getElementById(`paPpw_${cls.schoolclass_id}_${s.subject_id}`);
+            if (!ppwEl) return;
+            rows.push({
+                schoolclass_id:               cls.schoolclass_id,
+                subject_id:                   s.subject_id,
+                periods_per_week:             parseInt(ppwEl.value) || 1,
+                allow_double_period:          document.getElementById(`paDouble_${cls.schoolclass_id}_${s.subject_id}`)?.checked || false,
+                max_double_periods_per_week:  parseInt(document.getElementById(`paMaxDouble_${cls.schoolclass_id}_${s.subject_id}`)?.value) || 1,
+            });
+        });
+    });
+    return rows;
+}
+
+async function loadPeriodAllocationSetIntoForm(setId) {
+    try {
+        const res  = await fetch(`${url(ROUTES.periodAllocationSetShow, setId)}`, { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load that set.');
+
+        paState.currentSetId = data.set.id;
+        document.getElementById('paSessionId').value = data.set.session_id;
+        document.getElementById('paTermId').value    = data.set.term_id || '';
+        document.getElementById('paSetName').value        = data.set.name;
+        document.getElementById('paSetDescription').value = data.set.description || '';
+        document.getElementById('paDeleteBtn').style.display = '';
+        document.getElementById('paEditingHint').textContent = `Editing "${data.set.name}"`;
+
+        const overlay = {};
+        data.allocations.forEach(a => { overlay[`${a.schoolclass_id}:${a.subject_id}`] = a; });
+
+        // Load (or re-render, if already loaded) the grid for this set's
+        // scope, then overlay its saved periods-per-week values onto it.
+        const sessionId = data.set.session_id;
+        const termId    = data.set.term_id;
+        const params = new URLSearchParams({ session_id: sessionId });
+        if (termId) params.set('term_id', termId);
+        const gridRes  = await fetch(`${ROUTES.periodAllocationGrid}?${params.toString()}`, { headers: { 'Accept': 'application/json' } });
+        const gridData = await gridRes.json();
+        if (!gridData.success) throw new Error(gridData.message || 'Failed to load classes for that set.');
+
+        paState.classes = gridData.classes;
+        renderPeriodAllocationGrid(gridData.classes, overlay);
+        loadPeriodAllocationSetsList();
+    } catch (e) {
+        AppleAlert.error('Could not load set', e.message);
+    }
+}
+
+function resetPeriodAllocationForm(clearGrid = true) {
+    paState.currentSetId = null;
+    document.getElementById('paSetName').value = '';
+    document.getElementById('paSetDescription').value = '';
+    document.getElementById('paDeleteBtn').style.display = 'none';
+    document.getElementById('paEditingHint').textContent = '';
+    if (clearGrid) {
+        paState.classes = [];
+        document.getElementById('paGridPanel').innerHTML =
+            '<div class="text-center py-4 text-muted"><i class="ri-grid-line ri-2x d-block mb-2 opacity-30"></i><p class="mb-0">Select a session and click <strong>Load Classes</strong> to see per-class subjects.</p></div>';
+    }
+    loadPeriodAllocationSetsList();
+}
+
+async function savePeriodAllocationSet() {
+    const sessionId = document.getElementById('paSessionId').value;
+    const name      = document.getElementById('paSetName').value.trim();
+    if (!sessionId) return AppleAlert.warning('Required', 'Please select a session.');
+    if (!name)      return AppleAlert.warning('Required', 'Give this set a name.');
+    if (!paState.classes.length) return AppleAlert.warning('Nothing to save', 'Click "Load Classes" first, then set periods/week.');
+
+    const allocations = collectPeriodAllocationRows();
+    if (!allocations.length) return AppleAlert.warning('Nothing to save', 'No subject rows to save.');
+
+    showLoader();
+    try {
+        const res  = await apiFetch(ROUTES.periodAllocationSetSave, 'POST', {
+            set_id:      paState.currentSetId,
+            session_id:  sessionId,
+            term_id:     document.getElementById('paTermId').value || null,
+            name,
+            description: document.getElementById('paSetDescription').value.trim() || null,
+            allocations,
+        });
+        const data = await res.json();
+        hideLoader();
+        if (data.success) {
+            paState.currentSetId = data.set_id;
+            document.getElementById('paDeleteBtn').style.display = '';
+            document.getElementById('paEditingHint').textContent = `Editing "${name}"`;
+            AppleAlert.saved('Period allocation set saved');
+            loadPeriodAllocationSetsList();
+        } else {
+            AppleAlert.error('Save failed', data.message || 'Please try again.');
+        }
+    } catch (e) {
+        hideLoader();
+        AppleAlert.error('Save failed', e.message);
+    }
+}
+
+async function deleteCurrentPeriodAllocationSet() {
+    if (!paState.currentSetId) return;
+    const name = document.getElementById('paSetName').value || 'this set';
+    const ok = await AppleAlert.confirmDelete(
+        'Delete this period allocation set?',
+        `Permanently removes <strong>${escapeHtml(name)}</strong>. Timetables already generated from it are not affected.`
+    );
+    if (!ok) return;
+
+    try {
+        const res  = await apiFetch(url(ROUTES.periodAllocationSetDelete, paState.currentSetId), 'DELETE');
+        const data = await res.json();
+        if (data.success) {
+            AppleAlert.deleted('Period allocation set deleted');
+            resetPeriodAllocationForm(false);
+        } else {
+            AppleAlert.error('Could not delete', data.message || 'Please try again.');
+        }
+    } catch (e) {
+        AppleAlert.error('Could not delete', e.message);
+    }
+}
+
+// ── Generation Wizard integration ──────────────────────────────────────────
+async function refreshWizardAllocationPicker() {
+    const wrap   = document.getElementById('wizAllocationSetWrap');
+    const select = document.getElementById('wizAllocationSetId');
+    const sessionId = document.getElementById('wizSessionId').value;
+    if (!sessionId) { wrap.style.display = 'none'; return; }
+
+    const termId = document.getElementById('wizTermId').value;
+
+    try {
+        const params = new URLSearchParams({ session_id: sessionId });
+        if (termId) params.set('term_id', termId);
+        const res  = await fetch(`${ROUTES.periodAllocationSetsList}?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (!data.success || !data.sets.length) { wrap.style.display = 'none'; return; }
+
+        select.innerHTML = '<option value="">— Use a saved period allocation —</option>' +
+            data.sets.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.class_count} class${s.class_count === 1 ? '' : 'es'})</option>`).join('');
+        wrap.style.display = '';
+    } catch (e) {
+        wrap.style.display = 'none';
+    }
+}
+
+async function applyWizardPeriodAllocationSet() {
+    const setId = document.getElementById('wizAllocationSetId').value;
+    if (!setId) return AppleAlert.warning('Pick a set', 'Choose a saved period allocation first.');
+
+    try {
+        const res  = await fetch(url(ROUTES.periodAllocationSetShow, setId), { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load that set.');
+
+        let applied = 0, skipped = 0;
+        data.allocations.forEach(a => {
+            const ppwEl = document.getElementById(`wizPpw_${a.schoolclass_id}_${a.subject_id}`);
+            if (!ppwEl) { skipped++; return; }
+            ppwEl.value = a.periods_per_week;
+
+            const dblEl = document.getElementById(`wizDouble_${a.schoolclass_id}_${a.subject_id}`);
+            if (dblEl) {
+                dblEl.checked = !!a.allow_double_period;
+                toggleWizDouble(a.schoolclass_id, a.subject_id, dblEl.checked);
+            }
+            const maxEl = document.getElementById(`wizMaxDouble_${a.schoolclass_id}_${a.subject_id}`);
+            if (maxEl) maxEl.value = a.max_double_periods_per_week;
+
+            applied++;
+        });
+
+        const skipNote = skipped
+            ? ` ${skipped} row(s) in that set aren't in the classes currently loaded here, so they were left as-is.`
+            : '';
+        AppleAlert.saved(`Applied periods/week for ${applied} subject(s).${skipNote}`);
+    } catch (e) {
+        AppleAlert.error('Could not apply set', e.message);
+    }
 }
 
 // ============================================================================
