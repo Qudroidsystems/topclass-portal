@@ -1,131 +1,113 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>{{ $pagetitle ?? 'Merged Timetable' }} — Days as Rows (Grouped by Class)</title>
+@extends('layouts.master')
+
+@section('content')
 <style>
-    :root { --border:#E2E8F0; --ink:#0F172A; --muted:#64748B; }
-    * { box-sizing:border-box; }
-    body {
-        font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
-        margin:0; padding:24px; background:#F8FAFC; color:var(--ink);
-    }
+:root {
+    --tt-navy: #0f2342; --tt-teal: #0d9488; --tt-sky: #0ea5e9;
+    --tt-muted: #64748b; --tt-border: #e2e8f0; --tt-radius: 14px;
+    --tt-shadow: 0 4px 16px rgba(15,35,66,.10);
+}
+.ttw-hero {
+    background: linear-gradient(135deg, var(--tt-navy) 0%, #1e4a7e 55%, #0d9488 100%);
+    border-radius: var(--tt-radius); padding: 28px 32px; margin-bottom: 24px; color:#fff;
+    display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;
+}
+.ttw-hero h1 { font-size:22px; font-weight:700; margin:0 0 6px; }
+.ttw-hero p  { font-size:13px; opacity:.75; margin:0; }
+.ttw-hero .pills { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.ttw-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; }
+.ttw-print-btn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:10px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; }
+.ttw-print-btn:hover { background:rgba(255,255,255,.28); }
 
-    .toolbar {
-        display:flex; justify-content:space-between; align-items:flex-start;
-        margin-bottom:16px; flex-wrap:wrap; gap:12px;
-    }
-    .toolbar .title-block h1 { font-size:18px; margin:0 0 2px; }
-    .toolbar .title-block .school-name {
-        font-size:15px; font-weight:600; color:#0F172A; margin:0 0 2px;
-    }
-    .toolbar .title-block .school-meta {
-        font-size:12px; color:var(--muted); line-height:1.4;
-    }
-    .toolbar .title-block .school-motto { font-style:italic; }
-    .toolbar .title-block .doc-sub {
-        font-size:12.5px; color:var(--muted); margin-top:4px;
-    }
+.ttw-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+.ttw-stat { background:#fff; border:1px solid var(--tt-border); border-radius:var(--tt-radius); box-shadow:var(--tt-shadow); padding:16px 18px; }
+.ttw-stat .v { font-size:26px; font-weight:700; color:var(--tt-navy); }
+.ttw-stat .l { font-size:11px; color:var(--tt-muted); text-transform:uppercase; margin-top:4px; }
 
-    .btn {
-        border:1px solid var(--border); background:#fff; border-radius:8px;
-        padding:8px 14px; font-size:13px; cursor:pointer;
-    }
-    .btn:hover { background:#F1F5F9; }
+.ttw-grid-card { background:#fff; border:1px solid var(--tt-border); border-radius:var(--tt-radius); box-shadow:var(--tt-shadow); margin-bottom:22px; overflow:hidden; }
+.ttw-grid-card .hdr { background:linear-gradient(135deg,#1565C0,#0d9488); color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+.ttw-grid-card .hdr h5 { margin:0; font-size:15px; font-weight:700; }
+.ttw-grid-card .hdr .badges { display:flex; gap:6px; flex-wrap:wrap; }
+.ttw-badge { background:rgba(255,255,255,.18); border-radius:14px; padding:3px 10px; font-size:11px; font-weight:600; }
 
-    .grid-wrap {
-        overflow-x:auto; background:#fff;
-        border:1px solid var(--border); border-radius:12px;
-    }
-    table { border-collapse:collapse; width:100%; min-width:900px; }
-    th, td { border:1px solid var(--border); padding:6px 8px; vertical-align:top; font-size:12px; }
-    thead th {
-        background:#1E293B; color:#fff; position:sticky; top:0;
-        text-align:center; font-size:11.5px; text-transform:uppercase;
-    }
-    th.day-col   { width:70px; }
-    th.class-col { width:80px; }
+table.ttw-grid { width:100%; border-collapse:collapse; font-size:12px; }
+table.ttw-grid th { background:#1E293B; color:#fff; padding:8px 6px; text-align:center; font-size:11px; text-transform:uppercase; }
+table.ttw-grid td { border:1px solid var(--tt-border); padding:6px; vertical-align:top; }
+table.ttw-grid td.day-cell {
+    font-weight:700; text-align:center; vertical-align:middle;
+    color:#fff; width:80px; font-size:13px;
+    border-right:2px solid #0f172a;
+}
+table.ttw-grid td.class-cell {
+    font-weight:700; text-align:center; vertical-align:middle;
+    color:#fff; width:90px; font-size:12px;
+    border-right:2px solid #0f172a;
+    white-space:nowrap;
+}
+.cell-lesson { padding-left:5px; border-left:3px solid #999; }
+.cell-lesson .subj { font-weight:700; display:block; font-size:11.5px; color:var(--tt-navy); }
+.cell-lesson .meta { color:#64748B; font-size:10.5px; display:block; margin-top:1px; }
+.ttw-break { background:#FFFBEB; color:#d97706; font-weight:700; font-size:11px; text-align:center; }
+.ttw-free  { color:#cbd5e1; font-size:11px; text-align:center; font-style:italic; }
+.ttw-cell-na { background:#F8FAFC; }
 
-    td.day-cell {
-        font-weight:700; text-align:center; vertical-align:middle;
-        color:#fff; font-size:13px;
-        border-right:2px solid #0F172A;
-        background:#334155;
-    }
-    td.class-cell {
-        font-weight:700; text-align:center; vertical-align:middle;
-        color:#fff; font-size:12px;
-        border-right:2px solid #0F172A;
-        white-space:nowrap;
-    }
+.ttw-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; font-size:12px; }
+.ttw-legend .item { display:flex; align-items:center; gap:6px; }
+.ttw-legend .swatch { width:11px; height:11px; border-radius:3px; display:inline-block; }
 
-    .cell-lesson { padding-left:6px; border-left-width:3px; border-left-style:solid; }
-    .cell-lesson .subj { font-weight:700; display:block; }
-    .cell-lesson .meta { display:block; color:var(--muted); font-size:11px; margin-top:1px; }
-
-    .cell-break { text-align:center; color:#D97706; font-weight:600; }
-    .cell-na    { background:#F8FAFC; }
-    .cell-free  { text-align:center; color:#CBD5E1; font-style:italic; }
-
-    .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; font-size:12px; }
-    .legend .item { display:flex; align-items:center; gap:6px; }
-    .legend .swatch { width:11px; height:11px; border-radius:3px; display:inline-block; }
-
-    .footer-note { margin-top:10px; font-size:11px; color:#94A3B8; }
-
-    @media print {
-        .toolbar .btn { display:none; }
-        body { background:#fff; padding:0; }
-        .grid-wrap { border:none; border-radius:0; }
-        thead th { position:static; }
-    }
+@media print {
+    .no-print { display:none !important; }
+    .ttw-grid-card { box-shadow:none; }
+}
 </style>
-</head>
-<body>
 
-    <div class="toolbar">
-        <div class="title-block">
-            @if(!empty($schoolInfo))
-                <div class="school-name">{{ $schoolInfo->school_name ?? config('app.name') }}</div>
-                @if($schoolInfo->school_address)
-                    <div class="school-meta">{{ $schoolInfo->school_address }}</div>
-                @endif
-                @if($schoolInfo->school_motto)
-                    <div class="school-meta school-motto">“{{ $schoolInfo->school_motto }}”</div>
-                @endif
-                @if(($schoolInfo->formatted_phones ?? '-') !== '-' || $schoolInfo->school_email)
-                    <div class="school-meta">
-                        @if(($schoolInfo->formatted_phones ?? '-') !== '-')
-                            Tel: {{ $schoolInfo->formatted_phones }}
-                        @endif
-                        @if($schoolInfo->school_email)
-                            @if(($schoolInfo->formatted_phones ?? '-') !== '-') &middot; @endif
-                            {{ $schoolInfo->school_email }}
-                        @endif
-                    </div>
-                @endif
-            @endif
-            <h1 style="margin-top:8px;">Merged Timetable — Days as Rows (Grouped by Class)</h1>
-            <div class="doc-sub">{{ $sessionName }} &middot; {{ $termName }}</div>
+<div class="main-content"><div class="page-content"><div class="container-fluid">
+
+<div class="ttw-hero">
+    <div>
+        <h1><i class="ri-layout-row-line me-2"></i>{{ $schoolInfo->school_name ?? 'School' }} — Merged Timetable</h1>
+        <p>Days as Rows (Grouped by Class) &middot; {{ $sessionName }} &middot; {{ $termName }} &middot; Generated {{ $generatedAt }}</p>
+        <div class="pills">
+            <span class="ttw-pill"><i class="ri-team-line me-1"></i>{{ count($classList) }} classes</span>
+            <span class="ttw-pill"><i class="ri-calendar-line me-1"></i>{{ count($days) }} days</span>
+            <span class="ttw-pill"><i class="ri-time-line me-1"></i>{{ count($timeSlots) }} time slots</span>
         </div>
-        <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
     </div>
+    <button class="ttw-print-btn no-print" onclick="window.print()">
+        <i class="ri-printer-line me-1"></i>Print / Save PDF
+    </button>
+</div>
 
-    @if(empty($daySections))
-        <div class="grid-wrap" style="padding:40px; text-align:center; color:#94A3B8;">
-            No timetables found for this session / term.
+<div class="ttw-stats">
+    <div class="ttw-stat"><div class="v">{{ count($classList) }}</div><div class="l">Classes</div></div>
+    <div class="ttw-stat"><div class="v">{{ count($days) }}</div><div class="l">Days</div></div>
+    <div class="ttw-stat"><div class="v">{{ count($timeSlots) }}</div><div class="l">Time Slots</div></div>
+    <div class="ttw-stat"><div class="v">{{ count($classList) * count($days) }}</div><div class="l">Class-Day Rows</div></div>
+</div>
+
+@if(empty($daySections))
+    <div class="ttw-grid-card" style="padding:40px;text-align:center;color:#94a3b8;">
+        No timetables found for this session / term.
+    </div>
+@else
+    <div class="ttw-grid-card">
+        <div class="hdr">
+            <h5><i class="ri-layout-row-line me-1"></i>Merged Grid — Days as Rows, Grouped by Class</h5>
+            <div class="badges">
+                <span class="ttw-badge">{{ count($classList) }} classes</span>
+                <span class="ttw-badge">{{ count($timeSlots) }} time slots</span>
+            </div>
         </div>
-    @else
-        <div class="grid-wrap">
-            <table>
+        <div style="overflow-x:auto;">
+            <table class="ttw-grid">
                 <thead>
                     <tr>
-                        <th class="day-col">Day</th>
-                        <th class="class-col">Class</th>
+                        <th style="background:#0f2342;width:80px;">Day</th>
+                        <th style="background:#0f2342;width:90px;">Class</th>
                         @foreach($timeSlots as $slot)
                             <th>
                                 {{ $slot['label'] }}<br>
-                                <span style="font-weight:400;opacity:.75">{{ $slot['start'] }}–{{ $slot['end'] }}</span>
+                                <span style="font-weight:400;opacity:.75;font-size:10px;">{{ $slot['start'] }}–{{ $slot['end'] }}</span>
                             </th>
                         @endforeach
                     </tr>
@@ -148,19 +130,16 @@
 
                                 @foreach($classRow['cells'] as $cell)
                                     @if($cell['state'] === 'na')
-                                        <td class="cell-na"></td>
+                                        <td class="ttw-cell-na"></td>
                                     @elseif($cell['state'] === 'break')
-                                        <td class="cell-break">☕ Break</td>
+                                        <td class="ttw-break">☕ Break</td>
                                     @elseif($cell['state'] === 'free')
-                                        <td class="cell-free">Free</td>
+                                        <td class="ttw-free">Free</td>
                                     @else
                                         <td>
-                                            <div class="cell-lesson"
-                                                 style="border-left-color: {{ $classRow['class_color'] }};">
+                                            <div class="cell-lesson" style="border-left-color: {{ $classRow['class_color'] }};">
                                                 <span class="subj">{{ $cell['subject'] ?? '—' }}</span>
-                                                <span class="meta">
-                                                    {{ trim(($cell['teacher'] ?? '') . ($cell['room'] ? ' · ' . $cell['room'] : '')) }}
-                                                </span>
+                                                <span class="meta">{{ trim(($cell['teacher'] ?? '') . ($cell['room'] ? ' · ' . $cell['room'] : '')) }}</span>
                                             </div>
                                         </td>
                                     @endif
@@ -171,18 +150,16 @@
                 </tbody>
             </table>
         </div>
-    @endif
+    </div>
 
-    @if(!empty($classList))
-        <div class="legend">
-            @foreach($classList as $cls)
-                <span class="item">
-                    <span class="swatch" style="background: {{ $classColors[$cls] ?? '#999' }}"></span>{{ $cls }}
-                </span>
-            @endforeach
-        </div>
-    @endif
+    <div class="ttw-legend">
+        @foreach($classList as $cls)
+            <span class="item">
+                <span class="swatch" style="background: {{ $classColors[$cls] ?? '#999' }}"></span>{{ $cls }}
+            </span>
+        @endforeach
+    </div>
+@endif
 
-    <div class="footer-note">Generated {{ $generatedAt }}</div>
-</body>
-</html>
+</div></div></div>
+@endsection
