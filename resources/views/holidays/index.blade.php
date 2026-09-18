@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.master')
 
 @section('content')
 <div class="container-fluid">
@@ -257,9 +257,7 @@
     </div>
 </div>
 
-@endsection
-
-@push('scripts')
+<script src="{{ asset('theme/layouts/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
 <script>
 $(document).ready(function() {
     // Toggle cut-off time visibility based on full day checkbox
@@ -431,4 +429,5 @@ $(document).ready(function() {
     });
 });
 </script>
-@endpush
+
+@endsection
