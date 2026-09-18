@@ -27,7 +27,7 @@ class HolidayController extends Controller
     {
         $pagetitle = 'Holiday Management';
 
-        $query = Holiday::with(['session', 'term'])->orderBy('date', 'desc');
+        $query = Holiday::with(['session', 'term', 'creator'])->orderBy('date', 'desc');
 
         if ($search = trim((string) $request->query('search'))) {
             $query->where('title', 'like', '%' . $search . '%');
