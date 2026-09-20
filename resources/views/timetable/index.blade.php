@@ -5480,11 +5480,13 @@ async function previewGeneration() {
                 'Accept': 'application/json',
             },
             body: JSON.stringify({
-                setting_id:                settingData.setting_id,
-                include_rooms:             document.getElementById('wizIncludeRooms').checked,
-                subject_priority_payload:  subjectPriorityPayload,
-                period_limits_payload:     periodLimitsPayload,
-                advanced_rules:            advancedRules,
+                setting_id:                     settingData.setting_id,
+                include_rooms:                  document.getElementById('wizIncludeRooms').checked,
+                // Same WAF workaround as applyGenerationTemplate's payload
+                // in submitGenerationWizard() -- see the comment there.
+                subject_priority_payload_json:  JSON.stringify(subjectPriorityPayload),
+                period_limits_payload_json:     JSON.stringify(periodLimitsPayload),
+                advanced_rules:                 advancedRules,
             }),
         });
         const data = await res.json();
@@ -5595,9 +5597,16 @@ async function submitGenerationWizard(alsoGenerate) {
         deprioritize_break_adjacent: document.getElementById('wizDeprioritizeBreakAdjacent').checked,
         include_rooms:               includeRooms,
 
-        subject_priority_payload:    collectWizardPriorityPayload(),
-        period_limits_payload:       collectWizardPeriodLimits(),
-        advanced_rules:              collectWizardAdvancedRules(),
+        // Sent as JSON-encoded strings, not native arrays: a run covering
+        // many classes repeats the same field names (schoolclass_id,
+        // subject_id, periods_per_week, ...) once per row, and some
+        // hosting WAFs (Comodo's ruleset on cPanel, in particular) flag
+        // that shape as too many / duplicate arguments and block the
+        // request with a 406 before it ever reaches Laravel -- the same
+        // fix as allocations_json in savePeriodAllocationSet().
+        subject_priority_payload_json: JSON.stringify(collectWizardPriorityPayload()),
+        period_limits_payload_json:    JSON.stringify(collectWizardPeriodLimits()),
+        advanced_rules:                collectWizardAdvancedRules(),
     };
 
     showLoader();

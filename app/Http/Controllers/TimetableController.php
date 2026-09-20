@@ -1337,6 +1337,23 @@ class TimetableController extends Controller
     // =========================================================================
     public function applyGenerationTemplate(Request $request): JsonResponse
     {
+        // subject_priority_payload / period_limits_payload can repeat the
+        // same field names (schoolclass_id, subject_id, periods_per_week,
+        // ...) once per class/subject row -- for a whole-school run that's
+        // easily 100+ repeats, which some hosting WAFs (Comodo's ruleset on
+        // cPanel, in particular) flag as too many / duplicate arguments and
+        // block the request with a 406 before it ever reaches here. The
+        // frontend sends each as a single JSON-encoded string instead when
+        // present; decode it back into a native array here so validation
+        // below is unchanged. Same handling as allocations_json in
+        // savePeriodAllocationSet().
+        foreach (['subject_priority_payload', 'period_limits_payload'] as $jsonField) {
+            if ($request->has("{$jsonField}_json") && !$request->has($jsonField)) {
+                $decoded = json_decode((string) $request->input("{$jsonField}_json"), true);
+                $request->merge([$jsonField => is_array($decoded) ? $decoded : []]);
+            }
+        }
+
         $validated = $request->validate([
             'session_id'              => 'required|exists:schoolsession,id',
             'term_id'                 => 'nullable|exists:schoolterm,id',
@@ -2911,6 +2928,15 @@ class TimetableController extends Controller
     // =========================================================================
     public function previewGeneration(Request $request): JsonResponse
     {
+        // Same WAF workaround as applyGenerationTemplate() -- see the
+        // comment there.
+        foreach (['subject_priority_payload', 'period_limits_payload'] as $jsonField) {
+            if ($request->has("{$jsonField}_json") && !$request->has($jsonField)) {
+                $decoded = json_decode((string) $request->input("{$jsonField}_json"), true);
+                $request->merge([$jsonField => is_array($decoded) ? $decoded : []]);
+            }
+        }
+
         $validated = $request->validate([
             'setting_id'               => 'required|exists:timetable_settings,id',
             'include_rooms'            => 'boolean',
