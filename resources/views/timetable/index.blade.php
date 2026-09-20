@@ -113,6 +113,9 @@
 .tt-grid th.wednesday-th { background: var(--tt-green);  color: #fff; }
 .tt-grid th.thursday-th  { background: var(--tt-orange); color: #fff; }
 .tt-grid th.friday-th    { background: var(--tt-pink);   color: #fff; }
+.tt-grid th.holiday-th   { background: #b91c1c !important; }
+.tt-grid th .holiday-badge { display: block; font-size: 9px; font-weight: 700; text-transform: none; letter-spacing: 0; margin-top: 2px; opacity: .95; }
+.tt-grid td.holiday-col { background: rgba(239, 68, 68, 0.07); }
 .tt-grid td { border: 1px solid var(--tt-border); vertical-align: middle; padding: 0; transition: all 0.15s; }
 .tt-grid td.period-td { background: var(--tt-surface); padding: 10px 14px; min-width: 100px; }
 .tt-grid .period-td .pname { font-size: 12px; font-weight: 700; color: #1E293B; }
@@ -1201,6 +1204,7 @@
                             </button>
                         </div>
                     </div>
+                    <div id="ttHolidayBanner" class="alert d-none d-flex align-items-center gap-2 mb-3 border-0 shadow-sm" role="alert"></div>
                     <div class="tt-card border">
                         <div class="tt-grid-wrapper" id="timetableGridContainer">
                             <div class="text-center py-5 text-muted">
@@ -2520,6 +2524,8 @@ let currentDays       = [];
 let availableSubjects = [];
 let allTeachers       = [];
 let availableRooms    = [];
+let currentTodayDayName = null;
+let currentTodayHoliday = null;
 let pendingCloneId    = null;
 let roomTomSelect     = null;
 let conflictCheckTimer = null;
@@ -3225,7 +3231,10 @@ async function loadTimetableGrid() {
         currentDays    = data.days    || ['Monday','Tuesday','Wednesday','Thursday','Friday'];
         allTeachers    = data.teachers|| [];
         availableRooms = data.rooms   || [];
+        currentTodayDayName = data.today_day_name || null;
+        currentTodayHoliday = data.today_holiday   || null;
         updateRoomDropdown(availableRooms);
+        updateHolidayBanner();
         renderGrid({ animate: false });
     } catch (e) {
         container.innerHTML = `<div class="alert alert-danger m-3">Failed to load grid: ${escapeHtml(e.message)}</div>`;
@@ -3245,11 +3254,34 @@ async function loadTimetableGridAnimated() {
         currentDays    = data.days    || ['Monday','Tuesday','Wednesday','Thursday','Friday'];
         allTeachers    = data.teachers|| [];
         availableRooms = data.rooms   || [];
+        currentTodayDayName = data.today_day_name || null;
+        currentTodayHoliday = data.today_holiday   || null;
         updateRoomDropdown(availableRooms);
+        updateHolidayBanner();
         renderGrid({ animate: true });
     } catch (e) {
         container.innerHTML = `<div class="alert alert-danger m-3">Failed to load grid: ${escapeHtml(e.message)}</div>`;
     }
+}
+
+function updateHolidayBanner() {
+    const banner = document.getElementById('ttHolidayBanner');
+    if (!banner) return;
+
+    if (!currentTodayHoliday) {
+        banner.classList.add('d-none');
+        banner.innerHTML = '';
+        return;
+    }
+
+    const h = currentTodayHoliday;
+    banner.classList.remove('d-none', 'alert-danger', 'alert-warning');
+    banner.classList.add(h.is_full_day ? 'alert-danger' : 'alert-warning');
+    const detail = h.is_full_day
+        ? 'No classes are expected today.'
+        : `Classes are expected to end by ${(h.cutoff_time || '').slice(0, 5)} today.`;
+    banner.innerHTML = `<i class="ri-calendar-event-fill fs-18"></i>
+        <div><strong>Today (${escapeHtml(currentTodayDayName || '')}) is a holiday — ${escapeHtml(h.title)}.</strong> ${detail}</div>`;
 }
 
 function renderGrid(options = {}) {
@@ -3270,7 +3302,12 @@ function renderGrid(options = {}) {
 
     let html = `<table class="tt-grid"><thead><tr>
         <th class="period-th">Period</th>
-        ${days.map(d => `<th class="${dayThClasses[d]||''}">${escapeHtml(d)}</th>`).join('')}
+        ${days.map(d => {
+            const isHolidayDay = currentTodayHoliday && d === currentTodayDayName;
+            const cls = `${dayThClasses[d]||''}${isHolidayDay ? ' holiday-th' : ''}`;
+            const badge = isHolidayDay ? '<span class="holiday-badge"><i class="ri-flag-fill"></i> Holiday</span>' : '';
+            return `<th class="${cls}">${escapeHtml(d)}${badge}</th>`;
+        }).join('')}
     </tr></thead><tbody>`;
 
     let cellSeq = 0;
@@ -3293,13 +3330,15 @@ function renderGrid(options = {}) {
             const rowspanAttr = spanSet.has(key) ? ' rowspan="2"' : '';
             const slot   = grid[period.id]?.[day] || null;
             const isFree = !slot || slot.is_free || (!slot.subject_id && !slot.teacher_id);
+            const isHolidayDay = currentTodayHoliday && day === currentTodayDayName;
+            const holidayTdClass = isHolidayDay ? ' holiday-col' : '';
             cellSeq++;
             const cellId = `c${cellSeq}`;
 
             if (isBreak) {
-                html += `<td><div class="tt-cell is-break"><span class="cell-break">☕ Break</span></div></td>`;
+                html += `<td class="${holidayTdClass.trim()}"><div class="tt-cell is-break"><span class="cell-break">☕ Break</span></div></td>`;
             } else if (isFree) {
-                html += `<td onclick="openSlotModal(${period.id},'${day}')"${rowspanAttr}>
+                html += `<td class="${holidayTdClass.trim()}" onclick="openSlotModal(${period.id},'${day}')"${rowspanAttr}>
                     <div class="tt-cell is-free" data-cell-id="${cellId}">
                         <i class="ri-add-line ri-lg text-muted opacity-30"></i>
                         <span class="cell-free">Free</span>
@@ -3321,7 +3360,7 @@ function renderGrid(options = {}) {
                 const animClass = animate ? ' cell-building' : '';
                 if (animate) buildingCells.push(cellId);
 
-                html += `<td onclick="openSlotModal(${period.id},'${day}')" ${borderStyle}${rowspanAttr}>
+                html += `<td class="${holidayTdClass.trim()}" onclick="openSlotModal(${period.id},'${day}')" ${borderStyle}${rowspanAttr}>
                     <div class="tt-cell has-subject${slot.is_double?' is-double':''}${animClass}" data-cell-id="${cellId}">
                         ${avatarHtml}
                         <span class="cell-subject">${escapeHtml(slot.subject_code || slot.subject || '—')}</span>

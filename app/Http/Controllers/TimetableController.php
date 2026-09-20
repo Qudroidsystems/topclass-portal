@@ -859,12 +859,23 @@ class TimetableController extends Controller
                     . ($r->capacity  ? ' · ' . $r->capacity . ' seats' : '')),
             ]);
 
+        $todayDayName = date('l');
+        $todayHoliday = in_array($todayDayName, self::DAYS, true)
+            ? $this->getHolidayForDate(now(), $setting->session_id, $setting->term_id)
+            : null;
+
         return response()->json(array_merge($payload, [
             'success'         => true,
             'setting'         => $setting,
             'teachers'        => $allTeachers,
             'rooms'           => $rooms,
             'day_period_meta' => $this->computeDayPeriodMeta($setting),
+            'today_day_name'  => $todayDayName,
+            'today_holiday'   => $todayHoliday ? [
+                'title'       => $todayHoliday->title,
+                'is_full_day' => (bool) $todayHoliday->is_full_day,
+                'cutoff_time' => $todayHoliday->cutoff_time,
+            ] : null,
         ]));
     }
 
@@ -4106,7 +4117,15 @@ class TimetableController extends Controller
         $days = self::DAYS;
         $upcomingSlots = $this->getUpcomingSlots($teacherId, $sessionId, $termId);
         $weeklySummary = $this->getWeeklySummary($teacherId, $sessionId, $termId);
-        $todaySlots = $slots[date('l')] ?? collect();
+        $todayDayName = date('l');
+        $todaySlots = $slots[$todayDayName] ?? collect();
+
+        // Only meaningful Mon-Fri (self::DAYS) since the grid has no
+        // weekend columns to flag. Scoped to the session/term currently
+        // being viewed, same as every other getHolidayForDate() call.
+        $todayHoliday = in_array($todayDayName, self::DAYS, true)
+            ? $this->getHolidayForDate(now(), $sessionId, $termId)
+            : null;
 
         $icsUrl = URL::signedRoute('timetable.ics', ['teacherId' => $teacherId], now()->addYears(10));
         $webcalUrl = preg_replace('/^https?:\/\//', 'webcal://', $icsUrl);
@@ -4115,7 +4134,8 @@ class TimetableController extends Controller
             'pagetitle', 'slots', 'days', 'allPeriods', 'sessions', 'terms',
             'sessionId', 'termId', 'classId', 'teacherClasses',
             'upcomingSlots', 'weeklySummary', 'teacherPicture',
-            'periodDayMeta', 'icsUrl', 'webcalUrl', 'todaySlots', 'conflictGroups'
+            'periodDayMeta', 'icsUrl', 'webcalUrl', 'todaySlots', 'conflictGroups',
+            'todayDayName', 'todayHoliday'
         ));
     }
 

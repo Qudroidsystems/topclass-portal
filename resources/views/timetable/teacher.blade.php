@@ -26,6 +26,24 @@
                 </div>
             </div>
 
+            @if($todayHoliday)
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert {{ $todayHoliday->is_full_day ? 'alert-danger' : 'alert-warning' }} d-flex align-items-center gap-2 mb-4 border-0 shadow-sm" role="alert">
+                        <i class="ri-calendar-event-fill fs-18"></i>
+                        <div>
+                            <strong>Today ({{ $todayDayName }}) is a holiday &mdash; {{ $todayHoliday->title }}.</strong>
+                            @if($todayHoliday->is_full_day)
+                                No classes are expected today.
+                            @else
+                                Classes are expected to end by {{ \Carbon\Carbon::parse($todayHoliday->cutoff_time)->format('H:i') }} today.
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Quick Stats Row --}}
             <div class="row g-3 mb-4">
                 <div class="col-md-3 col-6">
@@ -477,11 +495,19 @@
                                                 <div>Period / Time</div>
                                             </th>
                                             @foreach($days as $day)
-                                                <th class="text-center" style="min-width: 120px;">
+                                                @php $isHolidayCol = $todayHoliday && $day === $todayDayName; @endphp
+                                                <th class="text-center {{ $isHolidayCol ? 'teacher-holiday-col' : '' }}" style="min-width: 120px;">
                                                     <div>{{ $day }}</div>
                                                     <small class="opacity-75" id="dayCount_{{ $day }}">
                                                         {{ ($slots[$day] ?? collect())->whereNotNull('subject_id')->where('is_free', false)->count() }}
                                                     </small>
+                                                    @if($isHolidayCol)
+                                                        <div class="mt-1">
+                                                            <span class="badge bg-danger">
+                                                                <i class="ri-flag-fill me-1"></i>Holiday
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                 </th>
                                             @endforeach
                                         </tr>
@@ -521,6 +547,7 @@
                                                     $meta = $periodDayMeta[$period->id][$day] ?? ['applicable' => true, 'effective_type' => $period->type];
                                                     $isApplicable = $meta['applicable'] ?? true;
                                                     $effectiveType = $meta['effective_type'] ?? $period->type;
+                                                    $isHolidayCol = $todayHoliday && $day === $todayDayName;
 
                                                     $tooltipHtml = '';
                                                     if ($hasClass) {
@@ -540,7 +567,7 @@
                                                         })->implode('<hr class="my-1">');
                                                     }
                                                 @endphp
-                                                <td class="timetable-cell text-center align-middle {{ $period->is_break || $effectiveType === 'assembly' ? 'bg-light' : '' }}"
+                                                <td class="timetable-cell text-center align-middle {{ $period->is_break || $effectiveType === 'assembly' ? 'bg-light' : '' }} {{ $isHolidayCol ? 'teacher-holiday-col' : '' }}"
                                                     style="{{ $cellHasCombined && !$cellHasConflict ? 'background: rgba(245, 158, 11, 0.08);' : '' }}{{ $cellHasConflict ? 'border-left: 3px solid #ef4444;' : '' }}"
                                                     @if($hasClass)
                                                         data-bs-toggle="tooltip"
@@ -978,6 +1005,14 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .teacher-timetable .timetable-cell:hover {
     background-color: rgba(102, 126, 234, 0.06) !important;
+}
+
+/* Holiday column indicator — today's day column when a holiday falls on it */
+.teacher-holiday-col {
+    background-color: rgba(239, 68, 68, 0.06) !important;
+}
+.teacher-timetable thead th.teacher-holiday-col {
+    background-color: rgba(239, 68, 68, 0.35) !important;
 }
 
 /* ── Class cells ───────────────────────────────────── */

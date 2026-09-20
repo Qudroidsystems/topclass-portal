@@ -409,8 +409,8 @@ $(document).ready(function() {
         const data = Object.fromEntries(formData);
         
         // Convert checkbox values to boolean
-        data.is_full_day = data.is_full_day ? true : false;
-        data.affects_timetable = data.affects_timetable ? true : false;
+        data.is_full_day = data.is_full_day ? 1 : 0;
+        data.affects_timetable = data.affects_timetable ? 1 : 0;
 
         $('#saveHolidayBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
 
@@ -473,8 +473,8 @@ $(document).ready(function() {
         const formData = new FormData(this);
         const data = Object.fromEntries(formData);
         
-        data.is_full_day = data.is_full_day ? true : false;
-        data.affects_timetable = data.affects_timetable ? true : false;
+        data.is_full_day = data.is_full_day ? 1 : 0;
+        data.affects_timetable = data.affects_timetable ? 1 : 0;
 
         $('#updateHolidayBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Updating...');
 
