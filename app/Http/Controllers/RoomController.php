@@ -427,6 +427,197 @@ class RoomController extends Controller
         return response()->json(['success' => true, 'counts' => $counts]);
     }
 
+    /**
+     * Lightweight {id, label} list of active rooms, for select dropdowns
+     * (Generation Wizard's Quick-Map-Room modal, wizard room-mapping panel,
+     * bulk-map modal, etc). Mirrors the api.classes-list / api.subjects-list
+     * lookup endpoints' response shape.
+     */
+    public function listJson(): JsonResponse
+    {
+        $rooms = Room::where('is_active', true)
+            ->orderBy('room_name')
+            ->get(['id', 'room_name', 'room_code'])
+            ->map(fn($r) => [
+                'id'    => $r->id,
+                'label' => $r->room_code ? "{$r->room_name} ({$r->room_code})" : $r->room_name,
+            ]);
+
+        return response()->json(['success' => true, 'data' => $rooms]);
+    }
+
+    /**
+     * Batched per-room stats for the rooms grid/table view — the same three
+     * counters as statsDetail()'s totals (upcoming bookings, mapped
+     * classes/subjects, timetable uses), computed for every room in one
+     * round trip instead of one statsDetail() request per room.
+     */
+    public function roomStats(): JsonResponse
+    {
+        $bookingCounts = RoomBooking::where('date', '>=', now()->toDateString())
+            ->where('status', 'confirmed')
+            ->select('room_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('room_id')
+            ->pluck('cnt', 'room_id');
+
+        $mappingCounts = RoomClassSubject::select('room_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('room_id')
+            ->pluck('cnt', 'room_id');
+
+        $useCounts = TimetableSlot::whereNotNull('room_id')
+            ->select('room_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('room_id')
+            ->pluck('cnt', 'room_id');
+
+        $stats = Room::pluck('id')->mapWithKeys(fn($id) => [$id => [
+            'upcoming_bookings' => $bookingCounts[$id] ?? 0,
+            'mapped_classes'    => $mappingCounts[$id] ?? 0,
+            'timetable_uses'    => $useCounts[$id] ?? 0,
+        ]]);
+
+        return response()->json(['success' => true, 'stats' => $stats]);
+    }
+
+    /**
+     * Bulk activate/deactivate a set of rooms in one request (rooms index
+     * page's selection toolbar).
+     */
+    public function bulkActivate(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'room_ids'   => 'required|array|min:1',
+                'room_ids.*' => 'integer|exists:rooms,id',
+                'is_active'  => 'required|boolean',
+            ]);
+
+            $updated = Room::whereIn('id', $validated['room_ids'])
+                ->update(['is_active' => $validated['is_active']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $updated . ' room(s) updated.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . json_encode($e->errors()),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Bulk delete a set of rooms. Applies the same per-room guardrails as
+     * destroy() (in use in a timetable, or has upcoming bookings), but
+     * skips a blocked room instead of failing the whole batch — the
+     * frontend surfaces the skipped list via the `blocked` key.
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'room_ids'   => 'required|array|min:1',
+                'room_ids.*' => 'integer|exists:rooms,id',
+            ]);
+
+            $rooms   = Room::whereIn('id', $validated['room_ids'])->get();
+            $blocked = [];
+            $deleted = 0;
+
+            foreach ($rooms as $room) {
+                if (TimetableSlot::where('room_id', $room->id)->exists()) {
+                    $blocked[] = ['id' => $room->id, 'name' => $room->room_name, 'reason' => 'in_use_in_timetable'];
+                    continue;
+                }
+
+                $hasFutureBookings = RoomBooking::where('room_id', $room->id)
+                    ->where('date', '>=', now()->toDateString())
+                    ->exists();
+
+                if ($hasFutureBookings) {
+                    $blocked[] = ['id' => $room->id, 'name' => $room->room_name, 'reason' => 'has_upcoming_bookings'];
+                    continue;
+                }
+
+                RoomClassSubject::where('room_id', $room->id)->delete();
+                $room->delete();
+                $deleted++;
+            }
+
+            if ($blocked) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $deleted . ' room(s) deleted; ' . count($blocked) . ' skipped.',
+                    'blocked' => $blocked,
+                    'deleted' => $deleted,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $deleted . ' room(s) deleted successfully.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . json_encode($e->errors()),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Apply the same class/subject/session/term mapping to every room in
+     * room_ids in one shot (rooms index page's bulk-map modal). Uses
+     * updateOrCreate per room so re-running it against an already-mapped
+     * room updates the note instead of colliding with the scope_key unique
+     * index (see RoomClassSubject::booted()).
+     */
+    public function bulkMap(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'room_ids'       => 'required|array|min:1',
+                'room_ids.*'     => 'integer|exists:rooms,id',
+                'schoolclass_id' => 'required|exists:schoolclass,id',
+                'subject_id'     => 'nullable|exists:subject,id',
+                'session_id'     => 'required|exists:schoolsession,id',
+                'term_id'        => 'nullable|exists:schoolterm,id',
+                'note'           => 'nullable|string|max:190',
+            ]);
+
+            $mapped = 0;
+            foreach ($validated['room_ids'] as $roomId) {
+                RoomClassSubject::updateOrCreate(
+                    [
+                        'room_id'        => $roomId,
+                        'schoolclass_id' => $validated['schoolclass_id'],
+                        'subject_id'     => $validated['subject_id'] ?? null,
+                        'session_id'     => $validated['session_id'],
+                        'term_id'        => $validated['term_id'] ?? null,
+                    ],
+                    ['note' => $validated['note'] ?? null]
+                );
+                $mapped++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mapped ' . $mapped . ' room(s) to the selected class.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . json_encode($e->errors()),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
         // =========================================================================
     // PER-ROOM STATS DETAIL
     //

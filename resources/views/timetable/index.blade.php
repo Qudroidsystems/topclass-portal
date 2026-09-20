@@ -4965,6 +4965,30 @@ async function applyWizardPeriodAllocationSet() {
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'Failed to load that set.');
 
+        // The Subjects & Priority panel below has to actually be loaded
+        // before this set's rows have anywhere to land -- otherwise every
+        // row is silently skipped (0 applied) even though a confirmation
+        // still pops up, and pending subjects never get their "Include"
+        // checkbox turned on, so they're missing from generation too. Load
+        // the panel automatically here instead of relying on the admin
+        // having already clicked "Load Subjects" in just the right order,
+        // switching on "show unassigned" first if this set has any
+        // pending (not-yet-assigned) rows so those aren't skipped either.
+        const hasPendingRows = data.allocations.some(a => a.is_pending);
+        const includeToggle  = document.getElementById('wizIncludeUnassigned');
+        const needsReload = !Object.keys(wizardSubjectsState).length
+            || (hasPendingRows && includeToggle && !includeToggle.checked);
+
+        if (needsReload) {
+            if (hasPendingRows && includeToggle) includeToggle.checked = true;
+            await loadWizardSubjects();
+            if (!Object.keys(wizardSubjectsState).length) {
+                // loadWizardSubjects() already explained why (no session
+                // picked, no classes in scope, etc.) -- nothing to apply.
+                return;
+            }
+        }
+
         let applied = 0, skipped = 0, skippedPending = 0;
         data.allocations.forEach(a => {
             const ppwEl = document.getElementById(`wizPpw_${a.schoolclass_id}_${a.subject_id}`);
