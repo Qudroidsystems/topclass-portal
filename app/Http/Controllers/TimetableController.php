@@ -1186,17 +1186,20 @@ class TimetableController extends Controller
             ->get()
             ->groupBy(fn($st) => $st->subjectclass->schoolclassid);
 
-        // Subject-teacher pairings for this session/term with no
-        // `subjectclass` link at all yet. Shown only when the admin opts
-        // in — this is what lets a period allocation set built for a
-        // not-yet-assigned subject actually drive generation here,
-        // without ever touching `subjectclass`.
+        // Every subject-teacher pairing for this session/term, regardless
+        // of which class(es) it may already be linked to via `subjectclass`
+        // (read-only here, never touches that table) -- the per-class
+        // exclusion below (`$seenSubjectIds`) is what keeps a subject off
+        // a class that already has it, while still letting it surface as
+        // available for every OTHER class, including ones it's already
+        // allocated to elsewhere. Shown only when the admin opts in — this
+        // is what lets a period allocation set built for a subject that's
+        // not yet on THIS class actually drive generation here.
         $pendingSubjectTeachers = collect();
         if ($includeUnassigned) {
             $pendingSubjectTeachers = SubjectTeacher::with(['subject', 'staff'])
                 ->where('sessionid', $sessionId)
                 ->when($termId, fn($q) => $q->where('termid', $termId))
-                ->whereDoesntHave('subjectclass')
                 ->get()
                 ->unique('subjectid')
                 ->values();
@@ -3144,12 +3147,15 @@ class TimetableController extends Controller
             ->groupBy('subjectid');
 
         // A subject this timetable's constraints ask for but that has no
-        // `subjectclass` row for this class yet (planned via a period
+        // `subjectclass` row for THIS class yet (planned via a period
         // allocation set or the Generation Wizard before the formal
         // Subject-Class assignment) still needs a teacher to schedule
         // lessons with. Fall back to a SubjectTeacher record for the same
-        // subject/session/term that isn't linked to ANY class — read-only,
-        // never touches `subjectclass`.
+        // subject/session/term — read-only, never touches `subjectclass` —
+        // regardless of whether that pairing is already linked to some
+        // OTHER class; a subject already taught elsewhere is exactly the
+        // common case here (e.g. added to a second class via the Period
+        // Allocation modal), not an edge case to exclude.
         $pendingConstraintSubjectIds = $constraints->pluck('subject_id')
             ->diff($subjectTeachers->keys())
             ->values();
@@ -3158,7 +3164,6 @@ class TimetableController extends Controller
             $pendingSubjectTeachersForClass = SubjectTeacher::where('sessionid', $sessionId)
                 ->when($termId, fn($q) => $q->where('termid', $termId))
                 ->whereIn('subjectid', $pendingConstraintSubjectIds)
-                ->whereDoesntHave('subjectclass')
                 ->with(['subject', 'staff'])
                 ->get()
                 ->groupBy('subjectid');

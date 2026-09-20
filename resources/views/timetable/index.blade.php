@@ -1755,8 +1755,8 @@
         <div class="form-check mb-2">
           <input class="form-check-input" type="checkbox" id="wizIncludeUnassigned" onchange="loadWizardSubjects()">
           <label class="form-check-label" for="wizIncludeUnassigned" style="font-size:12.5px">
-            Also show subjects not yet assigned to a class
-            <span class="text-muted">— tick "Include" on a row (or apply a saved set that has one) to generate it for this class</span>
+            Also show every other subject not yet allocated to this class
+            <span class="text-muted">— includes subjects already taught in other classes; tick "Include" on a row (or apply a saved set that has one) to generate it for this class</span>
           </label>
         </div>
 
@@ -4356,7 +4356,7 @@ function renderWizardSubjectsPanel(classes, levels) {
             html += `<div class="${rowClasses}" data-class-id="${classId}" data-subject-id="${sid}">
                 <div>${leadCell}</div>
                 <div>
-                    <div class="wiz-subj-name">${escapeHtml(s.subject_name)}${isPending ? '<span class="pa-pending-badge">Not yet assigned</span>' : ''}</div>
+                    <div class="wiz-subj-name">${escapeHtml(s.subject_name)}${isPending ? '<span class="pa-pending-badge">Not on this class yet</span>' : ''}</div>
                     <div class="wiz-subj-teacher">${escapeHtml(s.teacher_name)}</div>
                     ${roomHint}
                 </div>
