@@ -2080,8 +2080,8 @@
         <div class="form-check mb-2">
           <input class="form-check-input" type="checkbox" id="paIncludeUnassigned" onchange="loadPeriodAllocationGrid()">
           <label class="form-check-label" for="paIncludeUnassigned" style="font-size:12.5px">
-            Also show subjects not yet assigned to a class
-            <span class="text-muted">— tick "Include" on a row to plan periods for it here; it won't create a Subject-Class assignment</span>
+            Also show every other subject not yet allocated to this class
+            <span class="text-muted">— includes subjects already taught in other classes; tick "Include" on a row to plan periods for it here; it won't create a Subject-Class assignment</span>
           </label>
         </div>
 
@@ -4590,7 +4590,7 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
 
         return `<div class="${rowClass}" data-class-id="${classId}" data-subject-id="${sid}">
                 <div>
-                    ${leadCell}<span class="pa-subj-name">${escapeHtml(s.subject_name)}</span>${isPending ? '<span class="pa-pending-badge">Not yet assigned</span>' : ''}
+                    ${leadCell}<span class="pa-subj-name">${escapeHtml(s.subject_name)}</span>${isPending ? '<span class="pa-pending-badge">Not on this class yet</span>' : ''}
                     <div class="pa-subj-teacher${noTeacher ? ' text-danger' : ''}">${noTeacher ? 'No teacher assigned yet' : escapeHtml(s.teacher_name)}</div>
                 </div>
                 <div>
@@ -4642,7 +4642,7 @@ function renderPeriodAllocationGrid(classes, overlay = null) {
 
         const pending = cls.pending_subjects || [];
         if (pending.length) {
-            html += `<div class="pa-pending-divider"><i class="ri-time-line"></i>Not yet assigned to any class — tick to include for this class</div>`;
+            html += `<div class="pa-pending-divider"><i class="ri-time-line"></i>Not yet allocated to this class — tick to include</div>`;
             pending.forEach(s => { html += renderPaSubjRow(classId, s, true); });
         }
 

@@ -1568,18 +1568,21 @@ class TimetableController extends Controller
                 ->get()
                 ->groupBy(fn($sc) => (int) $sc->schoolclassid);
 
-            // Subject-teacher pairings that exist for this session/term but
-            // aren't linked to ANY class yet (no `subjectclass` row at all
-            // — this only ever reads that table, never writes it). Shown
-            // only when the admin ticks "Also show subjects not yet
-            // assigned to a class", so periods can be planned for them
-            // ahead of the formal Subject-Class assignment.
+            // Every subject-teacher pairing that exists for this session/term,
+            // regardless of which class(es) it may already be linked to via
+            // `subjectclass` (this block only ever reads that table, never
+            // writes it) — per-class exclusion (a subject already on THIS
+            // class) happens below, per class card, so a subject already
+            // allocated to Class A still surfaces as available for Class B.
+            // Shown only when the admin ticks "Also show subjects not yet
+            // allocated to this class", so periods can be planned for them
+            // ahead of (or in addition to) the formal Subject-Class
+            // assignment.
             $pendingSubjects = collect();
             if ($includeUnassigned) {
                 $pendingSubjects = SubjectTeacher::with(['subject', 'staff'])
                     ->where('sessionid', $sessionId)
                     ->when($termId, fn($q) => $q->where('termid', $termId))
-                    ->whereDoesntHave('subjectclass')
                     ->get()
                     ->unique('subjectid')
                     ->map(fn($st) => [
@@ -1600,10 +1603,10 @@ class TimetableController extends Controller
 
             // Which classes to build cards for: an explicit filter always
             // wins; otherwise every class that already has something
-            // assigned, plus — only when pending subjects are being shown
-            // with no explicit filter — every class in the school, since a
-            // pending subject isn't tied to one yet and could apply to any
-            // of them.
+            // assigned, plus — only when the full subject-teacher pool is
+            // being shown with no explicit filter — every class in the
+            // school, since any of those subjects could still be allocated
+            // to a class that has nothing assigned yet.
             $classIdsForMeta = $classIds
                 ?: (($includeUnassigned && $pendingSubjects->isNotEmpty())
                     ? Schoolclass::pluck('id')->all()
@@ -1640,9 +1643,11 @@ class TimetableController extends Controller
 
                 $assignedSubjectIds = $subjectRows->pluck('subject_id')->all();
 
-                // Same pending list on every class card, minus any subject
-                // this class already has via a normal Subject-Class
-                // assignment (avoids a duplicate row / a DOM id clash).
+                // Same full subject-teacher pool on every class card, minus
+                // whichever of those subjects THIS class already has via a
+                // normal Subject-Class assignment (avoids a duplicate row /
+                // a DOM id clash) — a subject assigned to another class is
+                // NOT excluded here, so it still shows up as available.
                 $pendingForClass = $pendingSubjects
                     ->reject(fn($p) => in_array($p['subject_id'], $assignedSubjectIds, true))
                     ->values();
