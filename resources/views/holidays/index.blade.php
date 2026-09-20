@@ -92,7 +92,17 @@
 @media (max-width: 768px) {
     .hol-stats { grid-template-columns: repeat(2,1fr); }
 }
+
+.hol-table-card .dataTables_wrapper .dataTables_length select { border:1.5px solid var(--hol-border); border-radius:8px; padding:6px 10px; margin:0 6px; font-size:12.5px; }
+.hol-table-card .dataTables_wrapper .dataTables_info { font-size:12.5px; color:var(--hol-muted); padding:16px; }
+.hol-table-card .dataTables_wrapper .dataTables_processing { font-size:12.5px; color:var(--hol-navy); }
+.hol-table-card .dataTables_wrapper .paginate_button { border-radius:6px !important; font-size:12.5px !important; padding:4px 10px !important; }
+.hol-table-card .dataTables_wrapper .paginate_button.current, .hol-table-card .dataTables_wrapper .paginate_button.current:hover { background:var(--hol-navy) !important; border-color:var(--hol-navy) !important; color:#fff !important; }
+.hol-table-card .dataTables_wrapper .row:first-child, .hol-table-card .dataTables_wrapper .row:last-child { padding:0 16px; }
+.hol-table-card .dataTables_wrapper .row:last-child { padding-bottom:16px; }
 </style>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 
 <div class="main-content">
 <div class="page-content">
@@ -151,31 +161,28 @@
     </div>
     @endif
 
-    <form method="GET" action="{{ route('holidays.index') }}" class="hol-toolbar" id="holidayFilterForm">
+    <div class="hol-toolbar" id="holidayToolbar">
         <div class="search-wrap">
             <i class="ri-search-line"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search holidays…">
+            <input type="text" id="holSearchInput" placeholder="Search holidays…">
         </div>
-        <select name="type" onchange="document.getElementById('holidayFilterForm').submit()">
+        <select id="holTypeFilter">
             <option value="">All Types</option>
-            <option value="full" {{ request('type') === 'full' ? 'selected' : '' }}>Full Day</option>
-            <option value="half" {{ request('type') === 'half' ? 'selected' : '' }}>Half Day</option>
+            <option value="full">Full Day</option>
+            <option value="half">Half Day</option>
         </select>
-        <select name="session_id" onchange="document.getElementById('holidayFilterForm').submit()">
+        <select id="holSessionFilter">
             <option value="">All Sessions</option>
             @foreach($sessions as $session)
-            <option value="{{ $session->id }}" {{ (string) request('session_id') === (string) $session->id ? 'selected' : '' }}>{{ $session->session }}</option>
+            <option value="{{ $session->id }}">{{ $session->session }}</option>
             @endforeach
         </select>
-        <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="ri-search-line"></i> Filter</button>
-        @if(request()->anyFilled(['search', 'type', 'session_id']))
-        <a href="{{ route('holidays.index') }}" class="hol-clear"><i class="ri-close-line"></i> Clear filters</a>
-        @endif
-    </form>
+        <a href="#" class="hol-clear d-none" id="holClearFilters"><i class="ri-close-line"></i> Clear filters</a>
+    </div>
 
     <div class="hol-table-card">
         <div class="table-responsive">
-            <table class="table hol-table mb-0">
+            <table class="table hol-table mb-0 w-100" id="holidaysTable">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -187,74 +194,9 @@
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @forelse($holidays as $holiday)
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="hol-date-chip">
-                                    <span class="d">{{ \Carbon\Carbon::parse($holiday->date)->format('d') }}</span>
-                                    <span class="m">{{ \Carbon\Carbon::parse($holiday->date)->format('M') }}</span>
-                                </span>
-                                <span class="text-muted" style="font-size:11.5px;">{{ \Carbon\Carbon::parse($holiday->date)->format('D, Y') }}</span>
-                            </div>
-                        </td>
-                        <td><strong>{{ $holiday->title }}</strong></td>
-                        <td>
-                            <span class="hol-badge {{ $holiday->is_full_day ? 'full' : 'half' }}">
-                                {{ $holiday->is_full_day ? 'Full Day' : 'Half Day' }}
-                            </span>
-                        </td>
-                        <td>{{ $holiday->cutoff_time ? \Carbon\Carbon::parse($holiday->cutoff_time)->format('H:i') : '—' }}</td>
-                        <td>
-                            <span class="hol-scope-chip">{{ $holiday->session?->session ?? 'All Sessions' }}</span>
-                            <span class="hol-scope-chip">{{ $holiday->term?->term ?? 'All Terms' }}</span>
-                        </td>
-                        <td class="text-muted">{{ $holiday->creator?->name ?? 'System' }}</td>
-                        <td>
-                            <div class="hol-row-actions justify-content-end">
-                                @can('Edit holidays')
-                                <button type="button" class="edit-holiday"
-                                        data-id="{{ $holiday->id }}"
-                                        data-date="{{ \Carbon\Carbon::parse($holiday->date)->format('Y-m-d') }}"
-                                        data-title="{{ $holiday->title }}"
-                                        data-is_full_day="{{ $holiday->is_full_day ? '1' : '0' }}"
-                                        data-cutoff_time="{{ $holiday->cutoff_time }}"
-                                        data-session_id="{{ $holiday->session_id }}"
-                                        data-term_id="{{ $holiday->term_id }}"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editHolidayModal" title="Edit">
-                                    <i class="ri-edit-line"></i>
-                                </button>
-                                @endcan
-                                @can('Delete holidays')
-                                <button type="button" class="danger delete-holiday"
-                                        data-id="{{ $holiday->id }}"
-                                        data-title="{{ $holiday->title }}" title="Delete">
-                                    <i class="ri-delete-bin-line"></i>
-                                </button>
-                                @endcan
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7">
-                            <div class="hol-empty">
-                                <i class="ri-calendar-close-line"></i>
-                                No holidays found{{ request()->anyFilled(['search','type','session_id']) ? ' for these filters.' : '.' }}
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
+                <tbody></tbody>
             </table>
         </div>
-        @if($holidays->hasPages())
-        <div class="d-flex justify-content-center py-3">
-            {{ $holidays->links() }}
-        </div>
-        @endif
     </div>
 </div>
 </div>
@@ -392,9 +334,78 @@
     </div>
 </div>
 
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 <script src="{{ asset('theme/layouts/assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
 <script>
 $(document).ready(function() {
+    // ── Holidays DataTable (server-side, yajra) ─────────────────────────
+    var holidaysTable = $('#holidaysTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ route("holidays.data") }}',
+            type: 'GET',
+            data: function(d) {
+                d.search_title = $('#holSearchInput').val();
+                d.type = $('#holTypeFilter').val();
+                d.session_id = $('#holSessionFilter').val();
+            },
+            error: function(xhr) {
+                console.error('DataTables error:', xhr.status, xhr.responseText);
+                Swal.fire({ icon: 'error', title: 'Load Error', text: 'Failed to load holidays. Please refresh.' });
+            }
+        },
+        columns: [
+            { data: 'date_info', name: 'date' },
+            { data: 'title_info', name: 'title' },
+            { data: 'type_badge', name: 'is_full_day' },
+            { data: 'cutoff_info', name: 'cutoff_time' },
+            { data: 'scope_info', orderable: false, searchable: false },
+            { data: 'creator_name', orderable: false, searchable: false },
+            { data: 'action', orderable: false, searchable: false, className: 'text-end' }
+        ],
+        dom: "<'row'<'col-12'tr>>" +
+             "<'row align-items-center mt-2'<'col-sm-5'i><'col-sm-7 text-end'p>>",
+        language: {
+            processing: '<span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading…',
+            info: 'Showing _START_–_END_ of _TOTAL_ holidays',
+            infoEmpty: 'No holidays found', zeroRecords: 'No matching holidays',
+            emptyTable: '<div class="hol-empty"><i class="ri-calendar-close-line"></i>No holidays found.</div>',
+            paginate: { previous: '‹', next: '›' }
+        },
+        order: [[0, 'desc']],
+        pageLength: 15,
+        lengthChange: false,
+        responsive: true
+    });
+
+    var holSearchTimer = null;
+    function holToggleClear() {
+        var active = $('#holSearchInput').val() || $('#holTypeFilter').val() || $('#holSessionFilter').val();
+        $('#holClearFilters').toggleClass('d-none', !active);
+    }
+
+    $('#holSearchInput').on('keyup', function() {
+        clearTimeout(holSearchTimer);
+        holSearchTimer = setTimeout(function() {
+            holToggleClear();
+            holidaysTable.draw();
+        }, 350);
+    });
+    $('#holTypeFilter, #holSessionFilter').on('change', function() {
+        holToggleClear();
+        holidaysTable.draw();
+    });
+    $('#holClearFilters').on('click', function(e) {
+        e.preventDefault();
+        $('#holSearchInput').val('');
+        $('#holTypeFilter').val('');
+        $('#holSessionFilter').val('');
+        holToggleClear();
+        holidaysTable.draw();
+    });
+
     // Toggle cut-off time visibility based on full day checkbox
     $('#is_full_day, #edit_is_full_day').on('change', function() {
         const isFullDay = $(this).is(':checked');
@@ -444,8 +455,8 @@ $(document).ready(function() {
         });
     });
 
-    // Edit Holiday - Load data into modal
-    $('.edit-holiday').on('click', function() {
+    // Edit Holiday - Load data into modal (delegated: rows are added by the DataTable's ajax draw)
+    $(document).on('click', '.edit-holiday', function() {
         const id = $(this).data('id');
         const date = $(this).data('date');
         const title = $(this).data('title');
@@ -511,8 +522,8 @@ $(document).ready(function() {
         });
     });
 
-    // Delete Holiday
-    $('.delete-holiday').on('click', function() {
+    // Delete Holiday (delegated: rows are added by the DataTable's ajax draw)
+    $(document).on('click', '.delete-holiday', function() {
         const id = $(this).data('id');
         const title = $(this).data('title');
 

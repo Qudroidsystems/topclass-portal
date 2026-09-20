@@ -1253,6 +1253,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::prefix('holidays')->name('holidays.')->group(function () {
         Route::get('/', [HolidayController::class, 'index'])->name('index');
         Route::post('/', [HolidayController::class, 'store'])->name('store');
+        Route::get('/data', [HolidayController::class, 'data'])->name('data');
         Route::get('/{holiday}', [HolidayController::class, 'show'])->name('show');
         Route::put('/{holiday}', [HolidayController::class, 'update'])->name('update');
         Route::delete('/{holiday}', [HolidayController::class, 'destroy'])->name('destroy');

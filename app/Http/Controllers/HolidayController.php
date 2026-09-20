@@ -11,13 +11,15 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Yajra\DataTables\Facades\DataTables;
 
 class HolidayController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:View holidays', ['only' => ['index', 'show']]);
+        $this->middleware('permission:View holidays', ['only' => ['index', 'show', 'data']]);
         $this->middleware('permission:Create holidays', ['only' => ['store']]);
         $this->middleware('permission:Edit holidays', ['only' => ['update']]);
         $this->middleware('permission:Delete holidays', ['only' => ['destroy']]);
@@ -26,22 +28,6 @@ class HolidayController extends Controller
     public function index(Request $request)
     {
         $pagetitle = 'Holiday Management';
-
-        $query = Holiday::with(['session', 'term', 'creator'])->orderBy('date', 'desc');
-
-        if ($search = trim((string) $request->query('search'))) {
-            $query->where('title', 'like', '%' . $search . '%');
-        }
-
-        if (in_array($request->query('type'), ['full', 'half'], true)) {
-            $query->where('is_full_day', $request->query('type') === 'full');
-        }
-
-        if ($sessionId = $request->query('session_id')) {
-            $query->where('session_id', $sessionId);
-        }
-
-        $holidays = $query->paginate(15)->appends($request->query());
 
         $upcomingHolidays = Holiday::where('date', '>=', now()->toDateString())
             ->orderBy('date')
@@ -57,7 +43,122 @@ class HolidayController extends Controller
             'half_day' => Holiday::where('is_full_day', false)->count(),
         ];
 
-        return view('holidays.index', compact('pagetitle', 'holidays', 'upcomingHolidays', 'sessions', 'stats'));
+        return view('holidays.index', compact('pagetitle', 'upcomingHolidays', 'sessions', 'stats'));
+    }
+
+    /**
+     * GET /holidays/data
+     * Server-side yajra DataTables source for the holidays list table,
+     * mirroring the DataTables::of(...) pattern used across the app
+     * (see SchoolHouseController::data() for the reference style).
+     */
+    public function data(Request $request): JsonResponse
+    {
+        try {
+            $query = Holiday::with(['session', 'term', 'creator'])->select('holidays.*');
+
+            if ($search = trim((string) $request->query('search_title'))) {
+                $query->where('title', 'like', '%' . $search . '%');
+            }
+
+            if (in_array($request->query('type'), ['full', 'half'], true)) {
+                $query->where('is_full_day', $request->query('type') === 'full');
+            }
+
+            if ($sessionId = $request->query('session_id')) {
+                $query->where('session_id', $sessionId);
+            }
+
+            return DataTables::of($query)
+                ->addIndexColumn()
+
+                // ── Date ──────────────────────────────────────────────────────
+                ->addColumn('date_info', function ($row) {
+                    return '<div class="d-flex align-items-center gap-2">'
+                        . '<span class="hol-date-chip">'
+                        . '<span class="d">' . e(Carbon::parse($row->date)->format('d')) . '</span>'
+                        . '<span class="m">' . e(Carbon::parse($row->date)->format('M')) . '</span>'
+                        . '</span>'
+                        . '<span class="text-muted" style="font-size:11.5px;">' . e(Carbon::parse($row->date)->format('D, Y')) . '</span>'
+                        . '</div>';
+                })
+
+                // ── Title ─────────────────────────────────────────────────────
+                ->addColumn('title_info', function ($row) {
+                    return '<strong>' . e($row->title) . '</strong>';
+                })
+
+                // ── Type Badge ────────────────────────────────────────────────
+                ->addColumn('type_badge', function ($row) {
+                    return $row->is_full_day
+                        ? '<span class="hol-badge full">Full Day</span>'
+                        : '<span class="hol-badge half">Half Day</span>';
+                })
+
+                // ── Cut-off ───────────────────────────────────────────────────
+                ->addColumn('cutoff_info', function ($row) {
+                    return $row->cutoff_time
+                        ? e(Carbon::parse($row->cutoff_time)->format('H:i'))
+                        : '<span class="text-muted">&mdash;</span>';
+                })
+
+                // ── Scope ─────────────────────────────────────────────────────
+                ->addColumn('scope_info', function ($row) {
+                    return '<span class="hol-scope-chip">' . e($row->session->session ?? 'All Sessions') . '</span>'
+                        . '<span class="hol-scope-chip">' . e($row->term->term ?? 'All Terms') . '</span>';
+                })
+
+                // ── Created By ────────────────────────────────────────────────
+                ->addColumn('creator_name', function ($row) {
+                    return e($row->creator->name ?? 'System');
+                })
+
+                // ── Actions ───────────────────────────────────────────────────
+                ->addColumn('action', function ($row) {
+                    $buttons = '<div class="hol-row-actions justify-content-end">';
+
+                    if (auth()->user()->can('Edit holidays')) {
+                        $buttons .= sprintf(
+                            '<button type="button" class="edit-holiday" '
+                            . 'data-id="%s" data-date="%s" data-title="%s" data-is_full_day="%s" '
+                            . 'data-cutoff_time="%s" data-session_id="%s" data-term_id="%s" '
+                            . 'data-bs-toggle="modal" data-bs-target="#editHolidayModal" title="Edit">'
+                            . '<i class="ri-edit-line"></i></button>',
+                            $row->id,
+                            Carbon::parse($row->date)->format('Y-m-d'),
+                            e($row->title),
+                            $row->is_full_day ? '1' : '0',
+                            e($row->cutoff_time),
+                            $row->session_id,
+                            $row->term_id
+                        );
+                    }
+
+                    if (auth()->user()->can('Delete holidays')) {
+                        $buttons .= sprintf(
+                            '<button type="button" class="danger delete-holiday" '
+                            . 'data-id="%s" data-title="%s" title="Delete"><i class="ri-delete-bin-line"></i></button>',
+                            $row->id,
+                            e($row->title)
+                        );
+                    }
+
+                    return $buttons . '</div>';
+                })
+
+                ->rawColumns(['date_info', 'title_info', 'type_badge', 'cutoff_info', 'scope_info', 'creator_name', 'action'])
+                ->make(true);
+
+        } catch (\Exception $e) {
+            Log::error('Holiday DataTable error:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
