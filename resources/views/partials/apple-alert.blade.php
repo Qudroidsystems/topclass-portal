@@ -400,6 +400,7 @@ const AppleAlert = (function () {
 
     let busy = false;        // true while a dialog is open (not toasts)
     let lastDialogPromise = null;
+    let inertedModals = [];  // Bootstrap modals we've temporarily made inert
 
     // Base classes for a themed dialog. Toasts use different classes.
     function baseDialogOptions() {
@@ -414,11 +415,53 @@ const AppleAlert = (function () {
         };
     }
 
+    /* ------------------------------------------------------------------
+       Real fix for the "OK button does nothing" bug: a SweetAlert2 popup
+       renders as a sibling of the open Bootstrap modal (appended to
+       <body>), but Bootstrap 5's modal keeps a focus trap listening on
+       `document` for every `focusin` — the instant focus lands on the
+       Swal popup's own button, Bootstrap decides focus "escaped" the
+       modal and yanks it straight back in. That happens between
+       mousedown and click, so the click that landed on the Swal button
+       can get swallowed entirely — the popup just sits there. The
+       `focusin` capture-phase listener below was a first attempt at
+       blocking that fight by stopping the event before Bootstrap's own
+       (bubble-phase) listener ever sees it, but it's a timing-dependent
+       patch over a symptom, not the cause, and it can still lose the
+       race.
+
+       The reliable fix is to stop Bootstrap's trap from having anything
+       to grab in the first place: while an AppleAlert dialog is open,
+       every currently-shown `.modal` is marked `inert`. A native `inert`
+       element (and everything inside it) cannot receive focus or
+       pointer events at all, so Bootstrap's own fallback —
+       `trapElement.focus()` — becomes a harmless no-op. `inert` is
+       removed again the moment the dialog closes. Supported in all
+       browsers this app targets (Chrome/Edge/Safari/Firefox, years
+       before this codebase).
+       ------------------------------------------------------------------ */
+    function suspendModalFocusTraps() {
+        inertedModals = [];
+        document.querySelectorAll('.modal.show').forEach((modalEl) => {
+            if (!modalEl.hasAttribute('inert')) {
+                modalEl.setAttribute('inert', '');
+                inertedModals.push(modalEl);
+            }
+        });
+    }
+
+    function restoreModalFocusTraps() {
+        inertedModals.forEach((modalEl) => modalEl.removeAttribute('inert'));
+        inertedModals = [];
+    }
+
     /* Force-close whatever dialog SweetAlert2 currently has open, and
        wait for the DOM to settle. Used before opening a new dialog so
        the new one is never queued behind a hidden-but-not-dismissed
        dialog. */
     function forceClose() {
+        restoreModalFocusTraps();
+
         try {
             if (Swal.isVisible && Swal.isVisible()) {
                 Swal.close();
@@ -452,12 +495,14 @@ const AppleAlert = (function () {
         return new Promise((resolve) => {
             setTimeout(() => {
                 busy = true;
+                suspendModalFocusTraps();
 
                 const promise = Swal.fire(Object.assign({}, baseDialogOptions(), options));
 
                 promise.then((result) => {
                     busy = false;
                     lastDialogPromise = null;
+                    restoreModalFocusTraps();
                     resolve(result);
                 });
 
