@@ -893,7 +893,14 @@
                                 </div>
                                 <div class="sc-icon"><i class="ri-school-line"></i></div>
                                 <div class="sc-body">
-                                    <div class="sc-title">{{ $setting->resolved_class_name ?: 'Unknown Class' }}</div>
+                                    <div class="sc-title">
+                                        {{ $setting->resolved_class_name ?: 'Unknown Class' }}
+                                        @if($setting->generation_name)
+                                            <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:10px;font-weight:600;vertical-align:middle">
+                                                <i class="ri-magic-line" style="font-size:10px"></i> {{ $setting->generation_name }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     <div class="sc-meta">
                                         <span>{{ $setting->session->session ?? '—' }}</span>
                                         @if($setting->term)
@@ -1964,6 +1971,17 @@
 
             </div>
         </details>
+
+        <div class="mt-3 pt-3" style="border-top:1px solid #E2E8F0">
+            <label class="form-label fw-semibold">
+                Timetable name <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="wizGenerationName" maxlength="150"
+                   placeholder="e.g. First Term 2026 — Full Generation">
+            <small class="text-muted">
+                Required to generate. Shown on each timetable's card in the Existing tab, so runs are easy to tell apart later.
+            </small>
+        </div>
 
         </div><!-- /wizFormContent -->
 
@@ -5716,6 +5734,12 @@ async function submitGenerationWizard(alsoGenerate) {
     }
     const includeRooms = document.getElementById('wizIncludeRooms')?.checked ?? true;
 
+    const generationName = document.getElementById('wizGenerationName').value.trim();
+    if (alsoGenerate && !generationName) {
+        document.getElementById('wizGenerationName').focus();
+        return AppleAlert.warning('Required', 'Please name this generation so these timetables are easy to identify later.');
+    }
+
     const payload = {
         session_id:                  parseInt(sessionId),
         term_id:                     document.getElementById('wizTermId').value || null,
@@ -5770,7 +5794,7 @@ async function submitGenerationWizard(alsoGenerate) {
         }
         const genRes  = await apiFetch(ROUTES.autoGenerateWholeSchool, 'POST', {
             session_id: payload.session_id, term_id: payload.term_id, schoolclass_ids: payload.schoolclass_ids,
-            include_rooms: includeRooms,
+            include_rooms: includeRooms, generation_name: generationName,
         });
         const genData = await genRes.json();
         hideLoader();
@@ -5808,7 +5832,7 @@ async function submitGenerationWizard(alsoGenerate) {
                 const forceRes  = await apiFetch(ROUTES.autoGenerateWholeSchool, 'POST', {
                     session_id: payload.session_id, term_id: payload.term_id,
                     schoolclass_ids: payload.schoolclass_ids, force_unpublish: true,
-                    include_rooms: includeRooms,
+                    include_rooms: includeRooms, generation_name: generationName,
                 });
                 const forceData = await forceRes.json();
                 hideLoader();

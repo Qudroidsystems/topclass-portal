@@ -3030,7 +3030,7 @@ class TimetableController extends Controller
             'force_unpublish'   => 'boolean',
             'include_rooms'     => 'boolean',
             'seed'              => 'nullable|integer',
-            'generation_name'   => 'nullable|string|max:150',
+            'generation_name'   => 'required|string|min:2|max:150',
             'generation_notes'  => 'nullable|string|max:1000',
         ]);
 
