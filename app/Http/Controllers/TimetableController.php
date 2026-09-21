@@ -3823,9 +3823,35 @@ class TimetableController extends Controller
         }
 
         $subjectCount = $subjectTeachers->count();
-        $base = $subjectCount > 0 ? intdiv($budget, $subjectCount) : 0;
-        $base = max(1, min($base, 8));
-        $remainder = $budget - ($base * $subjectCount);
+
+        // Distribute the full $budget across the mapped subjects instead of
+        // capping each subject's share at a fixed ceiling. The previous
+        // "$base = max(1, min($base, 8))" clamp threw away any leftover
+        // budget whenever base*subjectCount (+ remainder) fell short of
+        // $budget -- for a class with only a few subjects mapped against a
+        // large weekly $budget, most of the week's slots were never handed
+        // to any subject. Those unassigned slots then fell through to the
+        // unconditional "mark every unplaced slot free" tail of
+        // runAutoGenerateCore(), producing "Free" periods even when
+        // free_periods_per_week was 0. Spreading $budget round-robin here
+        // (first pass guarantees every subject at least 1 period where the
+        // budget allows it, further passes hand out what's left) keeps
+        // every slot in $budget assigned to a real subject.
+        $periodsPerWeekList = array_fill(0, $subjectCount, 0);
+        $remainingBudget = $budget;
+        for ($i = 0; $i < $subjectCount && $remainingBudget > 0; $i++) {
+            $periodsPerWeekList[$i] = 1;
+            $remainingBudget--;
+        }
+        while ($remainingBudget > 0 && $subjectCount > 0) {
+            $progressed = false;
+            for ($i = 0; $i < $subjectCount && $remainingBudget > 0; $i++) {
+                $periodsPerWeekList[$i]++;
+                $remainingBudget--;
+                $progressed = true;
+            }
+            if (!$progressed) break;
+        }
 
         $created = 0;
         foreach ($subjectTeachers->values() as $i => $st) {
@@ -3835,7 +3861,7 @@ class TimetableController extends Controller
                 continue;
             }
 
-            $periodsPerWeek = $base + ($i < $remainder ? 1 : 0);
+            $periodsPerWeek = $periodsPerWeekList[$i] ?? 1;
 
             TimetableConstraint::create([
                 'setting_id'                    => $setting->id,
