@@ -147,6 +147,10 @@
 .tt-cell .cell-double-badge { font-size: 9px; padding: 1px 5px; background: rgba(21,101,192,.12); color: var(--tt-blue); border-radius: 4px; font-weight: 700; margin-top: 3px; }
 .tt-cell.has-subject { border-left: 3px solid; }
 .tt-cell.cell-building { opacity: 0; transform: scale(0.75); }
+.tt-cell.is-na { background: repeating-linear-gradient(45deg, #F8FAFC, #F8FAFC 6px, #EEF2F6 6px, #EEF2F6 12px); cursor: default; }
+.tt-cell.is-na:hover { background: repeating-linear-gradient(45deg, #F8FAFC, #F8FAFC 6px, #EEF2F6 6px, #EEF2F6 12px) !important; }
+.tt-cell.is-na:active { transform: none; }
+.tt-cell .cell-na { font-size: 10px; color: #94A3B8; font-weight: 600; }
 .tt-generating-banner {
     display: flex; align-items: center; gap: 10px;
     background: linear-gradient(135deg,#EFF6FF,#F5F3FF);
@@ -1726,6 +1730,18 @@
               </label>
             </div>
           </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="wizJoinDoublePeriods" checked>
+              <label class="form-check-label" for="wizJoinDoublePeriods">
+                Join double periods together
+                <i class="ri-question-line text-muted ms-1" style="cursor:pointer;font-size:14px"
+                   data-bs-toggle="popover"
+                   data-bs-title="Join double periods together"
+                   data-bs-content="On: when a subject needs more than one period on the same day, they're placed back-to-back (e.g. Period 1 and 2) as one genuine double period. Off: a subject never gets two periods on the same day at all -- its periods are always spread across different days instead."></i>
+              </label>
+            </div>
+          </div>
         </div>
 
         <hr>
@@ -2521,6 +2537,7 @@ let editingHeartbeatTimer = null;
 let currentPeriods    = [];
 let currentGrid       = {};
 let currentDays       = [];
+let currentDayMeta    = {};
 let availableSubjects = [];
 let allTeachers       = [];
 let availableRooms    = [];
@@ -3229,6 +3246,7 @@ async function loadTimetableGrid() {
         currentPeriods = data.periods || [];
         currentGrid    = data.grid    || {};
         currentDays    = data.days    || ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+        currentDayMeta = data.day_period_meta || {};
         allTeachers    = data.teachers|| [];
         availableRooms = data.rooms   || [];
         currentTodayDayName = data.today_day_name || null;
@@ -3252,6 +3270,7 @@ async function loadTimetableGridAnimated() {
         currentPeriods = data.periods || [];
         currentGrid    = data.grid    || {};
         currentDays    = data.days    || ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+        currentDayMeta = data.day_period_meta || {};
         allTeachers    = data.teachers|| [];
         availableRooms = data.rooms   || [];
         currentTodayDayName = data.today_day_name || null;
@@ -3290,6 +3309,7 @@ function renderGrid(options = {}) {
     const periods   = options.periods ?? currentPeriods;
     const grid      = options.grid    ?? currentGrid;
     const days      = options.days    ?? currentDays;
+    const dayMeta   = options.dayMeta ?? currentDayMeta;
 
     if (!container) return;
     if (!periods.length) {
@@ -3335,7 +3355,16 @@ function renderGrid(options = {}) {
             cellSeq++;
             const cellId = `c${cellSeq}`;
 
-            if (isBreak) {
+            // A lesson period past that day's Half-Days cutoff -- render it
+            // as a distinct "not in use" cell instead of an ordinary free
+            // one, so the cutoff is actually visible here (the merged grid
+            // export already does this with its own ttw-cell-na treatment).
+            const meta = dayMeta[day]?.[period.id];
+            const isNotApplicable = !isBreak && meta && meta.applicable === false;
+
+            if (isNotApplicable) {
+                html += `<td class="${holidayTdClass.trim()}"><div class="tt-cell is-na" data-cell-id="${cellId}"><span class="cell-na">Not in use</span></div></td>`;
+            } else if (isBreak) {
                 html += `<td class="${holidayTdClass.trim()}"><div class="tt-cell is-break"><span class="cell-break">☕ Break</span></div></td>`;
             } else if (isFree) {
                 html += `<td class="${holidayTdClass.trim()}" onclick="openSlotModal(${period.id},'${day}')"${rowspanAttr}>
@@ -5383,6 +5412,7 @@ function collectWizardAdvancedRules() {
         strict_room_mode:    document.querySelector('input[name="wizStrictRoomMode"]:checked')?.value || 'teacher_only',
         strict_room_mapping: document.getElementById('wizStrictRoomMapping').checked,
         priorities_active:   document.getElementById('wizPrioritiesActive').checked,
+        join_double_periods: document.getElementById('wizJoinDoublePeriods')?.checked ?? true,
     };
 }
 
