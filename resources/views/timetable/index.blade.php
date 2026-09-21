@@ -3771,7 +3771,7 @@ async function saveSlot() {
         if (result.success) {
             currentSettingVersion = result.setting_updated_at;
             hideLoader();
-            bootstrap.Modal.getInstance(document.getElementById('editSlotModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('editSlotModal'))?.hide();
             await loadTimetableGrid();
             silentConflictCheck();
             AppleAlert.saved('Slot saved');
@@ -3780,7 +3780,7 @@ async function saveSlot() {
 
         if (result.has_version_conflict) {
             hideLoader();
-            bootstrap.Modal.getInstance(document.getElementById('editSlotModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('editSlotModal'))?.hide();
             return handleVersionConflict(result);
         }
 
@@ -3826,13 +3826,13 @@ async function saveSlot() {
             if (result2.success) {
                 currentSettingVersion = result2.setting_updated_at;
                 hideLoader();
-                bootstrap.Modal.getInstance(document.getElementById('editSlotModal')).hide();
+                bootstrap.Modal.getInstance(document.getElementById('editSlotModal'))?.hide();
                 await loadTimetableGrid();
                 silentConflictCheck();
                 AppleAlert.saved('Slot saved (override)');
             } else if (result2.has_version_conflict) {
                 hideLoader();
-                bootstrap.Modal.getInstance(document.getElementById('editSlotModal')).hide();
+                bootstrap.Modal.getInstance(document.getElementById('editSlotModal'))?.hide();
                 return handleVersionConflict(result2);
             } else {
                 hideLoader();
@@ -4115,7 +4115,7 @@ function cloneSetting(settingId) {
 
 async function confirmClone(force = false) {
     if (!pendingCloneId) return;
-    if (!force) bootstrap.Modal.getInstance(document.getElementById('cloneModal')).hide();
+    if (!force) bootstrap.Modal.getInstance(document.getElementById('cloneModal'))?.hide();
 
     const settingId = pendingCloneId;
     showLoader();
@@ -5266,7 +5266,7 @@ async function submitQuickMapRoom() {
         });
         const data = await res.json();
         if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('quickMapRoomModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('quickMapRoomModal'))?.hide();
             AppleAlert.saved('Mapping added');
             loadWizardSubjects();
         } else {
@@ -5647,7 +5647,7 @@ async function submitGenerationWizard(alsoGenerate) {
         const summaryHtml = buildWizardResultsSummary(data.results);
         if (!alsoGenerate) {
             hideLoader();
-            bootstrap.Modal.getInstance(document.getElementById('generationWizardModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('generationWizardModal'))?.hide();
             AppleAlert.rich({
                 title: 'Structure applied',
                 html: `Applied to <strong>${data.applied_to}</strong> class(es).${summaryHtml}`,
@@ -5665,7 +5665,7 @@ async function submitGenerationWizard(alsoGenerate) {
         hideLoader();
         if (genData.success) {
             await animateWizardResults(genData.classes);
-            bootstrap.Modal.getInstance(document.getElementById('generationWizardModal')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('generationWizardModal'))?.hide();
             const conflictNote = genData.conflict_summary?.total
                 ? `<p class="text-danger mt-2" style="font-size:12px"><i class="ri-alert-line"></i>
                     ${genData.conflict_summary.total} conflict(s) detected.</p>`
@@ -5703,7 +5703,7 @@ async function submitGenerationWizard(alsoGenerate) {
                 hideLoader();
                 if (forceData.success) {
                     await animateWizardResults(forceData.classes);
-                    bootstrap.Modal.getInstance(document.getElementById('generationWizardModal')).hide();
+                    bootstrap.Modal.getInstance(document.getElementById('generationWizardModal'))?.hide();
                     AppleAlert.rich({
                         title: 'Generated!',
                         html: `Generated timetables for <strong>${forceData.classes.length}</strong> class(es).${summaryHtml}`,
@@ -6371,7 +6371,7 @@ async function confirmRestoreRun() {
         const data = await res.json();
         hideLoader();
 
-        bootstrap.Modal.getInstance(document.getElementById('restoreRunModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('restoreRunModal'))?.hide();
 
         if (data.success) {
             let html = `<p>${escapeHtml(data.message)}</p>`;
@@ -6599,7 +6599,7 @@ function submitExportRun() {
 
     const url = `${ROUTES.runsExport}/${currentRun.id}/export?${params.toString()}`;
     window.open(url, '_blank');
-    bootstrap.Modal.getInstance(document.getElementById('exportRunModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('exportRunModal'))?.hide();
 }
 
 // ============================================================================
@@ -6633,7 +6633,7 @@ async function submitAnchorRebuild() {
             AppleAlert.error('Could not rebuild', data.message || 'Please try again.');
             return;
         }
-        bootstrap.Modal.getInstance(document.getElementById('anchorRebuildModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('anchorRebuildModal'))?.hide();
         hideLoader();
         await loadSetting(currentSettingId);
         AppleAlert.saved('Periods rebuilt');

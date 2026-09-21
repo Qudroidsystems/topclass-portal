@@ -4069,19 +4069,39 @@ class TimetableController extends Controller
 
     private function getNextLessonPeriod($lessonPeriods, int $currentPeriodId)
     {
+        // "Next" only counts if it starts the instant the current period
+        // ends. $lessonPeriods is filtered to type=lesson, so a break
+        // period between two lessons is invisible to a plain
+        // next-item-in-the-list walk -- e.g. Period 2 ending at 09:50 and
+        // Period 3 starting at 10:05 would be treated as adjacent even
+        // though a Short Break separates them. That let a subject get
+        // "doubled" (or, via repeated calls, tripled) across a real break
+        // -- e.g. a subject placed in Period 1, 2 AND 3 on the same day --
+        // instead of only ever joining periods that are genuinely
+        // back-to-back in wall-clock time.
         $found = false;
+        $current = null;
         foreach ($lessonPeriods as $p) {
-            if ($found) return $p;
-            if ($p->id === $currentPeriodId) $found = true;
+            if ($found) {
+                return ($current && $current->end_time === $p->start_time) ? $p : null;
+            }
+            if ($p->id === $currentPeriodId) {
+                $found = true;
+                $current = $p;
+            }
         }
         return null;
     }
 
     private function getPreviousLessonPeriod($lessonPeriods, int $currentPeriodId)
     {
+        // Mirrors getNextLessonPeriod()'s time-contiguity check -- see the
+        // comment there.
         $prev = null;
         foreach ($lessonPeriods as $p) {
-            if ($p->id === $currentPeriodId) return $prev;
+            if ($p->id === $currentPeriodId) {
+                return ($prev && $prev->end_time === $p->start_time) ? $prev : null;
+            }
             $prev = $p;
         }
         return null;
