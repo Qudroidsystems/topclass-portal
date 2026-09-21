@@ -103,7 +103,7 @@
                               <!--begin::Toolbar-->
                                     <div class="d-flex justify-content-end" data-kt-user-table-toolbar="base">
                                                 <!--begin::Add user-->
-                                                <a href="{{ route('student.index') }}" type="button" class="btn btn-primary">
+                                                <a href="{{ route('student.create') }}" type="button" class="btn btn-primary">
                                                     <i class="ki-duotone ki-plus fs-2"></i>     Add New Student
                                                 </a>
                                                 <!--end::Add user-->
