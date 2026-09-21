@@ -3545,6 +3545,156 @@ class TimetableController extends Controller
             }
         }
 
+        // =====================================================================
+        // OVERFLOW FILL: $placementBudget already reserves exactly
+        // max($freeTarget, count($forcedFreeKeys)) slots as intentionally
+        // free (see its definition above) -- everything else in the week is
+        // supposed to be a lesson. But the loop above only ever gives each
+        // subject up to its OWN configured periods_per_week; if the class's
+        // constraints (auto-generated or manually saved) simply don't add
+        // up to a full week, slots were falling straight through to the
+        // "mark everything unplaced as free" loop below even though the
+        // admin never asked for any free periods. That produced unexplained
+        // Free cells that had nothing to do with free_periods_per_week.
+        //
+        // So: as long as there's still room in $placementBudget, keep
+        // cycling through the same subjects/teachers and let them absorb
+        // extra periods beyond their configured minimum -- one slot per
+        // subject per pass, so the extra periods spread out rather than
+        // piling onto a single subject -- using the exact same guards
+        // (same-day/adjacency rule, teacher availability & conflicts,
+        // period limits, per-day cap, strict room mapping) as the main
+        // placement loop. Only slots that truly can't be given to ANY
+        // subject under those guards are left for the free-marking loop
+        // below -- a genuine scheduling conflict, not a config gap.
+        // =====================================================================
+        if (count($placed) < $placementBudget && $requirements->isNotEmpty()) {
+            $overflowProgress = true;
+            while ($overflowProgress && count($placed) < $placementBudget) {
+                $overflowProgress = false;
+
+                foreach ($requirements as $constraint) {
+                    if (count($placed) >= $placementBudget) break;
+
+                    $subjectId = $constraint->subject_id;
+                    $preferDays = $constraint->preferred_days ?? [];
+                    $avoidDays = $constraint->avoid_days ?? [];
+
+                    $teacherEntry = $subjectTeachers->get($subjectId)?->first();
+                    $teacherId = $teacherEntry?->staffid;
+
+                    $bestSlot = null;
+                    $bestScore = null;
+
+                    foreach ($slotPool as $slot) {
+                        $day = $slot['day'];
+                        $periodId = $slot['period_id'];
+                        $timeSig = $slot['time_sig'];
+                        $key = $day . '_' . $periodId;
+
+                        if (isset($placed[$key]) || isset($forcedFreeKeys[$key])) continue;
+
+                        $existingToday = $subjectDayPeriods[$subjectId][$day] ?? [];
+                        if (!empty($existingToday)) {
+                            if (!$rules['join_double_periods']) continue;
+                            $adjacentOk = false;
+                            foreach ($existingToday as $existingPeriodId) {
+                                $next = $this->getNextLessonPeriod($lessonPeriods, $existingPeriodId);
+                                $prev = $this->getPreviousLessonPeriod($lessonPeriods, $existingPeriodId);
+                                if (($next && $next->id === $periodId) || ($prev && $prev->id === $periodId)) {
+                                    $adjacentOk = true;
+                                    break;
+                                }
+                            }
+                            if (!$adjacentOk) continue;
+                        }
+
+                        if ($teacherId) {
+                            if (in_array($periodId, $teacherDaySlot[$teacherId][$day] ?? [])) continue;
+                            if (in_array($timeSig, $crossOccupied[$teacherId][$day] ?? [])) continue;
+                            if (!$this->isTeacherAvailableForPeriod($teacherId, $day, $periodId, $setting, $availabilityMap)) continue;
+                            if (!$this->passesPeriodLimits(
+                                $limits, $teacherId, $classId, $day,
+                                $teacherWeekTotal, $teacherClassTotal, $teacherDayTotal, $classWeekTotal,
+                                $rules['cap_mode']
+                            )) continue;
+                        }
+
+                        if ($maxPerDay && ($lessonsPlacedByDay[$day] ?? 0) >= $maxPerDay) continue;
+
+                        $score = 0;
+                        if (in_array($day, $preferDays)) $score += 20;
+                        if (in_array($day, $avoidDays)) $score -= 15;
+                        $score -= (($lessonsPlacedByDay[$day] ?? 0) * 2);
+                        $score += mt_rand(-3, 3);
+
+                        if ($bestScore === null || $score > $bestScore) {
+                            $bestScore = $score;
+                            $bestSlot = $slot;
+                        }
+                    }
+
+                    if (!$bestSlot) continue;
+
+                    $day = $bestSlot['day'];
+                    $periodId = $bestSlot['period_id'];
+                    $timeSig = $bestSlot['time_sig'];
+                    $key = $day . '_' . $periodId;
+
+                    $roomPick = $this->pickRoomForLesson(
+                        $includeRooms, $strictRoomMap, $availableRoomIds, $subjectId,
+                        $day, $timeSig, $roomOccupied
+                    );
+                    $roomId = $roomPick['room_id'];
+
+                    if ($includeRooms && $rules['strict_room_mapping'] && $roomPick['no_mapping']) {
+                        if ($rules['strict_room_mode'] === 'refuse') {
+                            continue;
+                        }
+                    } elseif ($includeRooms && !$roomId) {
+                        $roomShortfallCount++;
+                        $noRoomPlacementCount++;
+                    }
+
+                    TimetableSlot::create([
+                        'setting_id' => $setting->id,
+                        'period_id' => $periodId,
+                        'day' => $day,
+                        'subject_id' => $subjectId,
+                        'teacher_id' => $teacherId,
+                        'room_id' => $roomId,
+                        'is_double' => false,
+                        'is_free' => false,
+                    ]);
+
+                    $placed[$key] = $subjectId;
+                    $lessonsPlacedByDay[$day] = ($lessonsPlacedByDay[$day] ?? 0) + 1;
+                    $classWeekTotal++;
+
+                    $subjectDayPeriods[$subjectId][$day][] = $periodId;
+                    if (count($subjectDayPeriods[$subjectId][$day]) > 1 && $rules['join_double_periods']) {
+                        TimetableSlot::where('setting_id', $setting->id)
+                            ->where('day', $day)
+                            ->whereIn('period_id', $subjectDayPeriods[$subjectId][$day])
+                            ->update(['is_double' => true]);
+                    }
+
+                    if ($teacherId) {
+                        $teacherDaySlot[$teacherId][$day][] = $periodId;
+                        $crossOccupied[$teacherId][$day][] = $timeSig;
+                        $teacherWeekTotal[$teacherId] = ($teacherWeekTotal[$teacherId] ?? 0) + 1;
+                        $teacherClassTotal[$teacherId . ':' . $classId] = ($teacherClassTotal[$teacherId . ':' . $classId] ?? 0) + 1;
+                        $teacherDayTotal[$teacherId . ':' . $day] = ($teacherDayTotal[$teacherId . ':' . $day] ?? 0) + 1;
+                    }
+                    if ($roomId) {
+                        $roomOccupied[$roomId][$day][] = $timeSig;
+                    }
+
+                    $overflowProgress = true;
+                }
+            }
+        }
+
         foreach ($slotPool as $slot) {
             $key = $slot['day'] . '_' . $slot['period_id'];
             if (!isset($placed[$key])) {
