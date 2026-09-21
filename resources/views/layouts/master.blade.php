@@ -2224,7 +2224,14 @@
 @if (Route::is('studentreports.*'))        @include('layouts.pages-assets.js.studentreport-list-js') @endif
 @if (Route::is('broadsheet.*'))            @include('layouts.pages-assets.js.studentreport-list-js') @endif
 @if (Route::is('studentmockreports.*'))    @include('layouts.pages-assets.js.studentmockreport-list-js') @endif
-@if (Route::is('subjectoperation.*'))      @include('layouts.pages-assets.js.subjectoperation-list-js') @endif
+{{-- Disabled 2026-09-21: this legacy init.js redeclares filterData(), loadPage(),
+     setupPaginationLinks(), selectAllSubjects() and deselectAllSubjects() in global
+     scope, and because it loads after subjectoperation/index.blade.php's own inline
+     script, its stale versions silently override the current page's functions --
+     including a mismatched "No Results" popup with empty-state text that no longer
+     matches the current partial. Re-enable only if subjectoperation-list.init.js is
+     revisited and reconciled with the current index.blade.php.
+@if (Route::is('subjectoperation.*'))      @include('layouts.pages-assets.js.subjectoperation-list-js') @endif --}}
 @if (Route::is('subjects.subjectinfo'))    @include('layouts.pages-assets.js.subjectinfo-list-js') @endif
 @if (Route::is('myresultroom.*'))          @include('layouts.pages-assets.js.myresultroom-list-js') @endif
 @if (Route::is('assessment.*'))            @include('layouts.pages-assets.js.subjectscoresheet-list-js') @endif
