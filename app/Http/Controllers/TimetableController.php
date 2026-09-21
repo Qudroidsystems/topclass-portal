@@ -2732,6 +2732,7 @@ class TimetableController extends Controller
                     'day'                   => $first->day,
                     'class_a'               => $className,
                     'subject_a'             => $subjectName,
+                    'subject_id'            => $first->subject_id,
                     'teacher'               => $teacherName,
                     'periods'               => $periodsInfo,
                     'setting_a_id'          => $first->setting_id,
@@ -2744,6 +2745,7 @@ class TimetableController extends Controller
                     'day'                   => $first->day,
                     'class_a'               => $className,
                     'subject_a'             => $subjectName,
+                    'subject_id'            => $first->subject_id,
                     'teacher'               => $teacherName,
                     'periods'               => $periodsInfo,
                     'setting_a_id'          => $first->setting_id,
@@ -2765,6 +2767,114 @@ class TimetableController extends Controller
         return response()->json(
             $this->buildConflictReport((int) $validated['session_id'], $validated['term_id'] ?? null)
         );
+    }
+
+    /**
+     * Resolves a 'subject_spread' anomaly (a subject repeating for the same
+     * class on the same day more than a legitimate double period allows, or
+     * twice but not genuinely back-to-back) by FREEING the extra slot(s)
+     * rather than moving/rescheduling anything.
+     *
+     * Freeing is the only resolution that is provably safe to do
+     * automatically: it only removes an existing assignment, so it can
+     * never create a new teacher/room double-booking and can never create a
+     * new subject-spread anomaly (the class simply gets a free period back,
+     * which the admin can fill in manually or via the next generation run).
+     *
+     * Keep rule: if any two of the subject's same-day slots are genuinely
+     * time-contiguous (a legitimate double period), that pair is kept and
+     * every other occurrence is freed. Otherwise only the earliest
+     * occurrence is kept and every later one is freed.
+     */
+    public function resolveSubjectSpread(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'setting_id'           => 'required|exists:timetable_settings,id',
+            'day'                  => 'required|string',
+            'subject_id'           => 'required|exists:subject,id',
+            'expected_updated_at'  => 'nullable|date',
+        ]);
+
+        $setting = TimetableSetting::findOrFail($validated['setting_id']);
+
+        if ($lock = $this->publishedLockResponse($setting)) return $lock;
+        if ($conflict = $this->versionConflictResponse($setting, $validated['expected_updated_at'] ?? null)) return $conflict;
+
+        $slots = TimetableSlot::where('setting_id', $setting->id)
+            ->where('day', $validated['day'])
+            ->where('subject_id', $validated['subject_id'])
+            ->where('is_free', false)
+            ->with('period')
+            ->get()
+            ->filter(fn($s) => $s->period)
+            ->sortBy(fn($s) => $s->period->start_time)
+            ->values();
+
+        if ($slots->count() < 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nothing to resolve — this subject no longer repeats abnormally on this day for this class.',
+            ], 422);
+        }
+
+        // Look for a genuinely contiguous adjacent pair anywhere in the
+        // sorted list (mirrors the end_time === start_time rule used during
+        // generation and detection) and keep the first such pair found.
+        $keepIds = [];
+        for ($i = 1; $i < $slots->count(); $i++) {
+            if ($slots[$i - 1]->period->end_time === $slots[$i]->period->start_time) {
+                $keepIds = [$slots[$i - 1]->id, $slots[$i]->id];
+                break;
+            }
+        }
+        if (empty($keepIds)) {
+            $keepIds = [$slots->first()->id];
+        }
+
+        $freed = [];
+
+        try {
+            DB::beginTransaction();
+
+            // Re-check the lock/version inside the transaction to guard
+            // against a race with another admin action between the checks
+            // above and this write.
+            $setting = TimetableSetting::lockForUpdate()->findOrFail($setting->id);
+            if ($lock = $this->publishedLockResponse($setting)) { DB::rollBack(); return $lock; }
+
+            foreach ($slots as $slot) {
+                if (in_array($slot->id, $keepIds, true)) continue;
+                $slot->update([
+                    'subject_id' => null,
+                    'teacher_id' => null,
+                    'room_id'    => null,
+                    'is_double'  => false,
+                    'is_free'    => true,
+                ]);
+                $freed[] = [
+                    'period_id'   => $slot->period_id,
+                    'period_name' => $slot->period->name ?? '—',
+                ];
+            }
+
+            $setting->touch();
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not resolve this anomaly: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success'          => true,
+            'freed_count'      => count($freed),
+            'freed_periods'    => $freed,
+            'updated_at'       => $setting->fresh()->updated_at,
+            'message'          => count($freed) . ' period(s) freed.',
+        ]);
     }
 
     private function countConflictsForScope(int $sessionId, ?int $termId): array

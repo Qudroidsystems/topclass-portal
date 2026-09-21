@@ -2591,6 +2591,7 @@ const ROUTES = {
     checkSlotConflict:          '{{ route("timetable.check-slot-conflict") }}',
     getTeacherAssignments:      '{{ route("timetable.teacher-assignments") }}',
     checkConflictsScope:        '{{ route("timetable.check-conflicts-scope") }}',
+    resolveSubjectSpread:        '{{ route("timetable.resolve-subject-spread") }}',
     wizardData:                 '{{ route("timetable.wizard-data") }}',
     previewGeneration:          '{{ route("timetable.preview-generation") }}',
     getSetting:                 '{{ route("timetable.get-setting", ["settingId" => ":id"]) }}',
@@ -3930,6 +3931,62 @@ async function runScopeConflictCheck() {
     }
 }
 
+// Resolves a 'subject_spread' anomaly by freeing the extra/non-adjacent
+// period(s) server-side (see TimetableController::resolveSubjectSpread —
+// it only ever frees slots, never moves or reassigns anything, so it
+// cannot introduce a new teacher/room conflict or a new anomaly), then
+// re-runs whichever check this button's card came from so the list
+// reflects the real, current state instead of being patched in place.
+async function resolveSubjectSpreadAnomaly(btn) {
+    const settingId   = btn.dataset.settingId;
+    const day         = btn.dataset.day;
+    const subjectId   = btn.dataset.subjectId;
+    const subjectName = btn.dataset.subjectName || 'this subject';
+    const className    = btn.dataset.className || 'this class';
+
+    if (!settingId || !subjectId) {
+        return AppleAlert.error('Cannot resolve', 'Missing data for this anomaly — please re-run the check and try again.');
+    }
+
+    const ok = await AppleAlert.confirm(
+        `Resolve ${subjectName} on ${day}?`,
+        `This keeps a genuine double period if one exists (otherwise just the earliest occurrence), and frees every other period ${subjectName} was placed in on ${day} for ${className}. Nothing else on the timetable is touched, so this can't create a new conflict — the freed period(s) simply become open again.`
+    );
+    if (!ok.isConfirmed) return;
+
+    const inScopeModal = !!btn.closest('#conflictScopeResults');
+    const originalHtml = btn.innerHTML;
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const res  = await apiFetch(ROUTES.resolveSubjectSpread, 'POST', {
+            setting_id: settingId,
+            day:        day,
+            subject_id: subjectId,
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            btn.disabled  = false;
+            btn.innerHTML = originalHtml;
+            return AppleAlert.error('Could not resolve', data.message || 'Please try again.');
+        }
+
+        AppleAlert.toast(data.message || 'Resolved.', 'success');
+
+        if (inScopeModal) {
+            await runScopeConflictCheck();
+        } else {
+            await checkConflicts();
+        }
+    } catch (e) {
+        btn.disabled  = false;
+        btn.innerHTML = originalHtml;
+        AppleAlert.error('Could not resolve', e.message);
+    }
+}
+
 function renderConflictsHtml(data) {
     if (!data.conflict_count) {
         return `<div class="text-center py-4">
@@ -3983,6 +4040,16 @@ function renderConflictsHtml(data) {
                     <div class="mt-2 text-muted" style="font-size:12px">
                         <i class="ri-information-line me-1"></i>${escapeHtml(c.resolution_suggestion)}
                     </div>
+                    <button type="button" class="btn btn-sm btn-outline-success mt-2"
+                        onclick="resolveSubjectSpreadAnomaly(this)"
+                        data-setting-id="${c.setting_a_id ?? ''}"
+                        data-day="${escapeHtml(c.day || '')}"
+                        data-subject-id="${c.subject_id ?? ''}"
+                        data-subject-name="${escapeHtml(c.subject_a || 'this subject')}"
+                        data-class-name="${escapeHtml(c.class_a || 'this class')}"
+                        ${(c.setting_a_id && c.subject_id) ? '' : 'disabled'}>
+                        <i class="ri-magic-line me-1"></i>Resolve
+                    </button>
                 </div>
             </div>`;
             return;

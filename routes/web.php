@@ -1095,6 +1095,7 @@ Route::group(['middleware' => ['auth']], function () {
 
     Route::get('/timetable/check-conflicts/{settingId}', [TimetableController::class, 'checkConflicts'])->name('timetable.check-conflicts');
     Route::get('/timetable/check-conflicts-scope', [TimetableController::class, 'checkConflictsScope'])->name('timetable.check-conflicts-scope');
+    Route::post('/timetable/resolve-subject-spread', [TimetableController::class, 'resolveSubjectSpread'])->name('timetable.resolve-subject-spread');
     Route::post('/timetable/check-slot-conflict', [TimetableController::class, 'checkSlotConflict'])->name('timetable.check-slot-conflict');
     Route::post('/timetable/resolve-conflict', [TimetableController::class, 'resolveConflict'])->name('timetable.resolve-conflict');
     Route::post('/timetable/save-free-periods', [TimetableController::class, 'saveFreePeriods'])->name('timetable.save-free-periods');
