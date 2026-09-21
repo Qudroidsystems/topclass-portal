@@ -889,7 +889,18 @@ function filterData() {
         headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
     })
     .then(r => r.text())
-    .then(html => applyFreshDocument(html))
+    .then(html => {
+        applyFreshDocument(html);
+        // rewriteExistingRows() (called inside applyFreshDocument) has already
+        // swapped the table to its own "No students match these filters."
+        // placeholder by this point if nothing came back, so checking for
+        // .sf-student-row right here is an accurate, synchronous read of the
+        // real outcome -- not a guess based on response text.
+        const hasRows = document.querySelectorAll('#studentTableBody .sf-student-row').length > 0;
+        if (!hasRows) {
+            Swal.fire({ icon: 'info', title: 'No Results', text: 'No students match these filters.' });
+        }
+    })
     .catch(err => {
         if (body)  body.innerHTML  = '<tr><td colspan="7" class="text-center text-danger py-3">Students could not be loaded. Try again.</td></tr>';
         if (stcEl) stcEl.innerHTML = `<div class="sf-empty-state text-danger">Subjects could not be loaded.</div>`;
