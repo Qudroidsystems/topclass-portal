@@ -2641,6 +2641,15 @@ class TimetableController extends Controller
             }
         }
 
+        // Subjects that repeat for the same class on the same day are their
+        // own class of problem, distinct from a teacher/room double-booking
+        // -- e.g. a subject placed in Period 2 AND Period 3 across a break,
+        // or three times in one day. Reported through the same $conflicts
+        // list (conflict_category 'subject_spread') so both existing entry
+        // points -- the per-class Conflicts tab and this Check
+        // Conflicts/Anomalies scope modal -- surface them automatically.
+        $conflicts = array_merge($conflicts, $this->detectSubjectSpreadAnomalies($sessionId, $termId));
+
         return [
             'success'        => true,
             'conflicts'      => $conflicts,
@@ -2648,6 +2657,102 @@ class TimetableController extends Controller
             'has_conflicts'  => count($conflicts) > 0,
             'checked_at'     => now()->format('d M Y, H:i:s'),
         ];
+    }
+
+    /**
+     * Flags a subject that repeats for the same class on the same day in a
+     * way a real school day should never allow:
+     *  - it appears more than twice in one day (never legitimately more
+     *    than a single double period), or
+     *  - it appears exactly twice but the two periods aren't genuinely
+     *    back-to-back in wall-clock time (a break, or some other gap, sits
+     *    between them) -- the same period->end_time === nextPeriod->
+     *    start_time contiguity rule getNextLessonPeriod()/
+     *    getPreviousLessonPeriod() use during generation, applied here as
+     *    an audit over whatever slots already exist (covers timetables
+     *    generated before that fix, and slots edited by hand afterward).
+     */
+    private function detectSubjectSpreadAnomalies(int $sessionId, ?int $termId): array
+    {
+        $slots = TimetableSlot::whereHas('setting', function ($q) use ($sessionId, $termId) {
+                $q->where('session_id', $sessionId)->where('is_active', true)->where('is_preview', false);
+                if ($termId) $q->where('term_id', $termId);
+                else         $q->whereNull('term_id');
+            })
+            ->where('is_free', false)
+            ->whereNotNull('subject_id')
+            ->with(['period', 'subject', 'setting', 'teacher'])
+            ->get();
+
+        $classIds      = $slots->pluck('setting.schoolclass_id')->unique()->filter();
+        $schoolclasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->select(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+            ->whereIn('schoolclass.id', $classIds)->get()->keyBy('id');
+
+        foreach ($slots as $slot) {
+            if ($slot->setting && isset($schoolclasses[$slot->setting->schoolclass_id])) {
+                $slot->setting->setRelation('schoolclass', $schoolclasses[$slot->setting->schoolclass_id]);
+            }
+        }
+
+        $anomalies = [];
+
+        $grouped = $slots->filter(fn($s) => $s->period)
+            ->groupBy(fn($s) => $s->setting_id . '|' . $s->day . '|' . $s->subject_id);
+
+        foreach ($grouped as $group) {
+            if ($group->count() < 2) continue;
+
+            $sorted = $group->sortBy(fn($s) => $s->period->start_time)->values();
+            $first  = $sorted->first();
+
+            $className   = $this->getClassName($first->setting?->schoolclass);
+            $subjectName = $first->subject?->subject ?? '—';
+            $teacherName = $first->teacher?->name ?? '—';
+
+            $periodsInfo = $sorted->map(fn($s) => [
+                'period_id'   => $s->period_id,
+                'period_name' => $s->period->name ?? '—',
+                'period_time' => $this->formatTime($s->period->start_time ?? '')
+                    . ' – ' . $this->formatTime($s->period->end_time ?? ''),
+            ])->values();
+
+            $contiguous = true;
+            for ($i = 1; $i < $sorted->count(); $i++) {
+                if ($sorted[$i - 1]->period->end_time !== $sorted[$i]->period->start_time) {
+                    $contiguous = false;
+                    break;
+                }
+            }
+
+            if ($sorted->count() > 2) {
+                $anomalies[] = [
+                    'type'                  => 'subject_spread_excess',
+                    'conflict_category'     => 'subject_spread',
+                    'day'                   => $first->day,
+                    'class_a'               => $className,
+                    'subject_a'             => $subjectName,
+                    'teacher'               => $teacherName,
+                    'periods'               => $periodsInfo,
+                    'setting_a_id'          => $first->setting_id,
+                    'resolution_suggestion' => "{$subjectName} is scheduled {$sorted->count()} times on {$first->day} for {$className} — more than a double period should ever be. Move the extra period(s) to another day.",
+                ];
+            } elseif (!$contiguous) {
+                $anomalies[] = [
+                    'type'                  => 'subject_spread_nonadjacent',
+                    'conflict_category'     => 'subject_spread',
+                    'day'                   => $first->day,
+                    'class_a'               => $className,
+                    'subject_a'             => $subjectName,
+                    'teacher'               => $teacherName,
+                    'periods'               => $periodsInfo,
+                    'setting_a_id'          => $first->setting_id,
+                    'resolution_suggestion' => "{$subjectName} appears twice on {$first->day} for {$className}, but {$periodsInfo[0]['period_name']} and {$periodsInfo[1]['period_name']} aren't back-to-back — a break (or gap) separates them. Either make them a genuine adjacent double period, or move one to a different day.",
+                ];
+            }
+        }
+
+        return $anomalies;
     }
 
     public function checkConflictsScope(Request $request): JsonResponse

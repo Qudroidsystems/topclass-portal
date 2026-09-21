@@ -771,7 +771,7 @@
                 <i class="ri-grid-line me-1"></i>Period Allocation
             </button>
             <button class="btn btn-outline-light btn-sm" onclick="openConflictScopeModal()">
-                <i class="ri-shield-cross-line me-1"></i>Check Conflicts
+                <i class="ri-shield-cross-line me-1"></i>Check Conflicts &amp; Anomalies
             </button>
             <button class="btn btn-outline-light btn-sm" onclick="openWholeSchoolExportModal()">
                 <i class="ri-school-line me-1"></i>Whole School
@@ -1481,7 +1481,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header" style="background:linear-gradient(135deg,#DC2626,#EA580C)">
-        <h5 class="modal-title text-white"><i class="ri-shield-cross-line me-2"></i>Check Conflicts — Session / Term</h5>
+        <h5 class="modal-title text-white"><i class="ri-shield-cross-line me-2"></i>Check Conflicts &amp; Anomalies — Session / Term</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto">
@@ -1506,8 +1506,14 @@
           </div>
         </div>
         <button class="btn btn-danger w-100 mb-3" onclick="runScopeConflictCheck()">
-          <i class="ri-search-line me-2"></i>Run Conflict Check
+          <i class="ri-search-line me-2"></i>Run Check
         </button>
+        <p class="text-muted mb-3" style="font-size:12px">
+          <i class="ri-information-line me-1"></i>
+          Checks teacher and room double-bookings, plus subjects that repeat for the same class on the
+          same day in a way a real school day never should — more than a double period, or two periods
+          that aren't genuinely back-to-back (a break sits between them).
+        </p>
         <div id="conflictScopeResults">
           <div class="text-center py-4 text-muted">
             <i class="ri-shield-check-line ri-2x d-block mb-2 opacity-30"></i>
@@ -3878,7 +3884,7 @@ async function checkConflicts() {
                 <div class="text-center py-5">
                     <i class="ri-check-double-line ri-3x d-block mb-3 text-success"></i>
                     <h6 class="text-success">No Conflicts Found</h6>
-                    <p class="text-muted mb-0">All teachers and rooms are properly scheduled with no overlaps across any class.</p>
+                    <p class="text-muted mb-0">All teachers and rooms are properly scheduled with no overlaps, and no subject repeats abnormally, across any class.</p>
                 </div>`;
             hideLoader();
             return;
@@ -3929,21 +3935,59 @@ function renderConflictsHtml(data) {
         return `<div class="text-center py-4">
             <i class="ri-check-double-line ri-3x d-block mb-3 text-success"></i>
             <h6 class="text-success">No Conflicts Found</h6>
-            <p class="text-muted mb-0">All teachers and rooms are properly scheduled with no overlaps.</p>
+            <p class="text-muted mb-0">All teachers and rooms are properly scheduled with no overlaps, and no subject repeats abnormally.</p>
         </div>`;
     }
 
     const teacherConflicts = data.conflicts.filter(c => c.conflict_category === 'teacher');
     const roomConflicts    = data.conflicts.filter(c => c.conflict_category === 'room');
+    const subjectSpread    = data.conflicts.filter(c => c.conflict_category === 'subject_spread');
 
     let html = `<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
         <i class="ri-alert-line ri-xl"></i>
-        Found <strong class="mx-1">${data.conflict_count}</strong> conflict(s)
+        Found <strong class="mx-1">${data.conflict_count}</strong> issue(s)
         ${teacherConflicts.length ? `<span class="badge bg-danger ms-1">${teacherConflicts.length} teacher</span>` : ''}
         ${roomConflicts.length    ? `<span class="badge bg-warning text-dark ms-1">${roomConflicts.length} room</span>` : ''}
+        ${subjectSpread.length    ? `<span class="badge bg-info text-dark ms-1">${subjectSpread.length} subject spread</span>` : ''}
     </div>`;
 
     data.conflicts.forEach(c => {
+        // Subject-spread anomalies (a subject repeating for the same class
+        // on the same day, either more than twice or not genuinely
+        // back-to-back) have a different shape from a teacher/room
+        // double-booking -- one class/subject/day plus a LIST of periods,
+        // not an A-vs-B pairing -- so they get their own render branch.
+        if (c.conflict_category === 'subject_spread') {
+            const isExcess = c.type === 'subject_spread_excess';
+            const periodsHtml = (c.periods || []).map(p =>
+                `<span class="alt-badge">📅 ${escapeHtml(p.period_name)} (${escapeHtml(p.period_time)})</span>`
+            ).join('');
+
+            html += `<div class="conflict-item subject-spread-conflict">
+                <div class="conflict-avatar-ph" style="background:#FEF3C7">
+                    <i class="ri-repeat-line ri-xl" style="color:#B45309"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold mb-1">
+                        ${escapeHtml(c.subject_a || '—')}
+                        <span class="badge bg-warning-subtle text-warning ms-1" style="font-size:10px">
+                            ${isExcess ? 'Repeated too many times' : 'Not back-to-back'}
+                        </span>
+                    </div>
+                    <div class="text-danger fw-semibold" style="font-size:12px">
+                        <i class="ri-time-line me-1"></i>${escapeHtml(c.day)}
+                        <span class="badge bg-primary-subtle text-primary ms-1">${escapeHtml(c.class_a || '')}</span>
+                        ${c.teacher && c.teacher !== '—' ? ' · ' + escapeHtml(c.teacher) : ''}
+                    </div>
+                    <div class="alt-badges mt-1">${periodsHtml}</div>
+                    <div class="mt-2 text-muted" style="font-size:12px">
+                        <i class="ri-information-line me-1"></i>${escapeHtml(c.resolution_suggestion)}
+                    </div>
+                </div>
+            </div>`;
+            return;
+        }
+
         const isRoomConflict = c.conflict_category === 'room';
         const avatarHtml     = isRoomConflict
             ? `<div class="conflict-avatar-ph room"><i class="ri-home-3-line ri-xl" style="color:#EA580C"></i></div>`
