@@ -236,40 +236,19 @@ class TranscriptController extends Controller
             ->orderBy('schoolterm.id')
             ->get();
 
-        // ── Assessments – per classcategory, not just the first enrolled class ─
-        // A student's assessment structure can differ between classcategories
-        // (e.g. Junior vs Senior) over a multi-year 'full' transcript, so we
-        // resolve assessments per enrolment (keyed by schoolclassid) instead of
-        // once from the first class. The header row the blade renders is the
-        // union of assessment NAMES seen across every classcategory the student
-        // passed through, in first-seen order — a term whose classcategory
-        // doesn't define a given assessment just shows blank under that column.
-        $assessmentsByClass = [];
-        foreach ($enrolments as $enrolForAssessments) {
-            $clsId = $enrolForAssessments->schoolclassid;
-            if (isset($assessmentsByClass[$clsId])) {
-                continue;
-            }
+        // ── Assessments – get from the first class the student was enrolled in ─
+        $firstClassId = $enrolments->first()?->schoolclassid;
+        $assessments  = collect();
 
-            $schoolclass = Schoolclass::with('classcategories')->find($clsId);
-            $assessmentsByClass[$clsId] = ($schoolclass && $schoolclass->classcategories)
-                ? Assessment::where('classcategory_id', $schoolclass->classcategories->id)
+        if ($firstClassId) {
+            $schoolclass = Schoolclass::with('classcategories')->find($firstClassId);
+            if ($schoolclass && $schoolclass->classcategories) {
+                $categoryIds = collect([$schoolclass->classcategories->id]);
+                $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
                     ->orderBy('id')
-                    ->get()
-                : collect();
-        }
-
-        $assessments = collect();
-        $seenNames   = [];
-        foreach ($assessmentsByClass as $classAssessments) {
-            foreach ($classAssessments as $a) {
-                if (!in_array($a->name, $seenNames, true)) {
-                    $seenNames[]   = $a->name;
-                    $assessments[] = $a;
-                }
+                    ->get();
             }
         }
-        $assessments = collect($assessments);
 
         // ── Broadsheet records ────────────────────────────────────────────────
         $bsQuery = DB::table('broadsheets')
@@ -381,22 +360,12 @@ class TranscriptController extends Controller
             $totalCum     = 0;
             $subjectCount = 0;
 
-            $termAssessments = $assessmentsByClass[$enrol->schoolclassid] ?? collect();
-
             foreach ($termRecords as $rec) {
-                // Build assessment scores for this subject row. Look the score up
-                // under THIS term's own classcategory assessment id (matched to the
-                // unified header column by name, since ids differ per
-                // classcategory) rather than the first-enrolled class's id, so a
-                // student who moved classcategory mid-transcript still shows real
-                // scores for every term instead of blanks after the first change.
+                // Build assessment scores for this subject row
                 $assessmentScoreRow = $assessmentScoresAll->get($rec->broadsheet_id, collect());
                 $assessmentData     = [];
                 foreach ($assessments as $a) {
-                    $termAssessment = $termAssessments->firstWhere('name', $a->name);
-                    $score = $termAssessment
-                        ? $assessmentScoreRow->firstWhere('assessment_id', $termAssessment->id)
-                        : null;
+                    $score = $assessmentScoreRow->firstWhere('assessment_id', $a->id);
                     $assessmentData[$a->id] = $score ? (float) $score->score : null;
                 }
 
@@ -409,7 +378,7 @@ class TranscriptController extends Controller
                     'cum'           => (float) ($rec->cum ?? 0),
                     'grade'         => $rec->grade ?? '-',
                     'remark'        => $rec->remark ?? '-',
-                    'position'      => $this->formatOrdinal($rec->position ?? null),
+                    'position'      => $rec->position ?? '-',
                     'class_average' => (float) ($rec->class_average ?? 0),
                 ];
 
@@ -423,13 +392,6 @@ class TranscriptController extends Controller
             $promotion = $promotions[$mapKey] ?? null;
             $comment   = $comments[$mapKey]   ?? null;
 
-            $computedPosition = $this->computeOverallClassPosition(
-                $enrol->schoolclass,
-                (int) $enrol->term_id_val,
-                (int) $enrol->session_id_val,
-                $studentId
-            );
-
             $transcriptData[$sessionKey]['terms'][$termKey] = [
                 'term'           => $termKey,
                 'term_id'        => $enrol->term_id_val,
@@ -440,7 +402,7 @@ class TranscriptController extends Controller
                 'average'        => $termAvg,
                 'cum_average'    => $cumAvg,
                 'promotion'      => $promotion?->promotionStatus ?? null,
-                'class_position' => $computedPosition !== null ? $this->formatOrdinal($computedPosition) : null,
+                'class_position' => $promotion?->position        ?? null,
                 'comment'        => $comment?->principalscomment ?? null,
             ];
         }
@@ -477,177 +439,6 @@ class TranscriptController extends Controller
     // =========================================================================
     // HELPERS
     // =========================================================================
-
-    /**
-     * Live overall class position for a student in a given class/term/
-     * session, ranked by cumulative average across their scored subjects.
-     * promotionStatus.position is never actually populated anywhere in the
-     * codebase (always null), so this computes the position fresh instead
-     * of trusting a stored value — same healing approach as
-     * BroadsheetController: total/cum are recomputed live from raw CA/exam
-     * scores (and the previous term's healed total, for BF) rather than
-     * trusted from the stored broadsheets columns, which can go stale.
-     * Scope is class-wide (all arms of the same class name), matching what
-     * the report card shows as "Students in Class". Returns null if the
-     * student has no scored subjects this term, or on any error — position
-     * display is best-effort and must never break the transcript.
-     */
-    private function computeOverallClassPosition(
-        string $className,
-        int $termid,
-        int $sessionid,
-        int $studentId
-    ): ?int {
-        try {
-            $allArmIds = Schoolclass::where('schoolclass', $className)->pluck('id');
-            if ($allArmIds->isEmpty()) {
-                return null;
-            }
-
-            $classStudentIds = Studentclass::whereIn('schoolclassid', $allArmIds)
-                ->where('termid', $termid)
-                ->where('sessionid', $sessionid)
-                ->pluck('studentId')
-                ->map(fn ($v) => (int) $v)
-                ->unique()
-                ->values();
-
-            if ($classStudentIds->isEmpty()) {
-                return null;
-            }
-
-            $rows = DB::table('broadsheets')
-                ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-                ->whereIn('broadsheet_records.student_id', $classStudentIds)
-                ->whereIn('broadsheet_records.schoolclass_id', $allArmIds)
-                ->where('broadsheets.term_id', $termid)
-                ->where('broadsheet_records.session_id', $sessionid)
-                ->select([
-                    'broadsheet_records.student_id',
-                    'broadsheet_records.subject_id',
-                    'broadsheets.ca1',
-                    'broadsheets.ca2',
-                    'broadsheets.ca3',
-                    'broadsheets.exam',
-                    'broadsheets.bf',
-                ])
-                ->get();
-
-            if ($rows->isEmpty()) {
-                return null;
-            }
-
-            // Previous term's healed total per student/subject, for the BF
-            // fallback — same 'use total, not the stale cum column' fix used
-            // elsewhere (ViewStudentReportController / BroadsheetController).
-            $prevTerm   = Schoolterm::where('id', '<', $termid)->orderByDesc('id')->first();
-            $prevTotals = [];
-            if ($prevTerm) {
-                $prevRows = DB::table('broadsheets')
-                    ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-                    ->whereIn('broadsheet_records.student_id', $classStudentIds)
-                    ->whereIn('broadsheet_records.schoolclass_id', $allArmIds)
-                    ->where('broadsheets.term_id', $prevTerm->id)
-                    ->where('broadsheet_records.session_id', $sessionid)
-                    ->select(['broadsheet_records.student_id', 'broadsheet_records.subject_id', 'broadsheets.total'])
-                    ->get();
-                foreach ($prevRows as $r) {
-                    $prevTotals[(int) $r->student_id][(int) $r->subject_id] = (float) $r->total;
-                }
-            }
-
-            // Healed cum per student, averaged across their scored subjects.
-            $cumSums   = [];
-            $cumCounts = [];
-            foreach ($rows as $row) {
-                $sid = (int) $row->student_id;
-                $sub = (int) $row->subject_id;
-
-                $ca1   = (float) ($row->ca1  ?? 0);
-                $ca2   = (float) ($row->ca2  ?? 0);
-                $ca3   = (float) ($row->ca3  ?? 0);
-                $exam  = (float) ($row->exam ?? 0);
-                $caAvg = ($ca1 + $ca2 + $ca3) / 3;
-                $total = round(($caAvg + $exam) / 2, 1);
-
-                if ($total <= 0) {
-                    continue; // not actually sat
-                }
-
-                $prevTotal = $prevTotals[$sid][$sub] ?? null;
-                if ($prevTotal !== null && $prevTotal > 0) {
-                    $bf = $prevTotal;
-                } elseif (!empty($row->bf) && (float) $row->bf > 0) {
-                    $bf = (float) $row->bf;
-                } else {
-                    $bf = 0.0;
-                }
-
-                $cum = $termid == 1 ? $total : round(($bf + $total) / 2, 2);
-
-                $cumSums[$sid]   = ($cumSums[$sid]   ?? 0) + $cum;
-                $cumCounts[$sid] = ($cumCounts[$sid] ?? 0) + 1;
-            }
-
-            if (empty($cumSums)) {
-                return null;
-            }
-
-            $averages = [];
-            foreach ($cumSums as $sid => $sum) {
-                $averages[$sid] = round($sum / $cumCounts[$sid], 4);
-            }
-
-            arsort($averages); // highest cum average first
-
-            $position = null;
-            $rank     = 0;
-            $lastVal  = null;
-            $lastPos  = 0;
-            foreach ($averages as $sid => $val) {
-                $rank++;
-                if ($lastVal !== null && $val === $lastVal) {
-                    $pos = $lastPos;
-                } else {
-                    $pos     = $rank;
-                    $lastPos = $pos;
-                    $lastVal = $val;
-                }
-                if ($sid === $studentId) {
-                    $position = $pos;
-                    break;
-                }
-            }
-
-            return $position;
-        } catch (\Throwable $e) {
-            Log::warning('computeOverallClassPosition failed: ' . $e->getMessage(), [
-                'class'      => $className,
-                'term_id'    => $termid,
-                'session_id' => $sessionid,
-                'student_id' => $studentId,
-            ]);
-            return null;
-        }
-    }
-
-    private function formatOrdinal($number): string
-    {
-        if (!is_numeric($number) || $number <= 0) return '-';
-
-        $number        = (int) $number;
-        $lastDigit     = $number % 10;
-        $lastTwoDigits = $number % 100;
-
-        if ($lastTwoDigits >= 11 && $lastTwoDigits <= 13) return $number . 'th';
-
-        return $number . match ($lastDigit) {
-            1       => 'st',
-            2       => 'nd',
-            3       => 'rd',
-            default => 'th',
-        };
-    }
 
     private function getGradePoint(float $score): float
     {
