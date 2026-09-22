@@ -15,7 +15,7 @@
             <a href="{{ route('viewstudent', [$sc->schoolclassid, $sc->termid, $sc->sessionid]) }}" class="btn btn-primary btn-sm">View Students</a>
         </td>
         <td class="updated_at">
-            <a href="{{ route('classbroadsheet.viewcomments', [$sc->schoolclassid, $sc->sessionid, $sc->termid]) }}" class="btn btn-info btn-sm">View Broadsheet</a>
+            <a href="{{ route('classbroadsheet', [$sc->schoolclassid, $sc->termid, $sc->sessionid]) }}" class="btn btn-info btn-sm">View Broadsheet</a>
         </td>
        
     </tr>

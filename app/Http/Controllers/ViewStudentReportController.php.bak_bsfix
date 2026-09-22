@@ -418,6 +418,20 @@ class ViewStudentReportController extends Controller
         return view('studentreports.studentresult')->with($data)->with('pagetitle', $pagetitle);
     }
 
+    public function classBroadsheet($schoolclassid, $sessionid, $termid): View
+    {
+        $class     = Schoolclass::findOrFail($schoolclassid);
+        $session   = Schoolsession::findOrFail($sessionid);
+        $pagetitle = "Broadsheet for {$class->schoolclass} - {$session->session} - Term {$termid}";
+
+        return view('studentreports.broadsheet', [
+            'class'     => $class,
+            'session'   => $session,
+            'term'      => $termid,
+            'pagetitle' => $pagetitle,
+        ]);
+    }
+
     // =========================================================================
     // INDEX
     // =========================================================================

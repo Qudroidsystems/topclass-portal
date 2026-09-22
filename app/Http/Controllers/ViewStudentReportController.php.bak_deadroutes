@@ -39,7 +39,7 @@ class ViewStudentReportController extends Controller
         $this->promotionEvaluator = $promotionEvaluator;
 
         $this->middleware('permission:View student-report', ['only' => [
-            'index', 'studentresult',
+            'index', 'studentresult', 'studentmockresult',
             'exportStudentResultPdf', 'exportClassResultsPdf', 'drawerData',
         ]]);
         $this->middleware('permission:Create student-report', ['only' => ['create', 'store']]);
@@ -418,6 +418,34 @@ class ViewStudentReportController extends Controller
         return view('studentreports.studentresult')->with($data)->with('pagetitle', $pagetitle);
     }
 
+    public function studentmockresult($id, $schoolclassid, $sessionid, $termid)
+    {
+        $pagetitle = 'Student Mock Result';
+
+        $metricsCalculated = $this->calculateClassPositionsAndAverages($schoolclassid, $sessionid, $termid);
+        if (!$metricsCalculated) {
+            return back()->with('error', 'Failed to calculate class metrics. Please try again.');
+        }
+
+        $data = $this->getStudentResultData($id, $schoolclassid, $sessionid, $termid);
+
+        return view('studentreports.studentmockresult')->with($data)->with('pagetitle', $pagetitle);
+    }
+
+    public function classBroadsheet($schoolclassid, $sessionid, $termid): View
+    {
+        $class     = Schoolclass::findOrFail($schoolclassid);
+        $session   = Schoolsession::findOrFail($sessionid);
+        $pagetitle = "Broadsheet for {$class->schoolclass} - {$session->session} - Term {$termid}";
+
+        return view('studentreports.broadsheet', [
+            'class'     => $class,
+            'session'   => $session,
+            'term'      => $termid,
+            'pagetitle' => $pagetitle,
+        ]);
+    }
+
     // =========================================================================
     // INDEX
     // =========================================================================
@@ -634,37 +662,6 @@ class ViewStudentReportController extends Controller
 
         return view('studentreports.index', compact('allstudents', 'schoolsessions', 'schoolclasses', 'pagetitle'));
     }
-
-    public function registeredClasses(Request $request)
-    {
-        $classId   = $request->query('class_id');
-        $sessionId = $request->query('session_id');
-
-        if (!$classId || !$sessionId || $classId === 'ALL' || $sessionId === 'ALL') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Please select a valid class and session.'
-            ], 400);
-        }
-
-        $classes = Studentclass::query()
-            ->join('schoolclass', 'schoolclass.id', '=', 'studentclass.schoolclassid')
-            ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->join('schoolsession', 'schoolsession.id', '=', 'studentclass.sessionid')
-            ->where('schoolclass.id', $classId)
-            ->where('schoolsession.id', $sessionId)
-            ->groupBy('schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm', 'schoolsession.session')
-            ->selectRaw('
-                schoolclass.schoolclass as class_name,
-                schoolarm.arm as name_arm,
-                schoolsession.session as session_name,
-                COUNT(DISTINCT studentclass.studentId) as student_count
-            ')
-            ->get();
-
-        return response()->json(['success' => true, 'data' => $classes]);
-    }
-
     // =========================================================================
     // DRAWER DATA
     // =========================================================================

@@ -426,6 +426,23 @@
 
                         <div class="col-12">
                             <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <span class="fw-semibold"><i class="ri-award-line me-1"></i>GPA/CGPA Metrics</span>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" id="selectAllGPAMetrics">
+                                        <label class="form-check-label" for="selectAllGPAMetrics"
+                                               style="font-size:12px;">Select All</label>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row" id="gpaColumns"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card border" style="border-radius:var(--bill-radius);">
                                 <div class="card-header bg-white fw-semibold"
                                      style="font-size:13px; color:var(--bill-primary);">
                                     <i class="ri-more-line me-1"></i>Other Information
@@ -703,7 +720,7 @@
 
     function populateColumnOptions(columns) {
         ['studentInfoColumns','assessmentColumns','scoreColumns',
-         'otherColumns'].forEach(id => {
+         'gpaColumns','otherColumns'].forEach(id => {
             document.getElementById(id).innerHTML = '';
         });
 
@@ -731,10 +748,14 @@
         renderCheckboxes('studentInfoColumns', columns.student_info);
         renderCheckboxes('assessmentColumns',  columns.assessments,  'assessment-checkbox');
         renderCheckboxes('scoreColumns',       columns.scores);
+        renderCheckboxes('gpaColumns',         columns.gpa_metrics,  'gpa-checkbox');
         renderCheckboxes('otherColumns',       columns.other);
 
         document.getElementById('selectAllAssessments').addEventListener('change', function () {
             document.querySelectorAll('.assessment-checkbox').forEach(cb => cb.checked = this.checked);
+        });
+        document.getElementById('selectAllGPAMetrics').addEventListener('change', function () {
+            document.querySelectorAll('.gpa-checkbox').forEach(cb => cb.checked = this.checked);
         });
     }
 

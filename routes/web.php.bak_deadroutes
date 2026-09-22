@@ -847,6 +847,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/studentreports', [ViewStudentReportController::class, 'index'])->name('studentreports.index');
     Route::get('/studentresult/{id}/{schoolclassid}/{sessionid}/{termid}', [ViewStudentReportController::class, 'studentresult'])->name('studentresult');
     Route::get('/student-reports/registered-classes', [ViewStudentReportController::class, 'registeredClasses'])->name('studentreports.registeredClasses');
+    Route::get('/class-broadsheet/{schoolclassid}/{sessionid}/{termid}', [ViewStudentReportController::class, 'classBroadsheet'])->name('classbroadsheet');
     Route::match(['get', 'post'], '/studentreports/export-class-results-pdf', [ViewStudentReportController::class, 'exportClassResultsPdf'])->name('studentreports.exportClassResultsPdf');
 
     // Fixed name + path
@@ -1051,6 +1052,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/admin/exams/{exam}/pause', [ExamPauseController::class, 'pause'])->name('admin.exams.pause');
     Route::post('/admin/exams/{exam}/resume', [ExamPauseController::class, 'resume'])->name('admin.exams.resume');
     Route::get('/api/exams/{exam}/status', [ExamPauseController::class, 'status'])->name('api.exams.status');
+
+    Route::get('/debug-student-scores', [ViewStudentReportController::class, 'debugStudentScores']);
 
     // ===================================================================
     // BROADSHEET
