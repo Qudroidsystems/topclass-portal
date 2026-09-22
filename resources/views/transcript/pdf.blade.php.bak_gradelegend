@@ -479,16 +479,11 @@ body {
             </div>
             @endif
             <div class="info-row">
-                @if($overallGpa !== null)
                 <div class="info-label">Overall GPA</div>
                 <div class="info-value">
                     {{ number_format($overallGpa, 2) }}
                     <span class="grade-badge" style="background:#1e3a5f;margin-left:4px;">{{ $overallGpaGrade }}</span>
                 </div>
-                @else
-                <div class="info-label"></div>
-                <div class="info-value"></div>
-                @endif
                 <div class="info-label" style="padding-left:20px;">Total Subjects</div>
                 <div class="info-value">{{ $totalSubjects }}</div>
             </div>
@@ -496,40 +491,21 @@ body {
     </div>
 </div>
 
-{{-- Grade Key — classcategory-aware: Junior (A-F) and/or Senior (A1-F9),
-     whichever this transcript's terms actually used. A Junior grade of 'A'
-     is a real, different scale from Senior 'A1' — showing only the Senior
-     key regardless of classcategory made Junior grades look wrong. --}}
+{{-- Grade Key --}}
 <div class="grade-key">
     <div class="grade-key-title">GRADING SCALE:</div>
     <div class="grade-key-items">
         @php
-        $seniorGradeKey = [
+        $gradeKey = [
             'A1'=>['75-100','#16a34a'],'B2'=>['70-74','#1d4ed8'],'B3'=>['65-69','#2563eb'],
             'C4'=>['60-64','#d97706'], 'C5'=>['55-59','#b45309'],'C6'=>['50-54','#92400e'],
             'D7'=>['45-49','#ea580c'], 'E8'=>['40-44','#c2410c'],'F9'=>['0-39', '#dc2626'],
         ];
-        $juniorGradeKey = [
-            'A'=>['70-100','#16a34a'],'B'=>['60-69','#1d4ed8'],
-            'C'=>['50-59','#d97706'],'D'=>['40-49','#ea580c'],'F'=>['0-39','#dc2626'],
-        ];
-        $scalesUsed = $gradeScalesUsed ?? ['senior'];
         @endphp
-        @if(in_array('senior', $scalesUsed))
-            @foreach($seniorGradeKey as $grade => $info)
-                <span class="grade-badge" style="background:{{ $info[1] }};">{{ $grade }}</span>
-                <span style="font-size:6pt;margin-right:6px;">{{ $info[0] }}</span>
-            @endforeach
-        @endif
-        @if(in_array('junior', $scalesUsed))
-            @if(in_array('senior', $scalesUsed))
-                <span style="font-size:6pt;margin:0 6px;color:#888;">|</span>
-            @endif
-            @foreach($juniorGradeKey as $grade => $info)
-                <span class="grade-badge" style="background:{{ $info[1] }};">{{ $grade }}</span>
-                <span style="font-size:6pt;margin-right:6px;">{{ $info[0] }}</span>
-            @endforeach
-        @endif
+        @foreach($gradeKey as $grade => $info)
+            <span class="grade-badge" style="background:{{ $info[1] }};">{{ $grade }}</span>
+            <span style="font-size:6pt;margin-right:6px;">{{ $info[0] }}</span>
+        @endforeach
         &nbsp;
         <span style="font-size:6pt;color:#555;">
             <strong>BF</strong>=Brought Forward &nbsp;

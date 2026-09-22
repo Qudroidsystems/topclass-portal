@@ -244,8 +244,7 @@ class TranscriptController extends Controller
         // union of assessment NAMES seen across every classcategory the student
         // passed through, in first-seen order — a term whose classcategory
         // doesn't define a given assessment just shows blank under that column.
-        $assessmentsByClass     = [];
-        $classcategoriesByClass = [];
+        $assessmentsByClass = [];
         foreach ($enrolments as $enrolForAssessments) {
             $clsId = $enrolForAssessments->schoolclassid;
             if (isset($assessmentsByClass[$clsId])) {
@@ -253,7 +252,6 @@ class TranscriptController extends Controller
             }
 
             $schoolclass = Schoolclass::with('classcategories')->find($clsId);
-            $classcategoriesByClass[$clsId] = $schoolclass?->classcategories;
             $assessmentsByClass[$clsId] = ($schoolclass && $schoolclass->classcategories)
                 ? Assessment::where('classcategory_id', $schoolclass->classcategories->id)
                     ->orderBy('id')
@@ -360,9 +358,8 @@ class TranscriptController extends Controller
             ->keyBy(fn ($r) => $r->session . '_' . $r->term);
 
         // ── Structure: session → term → subjects ──────────────────────────────
-        $transcriptData  = [];
-        $healingCache    = [];
-        $gradeScalesUsed = [];
+        $transcriptData = [];
+        $healingCache   = [];
 
         foreach ($enrolments as $enrol) {
             $sessionKey = $enrol->session;
@@ -460,17 +457,6 @@ class TranscriptController extends Controller
 
             $computedPosition = $healing['overallRank'][$studentId] ?? null;
 
-            // Classcategory (Junior/Senior) this term's class belongs to —
-            // defaults to Senior when no classcategory row is found, matching
-            // the app's long-standing default grading scale. Tracked per term
-            // so the legend and overall GPA can be classcategory-correct
-            // instead of always assuming Senior A1-F9, which mislabels a
-            // Junior class's real A/B/C/D/F grades against a scale that
-            // isn't theirs.
-            $termClassCategory = $classcategoriesByClass[$enrol->schoolclassid] ?? null;
-            $termIsSenior      = $termClassCategory ? (bool) $termClassCategory->is_senior : true;
-            $gradeScalesUsed[$termIsSenior ? 'senior' : 'junior'] = true;
-
             $transcriptData[$sessionKey]['terms'][$termKey] = [
                 'term'           => $termKey,
                 'term_id'        => $enrol->term_id_val,
@@ -483,31 +469,14 @@ class TranscriptController extends Controller
                 'promotion'      => $promotion?->promotionStatus ?? null,
                 'class_position' => $computedPosition !== null ? $this->formatOrdinal($computedPosition) : null,
                 'comment'        => $comment?->principalscomment ?? null,
-                'is_senior'      => $termIsSenior,
             ];
         }
 
         // ── Overall GPA ───────────────────────────────────────────────────────
-        // GPA is a Senior-only concept in this app (Classcategory only
-        // defines a point scale for is_senior classes; Junior classes use a
-        // coarse A/B/C/D/F letter grade with no point equivalent), so it's
-        // computed only from subjects taken in Senior-classcategory terms. A
-        // Junior-only transcript has no Senior terms to draw from, so
-        // overallGpa/overallGpaGrade come back null and the blade hides the
-        // GPA badge instead of showing a number that doesn't mean anything
-        // for a Junior student.
-        $seniorSchoolclassIds = collect($classcategoriesByClass)
-            ->filter(fn ($cc) => $cc && $cc->is_senior)
-            ->keys();
-
-        $allTotals = $allRecords
-            ->filter(fn ($r) => $seniorSchoolclassIds->contains($r->schoolclass_id))
-            ->pluck('total')
-            ->filter(fn ($v) => $v > 0);
-
+        $allTotals  = $allRecords->pluck('total')->filter(fn ($v) => $v > 0);
         $overallGpa = $allTotals->count() > 0
             ? round($allTotals->map(fn ($s) => $this->getGradePoint((float) $s))->avg(), 2)
-            : null;
+            : 0.0;
 
         // ── Grade distribution ────────────────────────────────────────────────
         $gradeDistribution = $allRecords
@@ -522,9 +491,8 @@ class TranscriptController extends Controller
             'allRecords'        => $allRecords,
             'assessments'       => $assessments,
             'overallGpa'        => $overallGpa,
-            'overallGpaGrade'   => $overallGpa !== null ? $this->getGpaGrade($overallGpa) : null,
+            'overallGpaGrade'   => $this->getGpaGrade($overallGpa),
             'gradeDistribution' => $gradeDistribution,
-            'gradeScalesUsed'   => array_keys($gradeScalesUsed),
             'type'              => $type,
             'sessionId'         => $sessionId,
             'termId'            => $termId,

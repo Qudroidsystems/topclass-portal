@@ -170,7 +170,6 @@
                                         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Total Subjects</div>
                                         <div class="fw-bold">{{ $totalSubjects }}</div>
                                     </div>
-                                    @if($overallGpa !== null)
                                     <div class="col-md-3">
                                         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">Overall GPA</div>
                                         <div class="fw-bold" style="color:#1e3a5f;font-size:15px;">
@@ -178,44 +177,27 @@
                                             <span class="badge bg-primary ms-1" style="font-size:10px;">{{ $overallGpaGrade }}</span>
                                         </div>
                                     </div>
-                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Grade Key — classcategory-aware: Junior (A-F) and/or Senior
-                         (A1-F9), whichever this transcript's terms actually
-                         used, instead of always the Senior-only scale. --}}
+                    {{-- Grade Key --}}
                     <div class="d-flex align-items-center flex-wrap gap-2 mb-4 p-2 rounded-3"
                          style="background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;">
                         <strong style="color:#1e3a5f;font-size:11px;">GRADING:</strong>
                         @php
-                        $seniorGradeKey = [
+                        $gradeKey = [
                             'A1'=>['75-100','#16a34a'],'B2'=>['70-74','#1d4ed8'],'B3'=>['65-69','#2563eb'],
                             'C4'=>['60-64','#d97706'], 'C5'=>['55-59','#b45309'],'C6'=>['50-54','#92400e'],
                             'D7'=>['45-49','#ea580c'], 'E8'=>['40-44','#c2410c'],'F9'=>['0-39', '#dc2626'],
                         ];
-                        $juniorGradeKey = [
-                            'A'=>['70-100','#16a34a'],'B'=>['60-69','#1d4ed8'],
-                            'C'=>['50-59','#d97706'],'D'=>['40-49','#ea580c'],'F'=>['0-39','#dc2626'],
-                        ];
-                        $scalesUsed = $gradeScalesUsed ?? ['senior'];
                         @endphp
-                        @if(in_array('senior', $scalesUsed))
-                            @foreach($seniorGradeKey as $grade => $info)
-                                <span class="badge" style="background:{{ $info[1] }};font-size:10px;">
-                                    {{ $grade }} ({{ $info[0] }})
-                                </span>
-                            @endforeach
-                        @endif
-                        @if(in_array('junior', $scalesUsed))
-                            @foreach($juniorGradeKey as $grade => $info)
-                                <span class="badge" style="background:{{ $info[1] }};font-size:10px;">
-                                    {{ $grade }} ({{ $info[0] }})
-                                </span>
-                            @endforeach
-                        @endif
+                        @foreach($gradeKey as $grade => $info)
+                            <span class="badge" style="background:{{ $info[1] }};font-size:10px;">
+                                {{ $grade }} ({{ $info[0] }})
+                            </span>
+                        @endforeach
                         <span class="text-muted ms-2" style="font-size:11px;">
                             <strong>BF</strong>=Brought Forward &nbsp;
                             <strong>CUM</strong>=Cumulative &nbsp;
