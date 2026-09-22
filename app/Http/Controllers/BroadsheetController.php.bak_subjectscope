@@ -67,8 +67,6 @@ class BroadsheetController extends Controller
             $actualSubjectCount = DB::table('subjectclass as sc')
                 ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
                 ->where('sc.schoolclassid', $schoolclassid)
-                ->where('st.termid', $termid)
-                ->where('st.sessionid', $sessionid)
                 ->distinct()
                 ->count('sc.subjectid');
 
@@ -555,15 +553,6 @@ class BroadsheetController extends Controller
             ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
             ->join('subject', 'subject.id', '=', 'sc.subjectid')
             ->where('sc.schoolclassid', $schoolclassid)
-            // Scope to this term/session — subjectclass rows are never
-            // cleaned up when a subject stops being taught to a class, so
-            // without this a subject with a stale teacher assignment shows
-            // up as an all-blank phantom column. subjectclass.termid/session
-            // are never populated (see TimetableController's doc comment on
-            // getPeriodAllocationGrid), so we scope through subjectteacher
-            // instead, same as that method does.
-            ->where('st.termid', $termid)
-            ->where('st.sessionid', $sessionid)
             ->select(['sc.subjectid', 'subject.subject as subject_name', 'subject.subject_code',
                       'sc.subjectteacherid', 'st.staffid'])
             ->distinct()
@@ -1392,16 +1381,9 @@ class BroadsheetController extends Controller
         // ── Subjects across arms ────────────────────────────────────
         $subjectsMap    = [];
         $subjectClasses = DB::table('subjectclass as sc')
-            ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
+            ->join('subjectteacher', 'st.id', '=', 'sc.subjectteacherid')
             ->join('subject', 'subject.id', '=', 'sc.subjectid')
             ->whereIn('sc.schoolclassid', $classIds)
-            // Scope to this term/session so a subject a teacher was once
-            // assigned but no longer teaches this term doesn't show as a
-            // phantom all-blank column (subjectclass has no reliable
-            // term/session of its own — see the doc comment on
-            // TimetableController::getPeriodAllocationGrid).
-            ->where('st.termid', $termid)
-            ->where('st.sessionid', $sessionid)
             ->select(['sc.subjectid', 'subject.subject as subject_name', 'subject.subject_code'])
             ->distinct()
             ->get();
