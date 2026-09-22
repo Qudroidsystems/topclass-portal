@@ -180,11 +180,16 @@ class ClassPositionService
             $subjectGroups = $broadsheets->groupBy('subject_id');
 
             foreach ($subjectGroups as $subjectId => $subjectRecords) {
-                // Legacy behavior: cum only gates eligibility ("did this
-                // student actually get scored for this subject?" — cum != 0
-                // means yes). The rank itself is always computed from total,
-                // never from cum's value.
-                $validRecordsCum   = $subjectRecords->filter(fn($r) => $r->cum != 0);
+                // Legacy behavior: eligibility was gated on cum != 0 ("did
+                // this student actually get scored for this subject?"), with
+                // the rank always computed from total. That worked in the
+                // old data because cum and total were populated together at
+                // score-entry time. In the current data, cum is not reliably
+                // persisted (see the Sep 2026 fix note above), so gating on
+                // it drops almost every student from ranking. total is the
+                // field this system actually keeps in sync, so it now also
+                // drives eligibility here, not just the rank.
+                $validRecordsCum   = $subjectRecords->filter(fn($r) => $r->total !== null);
                 $positionMapCum    = $this->calculatePositionsRaw($validRecordsCum->sortByDesc('total')->values(), 'total');
 
                 $validRecordsTotal = $subjectRecords->filter(fn($r) => $r->total !== null);
@@ -216,7 +221,7 @@ class ClassPositionService
 
                     Broadsheets::where('id', $record->id)->update([
                         'avg'                          => $classAvg,
-                        'subject_position_class'       => ($record->cum   == 0)    ? null : ($positionMapCum[$record->id]   ?? null),
+                        'subject_position_class'       => ($record->total === null) ? null : ($positionMapCum[$record->id]   ?? null),
                         'subject_position_class_total' => ($record->total === null) ? null : ($positionMapTotal[$record->id] ?? null),
                         'arm_position'                 => ($record->total === null) ? null : ($armPositionMapTotal[$record->id] ?? null),
                         'arm_position_cum'             => ($record->cum   === null) ? null : ($armPositionMapCum[$record->id]  ?? null),
