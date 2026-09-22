@@ -81,7 +81,14 @@ class ClassPositionService
     //
     // Computes, per subject, four position types for every student in the
     // class (across ALL arms of that class):
-    //   - subject_position_class       : rank by cum, whole class (all arms)
+    //   - subject_position_class       : rank by total, whole class (all arms).
+    //                                     `cum` is used only as an eligibility
+    //                                     gate ("did this student actually get
+    //                                     scored for this subject?" — cum != 0
+    //                                     means yes), never as the sort key.
+    //                                     This restores the behavior of the
+    //                                     original (pre-service) controller
+    //                                     logic — see FIX note below.
     //   - subject_position_class_total : rank by total, whole class (all arms)
     //   - arm_position                 : rank by total, within the student's own arm
     //   - arm_position_cum             : rank by cum, within the student's own arm
@@ -97,6 +104,17 @@ class ClassPositionService
     // This version groups students by their own arm and ranks each
     // arm-group independently, so every arm keeps correct arm positions
     // regardless of which arm triggered the recalculation.
+    //
+    // FIX (Sep 2026): subject_position_class had regressed to being ranked
+    // by broadsheets.cum's raw value instead of being used only as a
+    // filter. Nothing in the current save flow persists the computed
+    // cumulative score (the "columnH" value built in
+    // ViewStudentReportController::getStudentResultData()) back into
+    // broadsheets.cum, so that column is stale/unpopulated for most rows.
+    // Ranking on it produced mass ties, which the tie-handling in
+    // calculatePositionsRaw() collapses to rank 1 — hence nearly every
+    // subject showing "1st" in generated reports. Restored to the original
+    // working logic: cum only gates eligibility, total drives the rank.
     // =========================================================================
     public function recalculate($schoolclassid, $sessionid, $termid): bool
     {
@@ -162,8 +180,12 @@ class ClassPositionService
             $subjectGroups = $broadsheets->groupBy('subject_id');
 
             foreach ($subjectGroups as $subjectId => $subjectRecords) {
-                $validRecordsCum   = $subjectRecords->filter(fn($r) => $r->cum !== null);
-                $positionMapCum    = $this->calculatePositionsRaw($validRecordsCum->sortByDesc('cum')->values(), 'cum');
+                // Legacy behavior: cum only gates eligibility ("did this
+                // student actually get scored for this subject?" — cum != 0
+                // means yes). The rank itself is always computed from total,
+                // never from cum's value.
+                $validRecordsCum   = $subjectRecords->filter(fn($r) => $r->cum != 0);
+                $positionMapCum    = $this->calculatePositionsRaw($validRecordsCum->sortByDesc('total')->values(), 'total');
 
                 $validRecordsTotal = $subjectRecords->filter(fn($r) => $r->total !== null);
                 $positionMapTotal  = $this->calculatePositionsRaw($validRecordsTotal->sortByDesc('total')->values(), 'total');
@@ -194,7 +216,7 @@ class ClassPositionService
 
                     Broadsheets::where('id', $record->id)->update([
                         'avg'                          => $classAvg,
-                        'subject_position_class'       => ($record->cum   === null) ? null : ($positionMapCum[$record->id]  ?? null),
+                        'subject_position_class'       => ($record->cum   == 0)    ? null : ($positionMapCum[$record->id]   ?? null),
                         'subject_position_class_total' => ($record->total === null) ? null : ($positionMapTotal[$record->id] ?? null),
                         'arm_position'                 => ($record->total === null) ? null : ($armPositionMapTotal[$record->id] ?? null),
                         'arm_position_cum'             => ($record->cum   === null) ? null : ($armPositionMapCum[$record->id]  ?? null),
