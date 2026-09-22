@@ -429,7 +429,6 @@ class TranscriptController extends Controller
         $transcriptData  = [];
         $healingCache    = [];
         $gradeScalesUsed = [];
-        $flatGrades      = [];
 
         foreach ($termBuckets as $enrol) {
             $sessionKey = $enrol->session;
@@ -468,17 +467,6 @@ class TranscriptController extends Controller
                     (int) $enrol->session_id_val
                 );
 
-            // Classcategory (Junior/Senior) this term's class belongs to —
-            // defaults to Senior when no classcategory row is found, matching
-            // the app's long-standing default grading scale. Tracked per term
-            // so the legend, overall GPA, and each subject's grade can be
-            // classcategory-correct instead of always assuming Senior A1-F9,
-            // which mislabels a Junior class's real A/B/C/D/F grades against
-            // a scale that isn't theirs.
-            $termClassCategory = $classcategoriesByClass[$enrol->schoolclassid] ?? null;
-            $termIsSenior      = $termClassCategory ? (bool) $termClassCategory->is_senior : true;
-            $gradeScalesUsed[$termIsSenior ? 'senior' : 'junior'] = true;
-
             foreach ($termRecords as $rec) {
                 // Build assessment scores for this subject row. Look the score up
                 // under THIS term's own classcategory assessment id (matched to the
@@ -499,13 +487,11 @@ class TranscriptController extends Controller
                 // Healed total/cum/bf/position/class-average for THIS subject,
                 // from the class-wide query above — falls back to the stored
                 // broadsheets columns when the subject isn't in that map (e.g.
-                // no score entered yet). Grade IS recomputed from the healed
-                // total too, but only via THIS term's own classcategory scale
-                // (Classcategory::calculateGrade() — Senior A1-F9 vs Junior
-                // A-F), the same method the real score-entry flow uses —
-                // never one fixed scale, which is what keeps Junior subjects
-                // from being mis-graded. Falls back to the stored grade only
-                // when the classcategory can't be resolved at all.
+                // no score entered yet). Grade is NOT healed here: it is
+                // already classcategory-aware (Senior A1-F9 vs Junior A-F,
+                // via Classcategory::calculateGrade()) as stored, and
+                // recomputing it with one fixed scale would mis-grade every
+                // Junior-class subject.
                 $healedRow = $healing['subjectHealed'][$studentId][(int) $rec->subject_id] ?? null;
                 $subTotal  = $healedRow['total'] ?? (float) ($rec->total ?? 0);
                 $subCum    = $healedRow['cum']   ?? (float) ($rec->cum   ?? 0);
@@ -514,9 +500,6 @@ class TranscriptController extends Controller
                     ?? ($rec->position ?? null);
                 $subAvg    = $healing['subjectAvg'][(int) $rec->subject_id]
                     ?? (float) ($rec->class_average ?? 0);
-                $subGrade  = $termClassCategory
-                    ? $termClassCategory->calculateGrade($subTotal)
-                    : ($rec->grade ?? '-');
 
                 $subjects[] = [
                     'subject'       => $rec->subject_name,
@@ -525,13 +508,11 @@ class TranscriptController extends Controller
                     'total'         => $subTotal,
                     'bf'            => $subBf,
                     'cum'           => $subCum,
-                    'grade'         => $subGrade,
+                    'grade'         => $rec->grade ?? '-',
                     'remark'        => $rec->remark ?? '-',
                     'position'      => $this->formatOrdinal($subPos),
                     'class_average' => $subAvg,
                 ];
-
-                $flatGrades[] = $subGrade;
 
                 $totalScore   += $subTotal;
                 $totalCum     += $subCum;
@@ -544,6 +525,17 @@ class TranscriptController extends Controller
             $comment   = $comments[$mapKey]   ?? null;
 
             $computedPosition = $healing['overallRank'][$studentId] ?? null;
+
+            // Classcategory (Junior/Senior) this term's class belongs to —
+            // defaults to Senior when no classcategory row is found, matching
+            // the app's long-standing default grading scale. Tracked per term
+            // so the legend and overall GPA can be classcategory-correct
+            // instead of always assuming Senior A1-F9, which mislabels a
+            // Junior class's real A/B/C/D/F grades against a scale that
+            // isn't theirs.
+            $termClassCategory = $classcategoriesByClass[$enrol->schoolclassid] ?? null;
+            $termIsSenior      = $termClassCategory ? (bool) $termClassCategory->is_senior : true;
+            $gradeScalesUsed[$termIsSenior ? 'senior' : 'junior'] = true;
 
             $transcriptData[$sessionKey]['terms'][$termKey] = [
                 'term'           => $termKey,
@@ -584,11 +576,9 @@ class TranscriptController extends Controller
             : null;
 
         // ── Grade distribution ────────────────────────────────────────────────
-        // Built from the healed, classcategory-correct grades collected per
-        // subject row above — not the raw stored broadsheets.grade column,
-        // same reasoning as the per-subject grade itself.
-        $gradeDistribution = collect($flatGrades)
-            ->countBy()
+        $gradeDistribution = $allRecords
+            ->groupBy('grade')
+            ->map(fn ($g) => $g->count())
             ->sortKeys();
 
         return [
@@ -659,21 +649,10 @@ class TranscriptController extends Controller
                 return $empty;
             }
 
-            // Cohort: every student with broadsheet scores for this class-wide/
-            // term/session combo — NOT Studentclass enrolment. Studentclass
-            // only gets a new row when a student is formally advanced via the
-            // Promotion screen (often just once a year, at year-end), so real
-            // scores are routinely entered for a term nobody was ever
-            // 'promoted' into. Scoping the ranking cohort by Studentclass
-            // silently shrank it to whoever happened to have a promotion row
-            // for that exact term, producing missing or wrong positions
-            // (and cum/bf/class-average) for every other term.
-            $classStudentIds = DB::table('broadsheets')
-                ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-                ->whereIn('broadsheet_records.schoolclass_id', $allArmIds)
-                ->where('broadsheets.term_id', $termid)
-                ->where('broadsheet_records.session_id', $sessionid)
-                ->pluck('broadsheet_records.student_id')
+            $classStudentIds = Studentclass::whereIn('schoolclassid', $allArmIds)
+                ->where('termid', $termid)
+                ->where('sessionid', $sessionid)
+                ->pluck('studentId')
                 ->map(fn ($v) => (int) $v)
                 ->unique()
                 ->values();
