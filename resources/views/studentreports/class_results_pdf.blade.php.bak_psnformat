@@ -713,7 +713,7 @@
                                     <td class="@if(in_array($score->grade ?? '', ['F', 'F9', 'E', 'E8'])) highlight-red @endif">
                                         {{ $score->grade ?? '-' }}
                                     </td>
-                                    <td>{{ $score->position_formatted ?? '-' }}</td>
+                                    <td>{{ $score->position ?? '-' }}</td>
                                     <td>{{ $score->class_average ?? '-' }}</td>
                                 </tr>
                             @empty
