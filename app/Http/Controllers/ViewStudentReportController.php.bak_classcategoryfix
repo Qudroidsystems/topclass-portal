@@ -202,22 +202,26 @@ class ViewStudentReportController extends Controller
 
             // ── Class + senior/junior detection ─────────────────────────────
             $schoolclass = Schoolclass::with(['arms', 'classcategories'])->find($schoolclassid);
-            // classcategories() is a belongsTo (see App\Models\Schoolclass) — it
-            // resolves to a single Classcategory model or null, never a Collection.
-            $isSenior    = $schoolclass && $schoolclass->classcategories
-                ? (bool) ($schoolclass->classcategories->is_senior ?? false)
+            $isSenior    = $schoolclass && $schoolclass->classcategories->isNotEmpty()
+                ? (bool) ($schoolclass->classcategories->first()->is_senior ?? false)
                 : false;
 
             // ── Fetch broadsheets ───────────────────────────────────────────
-            // NOTE: matches the former/working query shape — no subjectRegistrationStatus
-            // whereExists eligibility filter. That filter was dropping every subject row
-            // for students whose registration data didn't line up exactly, producing a
-            // blank "no result printed" PDF. Reverted per request to restore the simpler,
-            // known-working score fetch.
             $scores = Broadsheets::where('broadsheet_records.student_id', $id)
                 ->where('broadsheets.term_id',               $termid)
                 ->where('broadsheet_records.session_id',     $sessionid)
                 ->where('broadsheet_records.schoolclass_id', $schoolclassid)
+                ->whereExists(function ($query) use ($id, $termid, $sessionid, $schoolclassid) {
+                    $query->select(DB::raw(1))
+                        ->from('subjectRegistrationStatus')
+                        ->join('subjectclass as sjc_reg', 'sjc_reg.id', '=', 'subjectRegistrationStatus.subjectclassid')
+                        ->join('subjectteacher as st_reg', 'st_reg.id', '=', 'sjc_reg.subjectteacherid')
+                        ->whereColumn('st_reg.subjectid', 'broadsheet_records.subject_id')
+                        ->where('subjectRegistrationStatus.studentid', $id)
+                        ->where('subjectRegistrationStatus.termid',    $termid)
+                        ->where('subjectRegistrationStatus.sessionid', $sessionid)
+                        ->where('sjc_reg.schoolclassid', $schoolclassid);
+                })
                 ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
                 ->join('subject',            'subject.id',             '=', 'broadsheet_records.subject_id')
                 ->orderBy('subject.subject')

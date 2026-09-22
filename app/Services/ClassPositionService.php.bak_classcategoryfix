@@ -118,11 +118,9 @@ class ClassPositionService
 
         if (empty($students)) return false;
 
-        // classcategories() is a belongsTo (see App\Models\Schoolclass) — it
-        // resolves to a single Classcategory model or null, never a Collection.
         $isSeniorClass = false;
-        if ($schoolclass->classcategories) {
-            $isSeniorClass = $schoolclass->classcategories->is_senior ?? false;
+        if ($schoolclass->classcategories && $schoolclass->classcategories->isNotEmpty()) {
+            $isSeniorClass = $schoolclass->classcategories->first()->is_senior ?? false;
         }
 
         return DB::transaction(function () use (
