@@ -459,13 +459,7 @@ class ViewStudentReportController extends Controller
             // ── Meta ────────────────────────────────────────────────────────
             $schoolsession    = Schoolsession::where('id', $sessionid)->first();
             $schoolterm       = Schoolterm::where('id', $termid)->first();
-            // Count across ALL arms of this class (same cohort ClassPositionService
-            // ranks positions against), not just this one arm/schoolclassid — matches
-            // the class-wide student count the former report showed.
-            $classmateClassIds = Schoolclass::where('schoolclass', $schoolclass?->schoolclass ?? '')
-                ->pluck('id')
-                ->toArray();
-            $numberOfStudents = Studentclass::whereIn('schoolclassid', $classmateClassIds)
+            $numberOfStudents = Studentclass::where('schoolclassid', $schoolclassid)
                 ->where('sessionid', $sessionid)
                 ->count();
 

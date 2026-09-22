@@ -132,6 +132,16 @@ class ClassPositionService
                 ->where('broadsheets.term_id', $termid)
                 ->where('broadsheet_records.session_id', $sessionid)
                 ->whereIn('broadsheet_records.schoolclass_id', $classIds)
+                ->whereExists(function ($query) use ($termid, $sessionid) {
+                    $query->select(DB::raw(1))
+                        ->from('subjectRegistrationStatus')
+                        ->join('subjectclass as sjc_reg', 'sjc_reg.id', '=', 'subjectRegistrationStatus.subjectclassid')
+                        ->join('subjectteacher as st_reg', 'st_reg.id', '=', 'sjc_reg.subjectteacherid')
+                        ->whereColumn('st_reg.subjectid', 'broadsheet_records.subject_id')
+                        ->whereColumn('subjectRegistrationStatus.studentid', 'broadsheet_records.student_id')
+                        ->where('subjectRegistrationStatus.termid', $termid)
+                        ->where('subjectRegistrationStatus.sessionid', $sessionid);
+                })
                 ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
                 ->join('subject', 'subject.id', '=', 'broadsheet_records.subject_id')
                 ->join('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records.student_id')
