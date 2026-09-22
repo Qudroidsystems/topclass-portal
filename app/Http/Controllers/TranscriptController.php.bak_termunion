@@ -317,72 +317,6 @@ class TranscriptController extends Controller
             ->orderBy('subject.subject')
             ->get();
 
-        // ── Term buckets: enrolments UNION broadsheet-only terms ───────────────
-        // Studentclass only gets a new row when a student is formally
-        // advanced into a term via the Promotion screen. Scores are commonly
-        // entered for a term before — or without — that ever happening, so
-        // building the transcript's term list from Studentclass alone
-        // silently drops real, scored terms. Union in any (session, term)
-        // found directly in this student's own broadsheet data that isn't
-        // already covered by an enrolment row, using the class/arm/labels
-        // straight off that data (broadsheet_records already carries them).
-        $termBuckets  = collect();
-        $seenTermKeys = [];
-
-        foreach ($enrolments as $enrol) {
-            $seenTermKeys[$enrol->session_id_val . '_' . $enrol->term_id_val] = true;
-            $termBuckets->push($enrol);
-        }
-
-        foreach ($allRecords->unique(fn ($r) => $r->session_id . '_' . $r->term_id) as $rec) {
-            $key = $rec->session_id . '_' . $rec->term_id;
-            if (isset($seenTermKeys[$key])) {
-                continue;
-            }
-            $seenTermKeys[$key] = true;
-            $termBuckets->push((object) [
-                'session'        => $rec->session,
-                'term'           => $rec->term,
-                'session_id_val' => $rec->session_id,
-                'term_id_val'    => $rec->term_id,
-                'schoolclassid'  => $rec->schoolclass_id,
-                'schoolclass'    => $rec->schoolclass,
-                'arm'            => $rec->arm,
-            ]);
-        }
-
-        $termBuckets = $termBuckets
-            ->sortBy([['session_id_val', 'asc'], ['term_id_val', 'asc']])
-            ->values();
-
-        // Extend assessments/classcategory resolution to any broadsheet-only
-        // classes not already covered by an enrolment row above, and fold
-        // any newly-discovered assessment names into the unified header.
-        foreach ($termBuckets as $bucket) {
-            $clsId = $bucket->schoolclassid;
-            if (isset($assessmentsByClass[$clsId])) {
-                continue;
-            }
-
-            $schoolclass = Schoolclass::with('classcategories')->find($clsId);
-            $classcategoriesByClass[$clsId] = $schoolclass?->classcategories;
-            $assessmentsByClass[$clsId] = ($schoolclass && $schoolclass->classcategories)
-                ? Assessment::where('classcategory_id', $schoolclass->classcategories->id)
-                    ->orderBy('id')
-                    ->get()
-                : collect();
-        }
-
-        foreach ($assessmentsByClass as $classAssessments) {
-            foreach ($classAssessments as $a) {
-                if (!in_array($a->name, $seenNames, true)) {
-                    $seenNames[]   = $a->name;
-                    $assessments[] = $a;
-                }
-            }
-        }
-        $assessments = collect($assessments);
-
         // ── Fetch assessment scores for all broadsheet records ────────────────
         $broadsheetIds       = $allRecords->pluck('broadsheet_id')->unique()->filter()->toArray();
         $assessmentScoresAll = collect();
@@ -430,7 +364,7 @@ class TranscriptController extends Controller
         $healingCache    = [];
         $gradeScalesUsed = [];
 
-        foreach ($termBuckets as $enrol) {
+        foreach ($enrolments as $enrol) {
             $sessionKey = $enrol->session;
             $termKey    = $enrol->term;
             $mapKey     = $sessionKey . '_' . $termKey;
