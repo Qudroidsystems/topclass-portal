@@ -293,60 +293,17 @@ class BroadsheetController extends Controller
                     'broadsheets.id',
                     'broadsheets.cum',
                     'broadsheets.total',
-                    'broadsheets.ca1',
-                    'broadsheets.ca2',
-                    'broadsheets.ca3',
-                    'broadsheets.exam',
-                    'broadsheets.bf',
                     'broadsheet_records.schoolclass_id',
-                    'broadsheet_records.student_id',
                 ]);
 
             if ($allStudents->isEmpty()) {
                 return;
             }
 
-            // ── Healing: recompute total & cum live from raw score
-            // components instead of trusting the stored total/cum columns,
-            // which can go stale if a row was never re-saved after scores
-            // were entered. Mirrors the same live computation
-            // buildBroadsheetData() uses for what the page displays, so
-            // positions rank against the same numbers shown on screen.
-            $studentIdsForHealing = $allStudents->pluck('student_id')->unique()
-                ->map(fn ($v) => (int) $v)->values()->toArray();
-            $prevTotals = $this->fetchPreviousTermCums(
-                $studentIdsForHealing, $sessionid, $termid, $allArmIds->toArray()
-            );
-
-            foreach ($allStudents as $row) {
-                $ca1  = (float) ($row->ca1  ?? 0);
-                $ca2  = (float) ($row->ca2  ?? 0);
-                $ca3  = (float) ($row->ca3  ?? 0);
-                $exam = (float) ($row->exam ?? 0);
-
-                $caAvg       = ($ca1 + $ca2 + $ca3) / 3;
-                $healedTotal = round(($caAvg + $exam) / 2, 1);
-
-                $prevTotal = $prevTotals[(int) $row->student_id][(int) $subjectId] ?? null;
-                if ($prevTotal !== null && $prevTotal > 0) {
-                    $bf = $prevTotal;
-                } elseif (!empty($row->bf) && (float) $row->bf > 0) {
-                    $bf = (float) $row->bf;
-                } else {
-                    $bf = 0.0;
-                }
-
-                $row->total = $healedTotal;
-                $row->cum   = ($termid == 1) ? $healedTotal : round(($bf + $healedTotal) / 2, 2);
-            }
-
-            // CC = class-wide position ranked by CUM (per its own label/tooltip).
-            // CT = class-wide position ranked by TOTAL. applySubjectRank() already
-            // falls back to total whenever a row's cum is null/empty/zero, so a
-            // student with no persisted cum still gets ranked rather than dropped.
+            // Class-wide: match report card — rank by TOTAL among cum != 0
             $this->applySubjectRank(
                 $allStudents,
-                rankBy: 'cum',
+                rankBy: 'total',
                 eligibleKey: 'cum',
                 column: 'subject_position_class'
             );
