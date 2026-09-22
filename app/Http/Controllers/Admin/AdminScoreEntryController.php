@@ -2024,6 +2024,24 @@ class AdminScoreEntryController extends Controller
         };
     }
 
+    /**
+     * Resolve the value carried forward into a new term's "bf" (brought
+     * forward) field, from the previous term's broadsheet row for the same
+     * student/subject/session.
+     *
+     * FIX (Sep 2026): previously read broadsheets.cum only. That column is
+     * not reliably populated for every row (see ClassPositionService's Sep
+     * 2026 fix note — same underlying issue), so a subject whose previous
+     * term's cum was 0/null silently carried forward 0 as bf, overwriting
+     * whatever real value was there before (this function runs on every
+     * scoresheet view via getBroadsheets(), not just at term creation).
+     * total, by contrast, is the field this system reliably keeps in sync
+     * (it's the direct output of the CA/exam averaging in singleUpdate,
+     * bulkUpdate, and getBroadsheets' recalculation loop). 0 is already
+     * this app's convention for "not really set" (see the cum != 0
+     * eligibility checks in ClassPositionService), so a previous-term cum
+     * of exactly 0 is treated as unset and total is used instead.
+     */
     protected function getPreviousTermCum($studentId, $subjectId, $termId, $sessionId)
     {
         if ($termId == 1) return 0;
@@ -2034,8 +2052,17 @@ class AdminScoreEntryController extends Controller
             ->where('broadsheet_records.subject_id', $subjectId)
             ->where('broadsheet_records.session_id', $sessionId)
             ->where('broadsheets.term_id', $termId - 1)
-            ->value('broadsheets.cum');
+            ->select(['broadsheets.cum', 'broadsheets.total'])
+            ->first();
 
-        return $prev !== null ? round((float) $prev, 2) : 0;
+        if (!$prev) {
+            return 0;
+        }
+
+        $value = ($prev->cum !== null && (float) $prev->cum != 0)
+            ? $prev->cum
+            : $prev->total;
+
+        return $value !== null ? round((float) $value, 2) : 0;
     }
 }

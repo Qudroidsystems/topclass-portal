@@ -292,6 +292,24 @@ class ViewStudentReportController extends Controller
                     'broadsheets.vettedstatus',
                 ])->get();
 
+            // ── Prefetch previous-term totals for BF fallback ───────────────
+            // One query for all subjects of this student instead of one per
+            // subject inside the loop below. Only needed for Term 2 / Term 3.
+            $previousTotals = collect();
+            if ((int) $termid > 1 && $scores->isNotEmpty()) {
+                $subjectIds = $scores->pluck('subject_id')->filter()->unique()->values()->toArray();
+
+                if (!empty($subjectIds)) {
+                    $previousTotals = DB::table('broadsheets')
+                        ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+                        ->where('broadsheet_records.student_id', $id)
+                        ->where('broadsheet_records.session_id', $sessionid)
+                        ->whereIn('broadsheet_records.subject_id', $subjectIds)
+                        ->where('broadsheets.term_id', $termid - 1)
+                        ->pluck('broadsheets.total', 'broadsheet_records.subject_id');
+                }
+            }
+
             // ── Format positions ────────────────────────────────────────────
             foreach ($scores as $score) {
                 $score->position_formatted         = ($score->position      && $score->position      > 0) ? $this->formatOrdinal($score->position)      : '-';
@@ -306,6 +324,14 @@ class ViewStudentReportController extends Controller
             // (Term 2/3 only). Column h/Cum = Term 1: f itself; Term 2/3:
             // (f+g)/2. Grade is always recalculated from that final cum value,
             // never trusted from the stored broadsheets.grade column.
+            //
+            // BF FALLBACK (Sep 2026): if the stored bf is 0/null for Term 2/3,
+            // fall back to the previous term's TOTAL for the same student /
+            // subject / session. Mirrors the rule already applied in
+            // MyScoreSheetController and AdminScoreEntryController — see the
+            // getPreviousTermCum() fix note in either of those files. total is
+            // the field this system reliably keeps in sync; cum (and therefore
+            // bf) is often 0/unpopulated.
             foreach ($scores as $score) {
                 $originalCa1  = $score->ca1;
                 $originalCa2  = $score->ca2;
@@ -318,6 +344,15 @@ class ViewStudentReportController extends Controller
                 $ca3  = $this->getNumericScore($originalCa3);
                 $exam = $this->getNumericScore($originalExam);
                 $bf   = $this->getNumericScore($originalBf);
+
+                // ── BF fallback ────────────────────────────────────────────
+                if ((int) $termid > 1 && ($bf === null || (float) $bf == 0)) {
+                    $prevTotal = $previousTotals[$score->subject_id] ?? null;
+
+                    if ($prevTotal !== null && (float) $prevTotal != 0) {
+                        $bf = round((float) $prevTotal, 2);
+                    }
+                }
 
                 $caValues = [];
                 if ($ca1 !== null) $caValues[] = $ca1;
@@ -354,7 +389,11 @@ class ViewStudentReportController extends Controller
                 $score->ca_average   = $this->formatScore($columnD);
                 $score->exam_display = $this->formatScore($exam, $originalExam);
                 $score->f_score      = $this->formatScore($columnF);
-                $score->bf_display   = $this->formatScore($bf, $originalBf);
+                // bf_display now shows the value actually used in the cum math
+                // (the derived previous-term total when the stored bf was 0/null),
+                // not the raw stored bf. This keeps the displayed column and the
+                // displayed cum consistent with each other.
+                $score->bf_display   = $this->formatScore($bf);
                 $score->cum_score    = $this->formatScore($columnH);
                 $score->cum_numeric  = $columnH;
 
