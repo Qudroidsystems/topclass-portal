@@ -43,8 +43,8 @@ class RecordsheetExport implements FromView, ShouldAutoSize, WithStyles, WithEve
         // Load dynamic assessments
         $schoolclass = Schoolclass::with('classcategories')->find($schoolclassId);
         $this->assessments = collect();
-        if ($schoolclass && $schoolclass->classcategories) {
-            $categoryIds = collect([$schoolclass->classcategories->id]);
+        if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
             $this->assessments = Assessment::whereIn('classcategory_id', $categoryIds)
                 ->orderBy('id')
                 ->get();

@@ -259,7 +259,7 @@ class CompulsorySubjectClassController extends Controller
         }
 
         $gradeScale = [];
-        $category   = $schoolclass->classcategories;
+        $category   = $schoolclass->classcategories->first();
 
         // Get class-specific pass average from pivot table
         $passAverage = DB::table('schoolclass_classcategory')

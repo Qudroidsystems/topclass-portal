@@ -1396,8 +1396,8 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
 
         // Get assessments
         $assessments = collect();
-        if ($schoolclass->classcategories) {
-            $categoryIds = collect([$schoolclass->classcategories->id]);
+        if ($schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
             Log::info('Step 6: Class categories', ['category_ids' => $categoryIds]);
 
             $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
@@ -1528,14 +1528,14 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
 
             $schoolclass = Schoolclass::with('classcategories')->find($exam->schoolclass_id);
 
-            if (!$schoolclass || !$schoolclass->classcategories) {
+            if (!$schoolclass || $schoolclass->classcategories->isEmpty()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No class category found for this class'
                 ], 404);
             }
 
-            $categoryIds = collect([$schoolclass->classcategories->id]);
+            $categoryIds = $schoolclass->classcategories->pluck('id');
 
             $allAssessments = Assessment::whereIn('classcategory_id', $categoryIds)
                 ->with(['subAssessments' => function($query) {
@@ -1626,7 +1626,7 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
             }
 
             $schoolclass = $subjectclass->schoolClass;
-            $categoryIds = $schoolclass->classcategories ? collect([$schoolclass->classcategories->id]) : collect();
+            $categoryIds = $schoolclass->classcategories->pluck('id');
 
             $assessments = Assessment::whereIn('classcategory_id', $categoryIds)
                 ->with(['subAssessments'])
@@ -1797,8 +1797,8 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
             $schoolclass = Schoolclass::with('classcategories')->find($subjectclass->schoolclassid);
 
             $allAssessments = collect();
-            if ($schoolclass && $schoolclass->classcategories) {
-                $categoryIds = collect([$schoolclass->classcategories->id]);
+            if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+                $categoryIds = $schoolclass->classcategories->pluck('id');
                 $allAssessments = Assessment::whereIn('classcategory_id', $categoryIds)
                     ->with('subAssessments')
                     ->get();
@@ -1822,7 +1822,7 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
             $newBf = $previousTerm ? round($previousTerm, 2) : 0;
             $newCum = $validated['term_id'] == 1 ? round($totalRaw, 2) : round(($totalRaw + $newBf) / 2, 2);
 
-            $isSenior = $schoolclass->classcategories->is_senior ?? false;
+            $isSenior = $schoolclass->classcategories->first()->is_senior ?? false;
             $newGrade = $this->calculateGrade($newCum, $isSenior);
             $newRemark = $this->getRemark($newGrade);
 

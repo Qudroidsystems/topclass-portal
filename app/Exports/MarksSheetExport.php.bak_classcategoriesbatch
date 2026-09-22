@@ -60,10 +60,10 @@ class MarksSheetExport
     protected function getAssessments()
     {
         $schoolclass = Schoolclass::with('classcategories')->find($this->schoolclassid);
-        if (!$schoolclass || !$schoolclass->classcategories) {
+        if (!$schoolclass || $schoolclass->classcategories->isEmpty()) {
             return collect();
         }
-        $categoryIds = collect([$schoolclass->classcategories->id]);
+        $categoryIds = $schoolclass->classcategories->pluck('id');
         return Assessment::whereIn('classcategory_id', $categoryIds)
             ->with('subAssessments')
             ->orderBy('id')

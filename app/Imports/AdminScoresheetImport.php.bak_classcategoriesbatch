@@ -46,9 +46,8 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
                 $this->schoolclass = Schoolclass::with('classcategories')
                     ->find($importData['schoolclass_id']);
 
-                if ($this->schoolclass && $this->schoolclass->classcategories) {
-                    // classcategories() is a belongsTo (see App\Models\Schoolclass) — single model, not a Collection.
-                    $categoryIds       = collect([$this->schoolclass->classcategories->id]);
+                if ($this->schoolclass && $this->schoolclass->classcategories->isNotEmpty()) {
+                    $categoryIds       = $this->schoolclass->classcategories->pluck('id');
                     $this->assessments = Assessment::whereIn('classcategory_id', $categoryIds)
                         ->orderBy('id')
                         ->get();
@@ -385,8 +384,8 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
 
     protected function calculateGrade(float $score): string
     {
-        if ($this->schoolclass && $this->schoolclass->classcategories) {
-            $isSenior = $this->schoolclass->classcategories->is_senior ?? false;
+        if ($this->schoolclass && $this->schoolclass->classcategories->isNotEmpty()) {
+            $isSenior = $this->schoolclass->classcategories->first()->is_senior ?? false;
 
             if ($isSenior) {
                 if ($score >= 75) return 'A1';

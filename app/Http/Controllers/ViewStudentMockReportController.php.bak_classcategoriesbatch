@@ -106,8 +106,8 @@ class ViewStudentMockReportController extends Controller
         }
 
         $className = $schoolclass->schoolclass;
-        $isSenior  = $schoolclass->classcategories
-            ? ($schoolclass->classcategories->is_senior ?? false)
+        $isSenior  = $schoolclass->classcategories->isNotEmpty()
+            ? ($schoolclass->classcategories->first()->is_senior ?? false)
             : false;
 
         $classIds = Schoolclass::where('schoolclass', $className)->pluck('id')->toArray();
@@ -172,8 +172,8 @@ class ViewStudentMockReportController extends Controller
                 $newPosition = $record->total == 0 ? '-' : $this->formatOrdinal($positionMap[$record->id] ?? 0);
 
                 $grade = $record->total == 0 ? '-' : (
-                    $isSenior && $schoolclass->classcategories
-                        ? $schoolclass->classcategories->calculateGrade($record->total)
+                    $isSenior && $schoolclass->classcategories->isNotEmpty()
+                        ? $schoolclass->classcategories->first()->calculateGrade($record->total)
                         : $this->calculateJuniorGrade($record->total)
                 );
                 $remark = $this->getRemark($grade);
@@ -640,8 +640,8 @@ class ViewStudentMockReportController extends Controller
         ]);
 
         $schoolclass = Schoolclass::with('classcategories')->findOrFail($request->schoolclass_id);
-        $grade       = $schoolclass->classcategories
-            ? $schoolclass->classcategories->calculateGrade($request->total)
+        $grade       = $schoolclass->classcategories->isNotEmpty()
+            ? $schoolclass->classcategories->first()->calculateGrade($request->total)
             : $this->getDefaultGrade($request->total);
 
         return response()->json(['grade' => $grade, 'remark' => $this->getRemark($grade)]);

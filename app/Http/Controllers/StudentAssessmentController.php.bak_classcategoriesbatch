@@ -448,16 +448,16 @@ class StudentAssessmentController extends Controller
 
         $schoolclass = Schoolclass::with('classcategories')->find($studentClassData->class_id);
 
-        if (!$schoolclass || !$schoolclass->classcategories) {
+        if (!$schoolclass || $schoolclass->classcategories->isEmpty()) {
             return view('student.assessments.index', compact(
                 'pagetitle', 'student', 'class', 'term', 'session', 'terms', 'sessions', 
                 'userSelectedTermId', 'selectedSessionId', 'selectedTermName', 'selectedSessionName'
             ))->with('error', 'Class category not found.');
         }
 
-        $isSenior    = $schoolclass->classcategories->is_senior ?? false;
-        $categoryIds = collect([$schoolclass->classcategories->id]);
-        $gradeCategory = $schoolclass->classcategories;
+        $isSenior    = $schoolclass->classcategories->first()->is_senior ?? false;
+        $categoryIds = $schoolclass->classcategories->pluck('id');
+        $gradeCategory = $schoolclass->classcategories->first();
 
         // Ensure positions/averages are current for this class/session/term
         if ($selectedTermId) {
@@ -702,9 +702,9 @@ class StudentAssessmentController extends Controller
     $this->positionService->recalculate($schoolclassId, $sessionIdForQuery, $selectedTermId);
 
     $schoolclass = Schoolclass::with('classcategories')->find($schoolclassId);
-    $isSenior    = $schoolclass?->classcategories?->is_senior ?? false;
-    $categoryIds = $schoolclass?->classcategories ? collect([$schoolclass->classcategories->id]) : collect();
-    $gradeCategory = $schoolclass?->classcategories;
+    $isSenior    = $schoolclass?->classcategories->first()?->is_senior ?? false;
+    $categoryIds = $schoolclass?->classcategories->pluck('id') ?? collect();
+    $gradeCategory = $schoolclass?->classcategories->first();
 
     $termModel    = Schoolterm::find($selectedTermId);
     $sessionModel = Schoolsession::find($sessionIdForQuery);
@@ -1080,8 +1080,8 @@ class StudentAssessmentController extends Controller
         $schoolclass = Schoolclass::with('classcategories')->find($schoolclassid);
         $assessments = collect();
 
-        if ($schoolclass && $schoolclass->classcategories) {
-            $categoryIds = collect([$schoolclass->classcategories->id]);
+        if ($schoolclass && $schoolclass->classcategories->isNotEmpty()) {
+            $categoryIds = $schoolclass->classcategories->pluck('id');
             try {
                 if (class_exists(\App\Models\Assessment::class)) {
                     $assessments = \App\Models\Assessment::whereIn('classcategory_id', $categoryIds)
@@ -1154,8 +1154,8 @@ class StudentAssessmentController extends Controller
             'success'           => true,
             'columns'           => $columns,
             'assessments_count' => $assessments->count(),
-            'is_senior'         => $schoolclass && $schoolclass->classcategories
-                ? ($schoolclass->classcategories->is_senior ?? false)
+            'is_senior'         => $schoolclass && $schoolclass->classcategories->isNotEmpty()
+                ? ($schoolclass->classcategories->first()->is_senior ?? false)
                 : false,
         ]);
     }

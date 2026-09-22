@@ -114,55 +114,6 @@ class ViewStudentReportController extends Controller
         };
     }
 
-    /**
-     * Convert score value to numeric, handling 'ABS' and 0 differently
-     * - 'ABS' or null = don't include in average calculation (return null)
-     * - 0 = include in average calculation (return 0)
-     * (Restored from the former ViewStudentReportController.)
-     */
-    protected function getNumericScore($score)
-    {
-        if ($score === null || $score === '') {
-            return null;
-        }
-
-        if (is_string($score) && strtoupper(trim($score)) === 'ABS') {
-            return null;
-        }
-
-        return (float) $score;
-    }
-
-    /**
-     * Format score for display — shows 'ABS' if absent, '0' if zero,
-     * the number otherwise. (Restored from the former ViewStudentReportController.)
-     */
-    protected function formatScore($score, $originalValue = null)
-    {
-        $checkValue = $originalValue ?? $score;
-
-        if ($checkValue === null || $checkValue === '') {
-            return '-';
-        }
-
-        if (is_string($checkValue) && strtoupper(trim($checkValue)) === 'ABS') {
-            return 'ABS';
-        }
-
-        if (is_numeric($score)) {
-            if ($score != (int) $score) {
-                return round($score, 1);
-            }
-            return (int) $score;
-        }
-
-        if (is_numeric($checkValue)) {
-            return (int) $checkValue;
-        }
-
-        return '-';
-    }
-
     // =========================================================================
     // CLASS POSITIONS
     // =========================================================================
@@ -298,75 +249,6 @@ class ViewStudentReportController extends Controller
                 $score->position_total_formatted   = ($score->position_total && $score->position_total > 0) ? $this->formatOrdinal($score->position_total) : '-';
                 $score->arm_position_formatted     = ($score->arm_position  && $score->arm_position  > 0) ? $this->formatOrdinal($score->arm_position)  : '-';
                 $score->arm_position_cum_formatted = ($score->arm_position_cum && $score->arm_position_cum > 0) ? $this->formatOrdinal($score->arm_position_cum) : '-';
-            }
-
-            // ── a–k column breakdown (restored from the former controller) ───
-            // Column a/b/c = CA1/CA2/CA3 (ABS-aware). Column d = avg of the CAs
-            // supplied. Column e = Exam. Column f = (d+e)/2. Column g = B/F
-            // (Term 2/3 only). Column h/Cum = Term 1: f itself; Term 2/3:
-            // (f+g)/2. Grade is always recalculated from that final cum value,
-            // never trusted from the stored broadsheets.grade column.
-            foreach ($scores as $score) {
-                $originalCa1  = $score->ca1;
-                $originalCa2  = $score->ca2;
-                $originalCa3  = $score->ca3;
-                $originalExam = $score->exam;
-                $originalBf   = $score->bf;
-
-                $ca1  = $this->getNumericScore($originalCa1);
-                $ca2  = $this->getNumericScore($originalCa2);
-                $ca3  = $this->getNumericScore($originalCa3);
-                $exam = $this->getNumericScore($originalExam);
-                $bf   = $this->getNumericScore($originalBf);
-
-                $caValues = [];
-                if ($ca1 !== null) $caValues[] = $ca1;
-                if ($ca2 !== null) $caValues[] = $ca2;
-                if ($ca3 !== null) $caValues[] = $ca3;
-
-                $columnD = count($caValues) > 0
-                    ? round(array_sum($caValues) / count($caValues), 1)
-                    : null;
-
-                $validComponents = [];
-                if ($columnD !== null) $validComponents[] = $columnD;
-                if ($exam !== null)    $validComponents[] = $exam;
-
-                $columnF = count($validComponents) > 0
-                    ? round(array_sum($validComponents) / count($validComponents), 1)
-                    : null;
-
-                if ((int) $termid === 1) {
-                    $columnH = $columnF;
-                } else {
-                    $finalComponents = [];
-                    if ($columnF !== null) $finalComponents[] = $columnF;
-                    if ($bf !== null)      $finalComponents[] = $bf;
-
-                    $columnH = count($finalComponents) > 0
-                        ? round(array_sum($finalComponents) / count($finalComponents), 1)
-                        : null;
-                }
-
-                $score->ca1_display  = $this->formatScore($ca1, $originalCa1);
-                $score->ca2_display  = $this->formatScore($ca2, $originalCa2);
-                $score->ca3_display  = $this->formatScore($ca3, $originalCa3);
-                $score->ca_average   = $this->formatScore($columnD);
-                $score->exam_display = $this->formatScore($exam, $originalExam);
-                $score->f_score      = $this->formatScore($columnF);
-                $score->bf_display   = $this->formatScore($bf, $originalBf);
-                $score->cum_score    = $this->formatScore($columnH);
-                $score->cum_numeric  = $columnH;
-
-                if ($score->cum_numeric !== null && is_numeric($score->cum_numeric)) {
-                    $score->grade  = $isSenior
-                        ? $this->calculateSeniorGrade($score->cum_numeric)
-                        : $this->calculateJuniorGrade($score->cum_numeric);
-                    $score->remark = $this->getRemark($score->grade);
-                } else {
-                    $score->grade  = '-';
-                    $score->remark = '-';
-                }
             }
 
             // ── Totals summary ──────────────────────────────────────────────
