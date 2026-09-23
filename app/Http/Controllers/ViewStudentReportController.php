@@ -664,6 +664,13 @@ class ViewStudentReportController extends Controller
                     });
                 }
 
+                // Cloned here — BEFORE ->select() below mutates $query in
+                // place — so this clone carries only the joins/where
+                // filters and no column list yet. Used further down to
+                // compute the male/female breakdown without colliding
+                // with the paginated query's own SELECT columns.
+                $genderCountQuery = clone $query;
+
                 Log::debug('[studentreports.index] SQL before pagination', [
                     'sql'      => $query->toSql(),
                     'bindings' => $query->getBindings(),
@@ -697,11 +704,11 @@ class ViewStudentReportController extends Controller
                 ]);
 
                 // Gender breakdown — counted against the same filtered query
-                // (pre-pagination, cloned before ->select()/->paginate() ran
-                // above) so the totals reflect the WHOLE filtered result set,
-                // not just the current page of up to 100 rows.
+                // (pre-pagination, cloned above before ->select() mutated
+                // $query) so the totals reflect the WHOLE filtered result
+                // set, not just the current page of up to 100 rows.
                 try {
-                    $genderCounts = (clone $query)
+                    $genderCounts = $genderCountQuery
                         ->selectRaw('studentRegistration.gender as gender, COUNT(DISTINCT studentRegistration.id) as cnt')
                         ->groupBy('studentRegistration.gender')
                         ->pluck('cnt', 'gender');
