@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Broadsheets;
 use App\Models\CompulsorySubjectClass;
+use App\Models\ParentRegistration;
 use App\Models\PromotionSetting;
 use App\Models\PromotionStatus;
 use App\Models\Schoolclass;
@@ -389,9 +390,53 @@ class PromotionController extends Controller
             $creditGrades = $this->getCreditGrades($schoolclassId);
             $creditCount  = $scores->filter(fn ($s) => in_array($s->grade, $creditGrades))->count();
 
+            // Bio-data + parent/guardian contact — a lightweight, separate
+            // lookup rather than relying on $student (which was fetched
+            // above with only a handful of display columns selected).
+            $studentBio = Student::where('id', $studentId)
+                ->select(['gender', 'dateofbirth', 'admission_date', 'phone_number', 'permanent_address'])
+                ->first();
+
+            $parentInfo = ParentRegistration::where('studentId', $studentId)
+                ->select(['father', 'father_phone', 'mother', 'mother_phone', 'parent_email'])
+                ->first();
+
+            // Full class history: every class/session/term this student has
+            // ever been enrolled in (Studentclass), newest first, each
+            // carrying whatever promotion decision/recommendation was saved
+            // for that exact class/session/term. Matched manually against
+            // PromotionStatus (rather than an Eloquent relation) since the
+            // match is on 3 columns together, not a single foreign key.
+            $classHistory = Studentclass::where('studentId', $studentId)
+                ->with(['schoolclass.armRelation', 'term', 'session'])
+                ->orderByDesc('sessionid')
+                ->orderByDesc('termid')
+                ->get();
+
+            $historyStatuses = PromotionStatus::where('studentId', $studentId)->get();
+
+            $classHistoryData = $classHistory->map(function ($row) use ($historyStatuses) {
+                $status = $historyStatuses->first(fn ($p) =>
+                    (int) $p->schoolclassid === (int) $row->schoolclassid
+                    && (int) $p->sessionid === (int) $row->sessionid
+                    && (int) $p->termid === (int) $row->termid
+                );
+
+                return [
+                    'session'          => $row->session?->session,
+                    'class'            => $row->schoolclass?->schoolclass,
+                    'arm'              => $row->schoolclass?->armRelation?->arm,
+                    'term'             => $row->term?->term,
+                    'promotion_status' => $status?->promotionStatus,
+                ];
+            })->values();
+
             return response()->json([
                 'success'             => true,
                 'student'             => $student,
+                'student_bio'         => $studentBio,
+                'parent_info'         => $parentInfo,
+                'class_history'       => $classHistoryData,
                 'promotion_result'    => $promotionResult,
                 'overall_average'     => $overallAverage,
                 'average_basis'       => $averageBasis,
@@ -813,8 +858,11 @@ class PromotionController extends Controller
      */
     private function buildClassPositions(int $schoolclassId, int $sessionId, int $termId, string $basis): array
     {
-        $field = $basis === 'cum' ? 'cum' : 'total';
-
+        // Raw components, not the stored broadsheets.total/cum columns —
+        // those go stale (only refreshed when someone re-saves that exact
+        // score entry) and were making every position on this screen rank
+        // against numbers far smaller than the real scores. Healed live
+        // here the same way as TranscriptController::buildClassTermHealing().
         $rows = DB::table('broadsheets')
             ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
             ->where('broadsheet_records.schoolclass_id', $schoolclassId)
@@ -822,7 +870,11 @@ class PromotionController extends Controller
             ->where('broadsheet_records.session_id',     $sessionId)
             ->select([
                 'broadsheet_records.student_id as student_id',
-                "broadsheets.{$field} as value",
+                'broadsheets.ca1  as ca1',
+                'broadsheets.ca2  as ca2',
+                'broadsheets.ca3  as ca3',
+                'broadsheets.exam as exam',
+                'broadsheets.bf   as bf',
             ])
             ->get();
 
@@ -830,20 +882,51 @@ class PromotionController extends Controller
             return [];
         }
 
-        $valuesById = [];
-        foreach ($rows->groupBy('student_id') as $studentId => $studentRows) {
-            $values = $studentRows->pluck('value')
-                ->filter(fn ($v) => $v !== null)
-                ->map(fn ($v) => (float) $v);
+        $sums   = [];
+        $counts = [];
 
-            if ($values->isEmpty()) {
-                continue;
+        foreach ($rows as $row) {
+            $healed = $this->healTotalAndCum(
+                (float) ($row->ca1  ?? 0),
+                (float) ($row->ca2  ?? 0),
+                (float) ($row->ca3  ?? 0),
+                (float) ($row->exam ?? 0),
+                (float) ($row->bf   ?? 0),
+                $termId
+            );
+
+            if ($healed['total'] <= 0) {
+                continue; // not actually sat
             }
 
-            $valuesById[(int) $studentId] = round($values->avg(), 2);
+            $sid   = (int) $row->student_id;
+            $value = $basis === 'cum' ? $healed['cum'] : $healed['total'];
+
+            $sums[$sid]   = ($sums[$sid]   ?? 0) + $value;
+            $counts[$sid] = ($counts[$sid] ?? 0) + 1;
+        }
+
+        $valuesById = [];
+        foreach ($sums as $sid => $sum) {
+            $valuesById[$sid] = round($sum / $counts[$sid], 2);
         }
 
         return $this->competitionRank($valuesById);
+    }
+
+    /**
+     * Same healing formula as TranscriptController::buildClassTermHealing():
+     * total = round(((ca1+ca2+ca3)/3 + exam) / 2, 1); cum carries forward
+     * from bf for terms after the first. Shared by buildClassPositions() and
+     * getStudentScores() so the two never drift apart.
+     */
+    private function healTotalAndCum(float $ca1, float $ca2, float $ca3, float $exam, float $bf, int $termId): array
+    {
+        $caAvg = ($ca1 + $ca2 + $ca3) / 3;
+        $total = round(($caAvg + $exam) / 2, 1);
+        $cum   = $termId == 1 ? $total : round(($bf + $total) / 2, 2);
+
+        return ['total' => $total, 'cum' => $cum];
     }
 
     /**
@@ -923,7 +1006,7 @@ class PromotionController extends Controller
     private function getStudentScores($studentId, $schoolclassId, $sessionId, $termId)
     {
         try {
-            return Broadsheets::where('broadsheet_records.student_id', $studentId)
+            $rows = Broadsheets::where('broadsheet_records.student_id', $studentId)
                 ->where('broadsheets.term_id',               $termId)
                 ->where('broadsheet_records.session_id',     $sessionId)
                 ->where('broadsheet_records.schoolclass_id', $schoolclassId)
@@ -933,11 +1016,35 @@ class PromotionController extends Controller
                     'subject.id           as subject_id',
                     'subject.subject      as subject_name',
                     'subject.subject_code as subject_code',
-                    'broadsheets.total    as total',
-                    'broadsheets.cum      as cum',
+                    'broadsheets.ca1      as ca1',
+                    'broadsheets.ca2      as ca2',
+                    'broadsheets.ca3      as ca3',
+                    'broadsheets.exam     as exam',
+                    'broadsheets.bf       as bf',
                     'broadsheets.grade    as grade',
                 ])
                 ->get();
+
+            // Healed total/cum, not the stored (stale) broadsheets.total/cum
+            // columns — this is what was making Overall Avg on this screen
+            // read far too low: computeOverallAverage() trusts whatever
+            // 'total' each score carries, and the stored column wasn't kept
+            // in sync with the real ca1/ca2/ca3/exam entries.
+            return $rows->map(function ($row) use ($termId) {
+                $healed = $this->healTotalAndCum(
+                    (float) ($row->ca1  ?? 0),
+                    (float) ($row->ca2  ?? 0),
+                    (float) ($row->ca3  ?? 0),
+                    (float) ($row->exam ?? 0),
+                    (float) ($row->bf   ?? 0),
+                    $termId
+                );
+
+                $row->total = $healed['total'];
+                $row->cum   = $healed['cum'];
+
+                return $row;
+            });
 
         } catch (Throwable $e) {
             Log::error('getStudentScores failed', [

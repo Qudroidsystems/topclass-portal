@@ -522,6 +522,22 @@
                 </div>
             </div>
 
+            {{-- Quick select by recommendation --}}
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <label class="form-label mb-0" style="font-size:13px;font-weight:600;">Quick select:</label>
+                <select class="form-select form-select-sm" id="quickSelectRecommendation" style="width:auto;">
+                    <option value="">— by System Recommendation —</option>
+                    <option value="promoted">Promoted</option>
+                    <option value="trial">Trial</option>
+                    <option value="see_principal">See Principal</option>
+                    <option value="repeated">Repeat</option>
+                    <option value="awaiting">Awaiting / Not Configured</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByRecommendation()">
+                    <i class="ri-checkbox-multiple-line me-1"></i>Select Matching
+                </button>
+            </div>
+
             {{-- Bulk action bar --}}
             <div class="bulk-action-bar" id="bulkActionBar">
                 <span class="bulk-count"><span id="bulkSelectedCount">0</span> selected</span>
@@ -606,6 +622,43 @@
                     </div>
                 </div>
 
+                <div id="studentInfoCard" class="form-section">
+                    <div class="form-section-title"><i class="ri-user-line me-1"></i>Student Info</div>
+                    <div class="row g-3">
+                        <div class="col-sm-3">
+                            <div class="text-muted small">Date of Birth</div>
+                            <div class="fw-semibold" id="modalDob">—</div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="text-muted small">Admission Date</div>
+                            <div class="fw-semibold" id="modalAdmissionDate">—</div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="text-muted small">Phone</div>
+                            <div class="fw-semibold" id="modalPhone">—</div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="text-muted small">Home Address</div>
+                            <div class="fw-semibold" id="modalAddress">—</div>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="row g-3">
+                        <div class="col-sm-4">
+                            <div class="text-muted small">Father</div>
+                            <div class="fw-semibold" id="modalFather">—</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="text-muted small">Mother</div>
+                            <div class="fw-semibold" id="modalMother">—</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="text-muted small">Parent Email</div>
+                            <div class="fw-semibold" id="modalParentEmail">—</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="recommendationCard" style="display:none;">
                     <div id="recommendationContent"></div>
                 </div>
@@ -618,6 +671,11 @@
                 <div id="compulsoryCard" class="form-section" style="display:none;">
                     <div class="form-section-title"><i class="ri-bookmark-line me-1"></i>Compulsory Subjects</div>
                     <div id="compulsoryContent"></div>
+                </div>
+
+                <div id="classHistoryCard" class="form-section" style="display:none;">
+                    <div class="form-section-title"><i class="ri-history-line me-1"></i>Class History</div>
+                    <div id="classHistoryContent"></div>
                 </div>
 
                 <form id="promotionForm">
@@ -937,6 +995,33 @@ function updateBulkBar() {
     if (countEl) countEl.textContent = n;
     if (bar) bar.classList.toggle('visible', n > 0);
 }
+function selectByRecommendation() {
+    const status = document.getElementById('quickSelectRecommendation').value;
+    if (!status) { showToast('Choose a recommendation first', 'warning'); return; }
+
+    let matched = 0;
+    document.querySelectorAll('#studentTableBody tr[data-student-id]').forEach(tr => {
+        const cell = tr.querySelector('td[data-rec-status]');
+        const cb   = tr.querySelector('.row-checkbox');
+        if (!cell || !cb) return;
+
+        // 'repeated' from the dropdown covers both spellings the backend
+        // has used for this status ('repeated' and 'repeat').
+        const isMatch = cell.dataset.recStatus === status
+            || (status === 'repeated' && cell.dataset.recStatus === 'repeat');
+
+        cb.checked = isMatch;
+        tr.classList.toggle('selected', isMatch);
+        if (isMatch) matched++;
+    });
+
+    updateBulkBar();
+    showToast(
+        matched ? `${matched} student(s) selected` : 'No students match that recommendation',
+        matched ? 'success' : 'info'
+    );
+}
+
 function clearSelection() {
     document.querySelectorAll('.row-checkbox').forEach(cb => {
         cb.checked = false;
@@ -1068,6 +1153,34 @@ function buildSubjectsTable(allSubjects, result) {
 }
 
 /* ── Open promotion modal ── */
+function buildClassHistoryTable(history) {
+    const statusBadge = (status) => {
+        if (!status) return '<span class="badge bg-secondary">Pending</span>';
+        const label = status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ');
+        const colors = {
+            PROMOTED: '#10b981', TRIAL: '#f59e0b', SEE_PRINCIPAL: '#3b82f6',
+            REPEAT: '#ef4444', ADVANCED: '#6366f1', PARENTS_TO_SEE_PRINCIPAL: '#6b7280',
+        };
+        const bg = colors[status] || '#6b7280';
+        return `<span class="badge" style="background:${bg};color:#fff;">${escapeHtml(label)}</span>`;
+    };
+
+    let html = `<div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th>Session</th><th>Class</th><th>Arm</th><th>Term</th><th>Promotion Status</th></tr></thead>
+        <tbody>`;
+    history.forEach(h => {
+        html += `<tr>
+            <td>${escapeHtml(h.session || '—')}</td>
+            <td>${escapeHtml(h.class || '—')}</td>
+            <td>${escapeHtml(h.arm || '—')}</td>
+            <td>${escapeHtml(h.term || '—')}</td>
+            <td>${statusBadge(h.promotion_status)}</td>
+        </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    return html;
+}
+
 async function openPromotionModal(studentId, admissionNo, firstName, lastName, otherName, picture, gender, schoolclass, schoolarm, session, termid) {
     currentStudentId     = studentId;
     currentSchoolclassId = document.getElementById('idclass').value;
@@ -1096,10 +1209,14 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
     document.getElementById('recommendationCard').style.display  = 'none';
     document.getElementById('compulsoryCard').style.display      = 'none';
     document.getElementById('allSubjectsCard').style.display     = 'none';
+    document.getElementById('classHistoryCard').style.display    = 'none';
     document.getElementById('allSubjectsContent').innerHTML      = '';
     document.getElementById('compulsoryContent').innerHTML       = '';
     document.getElementById('recommendationContent').innerHTML   = '';
+    document.getElementById('classHistoryContent').innerHTML     = '';
     document.getElementById('modalOverallAverage').innerHTML     = '<span class="text-muted">Loading…</span>';
+    ['modalDob','modalAdmissionDate','modalPhone','modalAddress','modalFather','modalMother','modalParentEmail']
+        .forEach(id => { document.getElementById(id).innerText = '—'; });
 
     showLoading('Loading student data...');
 
@@ -1125,6 +1242,26 @@ async function openPromotionModal(studentId, admissionNo, firstName, lastName, o
         const avg         = response.data.overall_average;
         const allSubjects = response.data.all_subjects        || [];
         const compData    = response.data.compulsory_subjects || [];
+        const bio         = response.data.student_bio  || {};
+        const parentInfo  = response.data.parent_info  || {};
+        const history     = response.data.class_history || [];
+
+        const dob = (bio.dateofbirth && bio.dateofbirth !== 'N/A') ? bio.dateofbirth : '—';
+        document.getElementById('modalDob').innerText           = dob;
+        document.getElementById('modalAdmissionDate').innerText = bio.admission_date || '—';
+        document.getElementById('modalPhone').innerText         = bio.phone_number || '—';
+        document.getElementById('modalAddress').innerText       = bio.permanent_address || '—';
+
+        document.getElementById('modalFather').innerText =
+            [parentInfo.father, parentInfo.father_phone].filter(Boolean).join(' — ') || '—';
+        document.getElementById('modalMother').innerText =
+            [parentInfo.mother, parentInfo.mother_phone].filter(Boolean).join(' — ') || '—';
+        document.getElementById('modalParentEmail').innerText = parentInfo.parent_email || '—';
+
+        if (history.length) {
+            document.getElementById('classHistoryContent').innerHTML = buildClassHistoryTable(history);
+            document.getElementById('classHistoryCard').style.display = 'block';
+        }
 
         const avgEl    = document.getElementById('modalOverallAverage');
         const avgValue = avg !== null && avg !== undefined ? `${avg}%` : 'N/A';
