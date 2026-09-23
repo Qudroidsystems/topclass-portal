@@ -22,18 +22,12 @@
 
     {{-- Checkbox --}}
     <td class="id" data-id="{{ $student->stid }}">
-        <input type="checkbox" name="chk_child" value="{{ $student->stid }}"
-               style="accent-color:var(--r-accent);width:15px;height:15px;cursor:pointer;">
+        <input type="checkbox" name="chk_child" value="{{ $student->stid }}" class="r-row-check">
     </td>
 
     {{-- Admission No --}}
     <td class="admissionno" data-admissionno="{{ $student->admissionno }}">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;
-                     font-weight:600;color:var(--r-primary);
-                     background:var(--r-bg);border:1px solid var(--r-border);
-                     padding:3px 8px;border-radius:6px;">
-            {{ $student->admissionno ?? 'N/A' }}
-        </span>
+        <span class="r-adm-chip">{{ $student->admissionno ?? 'N/A' }}</span>
     </td>
 
     {{-- Photo --}}
@@ -62,21 +56,17 @@
 
     {{-- Last Name --}}
     <td class="lastname" data-lastname="{{ $student->lastname }}">
-        <div style="font-weight:700;color:var(--r-primary);">
-            {{ $student->lastname ?? '—' }}
-        </div>
+        <div class="r-cell-primary">{{ $student->lastname ?? '—' }}</div>
     </td>
 
     {{-- First Name --}}
     <td class="firstname" data-firstname="{{ $student->firstname }}">
-        <div style="color:#374151;">{{ $student->firstname ?? '—' }}</div>
+        <div class="r-cell-secondary">{{ $student->firstname ?? '—' }}</div>
     </td>
 
     {{-- Other Name --}}
     <td class="othername" data-othername="{{ $student->othername }}">
-        <div style="color:var(--r-muted);font-size:12px;">
-            {{ $student->othername ?? '—' }}
-        </div>
+        <div class="r-cell-muted">{{ $student->othername ?? '—' }}</div>
     </td>
 
     {{-- Gender --}}
@@ -104,9 +94,7 @@
 
     {{-- Session --}}
     <td class="session" data-session="{{ $student->session }}">
-        <span style="color:var(--r-muted);font-size:12px;">
-            {{ $student->session ?? '—' }}
-        </span>
+        <span class="r-cell-faint">{{ $student->session ?? '—' }}</span>
     </td>
 </tr>
 

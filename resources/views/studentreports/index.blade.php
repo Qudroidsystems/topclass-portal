@@ -160,40 +160,58 @@
 /* ── Table card ── */
 .r-table-card {
     background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-radius: var(--r-radius);
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 18px;
     overflow: hidden;
-    box-shadow: var(--r-shadow);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.04);
     animation: fadeInUp .5s .15s ease both;
 }
 .r-table-card .card-header {
-    background: var(--r-surface);
-    border-bottom: 1px solid var(--r-border);
-    padding: 14px 20px;
+    background: #fbfbfd;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    padding: 16px 22px;
     display: flex; align-items: center; justify-content: space-between;
 }
+.r-table {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Plus Jakarta Sans", sans-serif;
+}
 .r-table thead th {
-    background: var(--r-primary);
-    color: #fff;
-    padding: 11px 14px;
+    background: #fbfbfd;
+    color: #6e6e73;
+    padding: 13px 16px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .5px;
+    letter-spacing: .4px;
     white-space: nowrap;
     border: none;
+    border-bottom: 1px solid rgba(0,0,0,.06);
 }
 .r-table tbody td {
-    padding: 11px 14px;
+    padding: 14px 16px;
     vertical-align: middle;
-    border-bottom: 1px solid var(--r-border);
-    font-size: 13px;
-    transition: background .12s;
+    border-bottom: 1px solid rgba(0,0,0,.05);
+    font-size: 13.5px;
+    color: #1d1d1f;
+    transition: background .15s ease;
 }
 .r-table tbody tr { animation: rowIn .3s ease both; }
-.r-table tbody tr:hover td { background: #f0f9ff; }
-.r-table tbody tr.table-active td { background: #dbeafe !important; }
+.r-table tbody tr:hover td { background: #f5f5f7; }
+.r-table tbody tr.table-active td { background: rgba(0,113,227,.07) !important; }
 .r-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Apple-style cell text ── */
+.r-adm-chip {
+    font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px; font-weight: 600; color: #1d1d1f;
+    background: #f5f5f7; padding: 4px 9px; border-radius: 6px;
+    letter-spacing: .2px;
+}
+.r-cell-primary   { font-weight: 600; color: #1d1d1f; font-size: 13.5px; }
+.r-cell-secondary { color: #3a3a3c; font-size: 13.5px; }
+.r-cell-muted     { color: #86868b; font-size: 12px; }
+.r-cell-faint     { color: #86868b; font-size: 12px; }
+.r-row-check, #checkAll { accent-color: #0071e3; width: 16px; height: 16px; cursor: pointer; }
 
 /* Stagger */
 .r-table tbody tr:nth-child(1)  { animation-delay: .03s; }
@@ -212,18 +230,20 @@
 .r-avatar {
     width: 44px; height: 44px; border-radius: 50%;
     object-fit: cover;
-    border: 2.5px solid var(--r-border);
+    border: none;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
     background: #f0f0f0;
     transition: transform .2s, box-shadow .2s;
     display: block;
 }
-.r-avatar:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.r-avatar:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,.22); }
 .r-avatar-placeholder {
     width: 44px; height: 44px; border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 15px; font-weight: 700; color: #fff;
-    border: 2px solid var(--r-border);
+    border: none;
+    box-shadow: 0 1px 4px rgba(0,0,0,.18);
     cursor: pointer;
     transition: transform .2s;
     flex-shrink: 0;
@@ -245,23 +265,23 @@
     padding: 3px 8px; border-radius: 20px;
     font-size: 11px; font-weight: 600;
 }
-.r-gender-badge.male   { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
-.r-gender-badge.female { background:#fce7f3; color:#9d174d; border:1px solid #fbcfe8; }
+.r-gender-badge.male   { background:#e8f0fe; color:#0071e3; border:none; font-weight:500; }
+.r-gender-badge.female { background:#fdebf1; color:#d0287a; border:none; font-weight:500; }
 
 /* ── Class / Arm badge ── */
 .r-class-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    background: #f0fdf4; color: #16a34a;
-    border: 1px solid #bbf7d0;
+    background: #e9f8ee; color: #1a7f37;
+    border: none;
     padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
+    font-size: 11px; font-weight: 500;
     white-space: nowrap;
 }
 .r-arm-badge {
-    background: #f5f3ff; color: #4f46e5;
-    border: 1px solid #ddd6fe;
+    background: #f1edfc; color: #5e42d6;
+    border: none;
     padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
+    font-size: 11px; font-weight: 500;
 }
 
 /* ── Empty state ── */
