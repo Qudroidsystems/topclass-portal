@@ -1308,7 +1308,6 @@ Route::group(['middleware' => ['auth']], function () {
         // ══════════════════════════════════════════════════════════════════════════
         Route::prefix('promotions')->name('promotions.')->middleware('auth')->group(function () {
             Route::get('/', [PromotionController::class, 'index'])->name('index');
-            Route::match(['GET', 'POST'], '/student-list', [PromotionController::class, 'studentList'])->name('student-list');
             Route::get('/student-details/{studentId}/{schoolclassId}/{sessionId}/{termId}',
                 [PromotionController::class, 'getStudentDetails'])->name('student.details');
             Route::put('/{studentId}',       [PromotionController::class, 'update'])->name('update');

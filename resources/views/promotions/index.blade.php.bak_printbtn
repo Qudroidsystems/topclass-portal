@@ -536,10 +536,6 @@
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByRecommendation()">
                     <i class="ri-checkbox-multiple-line me-1"></i>Select Matching
                 </button>
-
-                <button type="button" class="btn btn-sm btn-outline-dark ms-auto" onclick="openPrintListDialog()">
-                    <i class="ri-printer-line me-1"></i>Print Student List
-                </button>
             </div>
 
             {{-- Bulk action bar --}}
@@ -837,7 +833,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-const PROMO_STUDENT_LIST_URL = '{{ route("promotions.student-list") }}';
 let currentStudentId = null;
 let currentSchoolclassId = null;
 let currentSessionId = null;
@@ -1025,65 +1020,6 @@ function selectByRecommendation() {
         matched ? `${matched} student(s) selected` : 'No students match that recommendation',
         matched ? 'success' : 'info'
     );
-}
-
-// ═══════════════════════════════════════════════════════════
-//  PRINT STUDENT LIST — opens promotions.student-list in a new
-//  tab, grouped by System Recommendation, admin-ordered, with
-//  its own paper-size settings (see student_list.blade.php).
-// ═══════════════════════════════════════════════════════════
-function openPrintListDialog() {
-    const classId   = document.getElementById('idclass').value;
-    const sessionId = document.getElementById('idsession').value;
-    const termId    = document.getElementById('idterm').value;
-    const basis     = document.getElementById('average_basis').value;
-
-    if (!sessionId || !termId) {
-        showToast('Select a session and term first', 'warning');
-        return;
-    }
-
-    Swal.fire({
-        title: 'Print Student List',
-        html: `
-            <div style="text-align:left;">
-                <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Scope</label>
-                <select id="printScopeSelect" class="form-select form-select-sm" style="margin-bottom:10px;">
-                    <option value="class"${classId ? '' : ' disabled'}>This Class / Arm only</option>
-                    <option value="class_wide"${classId ? '' : ' disabled'}>Class-wide (all arms of this class level)</option>
-                    <option value="school">Whole School</option>
-                </select>
-                <small class="text-muted">
-                    Grouped by System Recommendation, in an admin-specified order — same pattern as the
-                    Broadsheet student list. Paper size and orientation are chosen on the print screen itself.
-                </small>
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Open Print View',
-        confirmButtonColor: '#0f2342',
-        cancelButtonText: 'Cancel',
-        preConfirm: () => {
-            const scope = document.getElementById('printScopeSelect').value;
-            if ((scope === 'class' || scope === 'class_wide') && !classId) {
-                Swal.showValidationMessage('Select a class/arm first for this scope');
-                return false;
-            }
-            return scope;
-        }
-    }).then(result => {
-        if (!result.isConfirmed) return;
-        const scope = result.value;
-
-        const params = new URLSearchParams();
-        params.set('scope', scope);
-        params.set('sessionid', sessionId);
-        params.set('termid', termId);
-        params.set('average_basis', basis || 'total');
-        if (scope !== 'school') params.set('schoolclassid', classId);
-
-        window.open(`${PROMO_STUDENT_LIST_URL}?${params.toString()}`, '_blank');
-    });
 }
 
 function clearSelection() {
