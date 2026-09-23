@@ -878,8 +878,8 @@
         <div class="section" style="animation-delay:.4s;">
             <div class="section-hd">
                 <div>
-                    <div class="section-title">Student Gender</div>
-                    <div class="section-sub">Active students only</div>
+                    <div class="section-title">Population Breakdown</div>
+                    <div class="section-sub">Gender & staff distribution</div>
                 </div>
             </div>
             <div class="section-bd">
@@ -889,6 +889,7 @@
                 <div style="display:flex;justify-content:center;gap:18px;margin-top:10px;font-size:12px;flex-wrap:wrap;">
                     <span style="display:flex;align-items:center;gap:4px;color:var(--c-sub);"><span style="width:10px;height:10px;border-radius:2px;background:#0ea5e9;"></span>Male {{ $gender_counts['Male'] }}</span>
                     <span style="display:flex;align-items:center;gap:4px;color:var(--c-sub);"><span style="width:10px;height:10px;border-radius:2px;background:#f43f5e;"></span>Female {{ $gender_counts['Female'] }}</span>
+                    <span style="display:flex;align-items:center;gap:4px;color:var(--c-sub);"><span style="width:10px;height:10px;border-radius:2px;background:#d97706;"></span>Staff {{ $staff_count }}</span>
                 </div>
             </div>
         </div>
@@ -923,127 +924,6 @@
             <div class="section-bd">
                 <div style="height:240px;position:relative;">
                     <canvas id="chartTerms"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- ═══════════════════════════════════════════════════════
-     ROW 5B — MORE DETAIL: Attendance by Class, Student Status,
-     Staff by Role (data already computed server-side — now charted)
-═══════════════════════════════════════════════════════════ --}}
-<div class="row g-3 mb-4">
-
-    {{-- Attendance by Class --}}
-    <div class="col-xxl-4">
-        <div class="section" style="animation-delay:.4s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Attendance by Class</div>
-                    <div class="section-sub">Rate per class/arm · {{ $selectedTerm?->term }}</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartAttByClass"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Student Status --}}
-    <div class="col-xxl-4">
-        <div class="section" style="animation-delay:.45s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Student Status</div>
-                    <div class="section-sub">New admissions vs returning students</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartStudentStatus"></canvas>
-                </div>
-                <div style="display:flex;justify-content:center;gap:18px;margin-top:10px;font-size:12px;flex-wrap:wrap;">
-                    <span style="display:flex;align-items:center;gap:4px;color:var(--c-sub);"><span style="width:10px;height:10px;border-radius:2px;background:#059669;"></span>New {{ $status_counts['New Student'] ?? 0 }}</span>
-                    <span style="display:flex;align-items:center;gap:4px;color:var(--c-sub);"><span style="width:10px;height:10px;border-radius:2px;background:#4f5fff;"></span>Returning {{ $status_counts['Old Student'] ?? 0 }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Staff by Role --}}
-    <div class="col-xxl-4">
-        <div class="section" style="animation-delay:.5s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Staff by Role</div>
-                    <div class="section-sub">{{ number_format($staff_count) }} total staff members</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartStaffRole"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- ═══════════════════════════════════════════════════════
-     ROW 5C — FINANCE OVERVIEW (previously just a single progress
-     bar buried in Quick Actions, and one silently always showing
-     ₦0 — see DashboardController for the accuracy fix)
-═══════════════════════════════════════════════════════════ --}}
-<div class="row g-3 mb-4">
-
-    {{-- Collection Trend --}}
-    <div class="col-xxl-5">
-        <div class="section" style="animation-delay:.4s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Collection Trend</div>
-                    <div class="section-sub">Payments received — last 6 months · {{ $selectedSession?->session }}</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartFinanceTrend"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Payment Status --}}
-    <div class="col-xxl-3">
-        <div class="section" style="animation-delay:.45s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Payment Status</div>
-                    <div class="section-sub">By bill record</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartPayStatus"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Billed vs Collected vs Outstanding --}}
-    <div class="col-xxl-4">
-        <div class="section" style="animation-delay:.5s;">
-            <div class="section-hd">
-                <div>
-                    <div class="section-title">Billed vs Collected</div>
-                    <div class="section-sub">{{ $collection_rate }}% collection rate</div>
-                </div>
-            </div>
-            <div class="section-bd">
-                <div style="height:240px;position:relative;">
-                    <canvas id="chartFinanceSummary"></canvas>
                 </div>
             </div>
         </div>
@@ -1645,17 +1525,6 @@ const D = {
   attTrendDates: @json(array_column($attendance_trend??[], 'date')),
   attTrendRates: @json(array_column($attendance_trend??[], 'rate')),
   attTrendAbs:   @json(array_column($attendance_trend??[], 'absent_count')),
-  statusNew:     {{ $status_counts['New Student'] ?? 0 }},
-  statusOld:     {{ $status_counts['Old Student'] ?? 0 }},
-  staffRoleKeys: @json(array_map('ucfirst', array_keys($staff_by_role ?? []))),
-  staffRoleVals: @json(array_values($staff_by_role ?? [])),
-  payStatusKeys: @json(array_map('ucfirst', array_keys($payment_status_counts ?? []))),
-  payStatusVals: @json(array_values($payment_status_counts ?? [])),
-  financeTrendLabels: @json(array_column($finance_trend??[], 'month')),
-  financeTrendVals:   @json(array_column($finance_trend??[], 'amount')),
-  financeBilled:      {{ $total_bills ?? 0 }},
-  financeCollected:   {{ $total_payments ?? 0 }},
-  financeOutstanding: {{ $total_outstanding ?? 0 }},
 };
 
 const GRADE_COLORS = {
@@ -1750,14 +1619,14 @@ mk('chartGrades',{
   }
 });
 
-/* ── Population donut (students only) ── */
+/* ── Population donut ── */
 mk('chartPop',{
   type:'doughnut',
   data:{
-    labels:['Male','Female'],
+    labels:['Male','Female','Staff'],
     datasets:[{
-      data:[D.genderM,D.genderF],
-      backgroundColor:['#0ea5e9','#f43f5e'],
+      data:[D.genderM,D.genderF,D.staff],
+      backgroundColor:['#0ea5e9','#f43f5e','#d97706'],
       borderColor:'#fff',borderWidth:3,hoverOffset:10
     }]
   },
@@ -1801,113 +1670,6 @@ mk('chartTerms',{
     responsive:true,maintainAspectRatio:false,
     plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw}%`}}},
     scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(0,0,0,0.04)'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}
-  }
-});
-
-/* ── Attendance by class (data already existed — was never charted) ── */
-mk('chartAttByClass',{
-  type:'bar',
-  data:{
-    labels:D.attLabels,
-    datasets:[{
-      label:'Attendance Rate',data:D.attRates,
-      backgroundColor:D.attRates.map(v=>v>=75?'#059669':v>=50?'#f59e0b':'#ef4444'),
-      borderRadius:6,borderSkipped:false
-    }]
-  },
-  options:{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw}%`}}},
-    scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(0,0,0,0.04)'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false},ticks:{maxRotation:40,autoSkip:true}}}
-  }
-});
-
-/* ── Student status: new vs returning ── */
-mk('chartStudentStatus',{
-  type:'doughnut',
-  data:{
-    labels:['New Students','Returning'],
-    datasets:[{
-      data:[D.statusNew,D.statusOld],
-      backgroundColor:['#059669','#4f5fff'],
-      borderColor:'#fff',borderWidth:3,hoverOffset:10
-    }]
-  },
-  options:{
-    responsive:true,maintainAspectRatio:false,cutout:'68%',
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const t=c.dataset.data.reduce((a,b)=>a+b,0);return ` ${c.label}: ${c.raw.toLocaleString()} (${t>0?Math.round(c.raw/t*100):0}%)`;}}}}
-  }
-});
-
-/* ── Staff by role ── */
-mk('chartStaffRole',{
-  type:'bar',
-  data:{
-    labels:D.staffRoleKeys,
-    datasets:[{
-      label:'Staff',data:D.staffRoleVals,
-      backgroundColor:'#d97706',borderRadius:6,borderSkipped:false
-    }]
-  },
-  options:{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} staff`}}},
-    scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}
-  }
-});
-
-/* ── Finance: collection trend ── */
-mk('chartFinanceTrend',{
-  type:'line',
-  data:{
-    labels:D.financeTrendLabels,
-    datasets:[{
-      label:'Collected',data:D.financeTrendVals,
-      borderColor:'#4f5fff',backgroundColor:'rgba(79,95,255,.08)',
-      fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#4f5fff',
-      pointBorderColor:'#fff',pointHoverRadius:6
-    }]
-  },
-  options:{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ₦${Number(c.raw).toLocaleString()}`}}},
-    scales:{y:{beginAtZero:true,ticks:{callback:v=>'₦'+Number(v).toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}
-  }
-});
-
-/* ── Finance: payment status breakdown ── */
-mk('chartPayStatus',{
-  type:'doughnut',
-  data:{
-    labels:D.payStatusKeys,
-    datasets:[{
-      data:D.payStatusVals,
-      backgroundColor:['#f59e0b','#0ea5e9','#059669','#ef4444','#94a3b8'],
-      borderColor:'#fff',borderWidth:3,hoverOffset:10
-    }]
-  },
-  options:{
-    responsive:true,maintainAspectRatio:false,cutout:'62%',
-    plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}
-  }
-});
-
-/* ── Finance: billed vs collected vs outstanding ── */
-mk('chartFinanceSummary',{
-  type:'bar',
-  data:{
-    labels:['Billed','Collected','Outstanding'],
-    datasets:[{
-      data:[D.financeBilled,D.financeCollected,D.financeOutstanding],
-      backgroundColor:['#7c3aed','#059669','#ef4444'],
-      borderRadius:6,borderSkipped:false
-    }]
-  },
-  options:{
-    indexAxis:'y',
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ₦${Number(c.raw).toLocaleString()}`}}},
-    scales:{x:{beginAtZero:true,ticks:{callback:v=>'₦'+Number(v).toLocaleString()},grid:{color:'rgba(0,0,0,0.04)'}}}
   }
 });
 

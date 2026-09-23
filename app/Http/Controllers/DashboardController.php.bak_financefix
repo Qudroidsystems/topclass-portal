@@ -12,8 +12,8 @@ use App\Models\Studentclass;
 use App\Models\Exam;
 use App\Models\AttendanceSummary;
 use App\Models\AttendanceTermSetting;
-use App\Models\StudentBillPayment;
-use App\Models\StudentBillPaymentRecord;
+use App\Models\SchoolBill;
+use App\Models\SchoolPayment;
 use App\Models\Broadsheets;
 use App\Models\Subjectclass;
 use App\Models\ClassTeacher;
@@ -59,27 +59,14 @@ class DashboardController extends Controller
         $currentMonth   = Carbon::now()->startOfMonth();
         $previousMonth  = Carbon::now()->subMonth()->startOfMonth();
 
-        // "Total Students" reflects currently ACTIVE students only — the
-        // student_status column (Active/Inactive, added to studentRegistration
-        // to track withdrawals) was never being filtered on here, so
-        // withdrawn/inactive students were inflating every population figure
-        // below (total, gender split, new-vs-returning split).
-        $total_population = Student::where('student_status', 'Active')->count();
-
-        // Growth vs last month — compare the CURRENT total to the total AS
-        // OF the start of the previous month (i.e. everyone who had already
-        // enrolled by then), not to the tiny slice of students created
-        // DURING that one month alone (the old formula compared a whole
-        // population against one month's new admissions, which produced a
-        // meaningless / wildly inflated percentage).
-        $previous_population = Student::where('student_status', 'Active')
-            ->where('created_at', '<', $previousMonth)->count();
+        $total_population = Student::count();
+        $previous_population = Student::where('created_at', '<', $currentMonth)
+            ->where('created_at', '>=', $previousMonth)->count();
         $population_percentage = $previous_population > 0
             ? number_format((($total_population - $previous_population) / $previous_population) * 100, 2)
             : ($total_population > 0 ? 100.00 : 0.00);
 
-        $gender_counts = Student::where('student_status', 'Active')
-            ->groupBy('gender')
+        $gender_counts = Student::groupBy('gender')
             ->selectRaw('gender, COUNT(*) as gender_count')
             ->pluck('gender_count', 'gender')
             ->toArray();
@@ -88,8 +75,7 @@ class DashboardController extends Controller
             'Female' => $gender_counts['Female'] ?? 0,
         ];
 
-        $status_counts = Student::where('student_status', 'Active')
-            ->groupBy('statusId')
+        $status_counts = Student::groupBy('statusId')
             ->selectRaw("CASE WHEN statusId=1 THEN 'Old Student' WHEN statusId=2 THEN 'New Student' ELSE 'Other' END as student_status, COUNT(*) as student_count")
             ->pluck('student_count', 'student_status')->toArray();
         $status_counts = [
@@ -411,55 +397,25 @@ class DashboardController extends Controller
         }
 
         // ============================================================
-        // PAYMENT / FINANCE (selected session — session-wide, like the
-        // population stats above, since a bill can span the whole session)
+        // PAYMENT / FINANCE (selected session)
         // ============================================================
-        $total_payments        = 0;  // total collected
-        $total_outstanding     = 0;  // total still owed
-        $total_bills           = 0;  // collected + outstanding
-        $collection_rate       = 0;
-        $payment_status_counts = [];
-        $finance_trend         = [];
+        $total_payments     = 0;
+        $payment_percentage = 0;
+        $pending_payments   = 0;
+        $completed_payments = 0;
+        $total_bills        = 0;
+        $collection_rate    = 0;
 
-        if (class_exists(StudentBillPayment::class) && $selectedSession) {
-            $agg = StudentBillPayment::where('session_id', $selectedSession->id)
-                ->selectRaw('SUM(total_paid) as collected, SUM(total_balance) as outstanding')
-                ->first();
-
-            $total_payments    = (float) ($agg->collected   ?? 0);
-            $total_outstanding = (float) ($agg->outstanding ?? 0);
-            $total_bills        = $total_payments + $total_outstanding;
-            $collection_rate    = $total_bills > 0
-                ? round(($total_payments / $total_bills) * 100, 1) : 0;
-
-            $payment_status_counts = StudentBillPayment::where('session_id', $selectedSession->id)
-                ->selectRaw('payment_status, COUNT(*) as cnt')
-                ->groupBy('payment_status')
-                ->pluck('cnt', 'payment_status')
-                ->toArray();
+        if (class_exists(SchoolPayment::class)) {
+            $total_payments     = SchoolPayment::sum('amount_paid') ?? 0;
+            $pending_payments   = SchoolPayment::where('status', 'pending')->count();
+            $completed_payments = SchoolPayment::where('status', 'completed')->count();
         }
-
-        $pending_payments   = $payment_status_counts['pending']   ?? 0;
-        $completed_payments = $payment_status_counts['completed'] ?? 0;
-
-        // Collection trend — actual payment transactions over the last 6
-        // months (excludes reversed/refunded transactions), scoped to the
-        // selected session.
-        if (class_exists(StudentBillPaymentRecord::class) && $selectedSession) {
-            for ($i = 5; $i >= 0; $i--) {
-                $month = Carbon::now()->subMonths($i);
-                $sum = StudentBillPaymentRecord::where('session_id', $selectedSession->id)
-                    ->where('is_reversal', false)
-                    ->whereYear('created_at', $month->year)
-                    ->whereMonth('created_at', $month->month)
-                    ->sum('amount_paid');
-
-                $finance_trend[] = [
-                    'month'  => $month->format('M Y'),
-                    'amount' => (float) $sum,
-                ];
-            }
+        if (class_exists(SchoolBill::class)) {
+            $total_bills = SchoolBill::sum('amount') ?? 0;
         }
+        $collection_rate = $total_bills > 0
+            ? round(($total_payments / $total_bills) * 100, 1) : 0;
 
         // ============================================================
         // EXAM STATS
@@ -564,10 +520,9 @@ class DashboardController extends Controller
             // Attendance
             'overall_attendance_rate', 'attendance_by_class', 'attendance_trend',
             // Finance
-            'total_payments', 'total_outstanding',
+            'total_payments', 'payment_percentage',
             'pending_payments', 'completed_payments',
             'total_bills', 'collection_rate',
-            'payment_status_counts', 'finance_trend',
             // Exams
             'total_exams', 'upcoming_exams', 'completed_exams',
             // Misc
