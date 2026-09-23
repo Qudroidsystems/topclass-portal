@@ -615,6 +615,8 @@ class ViewStudentReportController extends Controller
 
         $pagetitle   = 'Student Terminal Report Management';
         $allstudents = new LengthAwarePaginator([], 0, 10);
+        $maleCount   = 0;
+        $femaleCount = 0;
 
         // ═══════════════════════════════════════════════════════════════════
         // DEBUG: Branch — do we have valid filter parameters?
@@ -693,6 +695,34 @@ class ViewStudentReportController extends Controller
                         'name'        => $allstudents->first()->firstname . ' ' . $allstudents->first()->lastname,
                     ] : null,
                 ]);
+
+                // Gender breakdown — counted against the same filtered query
+                // (pre-pagination, cloned before ->select()/->paginate() ran
+                // above) so the totals reflect the WHOLE filtered result set,
+                // not just the current page of up to 100 rows.
+                try {
+                    $genderCounts = (clone $query)
+                        ->selectRaw('studentRegistration.gender as gender, COUNT(DISTINCT studentRegistration.id) as cnt')
+                        ->groupBy('studentRegistration.gender')
+                        ->pluck('cnt', 'gender');
+
+                    foreach ($genderCounts as $genderValue => $cnt) {
+                        if (strtolower((string) $genderValue) === 'male') {
+                            $maleCount = (int) $cnt;
+                        } elseif (strtolower((string) $genderValue) === 'female') {
+                            $femaleCount = (int) $cnt;
+                        }
+                    }
+
+                    Log::info('[studentreports.index] Gender counts', [
+                        'male'   => $maleCount,
+                        'female' => $femaleCount,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('[studentreports.index] Gender count query FAILED', [
+                        'message' => $e->getMessage(),
+                    ]);
+                }
             } catch (\Throwable $e) {
                 Log::error('[studentreports.index] Query FAILED', [
                     'message' => $e->getMessage(),
@@ -769,6 +799,8 @@ class ViewStudentReportController extends Controller
                     'tableBody'    => $tableBody,
                     'pagination'   => $pagination,
                     'studentCount' => $allstudents->total(),
+                    'maleCount'    => $maleCount,
+                    'femaleCount'  => $femaleCount,
                 ]);
             } catch (\Throwable $e) {
                 Log::error('[studentreports.index] AJAX render FAILED', [
@@ -791,7 +823,7 @@ class ViewStudentReportController extends Controller
         // ═══════════════════════════════════════════════════════════════════
         Log::info('[studentreports.index] Rendering full HTML view');
 
-        return view('studentreports.index', compact('allstudents', 'schoolsessions', 'schoolclasses', 'pagetitle'));
+        return view('studentreports.index', compact('allstudents', 'schoolsessions', 'schoolclasses', 'pagetitle', 'maleCount', 'femaleCount'));
     }
 
     public function registeredClasses(Request $request)

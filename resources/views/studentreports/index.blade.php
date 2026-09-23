@@ -94,22 +94,28 @@
 /* ── Stat cards ── */
 .r-stat-card {
     background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-top: 3px solid var(--r-accent);
-    border-radius: var(--r-radius);
-    padding: 16px 20px;
-    transition: transform .15s, box-shadow .15s;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 16px;
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 6px 16px rgba(0,0,0,.03);
+    transition: transform .18s ease, box-shadow .18s ease;
     animation: fadeInUp .5s .05s ease both;
-    position: relative; overflow: hidden;
 }
-.r-stat-card:hover { transform: translateY(-2px); box-shadow: var(--r-shadow); }
-.r-stat-card .stat-icon {
-    font-size: 32px; opacity: .12; position: absolute; top: 10px; right: 14px;
+.r-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.04), 0 14px 28px rgba(0,0,0,.06);
 }
-.r-stat-card .stat-value { font-size: 26px; font-weight: 800; color: var(--r-primary); line-height:1; }
-.r-stat-card .stat-label {
-    font-size: 11px; font-weight: 700; color: var(--r-muted);
-    text-transform: uppercase; letter-spacing: .5px; margin-top: 6px;
+.r-stat-icon-chip {
+    width: 46px; height: 46px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.r-stat-body { flex: 1; min-width: 0; }
+.r-stat-value { font-size: 24px; font-weight: 800; color: #1d1d1f; line-height: 1.1; }
+.r-stat-label {
+    font-size: 11px; font-weight: 600; color: #86868b;
+    text-transform: uppercase; letter-spacing: .4px; margin-top: 3px;
 }
 
 /* ── Filter card ── */
@@ -446,32 +452,40 @@
 
     {{-- Stat cards --}}
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <div class="r-stat-card">
-                <div class="stat-icon"><i class="ri-group-line"></i></div>
-                <div class="stat-value" id="statTotal">{{ $allstudents ? $allstudents->total() : 0 }}</div>
-                <div class="stat-label">Total Students</div>
+                <div class="r-stat-icon-chip" style="background:#e8f0fe;color:#0071e3;"><i class="ri-group-line"></i></div>
+                <div class="r-stat-body">
+                    <div class="r-stat-value" id="statTotal">{{ $allstudents ? $allstudents->total() : 0 }}</div>
+                    <div class="r-stat-label">Total Students</div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <div class="r-stat-card">
-                <div class="stat-icon"><i class="ri-men-line"></i></div>
-                <div class="stat-value" id="statMale" style="color:var(--r-accent);">—</div>
-                <div class="stat-label">Male Students</div>
+                <div class="r-stat-icon-chip" style="background:#eef2ff;color:#4f46e5;"><i class="ri-men-line"></i></div>
+                <div class="r-stat-body">
+                    <div class="r-stat-value" id="statMale">{{ $maleCount ?? 0 }}</div>
+                    <div class="r-stat-label">Male Students</div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <div class="r-stat-card">
-                <div class="stat-icon"><i class="ri-women-line"></i></div>
-                <div class="stat-value" id="statFemale" style="color:var(--r-success);">—</div>
-                <div class="stat-label">Female Students</div>
+                <div class="r-stat-icon-chip" style="background:#fdebf1;color:#d0287a;"><i class="ri-women-line"></i></div>
+                <div class="r-stat-body">
+                    <div class="r-stat-value" id="statFemale">{{ $femaleCount ?? 0 }}</div>
+                    <div class="r-stat-label">Female Students</div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <div class="r-stat-card">
-                <div class="stat-icon"><i class="ri-file-chart-line"></i></div>
-                <div class="stat-value" id="statSelected" style="color:var(--r-warning);">0</div>
-                <div class="stat-label">Selected for Export</div>
+                <div class="r-stat-icon-chip" style="background:#fff4e5;color:#d97706;"><i class="ri-file-chart-line"></i></div>
+                <div class="r-stat-body">
+                    <div class="r-stat-value" id="statSelected">0</div>
+                    <div class="r-stat-label">Selected for Export</div>
+                </div>
             </div>
         </div>
     </div>
@@ -841,6 +855,8 @@
             const count = response.data.studentCount || '0';
             document.getElementById('studentcount').innerText = count;
             document.getElementById('statTotal').innerText    = count;
+            document.getElementById('statMale').innerText     = response.data.maleCount   ?? 0;
+            document.getElementById('statFemale').innerText   = response.data.femaleCount ?? 0;
 
             setupPaginationLinks();
             setupCheckboxListeners();
@@ -876,6 +892,8 @@
         document.getElementById('pagination-container').innerHTML = '';
         document.getElementById('studentcount').innerText = '0';
         document.getElementById('statTotal').innerText    = '0';
+        document.getElementById('statMale').innerText     = '0';
+        document.getElementById('statFemale').innerText   = '0';
         document.getElementById('printAllBtn').style.display = 'none';
         document.getElementById('termSelectContainer').style.display = 'none';
         updateSelectionAlert();
@@ -1125,6 +1143,8 @@
             const count = response.data.studentCount || '0';
             document.getElementById('studentcount').innerText = count;
             document.getElementById('statTotal').innerText    = count;
+            document.getElementById('statMale').innerText     = response.data.maleCount   ?? 0;
+            document.getElementById('statFemale').innerText   = response.data.femaleCount ?? 0;
 
             setupPaginationLinks();
             setupCheckboxListeners();
