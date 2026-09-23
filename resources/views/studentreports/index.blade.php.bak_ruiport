@@ -19,388 +19,143 @@
 @endphp
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
-
-{{-- ═══════════════════════════════════════════════════════════
-     STYLES — same design token system as Student Mock Report Management
-═══════════════════════════════════════════════════════════ --}}
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-
 :root {
-    --r-primary:  #1e3a5f;
-    --r-accent:   #2563eb;
-    --r-indigo:   #4f46e5;
-    --r-success:  #16a34a;
-    --r-warning:  #d97706;
-    --r-danger:   #dc2626;
-    --r-muted:    #6b7280;
-    --r-border:   #e2e8f0;
-    --r-bg:       #f8fafc;
-    --r-surface:  #ffffff;
-    --r-radius:   12px;
-    --r-shadow:   0 2px 8px rgba(0,0,0,.07);
-    --r-shadow-lg:0 8px 32px rgba(0,0,0,.12);
+    --bill-primary: #1e3a5f;
+    --bill-accent:  #2563eb;
+    --bill-success: #16a34a;
+    --bill-warning: #d97706;
+    --bill-danger:  #dc2626;
+    --bill-muted:   #6b7280;
+    --bill-border:  #e2e8f0;
+    --bill-bg:      #f8fafc;
+    --bill-radius:  12px;
+    --bill-shadow:  0 2px 8px rgba(0,0,0,.08);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
-.main-content, .page-content { font-family: 'Plus Jakarta Sans', sans-serif; }
+/* ── Hero ──────────────────────────────────────────────── */
+.bill-hero {
+    background: linear-gradient(135deg, var(--bill-primary) 0%, #2563eb 60%, #4f46e5 100%);
+    border-radius: var(--bill-radius);
+    padding: 28px 32px; margin-bottom: 24px;
+    position: relative; overflow: hidden;
+}
+.bill-hero::before {
+    content:''; position:absolute; top:-60px; right:-60px;
+    width:220px; height:220px; background:rgba(255,255,255,.06); border-radius:50%;
+}
+.bill-hero::after {
+    content:''; position:absolute; bottom:-80px; left:-30px;
+    width:260px; height:260px; background:rgba(255,255,255,.03); border-radius:50%;
+}
+.bill-hero h1 { font-size:22px; font-weight:700; color:#fff; margin:0 0 6px; position:relative; }
+.bill-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
 
-/* ── Keyframes ── */
-@keyframes fadeInDown { from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);} }
-@keyframes fadeInUp   { from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);} }
-@keyframes scaleIn    { from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);} }
-@keyframes pulse      { 0%,100%{transform:scale(1);}50%{transform:scale(1.05);} }
-@keyframes rowIn      { from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);} }
-@keyframes badgePop   { 0%{transform:scale(.5);}70%{transform:scale(1.15);}100%{transform:scale(1);} }
-@keyframes spin       { to{transform:rotate(360deg);} }
-@keyframes shimmer    { from{background-position:-200% 0;}to{background-position:200% 0;} }
+/* ── Stat cards ────────────────────────────────────────── */
+.stat-card {
+    background:#fff; border:1px solid var(--bill-border);
+    border-radius:var(--bill-radius); padding:18px 20px;
+    transition:transform .15s, box-shadow .15s;
+}
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--bill-shadow); }
+.stat-card .stat-value { font-size:28px; font-weight:700; color:var(--bill-primary); }
+.stat-card .stat-label { font-size:12px; color:var(--bill-muted); margin-top:4px; }
+.stat-card .stat-icon  { font-size:32px; opacity:.12; float:right; margin-top:-8px; }
 
-/* ── Selection banner ── */
+/* ── Filter card ───────────────────────────────────────── */
+.filter-card {
+    background:#fff; border:1px solid var(--bill-border);
+    border-radius:var(--bill-radius); padding:20px 24px;
+    margin-bottom:24px; box-shadow:var(--bill-shadow);
+}
+
+/* ── Table ─────────────────────────────────────────────── */
+.bill-table th {
+    background:var(--bill-primary); color:#fff;
+    padding:12px 16px; font-weight:600; font-size:13px;
+    white-space:nowrap;
+}
+.bill-table td {
+    padding:12px 16px; vertical-align:middle;
+    border-bottom:1px solid var(--bill-border); font-size:13px;
+}
+.bill-table tr:hover td { background:#eff6ff; }
+.bill-table tr.table-active td { background:#dbeafe !important; }
+
+/* ── Form controls ─────────────────────────────────────── */
+.form-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
+.form-control, .form-select {
+    border:1.5px solid var(--bill-border); border-radius:8px;
+    font-size:13px; padding:9px 14px; transition:border .15s;
+}
+.form-control:focus, .form-select:focus {
+    border-color:var(--bill-accent);
+    box-shadow:0 0 0 3px rgba(37,99,235,.1);
+    outline:none;
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+.bill-modal .modal-content {
+    border:none; border-radius:16px;
+    overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.15);
+}
+.modal-hero-bar {
+    background:linear-gradient(135deg, var(--bill-primary) 0%, #2563eb 100%);
+    padding:22px 28px; position:relative; overflow:hidden;
+}
+.modal-hero-bar::before {
+    content:''; position:absolute; top:-30px; right:-30px;
+    width:120px; height:120px; background:rgba(255,255,255,.07); border-radius:50%;
+}
+.modal-hero-bar h5 { color:#fff; font-weight:700; margin:0; font-size:16px; position:relative; }
+.modal-hero-bar .btn-close { position:absolute; top:18px; right:20px; filter:invert(1); }
+
+/* ── Alert banner ──────────────────────────────────────── */
 #selectionAlert {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 1060;
-    background: linear-gradient(135deg, #1e3a5f, #2563eb);
-    color: #fff; border: none; border-radius: 0;
-    padding: 10px 20px;
-    font-size: 13px; font-weight: 600;
-    display: none;
-    animation: fadeInDown .3s ease;
-    box-shadow: 0 4px 20px rgba(37,99,235,.3);
-}
-#selectionAlert .btn-close { filter: invert(1); opacity: .8; }
-
-/* ── Hero ── */
-.r-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 55%, #4f46e5 100%);
-    border-radius: var(--r-radius);
-    padding: 28px 32px;
-    margin-bottom: 24px;
-    position: relative; overflow: hidden;
-    animation: fadeInDown .5s ease both;
-}
-.r-hero::before {
-    content:''; position:absolute; top:-70px; right:-70px;
-    width:240px; height:240px;
-    background:rgba(255,255,255,.06); border-radius:50%;
-    animation: pulse 6s ease-in-out infinite;
-}
-.r-hero::after {
-    content:''; position:absolute; bottom:-50px; right:140px;
-    width:150px; height:150px;
-    background:rgba(255,255,255,.04); border-radius:50%;
-}
-.r-hero h1 { font-size:22px; font-weight:800; color:#fff; margin:0 0 6px; position:relative; letter-spacing:-.3px; }
-.r-hero p  { font-size:13px; color:rgba(255,255,255,.75); margin:0; position:relative; }
-
-/* ── Stat cards ── */
-.r-stat-card {
-    background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-top: 3px solid var(--r-accent);
-    border-radius: var(--r-radius);
-    padding: 16px 20px;
-    transition: transform .15s, box-shadow .15s;
-    animation: fadeInUp .5s .05s ease both;
-    position: relative; overflow: hidden;
-}
-.r-stat-card:hover { transform: translateY(-2px); box-shadow: var(--r-shadow); }
-.r-stat-card .stat-icon {
-    font-size: 32px; opacity: .12; position: absolute; top: 10px; right: 14px;
-}
-.r-stat-card .stat-value { font-size: 26px; font-weight: 800; color: var(--r-primary); line-height:1; }
-.r-stat-card .stat-label {
-    font-size: 11px; font-weight: 700; color: var(--r-muted);
-    text-transform: uppercase; letter-spacing: .5px; margin-top: 6px;
+    border-radius:var(--bill-radius);
+    font-size:13px; font-weight:500;
 }
 
-/* ── Filter card ── */
-.r-filter-card {
-    background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-top: 3px solid var(--r-accent);
-    border-radius: var(--r-radius);
-    padding: 18px 22px;
-    margin-bottom: 20px;
-    animation: fadeInUp .5s .1s ease both;
-}
-.r-label {
-    font-size: 11px; font-weight: 700; color: var(--r-muted);
-    text-transform: uppercase; letter-spacing: .5px;
-    display: block; margin-bottom: 5px;
-}
-.r-input {
-    width: 100%;
-    border: 1.5px solid var(--r-border);
-    border-radius: 9px;
-    padding: 9px 14px;
-    font-size: 13px;
-    font-family: inherit;
-    background: #fff;
-    transition: border-color .2s, box-shadow .2s;
-}
-.r-input:focus { border-color: var(--r-accent); outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-.r-input-icon-wrap { position: relative; }
-.r-input-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px; pointer-events:none; }
-.r-input-icon-wrap .r-input { padding-left: 34px; }
-
-/* ── Buttons ── */
-.r-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 18px; border-radius: 9px;
-    font-size: 13px; font-weight: 600; font-family: inherit;
-    border: none; cursor: pointer;
-    transition: transform .15s, box-shadow .15s, opacity .15s;
-    text-decoration: none; white-space: nowrap;
-}
-.r-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.15); opacity: .92; }
-.r-btn:disabled { opacity: .5; pointer-events: none; }
-.r-btn.primary   { background:linear-gradient(135deg,var(--r-accent),var(--r-indigo)); color:#fff; }
-.r-btn.success   { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; }
-.r-btn.secondary { background:#fff; color:var(--r-primary); border:1.5px solid var(--r-border); }
-
-/* ── Table card ── */
-.r-table-card {
-    background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-radius: var(--r-radius);
-    overflow: hidden;
-    box-shadow: var(--r-shadow);
-    animation: fadeInUp .5s .15s ease both;
-}
-.r-table-card .card-header {
-    background: var(--r-surface);
-    border-bottom: 1px solid var(--r-border);
-    padding: 14px 20px;
-    display: flex; align-items: center; justify-content: space-between;
-}
-.r-table thead th {
-    background: var(--r-primary);
-    color: #fff;
-    padding: 11px 14px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    white-space: nowrap;
-    border: none;
-}
-.r-table tbody td {
-    padding: 11px 14px;
-    vertical-align: middle;
-    border-bottom: 1px solid var(--r-border);
-    font-size: 13px;
-    transition: background .12s;
-}
-.r-table tbody tr { animation: rowIn .3s ease both; }
-.r-table tbody tr:hover td { background: #f0f9ff; }
-.r-table tbody tr.table-active td { background: #dbeafe !important; }
-.r-table tbody tr:last-child td { border-bottom: none; }
-
-/* Stagger */
-.r-table tbody tr:nth-child(1)  { animation-delay: .03s; }
-.r-table tbody tr:nth-child(2)  { animation-delay: .06s; }
-.r-table tbody tr:nth-child(3)  { animation-delay: .09s; }
-.r-table tbody tr:nth-child(4)  { animation-delay: .12s; }
-.r-table tbody tr:nth-child(5)  { animation-delay: .15s; }
-.r-table tbody tr:nth-child(6)  { animation-delay: .18s; }
-.r-table tbody tr:nth-child(7)  { animation-delay: .21s; }
-.r-table tbody tr:nth-child(8)  { animation-delay: .24s; }
-.r-table tbody tr:nth-child(9)  { animation-delay: .27s; }
-.r-table tbody tr:nth-child(10) { animation-delay: .30s; }
-
-/* ── Avatar ── */
-.r-avatar-wrap { position: relative; display: inline-block; cursor: pointer; }
-.r-avatar {
-    width: 44px; height: 44px; border-radius: 50%;
-    object-fit: cover;
-    border: 2.5px solid var(--r-border);
-    background: #f0f0f0;
-    transition: transform .2s, box-shadow .2s;
-    display: block;
-}
-.r-avatar:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,.2); }
-.r-avatar-placeholder {
-    width: 44px; height: 44px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; color: #fff;
-    border: 2px solid var(--r-border);
-    cursor: pointer;
-    transition: transform .2s;
-    flex-shrink: 0;
-}
-.r-avatar-placeholder:hover { transform: scale(1.1); }
-.r-avatar-zoom-btn {
-    position: absolute; bottom: -2px; right: -2px;
-    width: 16px; height: 16px;
-    background: var(--r-accent); color: #fff;
-    border-radius: 50%; font-size: 8px;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity .2s;
-}
-.r-avatar-wrap:hover .r-avatar-zoom-btn { opacity: 1; }
-
-/* ── Gender badge ── */
-.r-gender-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 8px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-}
-.r-gender-badge.male   { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
-.r-gender-badge.female { background:#fce7f3; color:#9d174d; border:1px solid #fbcfe8; }
-
-/* ── Class / Arm badge ── */
-.r-class-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: #f0fdf4; color: #16a34a;
-    border: 1px solid #bbf7d0;
-    padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-    white-space: nowrap;
-}
-.r-arm-badge {
-    background: #f5f3ff; color: #4f46e5;
-    border: 1px solid #ddd6fe;
-    padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-}
-
-/* ── Empty state ── */
-.r-empty { text-align: center; padding: 52px 24px; color: var(--r-muted); }
-.r-empty .r-empty-icon { font-size: 3rem; display: block; margin-bottom: 14px; opacity: .25; }
-.r-empty h6 { font-size: 15px; font-weight: 700; color: var(--r-primary); margin-bottom: 6px; }
-.r-empty p  { font-size: 13px; }
-
-/* ── Loading spinner ── */
-.r-loading-spinner {
-    width: 20px; height: 20px;
-    border: 2.5px solid var(--r-border);
-    border-top-color: var(--r-accent);
-    border-radius: 50%;
-    animation: spin .7s linear infinite;
-    display: inline-block;
-}
-
-/* ── Modal ── */
-.r-modal .modal-content {
-    border: none; border-radius: 18px; overflow: hidden;
-    box-shadow: var(--r-shadow-lg);
-    animation: scaleIn .25s ease;
-}
-.r-modal-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #4f46e5 100%);
-    padding: 22px 28px; position: relative; overflow: hidden;
-}
-.r-modal-hero::before {
-    content:''; position:absolute; top:-40px; right:-40px;
-    width:140px; height:140px;
-    background:rgba(255,255,255,.07); border-radius:50%;
-}
-.r-modal-hero h5 { color:#fff; font-weight:700; font-size:16px; margin:0; position:relative; }
-.r-modal-hero p  { color:rgba(255,255,255,.72); font-size:12px; margin:4px 0 0; position:relative; }
-.r-modal-hero .btn-close { position:absolute; top:18px; right:20px; filter:invert(1); opacity:.8; }
-
-/* ── Column selection cards ── */
-.col-section-card {
-    background: var(--r-surface);
-    border: 1px solid var(--r-border);
-    border-radius: 10px; overflow: hidden; margin-bottom: 14px;
-}
-.col-section-header {
-    background: var(--r-bg); border-bottom: 1px solid var(--r-border);
-    padding: 10px 16px; font-size: 12px; font-weight: 700;
-    color: var(--r-primary); text-transform: uppercase; letter-spacing: .5px;
-    display: flex; align-items: center; justify-content: space-between;
-}
-.col-section-body { padding: 14px 16px; }
-.col-check-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; border-radius: 8px; margin-bottom: 6px;
-    border: 1.5px solid var(--r-border); background: #fff;
-    cursor: pointer; transition: all .15s;
-}
-.col-check-item:hover { border-color: var(--r-accent); background: #eff6ff; }
-.col-check-item input[type="checkbox"] { accent-color: var(--r-accent); width:15px; height:15px; }
-.col-check-item label { margin:0; cursor:pointer; font-size:13px; font-weight:500; }
-.col-check-item.checked { border-color: var(--r-accent); background: #eff6ff; }
-
-/* ── Grade basis toggle ── */
+/* ── Grade basis toggle ───────────────────────────────────── */
 .grade-basis-option {
-    border: 1.5px solid var(--r-border);
+    border: 1.5px solid var(--bill-border);
     border-radius: 10px;
     padding: 12px 14px;
     cursor: pointer;
     transition: border-color .15s, background .15s;
     height: 100%;
 }
-.grade-basis-option:hover { border-color: var(--r-accent); }
-.grade-basis-option.active { border-color: var(--r-accent); background: #eff6ff; }
-.grade-basis-option .form-check-input { margin-top: 3px; accent-color: var(--r-accent); }
-.grade-basis-option .gb-title { font-weight: 700; font-size: 13px; color: var(--r-primary); }
-.grade-basis-option .gb-desc  { font-size: 11.5px; color: var(--r-muted); margin-top: 2px; }
-
-/* ── Form controls inside modals (kept Bootstrap-driven) ── */
-.form-control, .form-select {
-    border: 1.5px solid var(--r-border); border-radius: 8px;
-    font-size: 13px; padding: 9px 14px; transition: border .15s;
+.grade-basis-option:hover { border-color: var(--bill-accent); }
+.grade-basis-option.active {
+    border-color: var(--bill-accent);
+    background: #eff6ff;
 }
-.form-control:focus, .form-select:focus {
-    border-color: var(--r-accent);
-    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
-    outline: none;
-}
-
-/* ── Pagination ── */
-#pagination-container .pagination { margin: 0; }
-#pagination-container .page-link {
-    border: 1.5px solid var(--r-border);
-    border-radius: 7px !important;
-    color: var(--r-primary); font-size: 12px; font-weight: 600;
-    padding: 5px 11px; margin: 0 2px;
-    transition: all .15s;
-}
-#pagination-container .page-link:hover,
-#pagination-container .page-item.active .page-link {
-    background: var(--r-accent); border-color: var(--r-accent); color: #fff;
-}
+.grade-basis-option .form-check-input { margin-top: 3px; }
+.grade-basis-option .gb-title { font-weight: 700; font-size: 13px; color: var(--bill-primary); }
+.grade-basis-option .gb-desc  { font-size: 11.5px; color: var(--bill-muted); margin-top: 2px; }
 </style>
 
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
 
-    {{-- Fixed selection banner --}}
-    <div id="selectionAlert" role="alert">
-        <div class="d-flex align-items-center justify-content-between">
-            <span id="selectionAlertText">No selections made.</span>
-            <button type="button" class="btn-close ms-3" onclick="document.getElementById('selectionAlert').style.display='none'"></button>
-        </div>
-    </div>
-
-    {{-- Breadcrumb --}}
-    <div class="row mb-1" style="margin-top:56px; animation:fadeInDown .4s ease both;">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb m-0 small">
-                    <li class="breadcrumb-item"><a href="#" style="color:var(--r-accent)">Reports</a></li>
-                    <li class="breadcrumb-item active text-muted">{{ $pagetitle }}</li>
-                </ol>
-            </nav>
-        </div>
+    {{-- Fixed selection alert --}}
+    <div id="selectionAlert" class="alert alert-info alert-dismissible fade show"
+         role="alert"
+         style="display:none; position:fixed; top:0; left:0; right:0; z-index:1050; margin:0 auto; max-width:90%;">
+        <span id="selectionAlertText">No selections made.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
     {{-- Hero --}}
-    <div class="r-hero">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1><i class="ri-bar-chart-2-line me-2"></i>{{ $pagetitle }}</h1>
-                <p>Filter, view and export student academic reports by class, session and term.</p>
-            </div>
-        </div>
+    <div class="bill-hero" style="margin-top:16px;">
+        <h1><i class="ri-bar-chart-2-line me-2"></i>{{ $pagetitle }}</h1>
+        <p>Filter, view and export student academic reports by class, session and term.</p>
     </div>
 
     {{-- Flash messages --}}
     @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="animation:fadeInDown .4s ease both;">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <strong>Whoops!</strong> There were some problems with your input.<br><br>
             <ul class="mb-0">
                 @foreach ($errors->all() as $error)
@@ -412,13 +167,14 @@
     @endif
 
     @if (session('status') || session('success'))
-        <div class="alert alert-success border-0 rounded-3 mb-3" style="animation:fadeInDown .4s ease both;">
-            <i class="bi bi-check-circle me-2"></i>{{ session('status') ?? session('success') }}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('status') ?? session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
     @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="animation:fadeInDown .4s ease both;">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
             {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -427,41 +183,41 @@
     {{-- Stat cards --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="r-stat-card">
+            <div class="stat-card">
                 <div class="stat-icon"><i class="ri-group-line"></i></div>
                 <div class="stat-value" id="statTotal">{{ $allstudents ? $allstudents->total() : 0 }}</div>
                 <div class="stat-label">Total Students</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="r-stat-card">
+            <div class="stat-card">
                 <div class="stat-icon"><i class="ri-men-line"></i></div>
-                <div class="stat-value" id="statMale" style="color:var(--r-accent);">—</div>
+                <div class="stat-value text-primary" id="statMale">—</div>
                 <div class="stat-label">Male Students</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="r-stat-card">
+            <div class="stat-card">
                 <div class="stat-icon"><i class="ri-women-line"></i></div>
-                <div class="stat-value" id="statFemale" style="color:var(--r-success);">—</div>
+                <div class="stat-value text-success" id="statFemale">—</div>
                 <div class="stat-label">Female Students</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="r-stat-card">
+            <div class="stat-card">
                 <div class="stat-icon"><i class="ri-file-chart-line"></i></div>
-                <div class="stat-value" id="statSelected" style="color:var(--r-warning);">0</div>
+                <div class="stat-value text-warning" id="statSelected">0</div>
                 <div class="stat-label">Selected for Export</div>
             </div>
         </div>
     </div>
 
-    {{-- ── FILTER CARD ── --}}
-    <div class="r-filter-card">
+    {{-- Filter card --}}
+    <div class="filter-card">
         <div class="row g-3 align-items-end">
             <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Class</label>
-                <select class="r-input" id="idclass" name="schoolclassid">
+                <label class="form-label"><i class="ri-graduation-cap-line me-1"></i>Class</label>
+                <select class="form-select" id="idclass" name="schoolclassid">
                     <option value="ALL">— Select Class —</option>
                     @foreach ($schoolclasses as $class)
                         <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm }}</option>
@@ -469,8 +225,8 @@
                 </select>
             </div>
             <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Session</label>
-                <select class="r-input" id="idsession" name="sessionid">
+                <label class="form-label"><i class="ri-calendar-line me-1"></i>Session</label>
+                <select class="form-select" id="idsession" name="sessionid">
                     <option value="ALL">— Select Session —</option>
                     @foreach ($schoolsessions as $session)
                         <option value="{{ $session->id }}">{{ $session->session }}</option>
@@ -478,8 +234,8 @@
                 </select>
             </div>
             <div class="col-xxl-3 col-sm-6" id="termSelectContainer" style="display:none;">
-                <label class="r-label">Term</label>
-                <select class="r-input" id="idterm" name="termid">
+                <label class="form-label"><i class="ri-time-line me-1"></i>Term</label>
+                <select class="form-select" id="idterm" name="termid">
                     <option value="ALL">— Select Term —</option>
                     <option value="1">First Term</option>
                     <option value="2">Second Term</option>
@@ -487,61 +243,60 @@
                 </select>
             </div>
             <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Search</label>
-                <div class="r-input-icon-wrap">
-                    <i class="bi bi-search r-input-icon"></i>
-                    <input type="text" class="r-input" id="searchInput" name="search" placeholder="Search students...">
-                </div>
+                <label class="form-label"><i class="ri-search-line me-1"></i>Search</label>
+                <input type="text" class="form-control" id="searchInput"
+                       name="search" placeholder="Search students...">
             </div>
             <div class="col-xxl-3 col-sm-6 d-flex gap-2">
-                <button type="button" class="r-btn secondary w-50" id="searchBtn" style="display:none;" onclick="filterData()">
-                    <i class="bi bi-search"></i> Search
+                <button type="button" class="btn btn-primary w-50"
+                        id="searchBtn" style="display:none;" onclick="filterData()">
+                    <i class="ri-search-line me-1"></i>Search
                 </button>
-                <button type="button" class="r-btn success w-50" id="printAllBtn" style="display:none;" onclick="printAllResults()">
-                    <i class="bi bi-printer"></i> Print Selected
+                <button type="button" class="btn btn-success w-50"
+                        id="printAllBtn" style="display:none;" onclick="printAllResults()">
+                    <i class="ri-printer-line me-1"></i>Print Selected
                 </button>
             </div>
         </div>
     </div>
 
-    {{-- ── STUDENT TABLE CARD ── --}}
-    <div class="r-table-card">
-        <div class="card-header">
-            <div class="fw-bold" style="color:var(--r-primary);font-size:14px;">
-                <i class="ri-group-line me-2" style="color:var(--r-accent)"></i>
-                Students
-                <span id="studentcount" class="badge ms-2"
-                      style="background:var(--r-accent);font-size:11px;font-weight:600;">
-                    {{ $allstudents ? $allstudents->total() : 0 }}
-                </span>
+    {{-- Student table card --}}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold" style="color:var(--bill-primary)">
+                    <i class="ri-group-line me-2"></i>Students
+                    <span class="badge bg-primary ms-2" id="studentcount">{{ $allstudents ? $allstudents->total() : 0 }}</span>
+                </h5>
             </div>
         </div>
-
-        <div class="table-responsive">
-            <table class="table r-table w-100 mb-0" id="studentListTable">
-                <thead>
-                    <tr>
-                        <th width="40">
-                            <input class="form-check-input" type="checkbox" id="checkAll">
-                        </th>
-                        <th>Admission No</th>
-                        <th>Picture</th>
-                        <th>Last Name</th>
-                        <th>First Name</th>
-                        <th>Other Name</th>
-                        <th>Gender</th>
-                        <th>Class</th>
-                        <th>Arm</th>
-                        <th>Session</th>
-                    </tr>
-                </thead>
-                <tbody id="studentTableBody">
-                    @include('studentreports.partials.student_rows', ['defaultAvatarSvg' => $defaultAvatarSvg])
-                </tbody>
-            </table>
-        </div>
-        <div class="d-flex justify-content-end p-3" id="pagination-container">
-            {{ $allstudents ? $allstudents->links('pagination::bootstrap-5') : '' }}
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table bill-table w-100 mb-0" id="studentListTable">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input class="form-check-input" type="checkbox" id="checkAll">
+                            </th>
+                            <th>Admission No</th>
+                            <th>Picture</th>
+                            <th>Last Name</th>
+                            <th>First Name</th>
+                            <th>Other Name</th>
+                            <th>Gender</th>
+                            <th>Class</th>
+                            <th>Arm</th>
+                            <th>Session</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        @include('studentreports.partials.student_rows', ['defaultAvatarSvg' => $defaultAvatarSvg])
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-end mt-3" id="pagination-container">
+                {{ $allstudents ? $allstudents->links('pagination::bootstrap-5') : '' }}
+            </div>
         </div>
     </div>
 
@@ -552,10 +307,10 @@
 {{-- ═══════════════════════════════════════════════════════════════════
      Image View Modal
      ═══════════════════════════════════════════════════════════════════ --}}
-<div id="imageViewModal" class="modal fade r-modal" tabindex="-1" aria-hidden="true">
+<div id="imageViewModal" class="modal fade bill-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="r-modal-hero">
+            <div class="modal-hero-bar">
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 <h5><i class="ri-image-line me-2"></i>Student Image</h5>
             </div>
@@ -571,29 +326,37 @@
 {{-- ═══════════════════════════════════════════════════════════════════
      Column Selection Modal
      ═══════════════════════════════════════════════════════════════════ --}}
-<div class="modal fade r-modal" id="columnSelectionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade bill-modal" id="columnSelectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="r-modal-hero">
+            <div class="modal-hero-bar">
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 <h5><i class="ri-layout-column-line me-2"></i>Select Columns for PDF Report</h5>
-                <p>Class, Session, and Term must be selected first.</p>
             </div>
             <div class="modal-body p-4">
+                <div class="alert alert-info d-flex align-items-center gap-2"
+                     style="border-radius:8px; font-size:13px;">
+                    <i class="ri-information-line fs-5"></i>
+                    <span>Select the columns to include in the PDF report. Class, Session, and Term must be selected first.</span>
+                </div>
+
                 <div id="columnSelectionLoader" class="text-center py-5">
-                    <div class="r-loading-spinner mb-3"></div>
-                    <p class="text-muted" style="font-size:13px;">Loading column options...</p>
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading columns...</span>
+                    </div>
+                    <p class="mt-2 text-muted" style="font-size:13px;">Loading column options...</p>
                 </div>
 
                 <div id="columnSelectionForm" style="display:none;">
                     <div class="row g-3">
                         {{-- Grade Basis Toggle --}}
                         <div class="col-12">
-                            <div class="col-section-card">
-                                <div class="col-section-header">
-                                    <span><i class="ri-medal-line me-1"></i>Grade Basis</span>
+                            <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white fw-semibold"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <i class="ri-medal-line me-1"></i>Grade Basis
                                 </div>
-                                <div class="col-section-body">
+                                <div class="card-body">
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="grade-basis-option active d-flex gap-2 mb-0" id="gbOptionTotal">
@@ -621,49 +384,53 @@
                         </div>
 
                         <div class="col-12">
-                            <div class="col-section-card">
-                                <div class="col-section-header">
-                                    <span><i class="ri-user-line me-1"></i>Student Information</span>
+                            <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white fw-semibold"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <i class="ri-user-line me-1"></i>Student Information
                                 </div>
-                                <div class="col-section-body">
+                                <div class="card-body">
                                     <div class="row" id="studentInfoColumns"></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12">
-                            <div class="col-section-card">
-                                <div class="col-section-header">
-                                    <span><i class="ri-pencil-ruler-line me-1"></i>Assessments</span>
+                            <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <span class="fw-semibold"><i class="ri-pencil-ruler-line me-1"></i>Assessments</span>
                                     <div class="form-check mb-0">
                                         <input class="form-check-input" type="checkbox" id="selectAllAssessments">
                                         <label class="form-check-label" for="selectAllAssessments"
-                                               style="font-size:12px; text-transform:none; letter-spacing:0; font-weight:500; color:var(--r-muted);">Select All</label>
+                                               style="font-size:12px;">Select All</label>
                                     </div>
                                 </div>
-                                <div class="col-section-body">
+                                <div class="card-body">
                                     <div class="row" id="assessmentColumns"></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12">
-                            <div class="col-section-card">
-                                <div class="col-section-header">
-                                    <span><i class="ri-bar-chart-line me-1"></i>Scores &amp; Metrics</span>
+                            <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white fw-semibold"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <i class="ri-bar-chart-line me-1"></i>Scores & Metrics
                                 </div>
-                                <div class="col-section-body">
+                                <div class="card-body">
                                     <div class="row" id="scoreColumns"></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-12">
-                            <div class="col-section-card">
-                                <div class="col-section-header">
-                                    <span><i class="ri-more-line me-1"></i>Other Information</span>
+                            <div class="card border" style="border-radius:var(--bill-radius);">
+                                <div class="card-header bg-white fw-semibold"
+                                     style="font-size:13px; color:var(--bill-primary);">
+                                    <i class="ri-more-line me-1"></i>Other Information
                                 </div>
-                                <div class="col-section-body">
+                                <div class="card-body">
                                     <div class="row" id="otherColumns"></div>
                                 </div>
                             </div>
@@ -672,9 +439,9 @@
                 </div>
             </div>
             <div class="modal-footer border-0 px-4 pb-4 pt-0">
-                <button type="button" class="r-btn secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="r-btn primary" id="saveColumnSelection" disabled>
-                    <i class="ri-file-pdf-line"></i> Apply &amp; Generate PDF
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveColumnSelection" disabled>
+                    <i class="ri-file-pdf-line me-1"></i>Apply & Generate PDF
                 </button>
             </div>
         </div>
@@ -788,12 +555,9 @@
         });
 
         const tableBody = document.getElementById('studentTableBody');
-        tableBody.innerHTML = `<tr><td colspan="10">
-            <div class="r-empty">
-                <div class="r-loading-spinner mb-3"></div>
-                <p class="text-muted">Loading students…</p>
-            </div>
-        </td></tr>`;
+        tableBody.innerHTML =
+            '<tr><td colspan="10" class="text-center py-4">' +
+            '<span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading...</td></tr>';
 
         axios.get('{{ route("studentreports.index") }}', {
             params: {
@@ -810,11 +574,7 @@
         }).then(function (response) {
             document.getElementById('studentTableBody').innerHTML =
                 response.data.tableBody ||
-                `<tr><td colspan="10"><div class="r-empty">
-                    <i class="ri-inbox-line r-empty-icon"></i>
-                    <h6>No students found</h6>
-                    <p>Try adjusting your filters</p>
-                </div></td></tr>`;
+                '<tr><td colspan="10" class="text-center py-4 text-muted">No students found.</td></tr>';
             document.getElementById('pagination-container').innerHTML =
                 response.data.pagination || '';
 
@@ -835,24 +595,19 @@
             }
         }).catch(function (error) {
             console.error("[filterData] AJAX error:", error);
-            tableBody.innerHTML = `<tr><td colspan="10"><div class="r-empty">
-                <i class="ri-error-warning-line r-empty-icon" style="color:var(--r-danger)"></i>
-                <h6 style="color:var(--r-danger)">Error loading data</h6>
-                <p>Please try again</p>
-            </div></td></tr>`;
+            tableBody.innerHTML =
+                '<tr><td colspan="10" class="text-center text-danger py-4">' +
+                'Error loading data. Please try again.</td></tr>';
             Swal.fire({ icon: "error", title: "Error",
                         text: error.response?.data?.message || "Failed to fetch student data." });
         });
     }
 
     function resetTable() {
-        document.getElementById('studentTableBody').innerHTML = `<tr><td colspan="10">
-            <div class="r-empty">
-                <i class="ri-filter-line r-empty-icon"></i>
-                <h6>Select Class &amp; Session</h6>
-                <p>Use the filters above to load students.</p>
-            </div>
-        </td></tr>`;
+        const avatarSvg = '{{ $defaultAvatarSvg }}';
+        document.getElementById('studentTableBody').innerHTML =
+            '<tr><td colspan="10" class="text-center py-4 text-muted">' +
+            'Select class and session to view students.</td></tr>';
         document.getElementById('pagination-container').innerHTML = '';
         document.getElementById('studentcount').innerText = '0';
         document.getElementById('statTotal').innerText    = '0';
@@ -961,14 +716,14 @@
                 const subText = config.has_sub_assessments
                     ? '<small class="text-muted d-block">Has sub-assessments</small>' : '';
                 colDiv.innerHTML = `
-                    <label class="col-check-item ${config.default ? 'checked' : ''}" for="col_${key}">
-                        <input class="column-checkbox ${extraClass || ''}"
+                    <div class="form-check">
+                        <input class="form-check-input column-checkbox ${extraClass || ''}"
                                type="checkbox" id="col_${key}" data-column="${key}"
                                ${config.default ? 'checked' : ''}>
-                        <span style="font-size:13px;font-weight:500;">
+                        <label class="form-check-label" for="col_${key}" style="font-size:13px;">
                             ${config.label}${subText}
-                        </span>
-                    </label>`;
+                        </label>
+                    </div>`;
                 container.appendChild(colDiv);
             });
         }
@@ -978,17 +733,8 @@
         renderCheckboxes('scoreColumns',       columns.scores);
         renderCheckboxes('otherColumns',       columns.other);
 
-        document.querySelectorAll('.column-checkbox').forEach(cb => {
-            cb.addEventListener('change', function () {
-                this.closest('.col-check-item')?.classList.toggle('checked', this.checked);
-            });
-        });
-
         document.getElementById('selectAllAssessments').addEventListener('change', function () {
-            document.querySelectorAll('.assessment-checkbox').forEach(cb => {
-                cb.checked = this.checked;
-                cb.closest('.col-check-item')?.classList.toggle('checked', this.checked);
-            });
+            document.querySelectorAll('.assessment-checkbox').forEach(cb => cb.checked = this.checked);
         });
     }
 
@@ -1079,12 +825,9 @@
 
     function loadPage(url) {
         const tableBody = document.getElementById('studentTableBody');
-        tableBody.innerHTML = `<tr><td colspan="10">
-            <div class="r-empty">
-                <div class="r-loading-spinner mb-2"></div>
-                <p class="text-muted">Loading…</p>
-            </div>
-        </td></tr>`;
+        tableBody.innerHTML =
+            '<tr><td colspan="10" class="text-center py-4">' +
+            '<span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading...</td></tr>';
 
         axios.get(url, {
             headers: {
@@ -1095,10 +838,7 @@
         }).then(function (response) {
             document.getElementById('studentTableBody').innerHTML =
                 response.data.tableBody ||
-                `<tr><td colspan="10"><div class="r-empty">
-                    <i class="ri-inbox-line r-empty-icon"></i>
-                    <h6>No students found</h6>
-                </div></td></tr>`;
+                '<tr><td colspan="10" class="text-center py-4 text-muted">No students found.</td></tr>';
             document.getElementById('pagination-container').innerHTML =
                 response.data.pagination || '';
 
@@ -1112,11 +852,9 @@
             updatePrintButtonVisibility();
         }).catch(function (error) {
             console.error("[loadPage] Error:", error);
-            tableBody.innerHTML = `<tr><td colspan="10"><div class="r-empty">
-                <i class="ri-error-warning-line r-empty-icon" style="color:var(--r-danger)"></i>
-                <h6 style="color:var(--r-danger)">Error loading data</h6>
-                <p>Please try again</p>
-            </div></td></tr>`;
+            tableBody.innerHTML =
+                '<tr><td colspan="10" class="text-center text-danger py-4">' +
+                'Error loading data. Please try again.</td></tr>';
             Swal.fire({ icon: "error", title: "Error",
                         text: error.response?.data?.message || "Failed to fetch student data." });
         });
@@ -1200,3 +938,4 @@
         }
     });
 </script>
+@endsection
