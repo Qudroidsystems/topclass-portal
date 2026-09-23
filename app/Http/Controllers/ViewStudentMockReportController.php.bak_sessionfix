@@ -381,11 +381,8 @@ class ViewStudentMockReportController extends Controller
                 ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
                 ->leftJoin('schoolclass', 'schoolclass.id', '=', 'studentclass.schoolclassid')
                 ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-                ->leftJoin('schoolsession', 'schoolsession.id', '=', 'studentclass.sessionid');
-                // No ->where('schoolsession.status', 'Current') here — this is a report
-                // browsing screen (like Promotion Management and the terminal
-                // Student Report screen), so past sessions must stay selectable,
-                // not just whichever one session is currently flagged "Current".
+                ->leftJoin('schoolsession', 'schoolsession.id', '=', 'studentclass.sessionid')
+                ->where('schoolsession.status', 'Current');
 
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
@@ -412,10 +409,7 @@ class ViewStudentMockReportController extends Controller
             ])->latest('studentclass.created_at')->paginate(100);
         }
 
-        // All sessions, not just the one flagged "Current" — this screen is
-        // for browsing mock reports from any session, same as Promotion
-        // Management and the terminal Student Report screen.
-        $schoolsessions = Schoolsession::get();
+        $schoolsessions = Schoolsession::where('status', 'Current')->get();
         $schoolclasses  = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
             ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm']);
 
@@ -467,8 +461,7 @@ class ViewStudentMockReportController extends Controller
             ->join('schoolsession', 'schoolsession.id', '=', 'studentclass.sessionid')
             ->where('schoolclass.id', $classId)
             ->where('schoolsession.id', $sessionId)
-            // No ->where('schoolsession.status', 'Current') — the caller may
-            // have picked any session from the (now unfiltered) dropdown above.
+            ->where('schoolsession.status', 'Current')
             ->groupBy('schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm', 'schoolsession.session')
             ->selectRaw('
                 schoolclass.schoolclass as class_name,
