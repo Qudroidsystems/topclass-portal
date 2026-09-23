@@ -128,7 +128,6 @@
 .promotion-badge-trial,
 .promotion-badge-see_principal,
 .promotion-badge-repeated,
-.promotion-badge-advanced,
 .promotion-badge-pending {
     padding: 4px 12px; border-radius: 20px;
     font-size: 12px; font-weight: 600;
@@ -138,7 +137,6 @@
 .promotion-badge-trial       { background: #f59e0b; color: white; }
 .promotion-badge-see_principal { background: #3b82f6; color: white; }
 .promotion-badge-repeated    { background: #ef4444; color: white; }
-.promotion-badge-advanced    { background: #6366f1; color: white; }
 .promotion-badge-pending     { background: #6b7280; color: white; }
 .badge-pop { animation: badgePop .4s cubic-bezier(.34,1.4,.64,1); }
 
@@ -525,10 +523,6 @@
             {{-- Bulk action bar --}}
             <div class="bulk-action-bar" id="bulkActionBar">
                 <span class="bulk-count"><span id="bulkSelectedCount">0</span> selected</span>
-                <button type="button" class="btn btn-sm btn-info text-white" id="advanceTermActionBtn" onclick="submitAdvanceTerm()"
-                        title="Move selected students to the next term, same class and session">
-                    <i class="ri-skip-forward-line me-1"></i>Advance to Next Term
-                </button>
                 <button type="button" class="btn btn-sm btn-primary" id="bulkPromoteActionBtn" onclick="openBulkPromoteModal()">
                     <i class="ri-user-shared-line me-1"></i>Bulk Promote
                 </button>
@@ -550,7 +544,6 @@
                                 <th>Arm</th>
                                 <th>Session</th>
                                 <th>Overall Avg</th>
-                                <th>Position</th>
                                 <th>System Recommendation</th>
                                 <th>Promotion Status</th>
                                 <th style="width:90px;">Actions</th>
@@ -1381,61 +1374,6 @@ function submitBulkPromote() {
     });
 }
 
-function submitAdvanceTerm() {
-    const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
-    if (!ids.length) { showToast('No students selected', 'warning'); return; }
-
-    const schoolclassid  = document.getElementById('idclass').value;
-    const sessionid      = document.getElementById('idsession').value;
-    const currentTermId  = document.getElementById('idterm').value;
-
-    if (!schoolclassid || !sessionid || !currentTermId) {
-        showToast('Select class, session and term first', 'warning');
-        return;
-    }
-    if (parseInt(currentTermId, 10) >= 3) {
-        showToast('Term 3 is the last term — use Bulk Promote to move into a new class/session instead', 'warning');
-        return;
-    }
-
-    const fd = new FormData();
-    ids.forEach((id, i) => fd.append(`student_ids[${i}]`, id));
-    fd.append('schoolclassid', schoolclassid);
-    fd.append('sessionid', sessionid);
-    fd.append('current_termid', currentTermId);
-
-    Swal.fire({
-        title: 'Advance to Next Term',
-        text: `Move ${ids.length} student(s) to the next term, same class and session?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Advance',
-    }).then(result => {
-        if (!result.isConfirmed) return;
-        showLoading('Advancing term…');
-        axios.post('{{ route("promotions.advance-term") }}', fd, {
-            headers: { 'X-CSRF-TOKEN': CSRF }
-        }).then(response => {
-            hideLoading();
-            showToast(response.data.message || (response.data.success ? 'Advanced' : 'Failed'), response.data.success ? 'success' : 'danger');
-            if (response.data.success) filterData();
-        }).catch(error => {
-            hideLoading();
-            showToast(error.response?.data?.message || 'Advance term failed', 'danger');
-        });
-    });
-}
-
-function updateAdvanceTermButtonVisibility() {
-    const btn = document.getElementById('advanceTermActionBtn');
-    if (!btn) return;
-    const currentTermId = document.getElementById('idterm')?.value;
-    // Hidden once there's no next term to advance into (Term 3 is the last
-    // term of a session) — a class/session promotion is the right action
-    // there instead, via the existing Bulk Promote modal.
-    btn.style.display = (currentTermId && parseInt(currentTermId, 10) >= 3) ? 'none' : '';
-}
-
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
@@ -1470,12 +1408,8 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('idclass').addEventListener('change', filterData);
     document.getElementById('idsession').addEventListener('change', filterData);
-    document.getElementById('idterm').addEventListener('change', function () {
-        filterData();
-        updateAdvanceTermButtonVisibility();
-    });
+    document.getElementById('idterm').addEventListener('change', filterData);
     document.getElementById('average_basis').addEventListener('change', filterData);
-    updateAdvanceTermButtonVisibility();
 
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function () {

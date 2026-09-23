@@ -28,7 +28,7 @@ class PromotionController extends Controller
     public function __construct(PromotionEvaluator $promotionEvaluator)
     {
         $this->middleware('permission:View promotion',   ['only' => ['index', 'getStudentDetails']]);
-        $this->middleware('permission:Update promotion', ['only' => ['update', 'destroy', 'bulkPromote', 'advanceTerm']]);
+        $this->middleware('permission:Update promotion', ['only' => ['update', 'destroy', 'bulkPromote']]);
         $this->promotionEvaluator = $promotionEvaluator;
     }
 
@@ -60,17 +60,6 @@ class PromotionController extends Controller
             try {
                 $shouldSkipEvaluator = $this->classHasNoApplicableSetting(
                     $schoolclassId, $sessionId, $termId
-                );
-
-                // Live class position (competition-ranked, broadsheet-derived
-                // cohort — same reasoning as the transcript fix: Studentclass
-                // enrolment only gets a row once a student is formally
-                // advanced via this screen, so scoping the ranking cohort by
-                // Studentclass would silently exclude anyone scored for this
-                // term but not yet promoted into it). Computed once per
-                // class/session/term/basis combo, not per student.
-                $classPositions = $this->buildClassPositions(
-                    $schoolclassId, $sessionId, $termId, $averageBasis
                 );
 
                 $query = Studentclass::query()
@@ -122,7 +111,7 @@ class PromotionController extends Controller
 
                 $allstudents->getCollection()->transform(
                     function ($student) use (
-                        $schoolclassId, $sessionId, $termId, $shouldSkipEvaluator, $averageBasis, $classPositions
+                        $schoolclassId, $sessionId, $termId, $shouldSkipEvaluator, $averageBasis
                     ) {
                         $scores = $this->getStudentScores(
                             $student->stid, $schoolclassId, $sessionId, $termId
@@ -153,9 +142,6 @@ class PromotionController extends Controller
 
                         $student->overall_average = $overallAverage;
                         $student->average_basis   = $averageBasis;
-                        $student->position        = $this->formatOrdinal(
-                            $classPositions[(int) $student->stid] ?? null
-                        );
 
                         $existing = PromotionStatus::where('studentId',     $student->stid)
                             ->where('schoolclassid', $schoolclassId)
@@ -456,24 +442,54 @@ class PromotionController extends Controller
         };
 
         try {
-            $newClassId   = $request->new_schoolclassid;
-            $newSessionId = $request->new_sessionid;
-            $newTermId    = $request->new_termid;
+            DB::transaction(function () use ($studentId, $request, $promotionStatus) {
+                $newClassId   = $request->new_schoolclassid;
+                $newSessionId = $request->new_sessionid;
+                $newTermId    = $request->new_termid;
 
-            // Precomputed once for all 3 terms of the target class/session —
-            // applyPromotionDecision() decides how many of them it actually
-            // needs to write to.
-            $classPositionsByTerm = [
-                1 => $this->buildClassPositions($newClassId, $newSessionId, 1, 'total'),
-                2 => $this->buildClassPositions($newClassId, $newSessionId, 2, 'total'),
-                3 => $this->buildClassPositions($newClassId, $newSessionId, 3, 'total'),
-            ];
+                $existingClass = Studentclass::where('studentId', $studentId)
+                    ->where('sessionid', $newSessionId)
+                    ->where('termid',    $newTermId)
+                    ->first();
 
-            DB::transaction(function () use (
-                $studentId, $newClassId, $newSessionId, $newTermId, $promotionStatus, $classPositionsByTerm
-            ) {
-                $this->applyPromotionDecision(
-                    $studentId, $newClassId, $newSessionId, $newTermId, $promotionStatus, $classPositionsByTerm
+                if ($existingClass) {
+                    $existingClass->update(['schoolclassid' => $newClassId]);
+                } else {
+                    Studentclass::create([
+                        'studentId'     => $studentId,
+                        'schoolclassid' => $newClassId,
+                        'sessionid'     => $newSessionId,
+                        'termid'        => $newTermId,
+                    ]);
+                }
+
+                PromotionStatus::updateOrCreate(
+                    [
+                        'studentId'     => $studentId,
+                        'schoolclassid' => $newClassId,
+                        'sessionid'     => $newSessionId,
+                        'termid'        => $newTermId,
+                    ],
+                    [
+                        'promotionStatus' => $promotionStatus,
+                        'classstatus'     => 'CURRENT',
+                        'position'        => null,
+                        'evaluated_at'    => now(),
+                    ]
+                );
+
+                DB::table('student_current_term')
+                    ->where('studentId', $studentId)
+                    ->update(['is_current' => false]);
+
+                StudentCurrentTerm::updateOrCreate(
+                    [
+                        'studentId'     => $studentId,
+                        'schoolclassId' => $newClassId,
+                        'termId'        => $newTermId,
+                        'sessionId'     => $newSessionId,
+                    ],
+                    ['is_current' => true]
                 );
             });
 
@@ -555,25 +571,42 @@ class PromotionController extends Controller
             default         => 'PARENTS_TO_SEE_PRINCIPAL',
         };
 
-        // Precomputed once for all 3 terms of the target class/session —
-        // applyPromotionDecision() decides how many of them it actually
-        // needs to write to, per student.
-        $classPositionsByTerm = [
-            1 => $this->buildClassPositions($request->new_schoolclassid, $request->new_sessionid, 1, 'total'),
-            2 => $this->buildClassPositions($request->new_schoolclassid, $request->new_sessionid, 2, 'total'),
-            3 => $this->buildClassPositions($request->new_schoolclassid, $request->new_sessionid, 3, 'total'),
-        ];
-
         foreach ($request->student_ids as $studentId) {
             try {
-                DB::transaction(function () use ($studentId, $request, $promotionStatus, $classPositionsByTerm) {
-                    $this->applyPromotionDecision(
-                        $studentId,
-                        $request->new_schoolclassid,
-                        $request->new_sessionid,
-                        $request->new_termid,
-                        $promotionStatus,
-                        $classPositionsByTerm
+                DB::transaction(function () use ($studentId, $request, $promotionStatus) {
+                    $newClassId   = $request->new_schoolclassid;
+                    $newSessionId = $request->new_sessionid;
+                    $newTermId    = $request->new_termid;
+
+                    $existingClass = Studentclass::where('studentId', $studentId)
+                        ->where('sessionid', $newSessionId)
+                        ->where('termid',    $newTermId)
+                        ->first();
+
+                    if ($existingClass) {
+                        $existingClass->update(['schoolclassid' => $newClassId]);
+                    } else {
+                        Studentclass::create([
+                            'studentId'     => $studentId,
+                            'schoolclassid' => $newClassId,
+                            'sessionid'     => $newSessionId,
+                            'termid'        => $newTermId,
+                        ]);
+                    }
+
+                    PromotionStatus::updateOrCreate(
+                        [
+                            'studentId'     => $studentId,
+                            'schoolclassid' => $newClassId,
+                            'sessionid'     => $newSessionId,
+                            'termid'        => $newTermId,
+                        ],
+                        [
+                            'promotionStatus' => $promotionStatus,
+                            'classstatus'     => 'CURRENT',
+                            'position'        => null,
+                            'evaluated_at'    => now(),
+                        ]
                     );
                 });
                 $successCount++;
@@ -596,302 +629,8 @@ class PromotionController extends Controller
     }
 
     // =========================================================================
-    // ADVANCE TERM (same class/session, term = current + 1 — a lighter-
-    // weight quick action for the common per-term case, so staff no longer
-    // have to re-pick class/session/term in the general bulk modal just to
-    // move students from, say, Term 1 to Term 2 of the same class/session)
-    // =========================================================================
-
-    public function advanceTerm(Request $request): JsonResponse
-    {
-        $request->validate([
-            'student_ids'    => 'required|array',
-            'student_ids.*'  => 'exists:studentRegistration,id',
-            'schoolclassid'  => 'required|exists:schoolclass,id',
-            'sessionid'      => 'required|exists:schoolsession,id',
-            'current_termid' => 'required|integer|min:1|max:3',
-        ]);
-
-        $currentTermId = (int) $request->current_termid;
-
-        if ($currentTermId >= 3) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Term 3 is the last term of the session — use Bulk Promote to move students into a new class/session instead.',
-            ], 422);
-        }
-
-        $newTermId     = $currentTermId + 1;
-        $schoolclassId = $request->schoolclassid;
-        $sessionId     = $request->sessionid;
-
-        $successCount = 0;
-        $failCount    = 0;
-
-        // Same class/session for everyone in the batch, so this is computed
-        // once, not per student.
-        $classPositions = $this->buildClassPositions($schoolclassId, $sessionId, $newTermId, 'total');
-
-        foreach ($request->student_ids as $studentId) {
-            try {
-                DB::transaction(function () use (
-                    $studentId, $schoolclassId, $sessionId, $newTermId, $classPositions
-                ) {
-                    $existingClass = Studentclass::where('studentId', $studentId)
-                        ->where('sessionid', $sessionId)
-                        ->where('termid',    $newTermId)
-                        ->first();
-
-                    if ($existingClass) {
-                        $existingClass->update(['schoolclassid' => $schoolclassId]);
-                    } else {
-                        Studentclass::create([
-                            'studentId'     => $studentId,
-                            'schoolclassid' => $schoolclassId,
-                            'sessionid'     => $sessionId,
-                            'termid'        => $newTermId,
-                        ]);
-                    }
-
-                    $livePosition = $this->formatOrdinal($classPositions[(int) $studentId] ?? null);
-
-                    // 'ADVANCED' is a distinct status from the promotion
-                    // decisions (PROMOTED/TRIAL/SEE_PRINCIPAL/REPEAT/
-                    // PARENTS_TO_SEE_PRINCIPAL) written by update()/
-                    // bulkPromote() — this is a same-class term rollover,
-                    // not a promotion/repeat decision, and is rendered with
-                    // its own badge in the promotion table.
-                    PromotionStatus::updateOrCreate(
-                        [
-                            'studentId'     => $studentId,
-                            'schoolclassid' => $schoolclassId,
-                            'sessionid'     => $sessionId,
-                            'termid'        => $newTermId,
-                        ],
-                        [
-                            'promotionStatus' => 'ADVANCED',
-                            'classstatus'     => 'CURRENT',
-                            'position'        => $livePosition,
-                            'evaluated_at'    => now(),
-                        ]
-                    );
-
-                    DB::table('student_current_term')
-                        ->where('studentId', $studentId)
-                        ->update(['is_current' => false]);
-
-                    StudentCurrentTerm::updateOrCreate(
-                        [
-                            'studentId'     => $studentId,
-                            'schoolclassId' => $schoolclassId,
-                            'termId'        => $newTermId,
-                            'sessionId'     => $sessionId,
-                        ],
-                        ['is_current' => true]
-                    );
-                });
-                $successCount++;
-            } catch (Throwable $e) {
-                $failCount++;
-                Log::error('Advance term failed for student', [
-                    'studentId' => $studentId,
-                    'error'     => $e->getMessage(),
-                    'class'     => get_class($e),
-                ]);
-            }
-        }
-
-        return response()->json([
-            'success'       => true,
-            'message'       => "{$successCount} student(s) advanced to Term {$newTermId}. {$failCount} failed.",
-            'success_count' => $successCount,
-            'fail_count'    => $failCount,
-        ]);
-    }
-
-    // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
-
-    /**
-     * Writes the Studentclass enrolment + PromotionStatus decision for a
-     * single student's promotion (shared by update() and bulkPromote()),
-     * then syncs student_current_term.
-     *
-     * A real promotion is a whole-session event: when the student has NO
-     * existing enrolment at all in $newSessionId, this registers them for
-     * all 3 terms of that session up front (Studentclass + PromotionStatus
-     * rows for terms 1, 2 and 3, all carrying the same decision) instead of
-     * just the one term picked in the form — otherwise terms 2 and 3 of the
-     * new session would have no enrolment row until someone manually fixed
-     * it later, which is exactly the per-term gap the rest of this round of
-     * fixes targets. When the student already has SOME enrolment in
-     * $newSessionId (e.g. this is just a same-session class/arm correction,
-     * not a real promotion), only the single selected term is touched.
-     *
-     * $classPositionsByTerm: [1 => [studentId => rank], 2 => [...], 3 =>
-     * [...]] for the target class/session, precomputed by the caller so a
-     * bulk operation doesn't re-run buildClassPositions() per student.
-     */
-    private function applyPromotionDecision(
-        int $studentId,
-        int $newClassId,
-        int $newSessionId,
-        int $newTermId,
-        string $promotionStatus,
-        array $classPositionsByTerm
-    ): void {
-        $isNewSession = ! Studentclass::where('studentId', $studentId)
-            ->where('sessionid', $newSessionId)
-            ->exists();
-
-        $termsToWrite = $isNewSession ? [1, 2, 3] : [$newTermId];
-
-        foreach ($termsToWrite as $t) {
-            $existingClass = Studentclass::where('studentId', $studentId)
-                ->where('sessionid', $newSessionId)
-                ->where('termid',    $t)
-                ->first();
-
-            if ($existingClass) {
-                $existingClass->update(['schoolclassid' => $newClassId]);
-            } else {
-                Studentclass::create([
-                    'studentId'     => $studentId,
-                    'schoolclassid' => $newClassId,
-                    'sessionid'     => $newSessionId,
-                    'termid'        => $t,
-                ]);
-            }
-
-            $livePosition = $this->formatOrdinal($classPositionsByTerm[$t][(int) $studentId] ?? null);
-
-            PromotionStatus::updateOrCreate(
-                [
-                    'studentId'     => $studentId,
-                    'schoolclassid' => $newClassId,
-                    'sessionid'     => $newSessionId,
-                    'termid'        => $t,
-                ],
-                [
-                    'promotionStatus' => $promotionStatus,
-                    'classstatus'     => 'CURRENT',
-                    'position'        => $livePosition,
-                    'evaluated_at'    => now(),
-                ]
-            );
-        }
-
-        DB::table('student_current_term')
-            ->where('studentId', $studentId)
-            ->update(['is_current' => false]);
-
-        StudentCurrentTerm::updateOrCreate(
-            [
-                'studentId'     => $studentId,
-                'schoolclassId' => $newClassId,
-                'termId'        => $newTermId,
-                'sessionId'     => $newSessionId,
-            ],
-            ['is_current' => true]
-        );
-    }
-
-    /**
-     * Live class position, ranked by competition rank (ties share a rank;
-     * the next distinct value resumes at its 1-indexed sorted position) —
-     * same rule as TranscriptController::competitionRank(). The cohort and
-     * scores come straight from broadsheet data for this exact
-     * class/session/term, not from Studentclass: Studentclass only gets a
-     * row for a student once they're formally advanced via this screen (or
-     * the general bulk-promote modal), which in practice happens roughly
-     * once a year — scoping the ranking cohort by it would silently exclude
-     * every student who has real scores for a term they were never
-     * "promoted" into, which is exactly the per-term gap this fix targets.
-     *
-     * Returns [studentId => rank].
-     */
-    private function buildClassPositions(int $schoolclassId, int $sessionId, int $termId, string $basis): array
-    {
-        $field = $basis === 'cum' ? 'cum' : 'total';
-
-        $rows = DB::table('broadsheets')
-            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-            ->where('broadsheet_records.schoolclass_id', $schoolclassId)
-            ->where('broadsheets.term_id',               $termId)
-            ->where('broadsheet_records.session_id',     $sessionId)
-            ->select([
-                'broadsheet_records.student_id as student_id',
-                "broadsheets.{$field} as value",
-            ])
-            ->get();
-
-        if ($rows->isEmpty()) {
-            return [];
-        }
-
-        $valuesById = [];
-        foreach ($rows->groupBy('student_id') as $studentId => $studentRows) {
-            $values = $studentRows->pluck('value')
-                ->filter(fn ($v) => $v !== null)
-                ->map(fn ($v) => (float) $v);
-
-            if ($values->isEmpty()) {
-                continue;
-            }
-
-            $valuesById[(int) $studentId] = round($values->avg(), 2);
-        }
-
-        return $this->competitionRank($valuesById);
-    }
-
-    /**
-     * Competition ranking: ties share a rank; the next distinct value
-     * resumes at its 1-indexed sorted position (e.g. 90,90,80 → 1,1,3).
-     */
-    private function competitionRank(array $valuesById): array
-    {
-        if (empty($valuesById)) {
-            return [];
-        }
-
-        arsort($valuesById);
-
-        $ranks     = [];
-        $position  = 0;
-        $prevValue = null;
-        $prevRank  = null;
-
-        foreach ($valuesById as $studentId => $value) {
-            $position++;
-            $rank = ($prevValue !== null && $value == $prevValue) ? $prevRank : $position;
-
-            $ranks[$studentId] = $rank;
-            $prevValue = $value;
-            $prevRank  = $rank;
-        }
-
-        return $ranks;
-    }
-
-    private function formatOrdinal(?int $position): ?string
-    {
-        if ($position === null) {
-            return null;
-        }
-
-        if ($position % 100 >= 11 && $position % 100 <= 13) {
-            return "{$position}th";
-        }
-
-        return match ($position % 10) {
-            1       => "{$position}st",
-            2       => "{$position}nd",
-            3       => "{$position}rd",
-            default => "{$position}th",
-        };
-    }
 
     private function classHasNoApplicableSetting(
         int $schoolclassId,

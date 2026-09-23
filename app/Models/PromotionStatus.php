@@ -11,7 +11,12 @@ class PromotionStatus extends Model
 
     protected $table = 'promotionStatus';
 
-    protected $primaryKey = 'studentId';
+    // NOTE: no custom $primaryKey here on purpose. The table's real primary
+    // key is the auto-increment `id` column from the original migration
+    // ($table->id()) — the previous `protected $primaryKey = 'studentId'`
+    // was wrong (studentId is not even unique per row: a student has one
+    // promotionStatus row per class/session/term) and broke
+    // updateOrCreate()/save() key resolution.
 
     protected $fillable = [
         'studentId',
@@ -20,7 +25,14 @@ class PromotionStatus extends Model
         'termid',
         'sessionid',
         'promotionStatus',
-        'classstatus'
+        'classstatus',
+        'evaluated_at',
+        'rule_applied',
+        'overall_average',
+        'promotion_pass_average',
+    ];
 
+    protected $casts = [
+        'evaluated_at' => 'datetime',
     ];
 }
