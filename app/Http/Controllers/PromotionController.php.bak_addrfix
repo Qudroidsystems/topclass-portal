@@ -395,15 +395,8 @@ class PromotionController extends Controller
             // Bio-data + parent/guardian contact — a lightweight, separate
             // lookup rather than relying on $student (which was fetched
             // above with only a handful of display columns selected).
-            // 'permanent_address' does not exist on studentRegistration —
-            // the real home-address column is 'home_address2' (the original
-            // 'home_address' column was renamed to 'future_ambition' back in
-            // migration 2025_09_10_152943). Aliased back to permanent_address
-            // here so the JSON contract this endpoint already returns, and
-            // the JS reading response.data.student_bio.permanent_address,
-            // both stay unchanged.
             $studentBio = Student::where('id', $studentId)
-                ->select(['gender', 'dateofbirth', 'admission_date', 'phone_number', 'home_address2 as permanent_address'])
+                ->select(['gender', 'dateofbirth', 'admission_date', 'phone_number', 'permanent_address'])
                 ->first();
 
             $parentInfo = ParentRegistration::where('studentId', $studentId)

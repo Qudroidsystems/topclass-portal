@@ -396,108 +396,6 @@
     .stat-flash, .badge-pop { animation: none !important; }
     .toast-notification, .modal-content { animation: none !important; }
 }
-
-/* ═══════════════════════════════════════════════════════════
-   PROFESSIONAL ACTION-BUTTON SYSTEM (pm-btn)
-   A consistent look for every action button on this screen —
-   layered on top of Bootstrap's .btn (kept for its resets and
-   for data-bs-* behaviour), never replacing it.
-═══════════════════════════════════════════════════════════ */
-.pm-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 9px 18px; border-radius: 9px;
-    font-size: 12.5px; font-weight: 600; letter-spacing: .1px;
-    border: 1.5px solid transparent;
-    transition: transform .16s cubic-bezier(.34,1.4,.64,1), box-shadow .16s ease, background .16s ease, color .16s ease, border-color .16s ease;
-    white-space: nowrap; line-height: 1.3;
-}
-.pm-btn i { font-size: 15px; line-height: 1; }
-.pm-btn:active { transform: translateY(0) scale(.97) !important; }
-.pm-btn:focus-visible { outline: 2px solid var(--pay-accent); outline-offset: 2px; }
-.pm-btn:disabled, .pm-btn.disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-
-.pm-btn-sm { padding: 7px 14px; font-size: 12px; }
-
-.pm-btn-primary { background: linear-gradient(135deg, var(--pay-primary), var(--pay-accent)); color: #fff; box-shadow: 0 2px 6px rgba(37,99,235,.25); }
-.pm-btn-primary:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,.35); }
-
-.pm-btn-info { background: linear-gradient(135deg, #0e7490, #06b6d4); color: #fff; box-shadow: 0 2px 6px rgba(6,182,212,.25); }
-.pm-btn-info:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(6,182,212,.35); }
-
-.pm-btn-dark { background: linear-gradient(135deg, #1e293b, #334155); color: #fff; box-shadow: 0 2px 6px rgba(30,41,59,.25); }
-.pm-btn-dark:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(30,41,59,.35); }
-
-.pm-btn-outline { background: #fff; color: var(--pay-primary); border-color: var(--pay-border); }
-.pm-btn-outline:hover { border-color: var(--pay-accent); color: var(--pay-accent); background: #f0f6ff; transform: translateY(-1px); }
-
-.pm-btn-ghost { background: transparent; color: #64748b; border-color: transparent; }
-.pm-btn-ghost:hover { background: #f1f5f9; color: #334155; }
-
-.pm-btn-light { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.32); backdrop-filter: blur(4px); }
-.pm-btn-light:hover { background: rgba(255,255,255,.24); color: #fff; transform: translateY(-1px); }
-
-/* ═══════════════════════════════════════════════════════════
-   FEATURE GUIDE — collapsible "+" accordion
-═══════════════════════════════════════════════════════════ */
-.pm-guide-card {
-    background: #fff; border: 1px solid var(--pay-border);
-    border-radius: var(--pay-radius); box-shadow: var(--pay-shadow);
-    margin-bottom: 20px; overflow: hidden;
-}
-.pm-guide-toggle {
-    width: 100%; border: none; background: #fff; cursor: pointer;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 20px; text-align: left; transition: background .15s ease;
-}
-.pm-guide-toggle:hover { background: #f8fafc; }
-.pm-guide-toggle-left { display: flex; align-items: center; gap: 12px; }
-.pm-guide-icon {
-    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-    background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb;
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
-}
-.pm-guide-title { display: block; font-size: 14px; font-weight: 700; color: #0f172a; }
-.pm-guide-sub   { display: block; font-size: 12px; color: #64748b; margin-top: 1px; }
-.pm-guide-plus {
-    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-    background: #eff6ff; color: #2563eb;
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
-    transition: transform .25s cubic-bezier(.34,1.4,.64,1), background .2s ease;
-}
-.pm-guide-toggle[aria-expanded="true"] .pm-guide-plus { transform: rotate(135deg); background: #dbeafe; }
-
-.pm-guide-body { max-height: 0; overflow: hidden; transition: max-height .38s cubic-bezier(.4,0,.2,1); border-top: 1px solid transparent; }
-.pm-guide-body.open { max-height: 2400px; border-top-color: var(--pay-border); }
-.pm-guide-inner { padding: 18px 20px 4px; }
-
-.pm-guide-inner .accordion-item { border: 1px solid var(--pay-border); border-radius: 10px !important; overflow: hidden; margin-bottom: 10px; }
-.pm-guide-inner .accordion-item:last-of-type { margin-bottom: 0; }
-.pm-guide-inner .accordion-button {
-    font-size: 13px; font-weight: 600; color: #1e293b; background: #f8fafc;
-    padding: 12px 16px; box-shadow: none !important;
-}
-.pm-guide-inner .accordion-button:not(.collapsed) { background: #eff6ff; color: #1d4ed8; }
-.pm-guide-inner .accordion-button:focus { box-shadow: none; border-color: var(--pay-border); }
-.pm-guide-inner .accordion-button::after { width: 1em; height: 1em; background-size: 1em; }
-.pm-guide-inner .accordion-body { font-size: 12.8px; color: #475569; line-height: 1.65; padding: 14px 16px 16px; }
-.pm-guide-inner .accordion-body strong { color: #1e293b; }
-.pm-guide-inner .accordion-body a { color: #2563eb; font-weight: 600; text-decoration: none; }
-.pm-guide-inner .accordion-body a:hover { text-decoration: underline; }
-
-.pm-guide-footer {
-    margin: 14px 20px 18px; padding: 12px 16px;
-    background: linear-gradient(135deg, #eff6ff, #eef2ff);
-    border: 1px solid #bfdbfe; border-radius: 10px;
-    font-size: 12.5px; color: #1e3a5f;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-}
-.pm-guide-footer i { font-size: 17px; color: #2563eb; }
-.pm-guide-footer a {
-    display: inline-flex; align-items: center; gap: 4px;
-    color: #1d4ed8; font-weight: 700; text-decoration: none;
-    margin-left: auto;
-}
-.pm-guide-footer a:hover { text-decoration: underline; }
 </style>
 
 <div class="main-content">
@@ -513,8 +411,8 @@
                     </div>
                     <div>
                         @if (\Illuminate\Support\Facades\Route::has('promotion-settings.index'))
-                        <a href="{{ route('promotion-settings.index') }}" class="btn pm-btn pm-btn-light">
-                            <i class="ri-settings-4-line"></i>Promotion Settings
+                        <a href="{{ route('promotion-settings.index') }}" class="btn btn-light">
+                            <i class="ri-settings-4-line me-1"></i>Promotion Settings
                         </a>
                         @endif
                     </div>
@@ -553,128 +451,17 @@
                 </div>
             </div>
 
-            {{-- Feature Guide (collapsible) --}}
-            <div class="pm-guide-card">
-                <button type="button" class="pm-guide-toggle" id="pmGuideToggle" onclick="togglePmGuide()" aria-expanded="false" aria-controls="pmGuideBody">
-                    <span class="pm-guide-toggle-left">
-                        <span class="pm-guide-icon"><i class="ri-book-open-line"></i></span>
-                        <span>
-                            <span class="pm-guide-title">Promotion Management — Feature Guide</span>
-                            <span class="pm-guide-sub">Click to learn what each control on this screen does</span>
-                        </span>
-                    </span>
-                    <span class="pm-guide-plus" id="pmGuidePlus"><i class="ri-add-line"></i></span>
-                </button>
-
-                <div class="pm-guide-body" id="pmGuideBody">
-                    <div class="pm-guide-inner">
-                        <div class="accordion" id="pmFeatureAccordion">
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pmFeat1">
-                                        <i class="ri-filter-3-line me-2"></i>&nbsp;Filtering by Class, Session &amp; Term
-                                    </button>
-                                </h2>
-                                <div id="pmFeat1" class="accordion-collapse collapse" data-bs-parent="#pmFeatureAccordion">
-                                    <div class="accordion-body">
-                                        Choose a <strong>Class/Arm</strong>, <strong>Session</strong> and <strong>Term</strong> to load that class's
-                                        students for this screen — every other feature here (quick select, bulk actions, printing) works on
-                                        whichever students are currently loaded. <strong>Average Basis</strong> decides whether Overall Average and
-                                        class Position are computed from Term Total or Cumulative score, and should match the broadsheet's own
-                                        Grade Basis so the numbers agree. Promotion evaluation itself runs on the same rules engine as the
-                                        broadsheet — rules are configured under
-                                        @if (\Illuminate\Support\Facades\Route::has('promotion-settings.index'))
-                                        <a href="{{ route('promotion-settings.index') }}">Promotion Settings</a>.
-                                        @else
-                                        Promotion Settings.
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pmFeat2">
-                                        <i class="ri-user-settings-line me-2"></i>&nbsp;Managing an Individual Student
-                                    </button>
-                                </h2>
-                                <div id="pmFeat2" class="accordion-collapse collapse" data-bs-parent="#pmFeatureAccordion">
-                                    <div class="accordion-body">
-                                        Click a student's row to open their promotion record: bio-data, parent/guardian contact, full subject
-                                        scores, compulsory-subject pass status, and their class history with each prior term's saved promotion
-                                        status. From there you record one decision — <strong>Promote</strong>, <strong>On Trial</strong>,
-                                        <strong>See Principal</strong> or <strong>Repeat</strong> — and choose the new class, session and term.
-                                        Promoting a student into a <strong>session they have no existing enrolment in</strong> automatically
-                                        registers them for all three terms of that session with the same decision, since a real promotion moves a
-                                        student into a whole new academic session, not just one term of it.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pmFeat3">
-                                        <i class="ri-checkbox-multiple-line me-2"></i>&nbsp;Quick Select by System Recommendation
-                                    </button>
-                                </h2>
-                                <div id="pmFeat3" class="accordion-collapse collapse" data-bs-parent="#pmFeatureAccordion">
-                                    <div class="accordion-body">
-                                        The <strong>System Recommendation</strong> column shows what the promotion rules engine currently
-                                        recommends for each student, computed live from their scores — it is separate from the
-                                        <strong>Promotion Status</strong> column, which only shows a decision once you've actually saved one.
-                                        Pick a recommendation from the Quick Select dropdown and click <strong>Select Matching</strong> to
-                                        instantly tick every student the system currently recommends for that outcome, instead of ticking each
-                                        one by hand — a fast starting point before Bulk Promote.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pmFeat4">
-                                        <i class="ri-user-shared-line me-2"></i>&nbsp;Bulk Promote &amp; Advance to Next Term
-                                    </button>
-                                </h2>
-                                <div id="pmFeat4" class="accordion-collapse collapse" data-bs-parent="#pmFeatureAccordion">
-                                    <div class="accordion-body">
-                                        Tick students in the table (or use Quick Select above) to reveal the bulk action bar.
-                                        <strong>Bulk Promote</strong> applies one new class, session, term and decision to every selected student
-                                        at once — the same whole-session registration rule from individual promotion still applies. <strong>Advance
-                                        to Next Term</strong> is a lighter action for when a class simply needs to move from one term to the next
-                                        within the same session and class — it does not change the promotion decision itself, just marks the
-                                        selected students as advanced.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pmFeat5">
-                                        <i class="ri-printer-line me-2"></i>&nbsp;Print Student List
-                                    </button>
-                                </h2>
-                                <div id="pmFeat5" class="accordion-collapse collapse" data-bs-parent="#pmFeatureAccordion">
-                                    <div class="accordion-body">
-                                        Opens a print-ready student list, grouped by System Recommendation, in a new tab. Choose a scope before
-                                        opening it: <strong>This Class/Arm</strong>, <strong>Class-wide</strong> (every arm of the selected class
-                                        level) or <strong>Whole School</strong>. The print screen itself has its own settings panel for paper
-                                        size (A4 to A1, Legal, Letter), orientation, which columns to show, and whether each class or
-                                        recommendation group starts on a new page — settings are remembered in the browser for next time.
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div class="pm-guide-footer">
-                            <i class="ri-global-line"></i>
-                            <span>Want the full picture of what Vite Schools' school management platform can do?</span>
-                            <a href="https://www.viteschools.ng" target="_blank" rel="noopener noreferrer">
-                                Visit www.viteschools.ng <i class="ri-external-link-line"></i>
-                            </a>
-                        </div>
-                    </div>
+            {{-- Info banner --}}
+            <div class="info-banner">
+                <i class="ri-information-line"></i>
+                <div class="text">
+                    <strong>Promotion evaluation uses the same rules as Broadsheet.</strong>
+                    Choose <em>Average Basis</em> (Term Total or Cumulative) so overall average matches the broadsheet Grade Basis. Configure rules under
+                    @if (\Illuminate\Support\Facades\Route::has('promotion-settings.index'))
+                    <a href="{{ route('promotion-settings.index') }}">Promotion Settings</a>.
+                    @else
+                    Promotion Settings.
+                    @endif
                 </div>
             </div>
 
@@ -746,26 +533,26 @@
                     <option value="repeated">Repeat</option>
                     <option value="awaiting">Awaiting / Not Configured</option>
                 </select>
-                <button type="button" class="btn pm-btn pm-btn-outline pm-btn-sm" onclick="selectByRecommendation()">
-                    <i class="ri-checkbox-multiple-line"></i>Select Matching
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectByRecommendation()">
+                    <i class="ri-checkbox-multiple-line me-1"></i>Select Matching
                 </button>
 
-                <button type="button" class="btn pm-btn pm-btn-dark pm-btn-sm ms-auto" onclick="openPrintListDialog()">
-                    <i class="ri-printer-line"></i>Print Student List
+                <button type="button" class="btn btn-sm btn-outline-dark ms-auto" onclick="openPrintListDialog()">
+                    <i class="ri-printer-line me-1"></i>Print Student List
                 </button>
             </div>
 
             {{-- Bulk action bar --}}
             <div class="bulk-action-bar" id="bulkActionBar">
                 <span class="bulk-count"><span id="bulkSelectedCount">0</span> selected</span>
-                <button type="button" class="btn pm-btn pm-btn-info pm-btn-sm" id="advanceTermActionBtn" onclick="submitAdvanceTerm()"
+                <button type="button" class="btn btn-sm btn-info text-white" id="advanceTermActionBtn" onclick="submitAdvanceTerm()"
                         title="Move selected students to the next term, same class and session">
-                    <i class="ri-skip-forward-line"></i>Advance to Next Term
+                    <i class="ri-skip-forward-line me-1"></i>Advance to Next Term
                 </button>
-                <button type="button" class="btn pm-btn pm-btn-primary pm-btn-sm" id="bulkPromoteActionBtn" onclick="openBulkPromoteModal()">
-                    <i class="ri-user-shared-line"></i>Bulk Promote
+                <button type="button" class="btn btn-sm btn-primary" id="bulkPromoteActionBtn" onclick="openBulkPromoteModal()">
+                    <i class="ri-user-shared-line me-1"></i>Bulk Promote
                 </button>
-                <button type="button" class="btn pm-btn pm-btn-ghost pm-btn-sm" onclick="clearSelection()">Clear</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">Clear</button>
             </div>
 
             {{-- Student table --}}
@@ -975,9 +762,9 @@
                 </form>
             </div>
             <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn pm-btn pm-btn-ghost" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn pm-btn pm-btn-primary" onclick="submitPromotion()">
-                    <i class="ri-save-line"></i>Update Promotion
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitPromotion()">
+                    <i class="ri-save-line me-1"></i>Update Promotion
                 </button>
             </div>
         </div>
@@ -1032,10 +819,8 @@
                 </div>
             </div>
             <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn pm-btn pm-btn-ghost" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn pm-btn pm-btn-primary" onclick="submitBulkPromote()">
-                    <i class="ri-check-line"></i>Confirm Bulk Update
-                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitBulkPromote()">Confirm Bulk Update</button>
             </div>
         </div>
     </div>
@@ -1053,16 +838,6 @@
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 const PROMO_STUDENT_LIST_URL = '{{ route("promotions.student-list") }}';
-
-// ═══════════════════════════════════════════════════════════
-//  FEATURE GUIDE — collapsible "+" accordion toggle
-// ═══════════════════════════════════════════════════════════
-function togglePmGuide() {
-    const toggleBtn = document.getElementById('pmGuideToggle');
-    const body       = document.getElementById('pmGuideBody');
-    const isOpen     = body.classList.toggle('open');
-    toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-}
 let currentStudentId = null;
 let currentSchoolclassId = null;
 let currentSessionId = null;
