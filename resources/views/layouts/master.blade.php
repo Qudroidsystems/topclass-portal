@@ -1354,8 +1354,18 @@
     <footer class="footer">
         <div class="container-fluid">
             <div class="row">
-                <div class="col-sm-6"><script>document.write(new Date().getFullYear())</script> © {{ $schoolInfo->school_name ?? 'Vite-ESchool' }}</div>
-                <div class="col-sm-6"><div class="text-sm-end d-none d-sm-block">Created by Qudroid Systems</div></div>
+                <div class="col-sm-6">
+                    {{ now()->year }} © {{ $schoolInfo->school_name ?? 'ViteSchools' }}
+                    <span class="text-muted">· Powered by
+                        <a href="https://viteschools.ng" target="_blank" rel="noopener noreferrer" class="fw-semibold">ViteSchools.ng</a>
+                    </span>
+                </div>
+                <div class="col-sm-6">
+                    <div class="text-sm-end">
+                        Created by
+                        <a href="https://qudroids.com" target="_blank" rel="noopener noreferrer" class="fw-semibold">Qudroid Systems</a>
+                    </div>
+                </div>
             </div>
         </div>
     </footer>
