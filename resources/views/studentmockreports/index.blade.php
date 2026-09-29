@@ -161,7 +161,7 @@ select.r-input {
 .r-btn.search-btn {
     background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
     color: #fff;
-    min-width: 128px;
+    min-width: 158px;
     padding: 9px 22px;
     font-size: 13.5px;
     font-weight: 700;
@@ -496,7 +496,7 @@ select.r-input {
                             onclick="filterData()" title="Load students for the selected class and session">
                         <i class="bi bi-search btn-icon"></i>
                         <span class="btn-spinner"></span>
-                        <span class="btn-label">Search</span>
+                        <span class="btn-label">Click to Search</span>
                     </button>
                     <button type="button" class="r-btn ghost" id="resetBtn"
                             onclick="resetFilters()" title="Clear all filters">
@@ -873,7 +873,7 @@ select.r-input {
     function setSearchLoading(isLoading) {
         const btn = document.getElementById('searchBtn');
         btn.classList.toggle('is-loading', isLoading);
-        btn.querySelector('.btn-label').textContent = isLoading ? 'Searching…' : 'Search';
+        btn.querySelector('.btn-label').textContent = isLoading ? 'Searching…' : 'Click to Search';
     }
 
     function resetTable() {
