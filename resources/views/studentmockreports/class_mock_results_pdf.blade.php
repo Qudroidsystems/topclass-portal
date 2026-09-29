@@ -167,6 +167,7 @@
         .result-table { padding: 0 9px; margin: 5px 0; }
         .result-table table {
             width: 100%;
+            table-layout: fixed;          /* equal split for columns without a width */
             border: 2px solid #000;
             border-collapse: collapse;
             font-size: 7.5px;
@@ -181,6 +182,10 @@
             font-size: 6.5px;
             text-align: center;
         }
+        /* Explicit widths only for S/N and Subject; everything else shares the rest equally */
+        .result-table thead th.col-sn      { width: 26px; }
+        .result-table thead th.col-subject { width: 30%; text-align: left; padding-left: 4px; }
+
         .result-table tbody td {
             border: 1px solid #000;
             padding: 1.5px 1px;
@@ -190,11 +195,14 @@
             font-weight: 800;
             height: 13px;
             line-height: 13px;
+            overflow: hidden;
         }
         .result-table tbody td.subject-name {
             text-align: left;
             padding-left: 5px;
             font-size: 7.5px;
+            white-space: nowrap;          /* keeps row height at 13px */
+            overflow: hidden;
         }
 
         /* Grade / position colours */
@@ -281,6 +289,10 @@
         $selectedColumns = $metadata['selected_columns'] ?? [];
         $defaultColumns  = ['sn', 'name', 'exam', 'total', 'grade', 'position', 'class_average'];
         $columnsToShow   = !empty($selectedColumns) ? $selectedColumns : $defaultColumns;
+
+        // Number of visible result columns (used for the empty-state colspan)
+        $resultColumnKeys = ['sn', 'name', 'exam', 'total', 'grade', 'position', 'class_average', 'cmin', 'cmax'];
+        $visibleColCount  = max(1, count(array_intersect($resultColumnKeys, $columnsToShow)));
     @endphp
 
     @foreach ($allStudentData as $studentData)
@@ -413,15 +425,15 @@
                 <table>
                     <thead>
                         <tr>
-                            @if(in_array('sn', $columnsToShow))            <th style="width:24px;">S/N</th> @endif
-                            @if(in_array('name', $columnsToShow))           <th style="min-width:115px; text-align:left; padding-left:4px;">Subject</th> @endif
-                            @if(in_array('exam', $columnsToShow))           <th style="width:42px;">Exam Score</th> @endif
-                            @if(in_array('total', $columnsToShow))          <th style="width:42px;">Total</th> @endif
-                            @if(in_array('grade', $columnsToShow))          <th style="width:32px;">Grade</th> @endif
-                            @if(in_array('position', $columnsToShow))       <th style="width:32px;">Pos</th> @endif
-                            @if(in_array('class_average', $columnsToShow))  <th style="width:36px;">Avg</th> @endif
-                            @if(in_array('cmin', $columnsToShow))           <th style="width:32px;">Min</th> @endif
-                            @if(in_array('cmax', $columnsToShow))           <th style="width:32px;">Max</th> @endif
+                            @if(in_array('sn', $columnsToShow))            <th class="col-sn">S/N</th> @endif
+                            @if(in_array('name', $columnsToShow))           <th class="col-subject">Subject</th> @endif
+                            @if(in_array('exam', $columnsToShow))           <th>Exam</th> @endif
+                            @if(in_array('total', $columnsToShow))          <th>Total</th> @endif
+                            @if(in_array('grade', $columnsToShow))          <th>Grade</th> @endif
+                            @if(in_array('position', $columnsToShow))       <th>Pos</th> @endif
+                            @if(in_array('class_average', $columnsToShow))  <th>Avg</th> @endif
+                            @if(in_array('cmin', $columnsToShow))           <th>Min</th> @endif
+                            @if(in_array('cmax', $columnsToShow))           <th>Max</th> @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -468,7 +480,7 @@
                             @if(in_array('cmax', $columnsToShow))           <td>{{ $score->cmax ? number_format($score->cmax, 1) : '-' }}</td> @endif
                         </tr>
                         @empty
-                        <tr><td colspan="9" style="text-align:center;padding:6px;">No mock scores available.</td></tr>
+                        <tr><td colspan="{{ $visibleColCount }}" style="text-align:center;padding:6px;">No mock scores available.</td></tr>
                         @endforelse
 
                         {{-- Padding rows — 16 min (reduced from 18) ── --}}
