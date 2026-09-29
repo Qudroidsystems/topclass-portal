@@ -54,6 +54,10 @@
 @keyframes badgePop   { 0%{transform:scale(.5);}70%{transform:scale(1.15);}100%{transform:scale(1);} }
 @keyframes spin       { to{transform:rotate(360deg);} }
 @keyframes shimmer    { from{background-position:-200% 0;}to{background-position:200% 0;} }
+@keyframes readyGlow  {
+    0%,100% { box-shadow: 0 4px 12px rgba(37,99,235,.35); }
+    50%     { box-shadow: 0 4px 12px rgba(37,99,235,.35), 0 0 0 5px rgba(37,99,235,.16); }
+}
 
 /* ── Selection banner ── */
 #selectionAlert {
@@ -124,10 +128,26 @@
     border: 1px solid var(--r-border);
     border-top: 3px solid var(--r-accent);
     border-radius: var(--r-radius);
-    padding: 18px 22px;
+    padding: 20px 22px 16px;
     margin-bottom: 20px;
+    box-shadow: var(--r-shadow);
     animation: fadeInUp .5s .1s ease both;
 }
+.r-filter-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; color: var(--r-primary);
+    margin-bottom: 14px;
+}
+.r-filter-title i { color: var(--r-accent); }
+.r-filter-hint {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--r-border);
+    font-size: 12px; color: var(--r-muted);
+}
+.r-filter-hint i { color: var(--r-accent); }
+.r-filter-hint strong { color: var(--r-primary); }
+
 .r-label {
     font-size: 11px; font-weight: 700; color: var(--r-muted);
     text-transform: uppercase; letter-spacing: .5px;
@@ -135,6 +155,7 @@
 }
 .r-input {
     width: 100%;
+    height: 42px;
     border: 1.5px solid var(--r-border);
     border-radius: 9px;
     padding: 9px 14px;
@@ -143,25 +164,79 @@
     background: #fff;
     transition: border-color .2s, box-shadow .2s;
 }
+.r-input:hover { border-color: #cbd5e1; }
 .r-input:focus { border-color: var(--r-accent); outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+select.r-input {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    padding-right: 34px;
+    cursor: pointer;
+}
 .r-input-icon-wrap { position: relative; }
-.r-input-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px; pointer-events:none; }
+.r-input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px; pointer-events:none; }
 .r-input-icon-wrap .r-input { padding-left: 34px; }
 
 /* ── Buttons ── */
 .r-btn {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     padding: 9px 18px; border-radius: 9px;
     font-size: 13px; font-weight: 600; font-family: inherit;
     border: none; cursor: pointer;
-    transition: transform .15s, box-shadow .15s, opacity .15s;
+    transition: transform .15s, box-shadow .15s, opacity .15s, background .15s, color .15s, border-color .15s;
     text-decoration: none; white-space: nowrap;
 }
-.r-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.15); opacity: .92; }
+.r-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.15); opacity: .95; }
+.r-btn:active { transform: translateY(0); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.r-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.3); }
 .r-btn:disabled { opacity: .5; pointer-events: none; }
 .r-btn.primary   { background:linear-gradient(135deg,var(--r-accent),var(--r-indigo)); color:#fff; }
 .r-btn.success   { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; }
 .r-btn.secondary { background:#fff; color:var(--r-primary); border:1.5px solid var(--r-border); }
+.r-btn.secondary:hover { border-color: var(--r-accent); color: var(--r-accent); background:#eff6ff; }
+.r-btn.ghost { background:#fff; color:var(--r-muted); border:1.5px solid var(--r-border); }
+.r-btn.ghost:hover { color: var(--r-danger); border-color: #fecaca; background:#fef2f2; }
+
+/* Filter row buttons share input height */
+.r-filter-card .r-btn { height: 42px; }
+
+/* Search button — obvious call to action */
+.r-btn.search-btn {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: #fff;
+    min-width: 158px;
+    padding: 9px 22px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: .2px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37,99,235,.35);
+}
+.r-btn.search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37,99,235,.45);
+    opacity: 1;
+    animation: none;
+}
+.r-btn.search-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(37,99,235,.35);
+}
+.r-btn.search-btn:focus-visible { box-shadow: 0 0 0 3px rgba(37,99,235,.4); }
+.r-btn.search-btn.is-ready { animation: readyGlow 2.2s ease-in-out infinite; }
+.r-btn.search-btn .btn-spinner {
+    display: none;
+    width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+.r-btn.search-btn.is-loading { pointer-events: none; opacity: .85; animation: none; }
+.r-btn.search-btn.is-loading .btn-spinner { display: inline-block; }
+.r-btn.search-btn.is-loading .btn-icon { display: none; }
 
 /* ── Table card ── */
 .r-table-card {
@@ -204,6 +279,7 @@
 .r-table tbody tr { animation: rowIn .3s ease both; }
 .r-table tbody tr:hover td { background: #f5f5f7; }
 .r-table tbody tr.table-active td { background: rgba(0,113,227,.07) !important; }
+.r-table tbody tr.table-active td:first-child { box-shadow: inset 3px 0 0 var(--r-accent); }
 .r-table tbody tr:last-child td { border-bottom: none; }
 
 /* ── Apple-style cell text ── */
@@ -388,6 +464,13 @@
 #pagination-container .page-item.active .page-link {
     background: var(--r-accent); border-color: var(--r-accent); color: #fff;
 }
+
+/* ── Small screens ── */
+@media (max-width: 991.98px) {
+    .r-filter-actions { width: 100%; flex-wrap: wrap; }
+    .r-filter-actions .r-btn { flex: 1; }
+    .r-hero { padding: 22px 20px; }
+}
 </style>
 
 <div class="main-content">
@@ -492,9 +575,13 @@
 
     {{-- ── FILTER CARD ── --}}
     <div class="r-filter-card">
+        <div class="r-filter-title">
+            <i class="bi bi-funnel-fill"></i> Find Students
+        </div>
+
         <div class="row g-3 align-items-end">
-            <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Class</label>
+            <div class="col-sm-6 col-lg-3">
+                <label class="r-label" for="idclass">Class</label>
                 <select class="r-input" id="idclass" name="schoolclassid">
                     <option value="ALL">— Select Class —</option>
                     @foreach ($schoolclasses as $class)
@@ -502,8 +589,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Session</label>
+            <div class="col-sm-6 col-lg-2">
+                <label class="r-label" for="idsession">Session</label>
                 <select class="r-input" id="idsession" name="sessionid">
                     <option value="ALL">— Select Session —</option>
                     @foreach ($schoolsessions as $session)
@@ -511,8 +598,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-xxl-3 col-sm-6" id="termSelectContainer" style="display:none;">
-                <label class="r-label">Term</label>
+            <div class="col-sm-6 col-lg-2" id="termSelectContainer" style="display:none;">
+                <label class="r-label" for="idterm">Term</label>
                 <select class="r-input" id="idterm" name="termid">
                     <option value="ALL">— Select Term —</option>
                     <option value="1">First Term</option>
@@ -520,21 +607,36 @@
                     <option value="3">Third Term</option>
                 </select>
             </div>
-            <div class="col-xxl-3 col-sm-6">
-                <label class="r-label">Search</label>
+            <div class="col-sm-6 col-lg">
+                <label class="r-label" for="searchInput">Search</label>
                 <div class="r-input-icon-wrap">
                     <i class="bi bi-search r-input-icon"></i>
-                    <input type="text" class="r-input" id="searchInput" name="search" placeholder="Search students...">
+                    <input type="text" class="r-input" id="searchInput" name="search" placeholder="Name, admission no…" autocomplete="off">
                 </div>
             </div>
-            <div class="col-xxl-3 col-sm-6 d-flex gap-2">
-                <button type="button" class="r-btn secondary w-50" id="searchBtn" style="display:none;" onclick="filterData()">
-                    <i class="bi bi-search"></i> Search
-                </button>
-                <button type="button" class="r-btn success w-50" id="printAllBtn" style="display:none;" onclick="printAllResults()">
-                    <i class="bi bi-printer"></i> Print Selected
-                </button>
+            <div class="col-12 col-lg-auto">
+                <div class="d-flex gap-2 r-filter-actions">
+                    <button type="button" class="r-btn search-btn" id="searchBtn"
+                            onclick="filterData()" title="Load students for the selected class and session">
+                        <i class="bi bi-search btn-icon"></i>
+                        <span class="btn-spinner"></span>
+                        <span class="btn-label">Click to Search</span>
+                    </button>
+                    <button type="button" class="r-btn ghost" id="resetBtn"
+                            onclick="resetFilters()" title="Clear all filters">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                    <button type="button" class="r-btn success" id="printAllBtn"
+                            style="display:none;" onclick="printAllResults()">
+                        <i class="bi bi-printer"></i> Print Selected
+                    </button>
+                </div>
             </div>
+        </div>
+
+        <div class="r-filter-hint">
+            <i class="bi bi-info-circle"></i>
+            <span>Choose a class and session, then click <strong>Click to Search</strong>. Pick a term to export PDF reports.</span>
         </div>
     </div>
 
@@ -765,12 +867,21 @@
         }
     }
 
+    /** Search button stays visible; it glows once class + session are both chosen. */
     function updateSearchButtonVisibility() {
         const classValue   = document.getElementById("idclass").value;
         const sessionValue = document.getElementById("idsession").value;
-        document.getElementById("searchBtn").style.display =
-            (classValue !== 'ALL' && sessionValue !== 'ALL') ? 'block' : 'none';
+        document.getElementById("searchBtn").classList.toggle(
+            'is-ready', classValue !== 'ALL' && sessionValue !== 'ALL'
+        );
         updateSelectionAlert();
+    }
+
+    /** Spinner + "Searching…" label while a search request is running. */
+    function setSearchLoading(isLoading) {
+        const btn = document.getElementById('searchBtn');
+        btn.classList.toggle('is-loading', isLoading);
+        btn.querySelector('.btn-label').textContent = isLoading ? 'Searching…' : 'Click to Search';
     }
 
     function updateTermSelectVisibility() {
@@ -785,7 +896,7 @@
         const termValue  = termSelect ? termSelect.value : 'ALL';
         const checked    = document.querySelectorAll('tbody input[name="chk_child"]:checked');
         const show       = termValue !== 'ALL' && checked.length > 0;
-        document.getElementById("printAllBtn").style.display = show ? 'block' : 'none';
+        document.getElementById("printAllBtn").style.display = show ? 'inline-flex' : 'none';
         updateSelectionAlert();
     }
 
@@ -811,6 +922,12 @@
             console.warn("[filterData] ABORTED — class or session not selected", {
                 classValue, sessionValue, termValue, searchValue
             });
+            Swal.fire({
+                icon: "warning",
+                title: "Missing Selection",
+                text: "Please select a class and session.",
+                confirmButtonColor: '#2563eb'
+            });
             return;
         }
 
@@ -828,6 +945,8 @@
                 <p class="text-muted">Loading students…</p>
             </div>
         </td></tr>`;
+
+        setSearchLoading(true);
 
         axios.get('{{ route("studentreports.index") }}', {
             params: {
@@ -878,6 +997,8 @@
             </div></td></tr>`;
             Swal.fire({ icon: "error", title: "Error",
                         text: error.response?.data?.message || "Failed to fetch student data." });
+        }).finally(function () {
+            setSearchLoading(false);
         });
     }
 
@@ -886,7 +1007,7 @@
             <div class="r-empty">
                 <i class="ri-filter-line r-empty-icon"></i>
                 <h6>Select Class &amp; Session</h6>
-                <p>Use the filters above to load students.</p>
+                <p>Use the filters above, then click Search to load students.</p>
             </div>
         </td></tr>`;
         document.getElementById('pagination-container').innerHTML = '';
@@ -896,7 +1017,18 @@
         document.getElementById('statFemale').innerText   = '0';
         document.getElementById('printAllBtn').style.display = 'none';
         document.getElementById('termSelectContainer').style.display = 'none';
+        const checkAll = document.getElementById('checkAll');
+        if (checkAll) checkAll.checked = false;
         updateSelectionAlert();
+    }
+
+    function resetFilters() {
+        document.getElementById('idclass').value     = 'ALL';
+        document.getElementById('idsession').value   = 'ALL';
+        document.getElementById('idterm').value      = 'ALL';
+        document.getElementById('searchInput').value = '';
+        resetTable();
+        updateSearchButtonVisibility();
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -1199,6 +1331,7 @@
     // ══════════════════════════════════════════════════════════════════
     document.addEventListener("DOMContentLoaded", function () {
         setupCheckboxListeners();
+        updateSearchButtonVisibility();
 
         const classSelect   = document.getElementById("idclass");
         const sessionSelect = document.getElementById("idsession");
@@ -1230,6 +1363,11 @@
             });
         }
 
+        // Keyboard search trigger
+        document.getElementById('searchInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') filterData();
+        });
+
         const imageModal = document.getElementById('imageViewModal');
         if (imageModal) {
             imageModal.addEventListener('show.bs.modal', function (event) {
@@ -1240,3 +1378,5 @@
         }
     });
 </script>
+
+@endsection
