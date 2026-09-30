@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use App\Models\Schoolsession;
+use App\Models\Schoolterm;
 use App\Models\Subject;
+use App\Models\SubjectTeacher;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\Facades\DataTables;
 
 class SubjectController extends Controller
@@ -20,7 +24,7 @@ class SubjectController extends Controller
     }
 
     // =========================================================================
-    // INDEX
+    // INDEX — also supplies teachers, terms and sessions for the Add modal
     // =========================================================================
 
     public function index(Request $request)
@@ -28,7 +32,20 @@ class SubjectController extends Controller
         $pagetitle = "Subject Management";
 
         try {
+            $terms          = Schoolterm::orderBy('term', 'asc')->get();
+            $schoolsessions = Schoolsession::orderBy('session', 'asc')->get();
+
+            // Same staff query used by SubjectTeacherController
+            $staffs = User::whereHas('roles', function ($q) {
+                    $q->where('name', '!=', 'Student');
+                })
+                ->orderBy('name', 'asc')
+                ->get(['users.id as userid', 'users.name as name']);
+
             return view('subject.index')
+                ->with('terms', $terms)
+                ->with('schoolsessions', $schoolsessions)
+                ->with('staffs', $staffs)
                 ->with('pagetitle', $pagetitle);
         } catch (\Exception $e) {
             Log::error('Subject Index Error:', ['error' => $e->getMessage()]);
@@ -128,7 +145,7 @@ class SubjectController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'error' => $e->getMessage()
             ], 500);
@@ -165,52 +182,170 @@ class SubjectController extends Controller
     }
 
     // =========================================================================
-    // STORE
+    // STORE — one or many subjects, each optionally assigned to a teacher
+    //
+    // Payload:
+    //   subjects[n][subject|subject_code|remark|staffid]   (staffid optional)
+    //   termid[]   + sessionid    (required only if any row has a staffid)
     // =========================================================================
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'subject' => 'required|unique:subject,subject',
-            'subject_code' => 'required|min:3|unique:subject,subject_code',
-            'remark' => 'required',
-        ], [
-            'subject.required' => 'Please enter a subject name!',
-            'subject.unique' => 'This subject name is already taken!',
-            'subject_code.required' => 'Please enter a subject code!',
-            'subject_code.min' => 'Subject code must be at least 3 characters!',
-            'subject_code.unique' => 'This subject code is already taken!',
-            'remark.required' => 'Please enter a remark!',
-        ]);
+        // Backward compatibility: wrap a single-subject payload
+        if (!$request->has('subjects') && $request->has('subject')) {
+            $request->merge(['subjects' => [[
+                'subject'      => $request->input('subject'),
+                'subject_code' => $request->input('subject_code'),
+                'remark'       => $request->input('remark'),
+            ]]]);
+        }
 
-        if ($validator->fails()) {
+        // Normalise + trim
+        $rows = collect($request->input('subjects', []))
+            ->filter(fn ($r) => is_array($r))
+            ->map(function ($r) {
+                $staffid = trim((string) ($r['staffid'] ?? ''));
+                return [
+                    'subject'      => trim((string) ($r['subject'] ?? '')),
+                    'subject_code' => trim((string) ($r['subject_code'] ?? '')),
+                    'remark'       => trim((string) ($r['remark'] ?? '')),
+                    'staffid'      => $staffid !== '' ? $staffid : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $request->merge(['subjects' => $rows]);
+
+        $anyTeacher = collect($rows)->contains(fn ($r) => $r['staffid'] !== null);
+
+        // Assigning teachers is a subject-teacher action → needs that permission
+        if ($anyTeacher && !auth()->user()->can('Create subject-teacher')) {
             return response()->json([
                 'success' => false,
-                'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
+                'message' => 'You do not have permission to assign subject teachers.',
+            ], 403);
+        }
+
+        $rules = [
+            'subjects'                => 'required|array|min:1|max:50',
+            'subjects.*.subject'      => 'required|unique:subject,subject',
+            'subjects.*.subject_code' => 'required|min:3|unique:subject,subject_code',
+            'subjects.*.remark'       => 'required',
+            'subjects.*.staffid'      => 'nullable|exists:users,id',
+        ];
+
+        if ($anyTeacher) {
+            $rules['termid']    = 'required|array|min:1';
+            $rules['termid.*']  = 'exists:schoolterm,id';
+            $rules['sessionid'] = 'required|exists:schoolsession,id';
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
+            'subjects.required'                => 'Please add at least one subject!',
+            'subjects.min'                     => 'Please add at least one subject!',
+            'subjects.max'                     => 'You can add at most 50 subjects at a time.',
+            'subjects.*.subject.required'      => 'Please enter a subject name!',
+            'subjects.*.subject.unique'        => 'This subject name is already taken!',
+            'subjects.*.subject_code.required' => 'Please enter a subject code!',
+            'subjects.*.subject_code.min'      => 'Subject code must be at least 3 characters!',
+            'subjects.*.subject_code.unique'   => 'This subject code is already taken!',
+            'subjects.*.remark.required'       => 'Please enter a remark!',
+            'subjects.*.staffid.exists'        => 'Selected teacher does not exist!',
+            'termid.required'                  => 'Please select at least one term for the teacher assignment.',
+            'termid.min'                       => 'Please select at least one term for the teacher assignment.',
+            'termid.*.exists'                  => 'One or more selected terms do not exist.',
+            'sessionid.required'               => 'Please select a session for the teacher assignment.',
+            'sessionid.exists'                 => 'Selected session does not exist.',
+        ]);
+
+        // Duplicates inside the same submission (case-insensitive)
+        $validator->after(function ($v) use ($rows) {
+            $seenNames = [];
+            $seenCodes = [];
+            foreach ($rows as $i => $row) {
+                $name = mb_strtolower($row['subject']);
+                $code = mb_strtolower($row['subject_code']);
+
+                if ($name !== '') {
+                    if (isset($seenNames[$name])) {
+                        $v->errors()->add("subjects.$i.subject", 'Duplicate subject name in this list!');
+                    }
+                    $seenNames[$name] = true;
+                }
+                if ($code !== '') {
+                    if (isset($seenCodes[$code])) {
+                        $v->errors()->add("subjects.$i.subject_code", 'Duplicate subject code in this list!');
+                    }
+                    $seenCodes[$code] = true;
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            $firstKey = $validator->errors()->keys()[0] ?? null;
+            $prefix   = ($firstKey && preg_match('/^subjects\.(\d+)\./', $firstKey, $m))
+                ? 'Row ' . ((int) $m[1] + 1) . ': '
+                : '';
+
+            return response()->json([
+                'success' => false,
+                'message' => $prefix . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
+        DB::beginTransaction();
         try {
-            $subject = Subject::create([
-                'subject' => $request->input('subject'),
-                'subject_code' => $request->input('subject_code'),
-                'remark' => $request->input('remark'),
-            ]);
+            $created     = [];
+            $assignments = 0;
+            $termIds     = $anyTeacher ? array_values(array_unique($request->input('termid', []))) : [];
+            $sessionId   = $anyTeacher ? $request->input('sessionid') : null;
 
-            Log::info('Subject Created:', $subject->toArray());
+            foreach ($rows as $row) {
+                $subject = Subject::create([
+                    'subject'      => $row['subject'],
+                    'subject_code' => $row['subject_code'],
+                    'remark'       => $row['remark'],
+                ]);
+                $created[] = $subject;
+
+                // Brand-new subject → no existing assignment can conflict
+                if ($row['staffid'] !== null) {
+                    foreach ($termIds as $termId) {
+                        SubjectTeacher::create([
+                            'staffid'   => $row['staffid'],
+                            'subjectid' => $subject->id,
+                            'termid'    => $termId,
+                            'sessionid' => $sessionId,
+                        ]);
+                        $assignments++;
+                    }
+                }
+            }
+
+            DB::commit();
+
+            Log::info('Subjects Created:', ['subjects' => count($created), 'assignments' => $assignments]);
+
+            $message = count($created) . ' subject(s) added successfully.';
+            if ($assignments > 0) {
+                $message .= " {$assignments} teacher assignment(s) created.";
+            }
 
             return response()->json([
-                'success' => true,
-                'message' => 'Subject added successfully.',
-                'data' => $subject
+                'success'     => true,
+                'message'     => $message,
+                'data'        => $created,
+                'assignments' => $assignments,
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Error creating subject:', ['error' => $e->getMessage()]);
+            DB::rollBack();
+            Log::error('Error creating subjects:', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create subject: ' . $e->getMessage()
+                'message' => 'Failed to create subjects: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -291,7 +426,7 @@ class SubjectController extends Controller
 
             // Check if subject is being used
             $inUse = DB::table('subjectteacher')->where('subjectid', $id)->exists();
-            
+
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -336,10 +471,10 @@ class SubjectController extends Controller
 
         try {
             $subject = Subject::find($request->subjectid);
-            
+
             // Check if subject is being used
             $inUse = DB::table('subjectteacher')->where('subjectid', $request->subjectid)->exists();
-            
+
             if ($inUse) {
                 return response()->json([
                     'success' => false,
@@ -369,94 +504,90 @@ class SubjectController extends Controller
     // BULK DESTROY
     // =========================================================================
 
-   // =========================================================================
-// BULK DESTROY
-// =========================================================================
+    public function deleteMultiple(Request $request)
+    {
+        try {
+            // Get ids from request - handle both array and string formats
+            $ids = $request->input('ids');
 
-public function deleteMultiple(Request $request)
-{
-    try {
-        // Get ids from request - handle both array and string formats
-        $ids = $request->input('ids');
-        
-        // If ids is a string, try to decode it or convert to array
-        if (is_string($ids)) {
-            // Check if it's a JSON string
-            $decoded = json_decode($ids, true);
-            if (is_array($decoded)) {
-                $ids = $decoded;
-            } else {
-                // If it's a comma-separated string
-                $ids = array_map('trim', explode(',', $ids));
+            // If ids is a string, try to decode it or convert to array
+            if (is_string($ids)) {
+                // Check if it's a JSON string
+                $decoded = json_decode($ids, true);
+                if (is_array($decoded)) {
+                    $ids = $decoded;
+                } else {
+                    // If it's a comma-separated string
+                    $ids = array_map('trim', explode(',', $ids));
+                }
             }
-        }
-        
-        // Ensure ids is an array
-        if (!is_array($ids)) {
-            $ids = [];
-        }
-        
-        // Filter out any empty values
-        $ids = array_filter($ids);
-        
-        if (empty($ids)) {
+
+            // Ensure ids is an array
+            if (!is_array($ids)) {
+                $ids = [];
+            }
+
+            // Filter out any empty values
+            $ids = array_filter($ids);
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No subjects selected.'
+                ], 400);
+            }
+
+            $existingIds = Subject::whereIn('id', $ids)->pluck('id')->toArray();
+            $invalidIds = array_diff($ids, $existingIds);
+
+            if (!empty($invalidIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some selected subjects do not exist.'
+                ], 400);
+            }
+
+            // Check if any are in use
+            $inUse = DB::table('subjectteacher')
+                ->whereIn('subjectid', $ids)
+                ->exists();
+
+            if ($inUse) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some subjects are being used by subject teachers and cannot be deleted.'
+                ], 422);
+            }
+
+            DB::beginTransaction();
+            $deleted = Subject::whereIn('id', $ids)->delete();
+            DB::commit();
+
+            Log::info('Bulk delete completed', [
+                'total' => count($ids),
+                'deleted' => $deleted
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $deleted . ' subject(s) deleted successfully.',
+                'deleted_count' => $deleted
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk delete failed:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'ids' => $request->input('ids', [])
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'No subjects selected.'
-            ], 400);
+                'message' => 'Error deleting subjects: ' . $e->getMessage()
+            ], 500);
         }
-
-        $existingIds = Subject::whereIn('id', $ids)->pluck('id')->toArray();
-        $invalidIds = array_diff($ids, $existingIds);
-        
-        if (!empty($invalidIds)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Some selected subjects do not exist.'
-            ], 400);
-        }
-
-        // Check if any are in use
-        $inUse = DB::table('subjectteacher')
-            ->whereIn('subjectid', $ids)
-            ->exists();
-            
-        if ($inUse) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Some subjects are being used by subject teachers and cannot be deleted.'
-            ], 422);
-        }
-
-        DB::beginTransaction();
-        $deleted = Subject::whereIn('id', $ids)->delete();
-        DB::commit();
-
-        Log::info('Bulk delete completed', [
-            'total' => count($ids),
-            'deleted' => $deleted
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => $deleted . ' subject(s) deleted successfully.',
-            'deleted_count' => $deleted
-        ], 200);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Bulk delete failed:', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'ids' => $request->input('ids', [])
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Error deleting subjects: ' . $e->getMessage()
-        ], 500);
     }
-}
 
     // =========================================================================
     // HELPERS

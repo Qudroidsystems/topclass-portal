@@ -362,45 +362,46 @@ class SubjectClassController extends Controller
     // STORE
     // =========================================================================
 
-    public function store(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'schoolclassid'      => 'required|exists:schoolclass,id',
-            'subjectteacherid'   => 'required|array|min:1',
-            'subjectteacherid.*' => 'required|exists:subjectteacher,id',
-        ], [
-            'schoolclassid.required'      => 'Please select a class!',
-            'schoolclassid.exists'        => 'Selected class does not exist!',
-            'subjectteacherid.required'   => 'Please select at least one subject teacher!',
-            'subjectteacherid.*.required' => 'Please select at least one subject teacher!',
-            'subjectteacherid.*.exists'   => 'One or more selected subject teachers do not exist!',
-        ]);
+  public function store(Request $request): JsonResponse
+{
+    // Accept a single id or an array of ids for backward compatibility
+    $request->merge([
+        'schoolclassid' => array_values(array_filter((array) $request->input('schoolclassid', []))),
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => $validator->errors()->first(),
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
+    $validator = Validator::make($request->all(), [
+        'schoolclassid'      => 'required|array|min:1',
+        'schoolclassid.*'    => 'required|exists:schoolclass,id',
+        'subjectteacherid'   => 'required|array|min:1',
+        'subjectteacherid.*' => 'required|exists:subjectteacher,id',
+    ], [
+        'schoolclassid.required'      => 'Please select at least one class!',
+        'schoolclassid.min'           => 'Please select at least one class!',
+        'schoolclassid.*.exists'      => 'One or more selected classes do not exist!',
+        'subjectteacherid.required'   => 'Please select at least one subject teacher!',
+        'subjectteacherid.*.required' => 'Please select at least one subject teacher!',
+        'subjectteacherid.*.exists'   => 'One or more selected subject teachers do not exist!',
+    ]);
 
-        $schoolClassId     = $request->input('schoolclassid');
-        $subjectTeacherIds = $request->input('subjectteacherid', []);
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+        ], 422);
+    }
 
-        if (empty($subjectTeacherIds)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Please select at least one subject teacher.',
-            ], 422);
-        }
+    $schoolClassIds    = array_unique($request->input('schoolclassid'));
+    $subjectTeacherIds = array_unique($request->input('subjectteacherid'));
 
-        DB::beginTransaction();
-        try {
-            $createdRecords = [];
-            $skippedCount   = 0;
+    DB::beginTransaction();
+    try {
+        $createdRecords = [];
+        $skippedCount   = 0;
 
-            $subjectTeachers = SubjectTeacher::whereIn('id', $subjectTeacherIds)->get()->keyBy('id');
+        $subjectTeachers = SubjectTeacher::whereIn('id', $subjectTeacherIds)->get()->keyBy('id');
 
+        foreach ($schoolClassIds as $schoolClassId) {
             foreach ($subjectTeacherIds as $subjectTeacherId) {
                 $subjectTeacher = $subjectTeachers->get($subjectTeacherId);
                 if (!$subjectTeacher) {
@@ -416,44 +417,43 @@ class SubjectClassController extends Controller
                     continue;
                 }
 
-                $subjectclass = Subjectclass::create([
+                $createdRecords[] = Subjectclass::create([
                     'schoolclassid'    => $schoolClassId,
                     'subjectteacherid' => $subjectTeacherId,
                     'subjectid'        => $subjectTeacher->subjectid,
                 ]);
-
-                $createdRecords[] = $subjectclass;
             }
+        }
 
-            DB::commit();
+        DB::commit();
 
-            if (empty($createdRecords)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'All selected subject teachers are already assigned to this class.',
-                ], 422);
-            }
-
-            $message = count($createdRecords) . ' Subject Class(es) added successfully.';
-            if ($skippedCount > 0) {
-                $message .= " ({$skippedCount} already existed and were skipped.)";
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'data'    => $createdRecords,
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error creating subject class:', ['error' => $e->getMessage()]);
+        if (empty($createdRecords)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create subject class: ' . $e->getMessage()
-            ], 500);
+                'message' => 'All selected assignments already exist for the chosen class(es).',
+            ], 422);
         }
+
+        $message = count($createdRecords) . ' Subject Class(es) added successfully.';
+        if ($skippedCount > 0) {
+            $message .= " ({$skippedCount} already existed and were skipped.)";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data'    => $createdRecords,
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error creating subject class:', ['error' => $e->getMessage()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to create subject class: ' . $e->getMessage(),
+        ], 500);
     }
+}
 
     // =========================================================================
     // UPDATE — swap the STAFF MEMBER on an existing subject-class assignment
@@ -701,72 +701,81 @@ class SubjectClassController extends Controller
     // BULK DESTROY
     // =========================================================================
 
-    public function deleteMultiple(Request $request): JsonResponse
-    {
-        try {
-            $ids = $request->input('ids', []);
+ public function deleteMultiple(Request $request): JsonResponse
+{
+    try {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', (array) $request->input('ids', []))
+        )));
 
-            if (empty($ids)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No subject classes selected.'
-                ], 400);
-            }
-
-            $existingIds = Subjectclass::whereIn('id', $ids)->pluck('id')->toArray();
-            $invalidIds  = array_diff($ids, $existingIds);
-
-            if (!empty($invalidIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Some selected subject classes do not exist.'
-                ], 400);
-            }
-
-            $blockedIds = [];
-            foreach ($ids as $id) {
-                $hasBroadsheets   = Broadsheets::where('subjectclass_id', $id)->exists();
-                $hasRegistrations = SubjectRegistrationStatus::where('subjectclassid', $id)->exists();
-                $hasMockRecords   = BroadsheetsMock::where('subjectclass_id', $id)->exists();
-
-                if ($hasBroadsheets || $hasRegistrations || $hasMockRecords) {
-                    $blockedIds[] = $id;
-                }
-            }
-
-            if (!empty($blockedIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete ' . count($blockedIds) . ' subject class(es) because they have existing records. Please unregister all students first.',
-                    'blocked_ids' => $blockedIds
-                ], 422);
-            }
-
-            DB::beginTransaction();
-            $deleted = Subjectclass::whereIn('id', $ids)->delete();
-            DB::commit();
-
-            Log::info('Bulk delete completed', [
-                'total'   => count($ids),
-                'deleted' => $deleted
-            ]);
-
-            return response()->json([
-                'success'       => true,
-                'message'       => $deleted . ' subject class(es) deleted successfully.',
-                'deleted_count' => $deleted
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Bulk delete failed:', ['error' => $e->getMessage()]);
+        if (empty($ids)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting subject classes: ' . $e->getMessage()
-            ], 500);
+                'message' => 'No subject classes selected.',
+            ], 400);
         }
-    }
 
+        $existingIds = Subjectclass::whereIn('id', $ids)->pluck('id')
+            ->map(fn($v) => (int) $v)->all();
+
+        if (empty($existingIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected subject classes no longer exist.',
+            ], 404);
+        }
+
+        // One query per table instead of several per row
+        $blockedIds = array_values(array_unique(array_merge(
+            Broadsheets::whereIn('subjectclass_id', $existingIds)->pluck('subjectclass_id')->map(fn($v) => (int) $v)->all(),
+            BroadsheetsMock::whereIn('subjectclass_id', $existingIds)->pluck('subjectclass_id')->map(fn($v) => (int) $v)->all(),
+            SubjectRegistrationStatus::whereIn('subjectclassid', $existingIds)->pluck('subjectclassid')->map(fn($v) => (int) $v)->all(),
+            DB::table('student_subject_register_record')->whereIn('subjectclassid', $existingIds)->pluck('subjectclassid')->map(fn($v) => (int) $v)->all()
+        )));
+
+        $deletableIds = array_values(array_diff($existingIds, $blockedIds));
+
+        if (empty($deletableIds)) {
+            return response()->json([
+                'success'     => false,
+                'message'     => 'None of the selected assignments can be deleted because they have scores or student registrations. Unregister the students first.',
+                'blocked_ids' => $blockedIds,
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        $deleted = Subjectclass::whereIn('id', $deletableIds)->delete();
+        DB::commit();
+
+        $skipped = count($blockedIds);
+        $message = $deleted . ' subject class(es) deleted successfully.';
+        if ($skipped > 0) {
+            $message .= " {$skipped} skipped because they have scores or student registrations.";
+        }
+
+        Log::info('Bulk delete completed', [
+            'requested' => count($ids),
+            'deleted'   => $deleted,
+            'skipped'   => $skipped,
+        ]);
+
+        return response()->json([
+            'success'       => true,
+            'message'       => $message,
+            'deleted_count' => $deleted,
+            'skipped_count' => $skipped,
+            'blocked_ids'   => $blockedIds,
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Bulk delete failed:', ['error' => $e->getMessage()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Error deleting subject classes: ' . $e->getMessage(),
+        ], 500);
+    }
+}
     // =========================================================================
     // ASSIGNMENTS
     // =========================================================================

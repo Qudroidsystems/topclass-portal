@@ -76,6 +76,10 @@
 .checkbox-scroll .form-check-label { font-size:13px; cursor:pointer; }
 .checkbox-scroll .form-check-input:checked { background-color:var(--sc-accent); border-color:var(--sc-accent); }
 
+/* Select-all bar + class list filter */
+.select-all-bar { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:8px; padding:7px 12px; margin-bottom:6px; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--sc-accent); cursor:pointer; }
+.class-item.hidden-by-filter { display:none !important; }
+
 /* Filter chip group */
 .filter-chip-group {
     display:flex; flex-wrap:wrap; gap:6px;
@@ -251,14 +255,30 @@
                         </div>
                     </div>
 
+                    {{-- CLASSES (multi-select checkboxes) --}}
                     <div class="mb-3">
-                        <label class="form-label">Class <span class="text-danger">*</span></label>
-                        <select name="schoolclassid" id="add-schoolclassid" class="form-select" required>
-                            <option value="">— Select Class —</option>
+                        <label class="form-label">Classes <span class="text-danger">*</span></label>
+                        <input type="text" id="add-class-search" class="form-control form-control-sm mb-2"
+                               placeholder="🔍  Search classes…">
+                        <div class="select-all-bar">
+                            <input type="checkbox" class="form-check-input" id="add-select-all-classes">
+                            <label for="add-select-all-classes" class="mb-0">Select all (visible) classes</label>
+                        </div>
+                        <div class="checkbox-scroll" id="add-class-list">
                             @foreach ($schoolclasses as $class)
-                                <option value="{{ $class->id }}">{{ $class->schoolclass }} {{ $class->arm }}</option>
+                                <div class="form-check class-item"
+                                     data-search-text="{{ strtolower($class->schoolclass . ' ' . $class->arm) }}">
+                                    <input class="form-check-input add-class-checkbox" type="checkbox"
+                                           id="add-c-{{ $class->id }}" value="{{ $class->id }}">
+                                    <label class="form-check-label" for="add-c-{{ $class->id }}">
+                                        {{ $class->schoolclass }} {{ $class->arm }}
+                                    </label>
+                                </div>
                             @endforeach
-                        </select>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            <span id="add-class-count">0</span> class(es) selected
+                        </small>
                     </div>
 
                     {{-- FILTER TOOLBAR --}}
@@ -686,6 +706,9 @@ $(document).ready(function () {
         responsive: true,
         drawCallback: function() {
             bindCB();
+            // Clear selection after every redraw so the bulk bar never shows a stale count
+            $('#selectAll').prop('checked', false);
+            updBulk();
             $('#totalBadge').text(this.api().page.info().recordsTotal);
         }
     });
@@ -714,20 +737,50 @@ $(document).ready(function () {
         if (c === 0) $('#selectAll').prop('checked', false);
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // ADD MODAL — CLASS CHECKBOXES
+    // ─────────────────────────────────────────────────────────────
+    function updateClassCount() {
+        $('#add-class-count').text($('.add-class-checkbox:checked').length);
+        var $vis = $('#add-class-list .class-item:not(.hidden-by-filter) .add-class-checkbox');
+        $('#add-select-all-classes').prop('checked',
+            $vis.length > 0 && $vis.filter(':checked').length === $vis.length);
+        updateAddBtn();
+    }
+
+    $('#add-class-list').on('change', '.add-class-checkbox', updateClassCount);
+
+    $('#add-select-all-classes').on('change', function () {
+        $('#add-class-list .class-item:not(.hidden-by-filter) .add-class-checkbox')
+            .prop('checked', this.checked);
+        updateClassCount();
+    });
+
+    $('#add-class-search').on('input', function () {
+        var q = this.value.toLowerCase().trim();
+        $('#add-class-list .class-item').each(function () {
+            var match = !q || String($(this).data('search-text')).indexOf(q) !== -1;
+            $(this).toggleClass('hidden-by-filter', !match);
+        });
+        updateClassCount();
+    });
+
     $('#add-teacher-list').on('change', '.add-teacher-checkbox', function () {
         $('#add-selected-count').text($('.add-teacher-checkbox:checked').length);
         updateAddBtn();
     });
-    $('#add-schoolclassid').on('change', updateAddBtn);
 
     function updateAddBtn() {
-        const ok = $('#add-schoolclassid').val() !== '' &&
+        const ok = $('.add-class-checkbox:checked').length > 0 &&
                    $('.add-teacher-checkbox:checked').length > 0;
         $('#add-btn').prop('disabled', !ok);
     }
 
     $('#createSubjectClassBtn').on('click', function() {
-        $('#add-schoolclassid').val('');
+        $('.add-class-checkbox, #add-select-all-classes').prop('checked', false);
+        $('#add-class-search').val('').trigger('input');
+        $('#add-class-count').text(0);
+
         $('.add-teacher-checkbox').prop('checked', false);
         $('#add-selected-count').text(0);
         $('#add-btn').prop('disabled', true);
@@ -780,10 +833,10 @@ $(document).ready(function () {
     $('#add-subjectclass-form').on('submit', function(e) {
         e.preventDefault();
 
-        const schoolclassid     = $('#add-schoolclassid').val();
+        const schoolclassids    = $('.add-class-checkbox:checked').map((i, el) => el.value).get();
         const subjectteacherids = $('.add-teacher-checkbox:checked').map((i, el) => el.value).get();
 
-        if (!schoolclassid) { showErr('#add-error-msg', 'Please select a class.'); return; }
+        if (schoolclassids.length === 0) { showErr('#add-error-msg', 'Please select at least one class.'); return; }
         if (subjectteacherids.length === 0) { showErr('#add-error-msg', 'Please select at least one subject teacher.'); return; }
 
         btnLoad($('#add-btn'), 'Adding…');
@@ -792,12 +845,13 @@ $(document).ready(function () {
         $.ajax({
             url: '{{ route("subjectclass.store") }}',
             type: 'POST',
-            data: { schoolclassid, subjectteacherid: subjectteacherids, _token: CSRF },
-            traditional: true,
+            // NOTE: no "traditional: true" — jQuery must send schoolclassid[]=1&schoolclassid[]=2
+            // so PHP receives real arrays.
+            data: { schoolclassid: schoolclassids, subjectteacherid: subjectteacherids, _token: CSRF },
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             success: function(res) {
                 if (res.success) {
-                    // ✅ reset BEFORE hiding so next open is clean
+                    // reset BEFORE hiding so next open is clean
                     btnReset($('#add-btn'));
                     $('#add-modal-loader').removeClass('active');
                     updateAddBtn();
@@ -845,7 +899,7 @@ $(document).ready(function () {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 success: function(res) {
                     if (res.success) {
-                        // ✅ reset BEFORE hiding
+                        // reset BEFORE hiding
                         btnReset($('#update-btn'));
                         $('#edit-modal-loader').removeClass('active');
 
@@ -911,34 +965,42 @@ $(document).ready(function () {
     function doBulk() {
         var ids = $('.row-checkbox:checked').map(function() { return this.value; }).get();
         if (!ids.length) { toast('warning', 'No Selection', 'Select at least one assignment.'); return; }
+
         Swal.fire({
             title: 'Delete ' + ids.length + ' assignment(s)?',
-            html: 'Assignments with student records or scores cannot be deleted.<br><strong>This action cannot be undone!</strong>',
+            html: 'Assignments with student records or scores will be skipped.<br><strong>This action cannot be undone!</strong>',
             icon: 'warning', showCancelButton: true,
             confirmButtonColor: '#dc2626', confirmButtonText: 'Yes, delete them!',
-            cancelButtonText: 'Cancel', reverseButtons: true, showLoaderOnConfirm: true,
+            cancelButtonText: 'Cancel', reverseButtons: true,
+            showLoaderOnConfirm: true,
+            allowOutsideClick: () => !Swal.isLoading(),
             preConfirm: function() {
-                return new Promise(function(resolve, reject) {
-                    PageLoader.show('Deleting assignments…');
+                return new Promise(function(resolve) {
                     $.ajax({
                         url: '{{ route("subjectclass.bulk-destroy") }}',
                         type: 'POST',
+                        // no "traditional" — send ids[]=1&ids[]=2 so PHP gets the full array
                         data: { ids: ids, _token: CSRF },
-                        traditional: true,
                         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                        success: function(res) { PageLoader.hide(); if (res.success) resolve(res); else reject(res.message); },
-                        error: function(xhr) { PageLoader.hide(); reject((xhr.responseJSON && xhr.responseJSON.message) || 'Error.'); }
+                        success: function(res) { resolve(res); },
+                        error: function(xhr) {
+                            resolve({ success: false,
+                                      message: (xhr.responseJSON && xhr.responseJSON.message) || 'Request failed.' });
+                        }
                     });
+                }).then(function(res) {
+                    if (!res.success) { Swal.showValidationMessage(res.message); return false; }
+                    return res;
                 });
             }
         }).then(function(r) {
-            if (r.isConfirmed && r.value) {
-                toast('success', 'Deleted!', r.value.message);
-                table.ajax.reload(null, false);
-                loadStats();
-                $('#selectAll').prop('checked', false); updBulk();
-            }
-        }).catch(function(err) { toast('error', 'Failed', typeof err === 'string' ? err : 'Could not delete.'); });
+            if (!r.isConfirmed || !r.value) return;
+            var res = r.value;
+            toast(res.skipped_count > 0 ? 'warning' : 'success',
+                  res.skipped_count > 0 ? 'Partly deleted' : 'Deleted!', res.message);
+            table.ajax.reload(null, false);
+            loadStats();
+        });
     }
     $('#bulkDeleteBtn, #bulkDeleteBtn2').on('click', doBulk);
 
