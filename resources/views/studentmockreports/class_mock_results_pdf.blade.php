@@ -14,8 +14,8 @@
 
         body {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 9px;
-            line-height: 1.25;
+            font-size: 8.5px;
+            line-height: 1.2;
             color: #000;
             background: #f5f5f5;
             padding: 3mm 0;
@@ -40,10 +40,10 @@
             text-align: center;
         }
 
-        /* ── Outer wrapper (fills a full A4 page) ── */
+        /* ── Outer wrapper (fills a full A4 page, grows if needed) ── */
         .student-section {
             width: 190mm;
-            min-height: 277mm;          /* FULL PAGE HEIGHT */
+            min-height: 277mm;
             page-break-after: always;
             background: #ffffff;
             border: 3px double #000000;
@@ -52,9 +52,9 @@
             position: relative;
             text-align: left;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-            display: flex;              /* stack children vertically */
+            display: flex;
             flex-direction: column;
+            /* NO overflow:hidden — allows natural growth to page 2 */
         }
         .student-section:last-child { page-break-after: auto; }
 
@@ -63,21 +63,21 @@
             width: 100%;
             background: #111827;
             color: white;
-            padding: 7px 10px 4px;
+            padding: 5px 10px 3px;
             text-align: center;
             border-bottom: 1px solid #1e40af;
             flex-shrink: 0;
         }
         .school-name-header .school-full-name {
             font-family: 'Arial Black', sans-serif;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 900;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             line-height: 1.05;
         }
         .school-name-header .motto {
-            font-size: 8.5px;
+            font-size: 8px;
             font-weight: 700;
             letter-spacing: 2px;
             opacity: .92;
@@ -88,11 +88,11 @@
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            padding: 4px 8px 3px;
+            padding: 3px 8px 2px;
             flex-shrink: 0;
         }
         .school-logo {
-            width: 62px; height: 68px;
+            width: 58px; height: 62px;
             border: 2px solid #47b492;
             border-radius: 5px;
             background: white;
@@ -105,7 +105,7 @@
             max-width: 100%; max-height: 100%; object-fit: contain;
         }
         .photo-frame {
-            width: 60px; height: 68px;
+            width: 56px; height: 62px;
             border: 2px solid #47b492;
             border-radius: 5px;
             background: white;
@@ -123,10 +123,10 @@
             border: none;
             border-collapse: collapse;
             width: 100%;
-            font-size: 8.8px;
+            font-size: 8.2px;
         }
         .contact-table td {
-            padding: 1.5px 4px 1.5px 0;
+            padding: 1px 4px 1px 0;
             vertical-align: top;
         }
         .contact-key {
@@ -143,8 +143,8 @@
         .report-title {
             background: #111827;
             color: white;
-            padding: 5px 8px;
-            font-size: 10.5px;
+            padding: 4px 8px;
+            font-size: 10px;
             font-weight: 700;
             text-align: center;
             flex-shrink: 0;
@@ -155,33 +155,29 @@
             background: linear-gradient(to bottom, #f0f7ff 0%, #ffffff 100%);
             border: 2px solid #2aa886;
             border-radius: 5px;
-            padding: 5px 10px;
-            margin: 6px 9px;
-            font-size: 8.8px;
+            padding: 4px 8px;
+            margin: 4px 9px;
+            font-size: 8.2px;
             text-align: center;
             flex-shrink: 0;
         }
         .info-table { width:100%; border-collapse:collapse; margin:0 auto; }
-        .info-table td { padding: 2px 6px; text-align:center; }
-        .info-bar-label { color:#1e40af; font-weight:900; font-size:8px; white-space:nowrap; }
-        .info-bar-value { font-weight:900; font-size:9px; padding-left:2px; }
+        .info-table td { padding: 1px 6px; text-align:center; }
+        .info-bar-label { color:#1e40af; font-weight:900; font-size:7.5px; white-space:nowrap; }
+        .info-bar-value { font-weight:900; font-size:8.5px; padding-left:2px; }
 
-        /* ── Result table (grows to fill leftover space) ── */
+        /* ── Result table (NATURAL height — does not stretch) ── */
         .result-table {
             padding: 0 9px;
-            margin: 5px 0;
-            flex: 1;                    /* absorbs leftover vertical space */
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
+            margin: 4px 0;
+            flex-shrink: 0;
         }
         .result-table table {
             width: 100%;
-            height: 100%;               /* stretch table to fill wrapper */
             table-layout: fixed;
             border: 2px solid #000;
             border-collapse: collapse;
-            font-size: 7.5px;
+            font-size: 7px;
             margin: 0;
         }
         .result-table thead th {
@@ -189,27 +185,28 @@
             color: white;
             font-weight: 800;
             border: 1px solid #000;
-            padding: 2.5px 1px;
+            padding: 2px 1px;
             font-size: 6.5px;
             text-align: center;
         }
-        .result-table thead th.col-sn      { width: 26px; }
+        .result-table thead th.col-sn      { width: 24px; }
         .result-table thead th.col-subject { width: 30%; text-align: left; padding-left: 4px; }
 
         .result-table tbody td {
             border: 1px solid #000;
-            padding: 1.5px 1px;
+            padding: 1px;
             text-align: center;
-            font-size: 7.5px;
+            font-size: 7px;
             background: white;
             font-weight: 800;
-            vertical-align: middle;
-            /* height & line-height removed so rows stretch */
+            height: 12px;
+            line-height: 12px;
+            overflow: hidden;
         }
         .result-table tbody td.subject-name {
             text-align: left;
             padding-left: 5px;
-            font-size: 7.5px;
+            font-size: 7px;
             white-space: nowrap;
             overflow: hidden;
         }
@@ -232,11 +229,11 @@
             color: #ffffff;
             font-weight: 900;
             font-size: 7.5px;
-            padding: 4px 9px;
+            padding: 3px 9px;
             border: 2px solid #000;
             border-top: none;
             text-align: center;
-            margin: 0 9px 6px;
+            margin: 0 9px 4px;
             flex-shrink: 0;
         }
 
@@ -250,35 +247,35 @@
         }
         .remarks-table td {
             border: 1px solid #000;
-            padding: 4px 7px;
+            padding: 3px 6px;
             background: white;
             vertical-align: top;
-            font-size: 8px;
+            font-size: 7.5px;
         }
         .remarks-table .h6 {
             font-weight: 700;
             margin-bottom: 2px;
-            font-size: 8.5px;
+            font-size: 8px;
             border-bottom: 1px solid #ccc;
             display: inline-block;
         }
 
-        /* ── Bottom strip (pushed to page bottom) ── */
+        /* ── Bottom strip (sticks to bottom of the LAST page of this card) ── */
         .bottom-strip {
             width: 100%;
             border-top: 1px solid #cbd5e1;
             background: #f1f5f9;
-            margin-top: auto;           /* push to bottom of flex column */
+            margin-top: auto;
             flex-shrink: 0;
         }
         .bottom-strip table { width:100%; border-collapse:collapse; }
-        .bottom-strip td { padding: 6px 9px; vertical-align: middle; }
-        .cell-qr    { width:80px; text-align:center; vertical-align:middle; }
-        .cell-footer{ text-align:center; font-size:8px; vertical-align:middle; }
-        .cell-stamp { width:110px; text-align:center; vertical-align:middle; }
-        .cell-qr img { width:66px; height:66px; display:block; margin:0 auto 2px; }
+        .bottom-strip td { padding: 5px 9px; vertical-align: middle; }
+        .cell-qr    { width:75px; text-align:center; vertical-align:middle; }
+        .cell-footer{ text-align:center; font-size:7.5px; vertical-align:middle; }
+        .cell-stamp { width:105px; text-align:center; vertical-align:middle; }
+        .cell-qr img { width:58px; height:58px; display:block; margin:0 auto 2px; }
         .qr-label   { font-size:6px; color:#333; font-weight:600; text-align:center; }
-        .cell-stamp img { width:95px; height:95px; transform:rotate(-8deg); display:block; margin:0 auto; }
+        .cell-stamp img { width:82px; height:82px; transform:rotate(-8deg); display:block; margin:0 auto; }
         .text-dot-space2 {
             border-bottom: 1px dotted #333;
             display: inline-block;
@@ -286,7 +283,7 @@
             font-weight: bold;
             margin: 0 3px;
         }
-        .powered-by { font-size: 7.5px; margin-top: 3px; color: #64748b; }
+        .powered-by { font-size: 7px; margin-top: 3px; color: #64748b; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -342,7 +339,7 @@
             $logoSrc = !empty($studentData['school_logo_base64'])
                 ? $studentData['school_logo_base64']
                 : 'data:image/svg+xml;base64,' . base64_encode(
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="62" height="68" viewBox="0 0 100 100">
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="58" height="62" viewBox="0 0 100 100">
                      <rect width="100" height="100" fill="#f8f9fa" stroke="#47b492" stroke-width="2"/>
                      <text x="50" y="55" text-anchor="middle" fill="#1e40af" font-size="8" font-weight="bold">LOGO</text>
                      </svg>'
@@ -360,13 +357,13 @@
             {{-- ── HEADER: Logo | Contact | Photo ── --}}
             <table class="header-table">
                 <tr>
-                    <td width="15%" style="text-align:center; vertical-align:middle; padding:4px 6px 4px 8px;">
+                    <td width="15%" style="text-align:center; vertical-align:middle; padding:3px 6px 3px 8px;">
                         <div class="school-logo">
                             <img src="{{ $logoSrc }}" alt="School Logo">
                         </div>
                     </td>
 
-                    <td style="vertical-align:top; padding:4px 6px;">
+                    <td style="vertical-align:top; padding:3px 6px;">
                         <table class="contact-table">
                             <tr>
                                 <td class="contact-key">Address:</td>
@@ -387,13 +384,13 @@
                         </table>
                     </td>
 
-                    <td width="17%" style="text-align:right; padding:4px 8px 4px 4px; vertical-align:middle;">
+                    <td width="17%" style="text-align:right; padding:3px 8px 3px 4px; vertical-align:middle;">
                         @if(in_array('picture', $columnsToShow))
                         <div class="photo-frame">
                             @if(!empty($studentData['student_image_base64']))
                                 <img src="{{ $studentData['student_image_base64'] }}" alt="Student Photo">
                             @else
-                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='68' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e2e8f0'/%3E%3Ccircle cx='50' cy='40' r='20' fill='%2394a3b8'/%3E%3Crect x='35' y='65' width='30' height='25' fill='%2394a3b8' rx='4'/%3E%3C/svg%3E" alt="Default">
+                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='62' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e2e8f0'/%3E%3Ccircle cx='50' cy='40' r='20' fill='%2394a3b8'/%3E%3Crect x='35' y='65' width='30' height='25' fill='%2394a3b8' rx='4'/%3E%3C/svg%3E" alt="Default">
                             @endif
                         </div>
                         @endif
@@ -549,6 +546,10 @@
                     </tr>
                 </tbody>
             </table>
+
+            {{-- Flexible spacer: eats leftover space on short reports,
+                 collapses to 0 on long reports so footer flows naturally --}}
+            <div style="flex: 1 1 auto; min-height: 0;"></div>
 
             {{-- ── BOTTOM STRIP ── --}}
             <div class="bottom-strip">
