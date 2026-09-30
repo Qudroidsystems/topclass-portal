@@ -90,114 +90,111 @@ class ViewStudentMockReportController extends Controller
     // =========================================================================
     // CLASS POSITIONS & AVERAGES
     // =========================================================================
+protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid, $termid)
+{
+    $cacheKey = "mock_class_metrics_{$schoolclassid}_{$sessionid}_{$termid}";
+    Cache::forget($cacheKey);
 
-    protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid, $termid)
-    {
-        $cacheKey = "mock_class_metrics_{$schoolclassid}_{$sessionid}_{$termid}";
-        Cache::forget($cacheKey);
+    $schoolclass = Schoolclass::with('classcategories')
+        ->where('id', $schoolclassid)
+        ->first(['id', 'schoolclass', 'classcategoryid']);
 
-        $schoolclass = Schoolclass::with('classcategories')
-            ->where('id', $schoolclassid)
-            ->first(['id', 'schoolclass', 'classcategoryid']);
+    if (!$schoolclass) {
+        Log::warning('Schoolclass not found for mock metrics', compact('schoolclassid', 'sessionid', 'termid'));
+        return false;
+    }
 
-        if (!$schoolclass) {
-            Log::warning('Schoolclass not found for mock metrics', compact('schoolclassid', 'sessionid', 'termid'));
-            return false;
+    $className = $schoolclass->schoolclass;
+    $isSenior  = $schoolclass->classcategories
+        ? ($schoolclass->classcategories->is_senior ?? false)
+        : false;
+
+    $classIds = Schoolclass::where('schoolclass', $className)->pluck('id')->toArray();
+    if (empty($classIds)) return false;
+
+    $students = Studentclass::whereIn('schoolclassid', $classIds)
+        ->where('sessionid', $sessionid)
+        ->pluck('studentId')
+        ->toArray();
+
+    if (empty($students)) return false;
+
+    $broadsheets = BroadsheetsMock::whereIn('broadsheet_records_mock.student_id', $students)
+        ->where('broadsheetmock.term_id', $termid)
+        ->where('broadsheet_records_mock.session_id', $sessionid)
+        ->whereIn('broadsheet_records_mock.schoolclass_id', $classIds)
+        ->join('broadsheet_records_mock', 'broadsheet_records_mock.id', '=', 'broadsheetmock.broadsheet_records_mock_id')
+        ->join('subject', 'subject.id', '=', 'broadsheet_records_mock.subject_id')
+        ->join('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records_mock.student_id')
+        ->select([
+            'broadsheetmock.id',
+            'broadsheet_records_mock.student_id',
+            'broadsheet_records_mock.subject_id',
+            'subject.subject as subject_name',
+            'studentRegistration.admissionNo as admission_no',
+            'broadsheetmock.total',
+            'broadsheetmock.subject_position_class',
+            'broadsheetmock.avg',
+            'broadsheetmock.grade',
+            'broadsheetmock.remark',
+        ])
+        ->get();
+
+    if ($broadsheets->isEmpty()) return false;
+
+    $subjectGroups = $broadsheets->groupBy('subject_id');
+
+    foreach ($subjectGroups as $subjectId => $subjectRecords) {
+        $validRecords = $subjectRecords->filter(fn ($r) => $r->total != 0 && $r->total !== null);
+        $classAvg     = $validRecords->count() > 0
+            ? round($validRecords->sum('total') / $validRecords->count(), 1)
+            : 0;
+
+        $sortedRecords = $validRecords->sortByDesc('total')->values();
+        $rank          = 0;
+        $lastTotal     = null;
+        $lastPosition  = 0;
+        $positionMap   = [];
+
+        foreach ($sortedRecords as $record) {
+            $rank++;
+            if ($lastTotal !== null && $record->total == $lastTotal) {
+                $positionMap[$record->id] = $lastPosition;
+            } else {
+                $lastPosition             = $rank;
+                $lastTotal                = $record->total;
+                $positionMap[$record->id] = $lastPosition;
+            }
         }
 
-        $className = $schoolclass->schoolclass;
-        $isSenior  = $schoolclass->classcategories
-            ? ($schoolclass->classcategories->is_senior ?? false)
-            : false;
+        foreach ($subjectRecords as $record) {
+            // Always assign a position (never leave null)
+            $newPosition = ($record->total == 0 || $record->total === null)
+                ? '-'
+                : $this->formatOrdinal($positionMap[$record->id] ?? 0);
 
-        $classIds = Schoolclass::where('schoolclass', $className)->pluck('id')->toArray();
-        if (empty($classIds)) return false;
-
-        $students = Studentclass::whereIn('schoolclassid', $classIds)
-            ->where('sessionid', $sessionid)
-            ->pluck('studentId')
-            ->toArray();
-
-        if (empty($students)) return false;
-
-        $broadsheets = BroadsheetsMock::whereIn('broadsheet_records_mock.student_id', $students)
-            ->where('broadsheetmock.term_id', $termid)
-            ->where('broadsheet_records_mock.session_id', $sessionid)
-            ->whereIn('broadsheet_records_mock.schoolclass_id', $classIds)
-            ->join('broadsheet_records_mock', 'broadsheet_records_mock.id', '=', 'broadsheetmock.broadsheet_records_mock_id')
-            ->join('subject', 'subject.id', '=', 'broadsheet_records_mock.subject_id')
-            ->join('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records_mock.student_id')
-            ->select([
-                'broadsheetmock.id',
-                'broadsheet_records_mock.student_id',
-                'broadsheet_records_mock.subject_id',
-                'subject.subject as subject_name',
-                'studentRegistration.admissionNo as admission_no',
-                'broadsheetmock.total',
-                'broadsheetmock.subject_position_class',
-                'broadsheetmock.avg',
-                'broadsheetmock.grade',
-                'broadsheetmock.remark',
-            ])
-            ->get();
-
-        if ($broadsheets->isEmpty()) return false;
-
-        $subjectGroups = $broadsheets->groupBy('subject_id');
-
-        foreach ($subjectGroups as $subjectId => $subjectRecords) {
-            $validRecords = $subjectRecords->filter(fn ($r) => $r->total != 0 && $r->total !== null);
-            $classAvg     = $validRecords->count() > 0
-                ? round($validRecords->sum('total') / $validRecords->count(), 1)
-                : 0;
-
-            $sortedRecords = $validRecords->sortByDesc('total')->values();
-            $rank          = 0;
-            $lastTotal     = null;
-            $lastPosition  = 0;
-            $positionMap   = [];
-
-            foreach ($sortedRecords as $record) {
-                $rank++;
-                if ($lastTotal !== null && $record->total == $lastTotal) {
-                    $positionMap[$record->id] = $lastPosition;
-                } else {
-                    $lastPosition             = $rank;
-                    $lastTotal                = $record->total;
-                    $positionMap[$record->id] = $lastPosition;
-                }
-            }
-
-            foreach ($subjectRecords as $record) {
-                $newPosition = $record->total == 0 ? '-' : $this->formatOrdinal($positionMap[$record->id] ?? 0);
-
-                $grade = $record->total == 0 ? '-' : (
+            $grade = ($record->total == 0 || $record->total === null)
+                ? '-'
+                : (
                     $isSenior && $schoolclass->classcategories
                         ? $schoolclass->classcategories->calculateGrade($record->total)
                         : $this->calculateJuniorGrade($record->total)
                 );
-                $remark = $this->getRemark($grade);
+            $remark = $this->getRemark($grade);
 
-                if (
-                    $record->avg != $classAvg ||
-                    $record->subject_position_class != $newPosition ||
-                    $record->grade != $grade ||
-                    $record->remark != $remark
-                ) {
-                    BroadsheetsMock::where('id', $record->id)->update([
-                        'avg'                    => $classAvg,
-                        'subject_position_class' => $newPosition,
-                        'grade'                  => $grade,
-                        'remark'                 => $remark,
-                    ]);
-                }
-            }
+            // ALWAYS update – this is the key fix for missing positions
+            BroadsheetsMock::where('id', $record->id)->update([
+                'avg'                    => $classAvg,
+                'subject_position_class' => $newPosition,
+                'grade'                  => $grade,
+                'remark'                 => $remark,
+            ]);
         }
-
-        Cache::put($cacheKey, true, now()->addHours(1));
-        return true;
     }
 
+    Cache::put($cacheKey, true, now()->addHours(1));
+    return true;
+}
     // =========================================================================
     // STUDENT MOCK RESULT DATA
     // =========================================================================

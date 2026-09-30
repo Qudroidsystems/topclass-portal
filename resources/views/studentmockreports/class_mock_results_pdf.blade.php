@@ -129,22 +129,13 @@
         .header-divider  { width:100%; height:2px; background:#1e40af; margin:0; }
         .header-divider2 { width:100%; height:1px; background:#64748b; margin:1px 0; }
 
-        /* ── Report title + mock badge ── */
+        /* ── Report title ── */
         .report-title {
             background: #111827;
             color: white;
             padding: 5px 8px;
             font-size: 10.5px;
             font-weight: 700;
-            text-align: center;
-        }
-        .mock-badge {
-            background: #b45309;
-            color: white;
-            font-size: 7.5px;
-            font-weight: 700;
-            padding: 2px 8px;
-            letter-spacing: .8px;
             text-align: center;
         }
 
@@ -167,7 +158,7 @@
         .result-table { padding: 0 9px; margin: 5px 0; }
         .result-table table {
             width: 100%;
-            table-layout: fixed;          /* equal split for columns without a width */
+            table-layout: fixed;
             border: 2px solid #000;
             border-collapse: collapse;
             font-size: 7.5px;
@@ -182,7 +173,6 @@
             font-size: 6.5px;
             text-align: center;
         }
-        /* Explicit widths only for S/N and Subject; everything else shares the rest equally */
         .result-table thead th.col-sn      { width: 26px; }
         .result-table thead th.col-subject { width: 30%; text-align: left; padding-left: 4px; }
 
@@ -201,29 +191,17 @@
             text-align: left;
             padding-left: 5px;
             font-size: 7.5px;
-            white-space: nowrap;          /* keeps row height at 13px */
+            white-space: nowrap;
             overflow: hidden;
         }
 
-        /* ── Grade / position colours ──
-           Red is reserved EXCLUSIVELY for the true fail grades:
-             • Junior  → F
-             • Senior  → E8, F9
-           All other grades get their own colour. Unknown / empty grades
-           get no colour class at all (never red).
-
-           Palette:
-             A  → green       (#16a34a)
-             B  → royal blue  (#2563eb)
-             C  → sky blue    (#0ea5e9)   ← changed from gold
-             D  → orange      (#ea580c)
-             F  → red         (#dc2626)   only for F / E8 / F9  */
+        /* ── Grade / position colours ── */
         .highlight-red { color: #dc2626; font-weight: 900; }
-        .grade-A { color: #16a34a; font-weight: 900; }   /* green      — A  */
-        .grade-B { color: #2563eb; font-weight: 900; }   /* royal blue — B  */
-        .grade-C { color: #0ea5e9; font-weight: 900; }   /* sky blue   — C  */
-        .grade-D { color: #ea580c; font-weight: 900; }   /* orange     — D  */
-        .grade-F { color: #dc2626; font-weight: 900; }   /* red        — F / E8 / F9 */
+        .grade-A { color: #16a34a; font-weight: 900; }
+        .grade-B { color: #2563eb; font-weight: 900; }
+        .grade-C { color: #0ea5e9; font-weight: 900; }
+        .grade-D { color: #ea580c; font-weight: 900; }
+        .grade-F { color: #dc2626; font-weight: 900; }
         .position-1 { background: gold;    color: black; font-weight: 900; border-radius: 2px; }
         .position-2 { background: silver;  color: black; font-weight: 900; }
         .position-3 { background: #cd7f32; color: white; font-weight: 900; }
@@ -302,7 +280,6 @@
         $defaultColumns  = ['sn', 'name', 'exam', 'total', 'grade', 'position', 'class_average'];
         $columnsToShow   = !empty($selectedColumns) ? $selectedColumns : $defaultColumns;
 
-        // Number of visible result columns (used for the empty-state colspan)
         $resultColumnKeys = ['sn', 'name', 'exam', 'total', 'grade', 'position', 'class_average', 'cmin', 'cmax'];
         $visibleColCount  = max(1, count(array_intersect($resultColumnKeys, $columnsToShow)));
     @endphp
@@ -320,10 +297,6 @@
             $classVal = ($studentData['schoolclass']->schoolclass ?? '') . ' ' . ($studentData['schoolclass']->arms->arm ?? '');
             $session  = $metadata['session'] ?? '2025/2026';
             $term     = $metadata['term']    ?? 'SECOND TERM';
-
-            // FIX #1 — padding rows removed entirely.
-            // The table now ends naturally after the last real subject,
-            // so there are no blank rows after Yoruba Language.
 
             $qrData = "Name: {$fullName}\nAdm No: {$admNo}\nClass: {$classVal}\nTerm: {$term}\nSession: {$session}\nSchool: " . ($schoolInfo->school_name ?? 'School');
             $qrCodeBase64 = base64_encode(
@@ -355,17 +328,15 @@
                 <div class="motto">{{ $schoolInfo->school_motto ?? 'KNOWLEDGE AND VIRTUE' }}</div>
             </div>
 
-            {{-- ── HEADER: Logo | Contact (terminal-style) | Photo ── --}}
+            {{-- ── HEADER: Logo | Contact | Photo ── --}}
             <table class="header-table">
                 <tr>
-                    {{-- Logo --}}
                     <td width="15%" style="text-align:center; vertical-align:middle; padding:4px 6px 4px 8px;">
                         <div class="school-logo">
                             <img src="{{ $logoSrc }}" alt="School Logo">
                         </div>
                     </td>
 
-                    {{-- Contact rows — mirrors terminal report layout --}}
                     <td style="vertical-align:top; padding:4px 6px;">
                         <table class="contact-table">
                             <tr>
@@ -387,7 +358,6 @@
                         </table>
                     </td>
 
-                    {{-- Student photo --}}
                     <td width="17%" style="text-align:right; padding:4px 8px 4px 4px; vertical-align:middle;">
                         @if(in_array('picture', $columnsToShow))
                         <div class="photo-frame">
@@ -408,7 +378,8 @@
             <div class="report-title">
                 {{ strtoupper($term) }} {{ strtoupper($session) }} MOCK EXAMINATION RESULT
             </div>
-            <div class="mock-badge">MOCK EXAMINATION — NOT FOR OFFICIAL PROMOTION USE</div>
+
+            {{-- BADGE COMPLETELY REMOVED --}}
 
             {{-- ── STUDENT INFO BAR ── --}}
             <div class="student-info-bar">
@@ -426,7 +397,6 @@
                         <td><span class="info-bar-label">SEX:</span> <span class="info-bar-value">{{ $student->gender ?? '—' }}</span></td>
                         @endif
                         @if(in_array('dob', $columnsToShow))
-                        {{-- FIX #3 — DOB now renders as a date only (no 00:00:00) --}}
                         <td>
                             <span class="info-bar-label">D.O.B:</span>
                             <span class="info-bar-value">
@@ -456,80 +426,77 @@
                     </thead>
                     <tbody>
                         @forelse ($mockScores as $i => $score)
-                        <tr>
-                            @if(in_array('sn', $columnsToShow))   <td>{{ $i + 1 }}</td> @endif
-                            @if(in_array('name', $columnsToShow))  <td class="subject-name">{{ $score->subject_name ?? 'N/A' }}</td> @endif
-                            @if(in_array('exam', $columnsToShow))
-                                <td @if(($score->exam ?? 0) < 50) class="highlight-red" @endif>
-                                    {{ $score->exam ? number_format($score->exam, 1) : '-' }}
-                                </td>
+                            @if(empty($score->subject_name))
+                                @continue
                             @endif
-                            @if(in_array('total', $columnsToShow))
-                                <td @if(($score->total ?? 0) < 50) class="highlight-red" @endif>
-                                    {{ $score->total ? number_format($score->total, 1) : '-' }}
-                                </td>
-                            @endif
+                            <tr>
+                                @if(in_array('sn', $columnsToShow))   <td>{{ $i + 1 }}</td> @endif
+                                @if(in_array('name', $columnsToShow))  <td class="subject-name">{{ $score->subject_name ?? 'N/A' }}</td> @endif
+                                @if(in_array('exam', $columnsToShow))
+                                    <td @if(($score->exam ?? 0) < 50) class="highlight-red" @endif>
+                                        {{ $score->exam !== null ? number_format($score->exam, 1) : '-' }}
+                                    </td>
+                                @endif
+                                @if(in_array('total', $columnsToShow))
+                                    <td @if(($score->total ?? 0) < 50) class="highlight-red" @endif>
+                                        {{ $score->total !== null ? number_format($score->total, 1) : '-' }}
+                                    </td>
+                                @endif
 
-                            @if(in_array('grade', $columnsToShow))
-                                @php
-                                    /* FIX #2 — Grade colour mapping.
+                                @if(in_array('grade', $columnsToShow))
+                                    @php
+                                        $g      = $score->grade ?? '-';
+                                        $gUpper = strtoupper(trim((string) $g));
 
-                                       RED is reserved EXCLUSIVELY for the true
-                                       fail grades:
-                                          • Junior → "F"
-                                          • Senior → "E8" and "F9"
+                                        $gc = match(true) {
+                                            $gUpper === 'F'  => 'grade-F',
+                                            $gUpper === 'E8' => 'grade-F',
+                                            $gUpper === 'F9' => 'grade-F',
+                                            str_starts_with($gUpper, 'A') => 'grade-A',
+                                            str_starts_with($gUpper, 'B') => 'grade-B',
+                                            str_starts_with($gUpper, 'C') => 'grade-C',
+                                            str_starts_with($gUpper, 'D') => 'grade-D',
+                                            default => '',
+                                        };
+                                    @endphp
+                                    <td class="{{ $gc }}">{{ $g }}</td>
+                                @endif
 
-                                       Every other grade gets its own colour.
-                                       Unknown / empty values get NO colour class
-                                       at all — they can never accidentally
-                                       turn red.
+                                @if(in_array('position', $columnsToShow))
+                                    @php
+                                        $pos = $score->position ?? null;
+                                        // Always show something – never leave blank
+                                        if ($pos === null || $pos === '' || $pos === '0' || $pos === 0) {
+                                            $pos = '-';
+                                        }
+                                        $posNum = preg_replace('/\D/', '', (string) $pos);
+                                        $posC   = match((int)$posNum) {
+                                            1 => 'position-1',
+                                            2 => 'position-2',
+                                            3 => 'position-3',
+                                            default => ''
+                                        };
+                                    @endphp
+                                    <td class="{{ $posC }}">{{ $pos }}</td>
+                                @endif
 
-                                       Palette:
-                                          A  → green       (grade-A)
-                                          B  → royal blue  (grade-B)
-                                          C  → sky blue    (grade-C)
-                                          D  → orange      (grade-D)
-                                          F  → red         (grade-F)         */
-                                    $g      = $score->grade ?? '-';
-                                    $gUpper = strtoupper(trim((string) $g));
-
-                                    $gc = match(true) {
-                                        // ── The ONLY red grades ──
-                                        $gUpper === 'F'  => 'grade-F',  // junior fail
-                                        $gUpper === 'E8' => 'grade-F',  // senior fail
-                                        $gUpper === 'F9' => 'grade-F',  // senior fail
-
-                                        // ── Passing grades ──
-                                        str_starts_with($gUpper, 'A') => 'grade-A',
-                                        str_starts_with($gUpper, 'B') => 'grade-B',
-                                        str_starts_with($gUpper, 'C') => 'grade-C',
-                                        str_starts_with($gUpper, 'D') => 'grade-D',
-
-                                        // ── Anything else (empty, dash, unexpected) → no colour ──
-                                        default => '',
-                                    };
-                                @endphp
-                                <td class="{{ $gc }}">{{ $g }}</td>
-                            @endif
-
-                            @if(in_array('position', $columnsToShow))
-                                @php
-                                    $pos    = $score->position ?? '-';
-                                    $posNum = preg_replace('/\D/', '', $pos);
-                                    $posC   = match((int)$posNum) { 1=>'position-1', 2=>'position-2', 3=>'position-3', default=>'' };
-                                @endphp
-                                <td class="{{ $posC }}">{{ $pos }}</td>
-                            @endif
-
-                            @if(in_array('class_average', $columnsToShow)) <td>{{ $score->class_average ? number_format($score->class_average, 1) : '-' }}</td> @endif
-                            @if(in_array('cmin', $columnsToShow))           <td>{{ $score->cmin ? number_format($score->cmin, 1) : '-' }}</td> @endif
-                            @if(in_array('cmax', $columnsToShow))           <td>{{ $score->cmax ? number_format($score->cmax, 1) : '-' }}</td> @endif
-                        </tr>
+                                @if(in_array('class_average', $columnsToShow))
+                                    <td>{{ $score->class_average !== null ? number_format($score->class_average, 1) : '-' }}</td>
+                                @endif
+                                @if(in_array('cmin', $columnsToShow))
+                                    <td>{{ $score->cmin !== null ? number_format($score->cmin, 1) : '-' }}</td>
+                                @endif
+                                @if(in_array('cmax', $columnsToShow))
+                                    <td>{{ $score->cmax !== null ? number_format($score->cmax, 1) : '-' }}</td>
+                                @endif
+                            </tr>
                         @empty
-                        <tr><td colspan="{{ $visibleColCount }}" style="text-align:center;padding:6px;">No mock scores available.</td></tr>
+                            <tr>
+                                <td colspan="{{ $visibleColCount }}" style="text-align:center;padding:6px;">
+                                    No mock scores available.
+                                </td>
+                            </tr>
                         @endforelse
-
-                        {{-- FIX #1 — no padding rows; table ends after the last real subject --}}
                     </tbody>
                 </table>
             </div>
@@ -557,7 +524,7 @@
                 </tbody>
             </table>
 
-            {{-- ── BOTTOM STRIP: QR | Footer | Stamp ── --}}
+            {{-- ── BOTTOM STRIP ── --}}
             <div class="bottom-strip">
                 <table>
                     <tr>
