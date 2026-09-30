@@ -210,13 +210,20 @@
              • Junior  → F
              • Senior  → E8, F9
            All other grades get their own colour. Unknown / empty grades
-           get no colour class at all (never red). */
+           get no colour class at all (never red).
+
+           Palette:
+             A  → green       (#16a34a)
+             B  → royal blue  (#2563eb)
+             C  → sky blue    (#0ea5e9)   ← changed from gold
+             D  → orange      (#ea580c)
+             F  → red         (#dc2626)   only for F / E8 / F9  */
         .highlight-red { color: #dc2626; font-weight: 900; }
-        .grade-A { color: #16a34a; font-weight: 900; }   /* green */
-        .grade-B { color: #2563eb; font-weight: 900; }   /* blue  */
-        .grade-C { color: #ca8a04; font-weight: 900; }   /* gold  — never red */
-        .grade-D { color: #ea580c; font-weight: 900; }   /* orange */
-        .grade-F { color: #dc2626; font-weight: 900; }   /* red — only F / E8 / F9 */
+        .grade-A { color: #16a34a; font-weight: 900; }   /* green      — A  */
+        .grade-B { color: #2563eb; font-weight: 900; }   /* royal blue — B  */
+        .grade-C { color: #0ea5e9; font-weight: 900; }   /* sky blue   — C  */
+        .grade-D { color: #ea580c; font-weight: 900; }   /* orange     — D  */
+        .grade-F { color: #dc2626; font-weight: 900; }   /* red        — F / E8 / F9 */
         .position-1 { background: gold;    color: black; font-weight: 900; border-radius: 2px; }
         .position-2 { background: silver;  color: black; font-weight: 900; }
         .position-3 { background: #cd7f32; color: white; font-weight: 900; }
@@ -475,7 +482,14 @@
                                        Every other grade gets its own colour.
                                        Unknown / empty values get NO colour class
                                        at all — they can never accidentally
-                                       turn red.                                    */
+                                       turn red.
+
+                                       Palette:
+                                          A  → green       (grade-A)
+                                          B  → royal blue  (grade-B)
+                                          C  → sky blue    (grade-C)
+                                          D  → orange      (grade-D)
+                                          F  → red         (grade-F)         */
                                     $g      = $score->grade ?? '-';
                                     $gUpper = strtoupper(trim((string) $g));
 
