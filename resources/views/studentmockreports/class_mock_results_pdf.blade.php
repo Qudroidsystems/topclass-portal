@@ -6,6 +6,12 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* ── Page setup for print ── */
+        @page {
+            size: A4;
+            margin: 6mm;
+        }
+
         body {
             font-family: 'Times New Roman', Times, serif;
             font-size: 9px;
@@ -34,9 +40,10 @@
             text-align: center;
         }
 
-        /* ── Outer wrapper ── */
+        /* ── Outer wrapper (fills a full A4 page) ── */
         .student-section {
             width: 190mm;
+            min-height: 277mm;          /* FULL PAGE HEIGHT */
             page-break-after: always;
             background: #ffffff;
             border: 3px double #000000;
@@ -46,8 +53,10 @@
             text-align: left;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             overflow: hidden;
+            display: flex;              /* stack children vertically */
+            flex-direction: column;
         }
-        .student-section:last-child { page-break-after: avoid; }
+        .student-section:last-child { page-break-after: auto; }
 
         /* ── School name header ── */
         .school-name-header {
@@ -57,6 +66,7 @@
             padding: 7px 10px 4px;
             text-align: center;
             border-bottom: 1px solid #1e40af;
+            flex-shrink: 0;
         }
         .school-name-header .school-full-name {
             font-family: 'Arial Black', sans-serif;
@@ -74,11 +84,12 @@
             margin-top: 2px;
         }
 
-        /* ── Header table (terminal-style: logo | contact rows | photo) ── */
+        /* ── Header table (logo | contact rows | photo) ── */
         .header-table {
             width: 100%;
             border-collapse: collapse;
             padding: 4px 8px 3px;
+            flex-shrink: 0;
         }
         .school-logo {
             width: 62px; height: 68px;
@@ -108,7 +119,6 @@
             max-width: 100%; max-height: 100%; object-fit: contain;
         }
 
-        /* Contact info uses a tight 2-col key/value table (matches terminal report) */
         .contact-table {
             border: none;
             border-collapse: collapse;
@@ -126,8 +136,8 @@
         }
 
         /* ── Dividers ── */
-        .header-divider  { width:100%; height:2px; background:#1e40af; margin:0; }
-        .header-divider2 { width:100%; height:1px; background:#64748b; margin:1px 0; }
+        .header-divider  { width:100%; height:2px; background:#1e40af; margin:0; flex-shrink:0; }
+        .header-divider2 { width:100%; height:1px; background:#64748b; margin:1px 0; flex-shrink:0; }
 
         /* ── Report title ── */
         .report-title {
@@ -137,6 +147,7 @@
             font-size: 10.5px;
             font-weight: 700;
             text-align: center;
+            flex-shrink: 0;
         }
 
         /* ── Student info bar ── */
@@ -148,16 +159,25 @@
             margin: 6px 9px;
             font-size: 8.8px;
             text-align: center;
+            flex-shrink: 0;
         }
         .info-table { width:100%; border-collapse:collapse; margin:0 auto; }
         .info-table td { padding: 2px 6px; text-align:center; }
         .info-bar-label { color:#1e40af; font-weight:900; font-size:8px; white-space:nowrap; }
         .info-bar-value { font-weight:900; font-size:9px; padding-left:2px; }
 
-        /* ── Result table ── */
-        .result-table { padding: 0 9px; margin: 5px 0; }
+        /* ── Result table (grows to fill leftover space) ── */
+        .result-table {
+            padding: 0 9px;
+            margin: 5px 0;
+            flex: 1;                    /* absorbs leftover vertical space */
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
         .result-table table {
             width: 100%;
+            height: 100%;               /* stretch table to fill wrapper */
             table-layout: fixed;
             border: 2px solid #000;
             border-collapse: collapse;
@@ -183,9 +203,8 @@
             font-size: 7.5px;
             background: white;
             font-weight: 800;
-            height: 13px;
-            line-height: 13px;
-            overflow: hidden;
+            vertical-align: middle;
+            /* height & line-height removed so rows stretch */
         }
         .result-table tbody td.subject-name {
             text-align: left;
@@ -218,6 +237,7 @@
             border-top: none;
             text-align: center;
             margin: 0 9px 6px;
+            flex-shrink: 0;
         }
 
         /* ── Remarks ── */
@@ -226,6 +246,7 @@
             border: 2px solid #000;
             border-collapse: collapse;
             margin: 0 9px 4px;
+            flex-shrink: 0;
         }
         .remarks-table td {
             border: 1px solid #000;
@@ -242,12 +263,13 @@
             display: inline-block;
         }
 
-        /* ── Bottom strip ── */
+        /* ── Bottom strip (pushed to page bottom) ── */
         .bottom-strip {
             width: 100%;
             border-top: 1px solid #cbd5e1;
             background: #f1f5f9;
-            margin-top: 4px;
+            margin-top: auto;           /* push to bottom of flex column */
+            flex-shrink: 0;
         }
         .bottom-strip table { width:100%; border-collapse:collapse; }
         .bottom-strip td { padding: 6px 9px; vertical-align: middle; }
@@ -268,7 +290,14 @@
 
         @media print {
             body { background: white; padding: 0; }
-            .student-section { width:190mm; margin:0 auto; box-shadow:none; }
+            .student-section {
+                width: 190mm;
+                min-height: 277mm;
+                margin: 0 auto;
+                box-shadow: none;
+                page-break-after: always;
+            }
+            .student-section:last-child { page-break-after: auto; }
         }
     </style>
 </head>
@@ -379,8 +408,6 @@
                 {{ strtoupper($term) }} {{ strtoupper($session) }} MOCK EXAMINATION RESULT
             </div>
 
-            {{-- BADGE COMPLETELY REMOVED --}}
-
             {{-- ── STUDENT INFO BAR ── --}}
             <div class="student-info-bar">
                 <table class="info-table">
@@ -465,7 +492,6 @@
                                 @if(in_array('position', $columnsToShow))
                                     @php
                                         $pos = $score->position ?? null;
-                                        // Always show something – never leave blank
                                         if ($pos === null || $pos === '' || $pos === '0' || $pos === 0) {
                                             $pos = '-';
                                         }
