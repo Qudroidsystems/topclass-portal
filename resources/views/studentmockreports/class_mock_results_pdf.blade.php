@@ -205,13 +205,18 @@
             overflow: hidden;
         }
 
-        /* Grade / position colours */
+        /* ── Grade / position colours ──
+           Red is reserved EXCLUSIVELY for the true fail grades:
+             • Junior  → F
+             • Senior  → E8, F9
+           All other grades get their own colour. Unknown / empty grades
+           get no colour class at all (never red). */
         .highlight-red { color: #dc2626; font-weight: 900; }
-        .grade-A { color: #16a34a; font-weight: 900; }
-        .grade-B { color: #2563eb; font-weight: 900; }
-        .grade-C { color: #ca8a04; font-weight: 900; }   /* Gold — NOT red */
-        .grade-D { color: #ea580c; font-weight: 900; }
-        .grade-F { color: #dc2626; font-weight: 900; }   /* Red — only for F / E8 */
+        .grade-A { color: #16a34a; font-weight: 900; }   /* green */
+        .grade-B { color: #2563eb; font-weight: 900; }   /* blue  */
+        .grade-C { color: #ca8a04; font-weight: 900; }   /* gold  — never red */
+        .grade-D { color: #ea580c; font-weight: 900; }   /* orange */
+        .grade-F { color: #dc2626; font-weight: 900; }   /* red — only F / E8 / F9 */
         .position-1 { background: gold;    color: black; font-weight: 900; border-radius: 2px; }
         .position-2 { background: silver;  color: black; font-weight: 900; }
         .position-3 { background: #cd7f32; color: white; font-weight: 900; }
@@ -309,10 +314,9 @@
             $session  = $metadata['session'] ?? '2025/2026';
             $term     = $metadata['term']    ?? 'SECOND TERM';
 
-            // ── FIX #1: Removed padding rows entirely ──
-            // The old code padded the table to a minimum of 16 rows, which
-            // left visible empty rows after the last real subject (Yoruba
-            // Language). The table now ends naturally after the last subject.
+            // FIX #1 — padding rows removed entirely.
+            // The table now ends naturally after the last real subject,
+            // so there are no blank rows after Yoruba Language.
 
             $qrData = "Name: {$fullName}\nAdm No: {$admNo}\nClass: {$classVal}\nTerm: {$term}\nSession: {$session}\nSchool: " . ($schoolInfo->school_name ?? 'School');
             $qrCodeBase64 = base64_encode(
@@ -415,7 +419,7 @@
                         <td><span class="info-bar-label">SEX:</span> <span class="info-bar-value">{{ $student->gender ?? '—' }}</span></td>
                         @endif
                         @if(in_array('dob', $columnsToShow))
-                        {{-- FIX #3: Strip the time portion (00:00:00) from dateofbirth --}}
+                        {{-- FIX #3 — DOB now renders as a date only (no 00:00:00) --}}
                         <td>
                             <span class="info-bar-label">D.O.B:</span>
                             <span class="info-bar-value">
@@ -461,24 +465,34 @@
 
                             @if(in_array('grade', $columnsToShow))
                                 @php
-                                    // FIX #2: Robust grade colour mapping.
-                                    // - Trim whitespace and uppercase so " c6 " and "C6" behave the same.
-                                    // - Empty / dash grades get NO colour class (never red).
-                                    // - A* → green, B* → blue, C* → gold, D* → orange.
-                                    // - E* (senior E8) and F* (junior F, senior F9) → red.
-                                    // - Anything else falls back to red as a safe default.
+                                    /* FIX #2 — Grade colour mapping.
+
+                                       RED is reserved EXCLUSIVELY for the true
+                                       fail grades:
+                                          • Junior → "F"
+                                          • Senior → "E8" and "F9"
+
+                                       Every other grade gets its own colour.
+                                       Unknown / empty values get NO colour class
+                                       at all — they can never accidentally
+                                       turn red.                                    */
                                     $g      = $score->grade ?? '-';
                                     $gUpper = strtoupper(trim((string) $g));
 
                                     $gc = match(true) {
-                                        $gUpper === '' || $gUpper === '-' => '',
-                                        str_starts_with($gUpper, 'A')    => 'grade-A',
-                                        str_starts_with($gUpper, 'B')    => 'grade-B',
-                                        str_starts_with($gUpper, 'C')    => 'grade-C',
-                                        str_starts_with($gUpper, 'D')    => 'grade-D',
-                                        str_starts_with($gUpper, 'E')    => 'grade-F',
-                                        str_starts_with($gUpper, 'F')    => 'grade-F',
-                                        default                          => 'grade-F',
+                                        // ── The ONLY red grades ──
+                                        $gUpper === 'F'  => 'grade-F',  // junior fail
+                                        $gUpper === 'E8' => 'grade-F',  // senior fail
+                                        $gUpper === 'F9' => 'grade-F',  // senior fail
+
+                                        // ── Passing grades ──
+                                        str_starts_with($gUpper, 'A') => 'grade-A',
+                                        str_starts_with($gUpper, 'B') => 'grade-B',
+                                        str_starts_with($gUpper, 'C') => 'grade-C',
+                                        str_starts_with($gUpper, 'D') => 'grade-D',
+
+                                        // ── Anything else (empty, dash, unexpected) → no colour ──
+                                        default => '',
                                     };
                                 @endphp
                                 <td class="{{ $gc }}">{{ $g }}</td>
@@ -501,7 +515,7 @@
                         <tr><td colspan="{{ $visibleColCount }}" style="text-align:center;padding:6px;">No mock scores available.</td></tr>
                         @endforelse
 
-                        {{-- FIX #1: padding rows removed — no more empty rows after the last subject --}}
+                        {{-- FIX #1 — no padding rows; table ends after the last real subject --}}
                     </tbody>
                 </table>
             </div>
