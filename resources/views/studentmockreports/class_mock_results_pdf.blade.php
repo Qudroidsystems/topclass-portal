@@ -209,9 +209,9 @@
         .highlight-red { color: #dc2626; font-weight: 900; }
         .grade-A { color: #16a34a; font-weight: 900; }
         .grade-B { color: #2563eb; font-weight: 900; }
-        .grade-C { color: #ca8a04; font-weight: 900; }
+        .grade-C { color: #ca8a04; font-weight: 900; }   /* Gold — NOT red */
         .grade-D { color: #ea580c; font-weight: 900; }
-        .grade-F { color: #dc2626; font-weight: 900; }
+        .grade-F { color: #dc2626; font-weight: 900; }   /* Red — only for F / E8 */
         .position-1 { background: gold;    color: black; font-weight: 900; border-radius: 2px; }
         .position-2 { background: silver;  color: black; font-weight: 900; }
         .position-3 { background: #cd7f32; color: white; font-weight: 900; }
@@ -309,9 +309,10 @@
             $session  = $metadata['session'] ?? '2025/2026';
             $term     = $metadata['term']    ?? 'SECOND TERM';
 
-            // ── Reduced to 16 min rows (was 18) to prevent page overflow ──
-            $minRows   = 16;
-            $extraRows = max(0, $minRows - $mockScores->count());
+            // ── FIX #1: Removed padding rows entirely ──
+            // The old code padded the table to a minimum of 16 rows, which
+            // left visible empty rows after the last real subject (Yoruba
+            // Language). The table now ends naturally after the last subject.
 
             $qrData = "Name: {$fullName}\nAdm No: {$admNo}\nClass: {$classVal}\nTerm: {$term}\nSession: {$session}\nSchool: " . ($schoolInfo->school_name ?? 'School');
             $qrCodeBase64 = base64_encode(
@@ -414,7 +415,13 @@
                         <td><span class="info-bar-label">SEX:</span> <span class="info-bar-value">{{ $student->gender ?? '—' }}</span></td>
                         @endif
                         @if(in_array('dob', $columnsToShow))
-                        <td><span class="info-bar-label">D.O.B:</span> <span class="info-bar-value">{{ $student->dateofbirth ?? '—' }}</span></td>
+                        {{-- FIX #3: Strip the time portion (00:00:00) from dateofbirth --}}
+                        <td>
+                            <span class="info-bar-label">D.O.B:</span>
+                            <span class="info-bar-value">
+                                {{ $student->dateofbirth ? \Carbon\Carbon::parse($student->dateofbirth)->format('jS F, Y') : '—' }}
+                            </span>
+                        </td>
                         @endif
                     </tr>
                 </table>
@@ -454,13 +461,24 @@
 
                             @if(in_array('grade', $columnsToShow))
                                 @php
-                                    $g  = $score->grade ?? '-';
+                                    // FIX #2: Robust grade colour mapping.
+                                    // - Trim whitespace and uppercase so " c6 " and "C6" behave the same.
+                                    // - Empty / dash grades get NO colour class (never red).
+                                    // - A* → green, B* → blue, C* → gold, D* → orange.
+                                    // - E* (senior E8) and F* (junior F, senior F9) → red.
+                                    // - Anything else falls back to red as a safe default.
+                                    $g      = $score->grade ?? '-';
+                                    $gUpper = strtoupper(trim((string) $g));
+
                                     $gc = match(true) {
-                                        str_starts_with(strtoupper($g), 'A') => 'grade-A',
-                                        str_starts_with(strtoupper($g), 'B') => 'grade-B',
-                                        str_starts_with(strtoupper($g), 'C') => 'grade-C',
-                                        str_starts_with(strtoupper($g), 'D') => 'grade-D',
-                                        default => 'grade-F'
+                                        $gUpper === '' || $gUpper === '-' => '',
+                                        str_starts_with($gUpper, 'A')    => 'grade-A',
+                                        str_starts_with($gUpper, 'B')    => 'grade-B',
+                                        str_starts_with($gUpper, 'C')    => 'grade-C',
+                                        str_starts_with($gUpper, 'D')    => 'grade-D',
+                                        str_starts_with($gUpper, 'E')    => 'grade-F',
+                                        str_starts_with($gUpper, 'F')    => 'grade-F',
+                                        default                          => 'grade-F',
                                     };
                                 @endphp
                                 <td class="{{ $gc }}">{{ $g }}</td>
@@ -483,20 +501,7 @@
                         <tr><td colspan="{{ $visibleColCount }}" style="text-align:center;padding:6px;">No mock scores available.</td></tr>
                         @endforelse
 
-                        {{-- Padding rows — 16 min (reduced from 18) ── --}}
-                        @for($i = 0; $i < $extraRows; $i++)
-                        <tr>
-                            @if(in_array('sn', $columnsToShow))            <td>&nbsp;</td> @endif
-                            @if(in_array('name', $columnsToShow))           <td>&nbsp;</td> @endif
-                            @if(in_array('exam', $columnsToShow))           <td>&nbsp;</td> @endif
-                            @if(in_array('total', $columnsToShow))          <td>&nbsp;</td> @endif
-                            @if(in_array('grade', $columnsToShow))          <td>&nbsp;</td> @endif
-                            @if(in_array('position', $columnsToShow))       <td>&nbsp;</td> @endif
-                            @if(in_array('class_average', $columnsToShow))  <td>&nbsp;</td> @endif
-                            @if(in_array('cmin', $columnsToShow))           <td>&nbsp;</td> @endif
-                            @if(in_array('cmax', $columnsToShow))           <td>&nbsp;</td> @endif
-                        </tr>
-                        @endfor
+                        {{-- FIX #1: padding rows removed — no more empty rows after the last subject --}}
                     </tbody>
                 </table>
             </div>
