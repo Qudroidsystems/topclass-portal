@@ -1348,188 +1348,196 @@ class BroadsheetController extends Controller
         }
     }
 
+
     private function buildAllClassesBroadsheetData(
-        string $classgroup,
-        int    $sessionid,
-        int    $termid,
-        array  $selectedColumns = [],
-        string $gradeBasis = 'cum'
-    ): array {
-        $schoolInfo    = SchoolInformation::getActiveSchool() ?? new \stdClass();
-        $schoolsession = Schoolsession::find($sessionid);
-        $schoolterm    = Schoolterm::find($termid);
+    string $classgroup,
+    int    $sessionid,
+    int    $termid,
+    array  $selectedColumns = [],
+    string $gradeBasis = 'cum'
+): array {
+    $schoolInfo    = SchoolInformation::getActiveSchool() ?? new \stdClass();
+    $schoolsession = Schoolsession::find($sessionid);
+    $schoolterm    = Schoolterm::find($termid);
 
-        $matchingClasses = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select(['schoolclass.*', 'schoolarm.arm as arm_name'])
-            ->where('schoolclass.schoolclass', $classgroup)
-            ->orderBy('schoolarm.arm')
-            ->get();
+    // FIX: eager-load classcategory so the view can read is_senior
+    $matchingClasses = Schoolclass::with('classcategory')
+        ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+        ->select(['schoolclass.*', 'schoolarm.arm as arm_name'])
+        ->where('schoolclass.schoolclass', $classgroup)
+        ->orderBy('schoolarm.arm')
+        ->get();
 
-        $combinedClass = (object) [
-            'schoolclass' => $classgroup,
-            'arm_name'    => $matchingClasses->isEmpty()
-                ? '(All Arms)'
-                : '(' . $matchingClasses->pluck('arm_name')->filter()->implode(', ') . ')',
-            'id'          => null,
-        ];
+    // FIX: all arms share the same class name, so they share the same category
+    $firstClass = $matchingClasses->first();
 
-        if ($matchingClasses->isEmpty()) {
-            return $this->emptyBroadsheetResult(
-                $schoolInfo, $combinedClass, $schoolsession, $schoolterm,
-                [], $selectedColumns,
-                ['classgroup' => $classgroup, 'arm_labels' => [],
-                 'is_combined' => true, 'grade_basis' => $gradeBasis]
-            );
-        }
+    $combinedClass = (object) [
+        'schoolclass'   => $classgroup,
+        'arm_name'      => $matchingClasses->isEmpty()
+            ? '(All Arms)'
+            : '(' . $matchingClasses->pluck('arm_name')->filter()->implode(', ') . ')',
+        'id'            => null,
+        // FIX: expose the relationship the Blade view reads
+        'classcategory' => $firstClass ? $firstClass->classcategory : null,
+    ];
 
-        $classIds = $matchingClasses->pluck('id')->map(fn ($v) => (int) $v)->toArray();
-
-        // ── Recompute positions for all arms (isolated) ─────────────
-        foreach ($classIds as $clsId) {
-            $this->recalculatePositionsForClass($clsId, $termid, $sessionid);
-        }
-
-        // ── Subjects across arms ────────────────────────────────────
-        $subjectsMap    = [];
-        $subjectClasses = DB::table('subjectclass as sc')
-            ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
-            ->join('subject', 'subject.id', '=', 'sc.subjectid')
-            ->whereIn('sc.schoolclassid', $classIds)
-            // Scope to this term/session so a subject a teacher was once
-            // assigned but no longer teaches this term doesn't show as a
-            // phantom all-blank column (subjectclass has no reliable
-            // term/session of its own — see the doc comment on
-            // TimetableController::getPeriodAllocationGrid).
-            ->where('st.termid', $termid)
-            ->where('st.sessionid', $sessionid)
-            ->select(['sc.subjectid', 'subject.subject as subject_name', 'subject.subject_code'])
-            ->distinct()
-            ->get();
-
-        foreach ($subjectClasses as $sc) {
-            $subjectsMap[(int) $sc->subjectid] = [
-                'subject_id'   => (int) $sc->subjectid,
-                'subject_name' => $sc->subject_name,
-                'subject_code' => $sc->subject_code ?? '',
-            ];
-        }
-
-        // ── Student → class map ─────────────────────────────────────
-        $studentClassRecords = Studentclass::whereIn('schoolclassid', $classIds)
-            ->where('sessionid', $sessionid)
-            ->get(['studentId', 'schoolclassid']);
-
-        $studentClassMap = [];
-        foreach ($studentClassRecords as $r) {
-            $studentClassMap[(int) $r->studentId] = (int) $r->schoolclassid;
-        }
-        $allStudentIds = array_keys($studentClassMap);
-
-        if (empty($allStudentIds)) {
-            return $this->emptyBroadsheetResult(
-                $schoolInfo, $combinedClass, $schoolsession, $schoolterm,
-                $subjectsMap, $selectedColumns,
-                ['classgroup' => $classgroup,
-                 'arm_labels' => $matchingClasses->pluck('arm_name', 'id')->toArray(),
-                 'is_combined' => true, 'grade_basis' => $gradeBasis]
-            );
-        }
-
-        $prevCumMap = $this->fetchPreviousTermCums($allStudentIds, $sessionid, $termid, $classIds);
-
-        $broadsheets = Broadsheets::whereIn('broadsheet_records.student_id', $allStudentIds)
-            ->where('broadsheets.term_id', $termid)
-            ->where('broadsheet_records.session_id', $sessionid)
-            ->whereIn('broadsheet_records.schoolclass_id', $classIds)
-            ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
-            ->join('subject', 'subject.id', '=', 'broadsheet_records.subject_id')
-            ->join('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records.student_id')
-            ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
-            ->select([
-                'broadsheets.id as broadsheet_id',
-                'broadsheet_records.student_id',
-                'broadsheet_records.subject_id',
-                'broadsheet_records.schoolclass_id',
-                'subject.subject as subject_name',
-                'subject.subject_code',
-                'broadsheets.ca1',
-                'broadsheets.ca2',
-                'broadsheets.ca3',
-                'broadsheets.exam',
-                'broadsheets.total',
-                'broadsheets.bf',
-                'broadsheets.cum',
-                'broadsheets.grade',
-                'broadsheets.remark',
-                'broadsheets.subject_position_class as pos_class_cum',
-                'broadsheets.subject_position_class_total as pos_class_total',
-                'broadsheets.arm_position as pos_arm_total',
-                'broadsheets.arm_position_cum as pos_arm_cum',
-                'broadsheets.avg as class_average',
-            ])
-            ->get();
-
-        $studentSubjectMap = [];
-        foreach ($broadsheets as $row) {
-            $sid = (int) $row->student_id;
-            $sub = (int) $row->subject_id;
-
-            if (!isset($subjectsMap[$sub])) {
-                $subjectsMap[$sub] = [
-                    'subject_id'   => $sub,
-                    'subject_name' => $row->subject_name,
-                    'subject_code' => $row->subject_code ?? '',
-                ];
-            }
-
-            $ca1  = (float) ($row->ca1 ?? 0);
-            $ca2  = (float) ($row->ca2 ?? 0);
-            $ca3  = (float) ($row->ca3 ?? 0);
-            $exam = (float) ($row->exam ?? 0);
-
-            $caAvg = ($ca1 + $ca2 + $ca3) / 3;
-            $total = round(($caAvg + $exam) / 2, 1);
-
-            $prevCum = $prevCumMap[$sid][$sub] ?? null;
-            if ($prevCum !== null && $prevCum > 0) {
-                $bf = $prevCum;
-            } elseif (!empty($row->bf) && (float) $row->bf > 0) {
-                $bf = (float) $row->bf;
-            } else {
-                $bf = 0.0;
-            }
-
-            $cum = $termid == 1 ? $total : round(($bf + $total) / 2, 2);
-
-            $studentSubjectMap[$sid][$sub] = [
-                'ca1'             => $ca1,
-                'ca2'             => $ca2,
-                'ca3'             => $ca3,
-                'exam'            => $exam,
-                'total'           => $total,
-                'bf'              => $bf,
-                'cum'             => $cum,
-                'grade'           => $row->grade ?? '-',
-                'remark'          => $row->remark ?? '-',
-                'pos_class_cum'   => $row->pos_class_cum   ?? null,
-                'pos_class_total' => $row->pos_class_total ?? null,
-                'pos_arm_total'   => $row->pos_arm_total   ?? null,
-                'pos_arm_cum'     => $row->pos_arm_cum     ?? null,
-                'class_average'   => (float) ($row->class_average ?? 0),
-            ];
-        }
-
-        $armLabels = $matchingClasses->pluck('arm_name', 'id')
-            ->mapWithKeys(fn ($v, $k) => [(int) $k => $v])
-            ->toArray();
-
-        return $this->assembleStudentRows(
-            $allStudentIds, $sessionid, null, $classIds,
-            $studentSubjectMap, $subjectsMap,
+    if ($matchingClasses->isEmpty()) {
+        return $this->emptyBroadsheetResult(
             $schoolInfo, $combinedClass, $schoolsession, $schoolterm,
-            $selectedColumns, $armLabels, $studentClassMap, true, $gradeBasis
+            [], $selectedColumns,
+            ['classgroup' => $classgroup, 'arm_labels' => [],
+             'is_combined' => true, 'grade_basis' => $gradeBasis]
         );
     }
+
+    $classIds = $matchingClasses->pluck('id')->map(fn ($v) => (int) $v)->toArray();
+
+    // ── Recompute positions for all arms (isolated) ─────────────
+    foreach ($classIds as $clsId) {
+        $this->recalculatePositionsForClass($clsId, $termid, $sessionid);
+    }
+
+    // ── Subjects across arms ────────────────────────────────────
+    $subjectsMap    = [];
+    $subjectClasses = DB::table('subjectclass as sc')
+        ->join('subjectteacher as st', 'st.id', '=', 'sc.subjectteacherid')
+        ->join('subject', 'subject.id', '=', 'sc.subjectid')
+        ->whereIn('sc.schoolclassid', $classIds)
+        // Scope to this term/session so a subject a teacher was once
+        // assigned but no longer teaches this term doesn't show as a
+        // phantom all-blank column (subjectclass has no reliable
+        // term/session of its own — see the doc comment on
+        // TimetableController::getPeriodAllocationGrid).
+        ->where('st.termid', $termid)
+        ->where('st.sessionid', $sessionid)
+        ->select(['sc.subjectid', 'subject.subject as subject_name', 'subject.subject_code'])
+        ->distinct()
+        ->get();
+
+    foreach ($subjectClasses as $sc) {
+        $subjectsMap[(int) $sc->subjectid] = [
+            'subject_id'   => (int) $sc->subjectid,
+            'subject_name' => $sc->subject_name,
+            'subject_code' => $sc->subject_code ?? '',
+        ];
+    }
+
+    // ── Student → class map ─────────────────────────────────────
+    $studentClassRecords = Studentclass::whereIn('schoolclassid', $classIds)
+        ->where('sessionid', $sessionid)
+        ->get(['studentId', 'schoolclassid']);
+
+    $studentClassMap = [];
+    foreach ($studentClassRecords as $r) {
+        $studentClassMap[(int) $r->studentId] = (int) $r->schoolclassid;
+    }
+    $allStudentIds = array_keys($studentClassMap);
+
+    if (empty($allStudentIds)) {
+        return $this->emptyBroadsheetResult(
+            $schoolInfo, $combinedClass, $schoolsession, $schoolterm,
+            $subjectsMap, $selectedColumns,
+            ['classgroup' => $classgroup,
+             'arm_labels' => $matchingClasses->pluck('arm_name', 'id')->toArray(),
+             'is_combined' => true, 'grade_basis' => $gradeBasis]
+        );
+    }
+
+    $prevCumMap = $this->fetchPreviousTermCums($allStudentIds, $sessionid, $termid, $classIds);
+
+    $broadsheets = Broadsheets::whereIn('broadsheet_records.student_id', $allStudentIds)
+        ->where('broadsheets.term_id', $termid)
+        ->where('broadsheet_records.session_id', $sessionid)
+        ->whereIn('broadsheet_records.schoolclass_id', $classIds)
+        ->join('broadsheet_records', 'broadsheet_records.id', '=', 'broadsheets.broadsheet_record_id')
+        ->join('subject', 'subject.id', '=', 'broadsheet_records.subject_id')
+        ->join('studentRegistration', 'studentRegistration.id', '=', 'broadsheet_records.student_id')
+        ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
+        ->select([
+            'broadsheets.id as broadsheet_id',
+            'broadsheet_records.student_id',
+            'broadsheet_records.subject_id',
+            'broadsheet_records.schoolclass_id',
+            'subject.subject as subject_name',
+            'subject.subject_code',
+            'broadsheets.ca1',
+            'broadsheets.ca2',
+            'broadsheets.ca3',
+            'broadsheets.exam',
+            'broadsheets.total',
+            'broadsheets.bf',
+            'broadsheets.cum',
+            'broadsheets.grade',
+            'broadsheets.remark',
+            'broadsheets.subject_position_class as pos_class_cum',
+            'broadsheets.subject_position_class_total as pos_class_total',
+            'broadsheets.arm_position as pos_arm_total',
+            'broadsheets.arm_position_cum as pos_arm_cum',
+            'broadsheets.avg as class_average',
+        ])
+        ->get();
+
+    $studentSubjectMap = [];
+    foreach ($broadsheets as $row) {
+        $sid = (int) $row->student_id;
+        $sub = (int) $row->subject_id;
+
+        if (!isset($subjectsMap[$sub])) {
+            $subjectsMap[$sub] = [
+                'subject_id'   => $sub,
+                'subject_name' => $row->subject_name,
+                'subject_code' => $row->subject_code ?? '',
+            ];
+        }
+
+        $ca1  = (float) ($row->ca1 ?? 0);
+        $ca2  = (float) ($row->ca2 ?? 0);
+        $ca3  = (float) ($row->ca3 ?? 0);
+        $exam = (float) ($row->exam ?? 0);
+
+        $caAvg = ($ca1 + $ca2 + $ca3) / 3;
+        $total = round(($caAvg + $exam) / 2, 1);
+
+        $prevCum = $prevCumMap[$sid][$sub] ?? null;
+        if ($prevCum !== null && $prevCum > 0) {
+            $bf = $prevCum;
+        } elseif (!empty($row->bf) && (float) $row->bf > 0) {
+            $bf = (float) $row->bf;
+        } else {
+            $bf = 0.0;
+        }
+
+        $cum = $termid == 1 ? $total : round(($bf + $total) / 2, 2);
+
+        $studentSubjectMap[$sid][$sub] = [
+            'ca1'             => $ca1,
+            'ca2'             => $ca2,
+            'ca3'             => $ca3,
+            'exam'            => $exam,
+            'total'           => $total,
+            'bf'              => $bf,
+            'cum'             => $cum,
+            'grade'           => $row->grade ?? '-',
+            'remark'          => $row->remark ?? '-',
+            'pos_class_cum'   => $row->pos_class_cum   ?? null,
+            'pos_class_total' => $row->pos_class_total ?? null,
+            'pos_arm_total'   => $row->pos_arm_total   ?? null,
+            'pos_arm_cum'     => $row->pos_arm_cum     ?? null,
+            'class_average'   => (float) ($row->class_average ?? 0),
+        ];
+    }
+
+    $armLabels = $matchingClasses->pluck('arm_name', 'id')
+        ->mapWithKeys(fn ($v, $k) => [(int) $k => $v])
+        ->toArray();
+
+    return $this->assembleStudentRows(
+        $allStudentIds, $sessionid, null, $classIds,
+        $studentSubjectMap, $subjectsMap,
+        $schoolInfo, $combinedClass, $schoolsession, $schoolterm,
+        $selectedColumns, $armLabels, $studentClassMap, true, $gradeBasis
+    );
+}
 
     // =========================================================================
     // AJAX: class groups
