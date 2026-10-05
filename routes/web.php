@@ -1069,6 +1069,14 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/broadsheet/all-classes/pdf', [BroadsheetController::class, 'allClassesExportPdf'])->name('broadsheet.all-classes.pdf');
     Route::get('/broadsheet/class-groups', [BroadsheetController::class, 'getClassGroups'])->name('broadsheet.class-groups');
 
+    // Ranking settings (junior / senior)
+    Route::get('broadsheet/ranking', [BroadsheetRankingController::class, 'index'])->name('broadsheet.ranking.index');
+    Route::post('broadsheet/ranking/{section}', [BroadsheetRankingController::class, 'save'])->whereIn('section', ['junior', 'senior'])->name('broadsheet.ranking.save');
+    
+    // Best students across selected classes / arms
+    Route::get('broadsheet/best-students', [BroadsheetController::class, 'bestStudents'])->name('broadsheet.best-students');
+    Route::post('broadsheet/best-students', [BroadsheetController::class, 'bestStudentsReport'])->name('broadsheet.best-students.report');
+
     // ===================================================================
     // TIMETABLE
     // ===================================================================

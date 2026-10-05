@@ -582,6 +582,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     </div>
 </div>
 
+{{-- ── Best students (unofficial ranking) ── --}}
+@isset($ranking)
+    @include('broadsheet.partials.ranking')
+@endisset
+
 {{-- ── School Header ── --}}
 <div class="school-header-bar">
     <div class="d-flex align-items-center">
@@ -637,6 +642,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     <input type="hidden" name="sessionid" value="{{ request('sessionid') }}">
     <input type="hidden" name="termid" value="{{ request('termid') }}">
     <input type="hidden" name="grade_basis" id="gb_input" value="{{ $grade_basis ?? 'cum' }}">
+    <input type="hidden" name="rank_by" id="rb_input" value="{{ request('rank_by') }}">
     @foreach(request('selectedColumns', []) as $i => $col)
         <input type="hidden" name="selectedColumns[{{ $i }}]" value="{{ $col }}">
     @endforeach
@@ -814,8 +820,14 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
     if($showRemark) $subColspan++;
     $subColspan = max(1, $subColspan);
 
-    // Frozen student-info columns
-    $frozenCols = 2
+    // ── Optional unofficial Rank column (Ranking settings → "Add a Rank column") ──
+    $rankMap     = $rank_map ?? [];
+    $showRankCol = !empty($ranking['show_rank_column']) && !empty($rankMap);
+
+    // Frozen student-info columns: # + Position? + Rank? + Adm No? + Name + Sex?
+    $frozenCols = 1
+        + (($showPosTerm || $showPosCum) ? 1 : 0)
+        + ($showRankCol ? 1 : 0)
         + ($showAdmNo ? 1 : 0)
         + 1
         + ($showGender ? 1 : 0);
@@ -838,6 +850,9 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                     <th class="student-col" rowspan="2" style="width:36px;">#</th>
                     @if($showPosTerm || $showPosCum)
                         <th class="student-col" rowspan="2" style="width:70px;">Position</th>
+                    @endif
+                    @if($showRankCol)
+                        <th class="student-col" rowspan="2" style="width:46px;background:#78350f;" title="Unofficial best-student rank">Rank</th>
                     @endif
                     @if($showAdmNo)
                         <th class="student-col" rowspan="2" style="min-width:72px;">Adm. No</th>
@@ -1000,6 +1015,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                         data-term-pct="{{ $termPct }}"
                         data-cum-pct="{{ $cumPct }}"
                         data-has-bf="{{ $hasBF ? 'true' : 'false' }}"
+                        data-promo-status="{{ $stu['promotion_status'] ?? 'awaiting' }}"
                         style="animation-delay:{{ $idx * 0.05 }}s;">
 
                         <td>{{ $idx + 1 }}</td>
@@ -1019,6 +1035,17 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                                     <span class="pos-term-lbl">T:{{ $ordOverall($posTerm) }}</span>
                                     <span class="pos-cum-lbl">C:{{ $ordOverall($posCum) }}</span>
                                 </div>
+                            </td>
+                        @endif
+
+                        @if($showRankCol)
+                            @php $rk = $rankMap[$sid] ?? null; @endphp
+                            <td style="text-align:center;">
+                                @if($rk)
+                                    <span class="pos-badge {{ $rk <= 3 ? 'pos-' . $rk : 'pos-other' }}" style="width:26px;height:26px;font-size:10px;">{{ $rk }}</span>
+                                @else
+                                    <span style="color:#94a3b8;" title="Not eligible for ranking">—</span>
+                                @endif
                             </td>
                         @endif
 
@@ -1238,7 +1265,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
                 @endphp
                 @foreach($statRows as [$label, $key])
                     <tr class="stats-row {{ $statStyles[$key] }}">
-                        <td class="stats-label" colspan="{{ $frozenCols + (($showPosTerm || $showPosCum) ? 0 : 0) }}">{{ $label }}</td>
+                        <td class="stats-label" colspan="{{ $frozenCols }}">{{ $label }}</td>
                         @foreach($subjects as $subId => $subInfo)
                             @php $st = $subjectStats[$subId] ?? []; @endphp
                             @if($showCA1) <td>—</td> @endif
@@ -1449,7 +1476,11 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
 {{-- Hidden form for student list POST --}}
 <form id="slistForm" method="POST" action="{{ route('broadsheet.student-list') }}" target="_blank" style="display:none;">
     @csrf
-    <input type="hidden" name="schoolclassid" value="{{ request('schoolclassid') }}">
+    @if(!empty($is_combined))
+        <input type="hidden" name="classgroup" value="{{ request('classgroup') }}">
+    @else
+        <input type="hidden" name="schoolclassid" value="{{ request('schoolclassid') }}">
+    @endif
     <input type="hidden" name="sessionid"     value="{{ request('sessionid') }}">
     <input type="hidden" name="termid"        value="{{ request('termid') }}">
     <input type="hidden" name="grade_basis"   value="{{ $grade_basis ?? 'cum' }}">
@@ -1664,7 +1695,7 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
             animPct(cumEl, cumPct);
 
             if (termBar) { termBar.style.transition = 'width .8s ease, background-color .8s ease'; termBar.style.width = termPct + '%'; termBar.style.backgroundColor = termColor; }
-            if (cumBar) { termBar.style.transition = 'width .8s ease, background-color .8s ease'; cumBar.style.width = cumPct + '%'; cumBar.style.backgroundColor = cumColor; }
+            if (cumBar) { cumBar.style.transition = 'width .8s ease, background-color .8s ease'; cumBar.style.width = cumPct + '%'; cumBar.style.backgroundColor = cumColor; }
         }, 60);
     }
 
@@ -1715,70 +1746,24 @@ body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; }
         toast(c + ' student(s) below class average', 'info');
     }
 
-    function highlightPromoted() {
+    // Promotion filters match on data-promo-status (badge text says "See principal",
+    // so the old text match for "See Principal" never found anyone).
+    function highlightStatus(status, bg, outline, label, type) {
         var c = 0;
         tableRows.forEach(function (r) {
-            var status = r.querySelector('.promo-badge')?.textContent || '';
-            if (status.includes('Promoted')) {
-                r.style.backgroundColor = '#d1fae5';
-                r.style.outline = '2px solid #10b981';
+            if (r.getAttribute('data-promo-status') === status) {
+                r.style.backgroundColor = bg;
+                r.style.outline = '2px solid ' + outline;
                 c++;
             }
         });
-        toast(c + ' promoted student(s) highlighted', 'success');
+        toast(c + ' ' + label + ' highlighted', type);
     }
-
-    function highlightTrial() {
-        var c = 0;
-        tableRows.forEach(function (r) {
-            var status = r.querySelector('.promo-badge')?.textContent || '';
-            if (status.includes('Trial')) {
-                r.style.backgroundColor = '#fef3c7';
-                r.style.outline = '2px solid #f59e0b';
-                c++;
-            }
-        });
-        toast(c + ' student(s) on trial highlighted', 'warning');
-    }
-
-    function highlightSeePrincipal() {
-        var c = 0;
-        tableRows.forEach(function (r) {
-            var status = r.querySelector('.promo-badge')?.textContent || '';
-            if (status.includes('See Principal') || status.includes('see_principal')) {
-                r.style.backgroundColor = '#dbeafe';
-                r.style.outline = '2px solid #3b82f6';
-                c++;
-            }
-        });
-        toast(c + ' student(s) to see principal highlighted', 'info');
-    }
-
-    function highlightRepeated() {
-        var c = 0;
-        tableRows.forEach(function (r) {
-            var status = r.querySelector('.promo-badge')?.textContent || '';
-            if (status.includes('Repeat')) {
-                r.style.backgroundColor = '#fee2e2';
-                r.style.outline = '2px solid #ef4444';
-                c++;
-            }
-        });
-        toast(c + ' repeat student(s) highlighted', 'error');
-    }
-
-    function highlightAwaiting() {
-        var c = 0;
-        tableRows.forEach(function (r) {
-            var status = r.querySelector('.promo-badge')?.textContent || '';
-            if (status.includes('Awaiting')) {
-                r.style.backgroundColor = '#f1f5f9';
-                r.style.outline = '2px solid #94a3b8';
-                c++;
-            }
-        });
-        toast(c + ' student(s) awaiting decision highlighted', 'info');
-    }
+    function highlightPromoted()     { highlightStatus('promoted',      '#d1fae5', '#10b981', 'promoted student(s)', 'success'); }
+    function highlightTrial()        { highlightStatus('trial',         '#fef3c7', '#f59e0b', 'student(s) on trial', 'warning'); }
+    function highlightSeePrincipal() { highlightStatus('see_principal', '#dbeafe', '#3b82f6', 'student(s) to see principal', 'info'); }
+    function highlightRepeated()     { highlightStatus('repeated',      '#fee2e2', '#ef4444', 'repeat student(s)', 'error'); }
+    function highlightAwaiting()     { highlightStatus('awaiting',      '#f1f5f9', '#94a3b8', 'student(s) awaiting decision', 'info'); }
 
     function initLocate() {
         var el = document.getElementById('locateStudent');
