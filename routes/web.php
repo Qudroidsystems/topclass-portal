@@ -12,6 +12,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\BiodataController;
 use App\Http\Controllers\BroadsheetController;
+use App\Http\Controllers\BroadsheetRankingController;
 use App\Http\Controllers\CBTController;
 use App\Http\Controllers\ClassBroadsheetController;
 use App\Http\Controllers\ClasscategoryController;
