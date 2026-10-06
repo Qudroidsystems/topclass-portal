@@ -1069,6 +1069,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/broadsheet/all-classes/web', [BroadsheetController::class, 'allClassesWebView'])->name('broadsheet.all-classes.web');
     Route::post('/broadsheet/all-classes/pdf', [BroadsheetController::class, 'allClassesExportPdf'])->name('broadsheet.all-classes.pdf');
     Route::get('/broadsheet/class-groups', [BroadsheetController::class, 'getClassGroups'])->name('broadsheet.class-groups');
+    Route::get('dashboard/best-students/print', [DashboardController::class, 'bestStudentsPrint'])->name('dashboard.best-students.print');
 
     // Ranking settings (junior / senior)
     Route::get('broadsheet/ranking', [BroadsheetRankingController::class, 'index'])->name('broadsheet.ranking.index');
