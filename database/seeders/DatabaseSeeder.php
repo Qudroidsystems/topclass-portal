@@ -509,6 +509,63 @@ class DatabaseSeeder extends Seeder
 
             'AccountingSetupSeeder' =>
                 '📒 Adding ledger accounts and linking expense categories...',
+
+            'ActivityPermissionSeeder' =>
+                '🧩 Seeding ActivityPermission...',
+
+            'HousePermissionSeeder' =>
+                '🧩 Seeding HousePermission...',
+
+            'NoticePermissionSeeder' =>
+                '🧩 Seeding NoticePermission...',
+
+            'ParentContactPermissionSeeder' =>
+                '🧩 Seeding ParentContactPermission...',
+
+            'ParentPortalPermissionSeeder' =>
+                '🧩 Seeding ParentPortalPermission...',
+
+            'InstalmentPlanPermissionSeeder' =>
+                '🧩 Seeding InstalmentPlanPermission...',
+
+            'OnlineFeePaymentPermissionSeeder' =>
+                '🧩 Seeding OnlineFeePaymentPermission...',
+
+            'CalendarPermissionSeeder' =>
+                '🧩 Seeding CalendarPermission...',
+
+            'StudentLeavePermissionSeeder' =>
+                '🧩 Seeding StudentLeavePermission...',
+
+            'CertificatePermissionSeeder' =>
+                '🧩 Seeding CertificatePermission...',
+
+            'CertificateDefaultTemplateSeeder' =>
+                '🧩 Seeding CertificateDefaultTemplate...',
+
+            'CertificateTestimonialTemplateSeeder' =>
+                '🧩 Seeding CertificateTestimonialTemplate...',
+
+            'BackupPermissionSeeder' =>
+                '🧩 Seeding BackupPermission...',
+
+            'MaintenancePermissionSeeder' =>
+                '🧩 Seeding MaintenancePermission...',
+
+            'ManagementDashboardPermissionSeeder' =>
+                '🧩 Seeding ManagementDashboardPermission...',
+
+            'CurriculumPermissionSeeder' =>
+                '🧩 Seeding CurriculumPermission...',
+
+            'LessonNotePermissionSeeder' =>
+                '🧩 Seeding LessonNotePermission...',
+
+            'TeachingMethodSeeder' =>
+                '🧩 Seeding TeachingMethod...',
+
+            'ExamPermissionSeeder' =>
+                '🧩 Seeding ExamPermission...',
         ];
 
         $this->runSeederList(

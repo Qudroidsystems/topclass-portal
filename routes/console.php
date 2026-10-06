@@ -34,3 +34,18 @@ Schedule::command('leave:reminders')->dailyAt('07:00')->withoutOverlapping(30);
 
 // Carry unused annual leave into the new year (idempotent; runs once at year start).
 Schedule::command('leave:carry-over')->yearlyOn(1, 1, '01:00')->withoutOverlapping(60);
+
+// ---- Ported from CSS Kabba (non-score modules) ----
+// School notices: scheduled sends and automatic reminders.
+Schedule::command('notices:dispatch')->everyMinute()->withoutOverlapping(15);
+// Absence alerts, fee reminders, birthday wishes (each checks its own time).
+Schedule::command('messages:auto')->everyFiveMinutes()->withoutOverlapping(30);
+// Queued jobs on hosts without a permanent queue worker.
+Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')->everyMinute()->withoutOverlapping(5);
+// Keep a year of staff activity
+Schedule::command('activity:prune --days=365')->dailyAt('02:30');
+// School calendar: reminders and fee-deadline events.
+Schedule::command('calendar:sync-fees')->dailyAt('06:30')->withoutOverlapping(30);
+Schedule::command('calendar:reminders')->dailyAt('07:15')->withoutOverlapping(30);
+// Database backup: the command checks the admin's schedule and runs when due.
+Schedule::command('backup:run')->everyFifteenMinutes()->withoutOverlapping(30);

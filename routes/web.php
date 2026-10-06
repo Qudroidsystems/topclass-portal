@@ -1518,6 +1518,264 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/feature-flags/{flag}/control', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'setControl'])->whereNumber('flag')->name('feature-flags.control');
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| Ported from CSS Kabba (non-score modules): maintenance, notices & messaging,
+| notifications, parent portal/contacts, instalments, online fees, management
+| dashboard, clubs/sports/houses, backups, activity log & who's online,
+| student leave, school calendar, certificates.
+| Result-access / result-sends / report-approvals are intentionally NOT ported.
+|--------------------------------------------------------------------------
+*/
+Route::view('/maintenance', 'errors.maintenance', ['m' => \App\Models\MaintenanceSetting::current()])->name('maintenance.page');
+Route::middleware('auth')->group(function () {
+    Route::get('/my-payments/pay', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'myFees'])->name('student.fees.pay');
+    Route::get('/admin/maintenance', [\App\Http\Controllers\Admin\MaintenanceController::class, 'index'])->name('maintenance.settings');
+    Route::post('/admin/maintenance', [\App\Http\Controllers\Admin\MaintenanceController::class, 'save'])->name('maintenance.save');
+});
+
+// Public: school calendar, certificate verification, fee webhooks
+Route::get('/calendar/public', [\App\Http\Controllers\PublicCalendarController::class, 'index'])->name('calendar.public');
+Route::get('/calendar/feed/{token}.ics', [\App\Http\Controllers\PublicCalendarController::class, 'ical'])
+    ->where('token', '[a-f0-9]{32}')->middleware('throttle:120,1')->name('calendar.ical');
+Route::get('/verify-certificate/{token}', [\App\Http\Controllers\PublicCertificateController::class, 'verify'])
+    ->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:60,1')->name('certificates.verify');
+// TopClass already owns /webhook/paystack, so the school-fee module gets its own URL.
+Route::post('/webhook/paystack-fees', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'webhook'])->name('webhook.paystack.fees');
+Route::post('/webhook/opay', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'opayWebhook'])->middleware('throttle:120,1')->name('webhook.opay');
+
+Route::middleware('auth')->group(function () {
+    Route::prefix('notices')->name('notices.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SchoolNoticeController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\SchoolNoticeController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\SchoolNoticeController::class, 'store'])->name('store');
+        Route::post('/preview', [\App\Http\Controllers\SchoolNoticeController::class, 'preview'])->name('preview');
+        Route::post('/test', [\App\Http\Controllers\SchoolNoticeController::class, 'test'])->name('test');
+        Route::get('/students', [\App\Http\Controllers\SchoolNoticeController::class, 'searchStudents'])->name('students');
+        Route::get('/settings', [\App\Http\Controllers\MessagingSettingsController::class, 'index'])->name('settings');
+        Route::put('/settings/{channel}', [\App\Http\Controllers\MessagingSettingsController::class, 'update'])->whereIn('channel', ['sms', 'whatsapp', 'email'])->name('settings.update');
+        Route::put('/settings/receipts', [\App\Http\Controllers\MessagingSettingsController::class, 'receipts'])->name('settings.receipts');
+        Route::post('/settings/{channel}/test', [\App\Http\Controllers\MessagingSettingsController::class, 'test'])->whereIn('channel', ['sms', 'whatsapp', 'email'])->name('settings.test');
+        Route::get('/automations', [\App\Http\Controllers\AutoMessageController::class, 'index'])->name('automations');
+        Route::put('/automations/{type}', [\App\Http\Controllers\AutoMessageController::class, 'update'])->whereIn('type', ['absence', 'fees', 'birthday'])->name('automations.update');
+        Route::post('/automations/{type}/preview', [\App\Http\Controllers\AutoMessageController::class, 'preview'])->whereIn('type', ['absence', 'fees', 'birthday'])->name('automations.preview');
+        Route::match(['post', 'put'], '/automations/{type}/run', [\App\Http\Controllers\AutoMessageController::class, 'run'])->whereIn('type', ['absence', 'fees', 'birthday'])->name('automations.run');
+        Route::get('/{notice}', [\App\Http\Controllers\SchoolNoticeController::class, 'show'])->whereNumber('notice')->name('show');
+        Route::get('/{notice}/edit', [\App\Http\Controllers\SchoolNoticeController::class, 'edit'])->whereNumber('notice')->name('edit');
+        Route::put('/{notice}', [\App\Http\Controllers\SchoolNoticeController::class, 'update'])->whereNumber('notice')->name('update');
+        Route::delete('/{notice}', [\App\Http\Controllers\SchoolNoticeController::class, 'destroy'])->whereNumber('notice')->name('destroy');
+        Route::post('/{notice}/cancel', [\App\Http\Controllers\SchoolNoticeController::class, 'cancel'])->whereNumber('notice')->name('cancel');
+        Route::post('/{notice}/resend', [\App\Http\Controllers\SchoolNoticeController::class, 'resendFailed'])->whereNumber('notice')->name('resend');
+        Route::post('/{notice}/duplicate', [\App\Http\Controllers\SchoolNoticeController::class, 'duplicate'])->whereNumber('notice')->name('duplicate');
+    });
+
+    // In-portal notifications (bell)
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/feed', [\App\Http\Controllers\NotificationController::class, 'feed'])->name('notifications.feed');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::get('/notifications/{id}/open', [\App\Http\Controllers\NotificationController::class, 'open'])->name('notifications.open');
+
+    // Parent contact clean-up (+ CSV import / export)
+    Route::prefix('parent-contacts')->name('parent-contacts.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ParentContactController::class, 'index'])->name('index');
+        Route::get('/export', [\App\Http\Controllers\ParentContactController::class, 'export'])->name('export');
+        Route::post('/import', [\App\Http\Controllers\ParentContactController::class, 'import'])->name('import');
+        Route::put('/{student}', [\App\Http\Controllers\ParentContactController::class, 'update'])->whereNumber('student')->name('update');
+    });
+
+
+    Route::prefix('online-fees')->name('online-fees.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'index'])->name('index');
+        Route::get('/students', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'searchStudents'])->name('students');
+        Route::get('/pay/{student}', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'payFor'])->whereNumber('student')->name('pay-for');
+        Route::post('/checkout', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'initialize'])->name('checkout');
+        Route::get('/callback', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'callback'])->name('callback');
+        Route::get('/transaction/{reference}', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'show'])->name('show');
+        Route::get('/transaction/{reference}/status', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'status'])->name('status');
+        Route::post('/transaction/{reference}/verify', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'verify'])->name('verify');
+    });
+
+});
+
+Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
+        // Database backups
+        Route::prefix('backups')->name('backups.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\BackupController::class, 'index'])->name('index');
+            Route::post('/run', [\App\Http\Controllers\Admin\BackupController::class, 'run'])->name('run');
+            Route::post('/settings', [\App\Http\Controllers\Admin\BackupController::class, 'saveSettings'])->name('settings');
+            Route::get('/{backup}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download'])->whereNumber('backup')->name('download');
+            Route::delete('/{backup}', [\App\Http\Controllers\Admin\BackupController::class, 'destroy'])->whereNumber('backup')->name('destroy');
+        });
+});
+
+// ===================================================================
+// PARENT PORTAL
+// ===================================================================
+// Password reset by SMS code (guests)
+Route::prefix('parent')->name('parent.')->group(function () {
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\ParentPasswordController::class, 'requestForm'])->name('forgot');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\ParentPasswordController::class, 'sendCode'])->middleware('throttle:5,10')->name('forgot.send');
+    Route::get('/reset-password', [\App\Http\Controllers\Auth\ParentPasswordController::class, 'resetForm'])->name('reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Auth\ParentPasswordController::class, 'reset'])->middleware('throttle:10,10')->name('reset.update');
+});
+
+Route::middleware('auth')->group(function () {
+    // Change password (also where temporary passwords are replaced)
+    Route::get('/account/password', [\App\Http\Controllers\ParentPortalController::class, 'passwordForm'])->name('parent.password');
+    Route::put('/account/password', [\App\Http\Controllers\ParentPortalController::class, 'passwordUpdate'])->name('parent.password.update');
+
+    Route::middleware('role:Parent')->prefix('parent')->name('parent.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ParentPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/child/{student}/results', [\App\Http\Controllers\ParentPortalController::class, 'results'])->whereNumber('student')->name('results');
+        Route::get('/child/{student}/report-card/{session}/{term}/{class}', [\App\Http\Controllers\ParentPortalController::class, 'reportCard'])
+            ->whereNumber(['student', 'session', 'term', 'class'])->name('report-card');
+        Route::get('/child/{student}/fees', [\App\Http\Controllers\ParentPortalController::class, 'fees'])->whereNumber('student')->name('fees');
+        Route::get('/child/{student}/pay', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'parentPay'])->whereNumber('student')->name('pay');
+        Route::get('/child/{student}/attendance', [\App\Http\Controllers\ParentPortalController::class, 'attendance'])->whereNumber('student')->name('attendance');
+        Route::get('/child/{student}/timetable', [\App\Http\Controllers\ParentPortalController::class, 'timetable'])->whereNumber('student')->name('timetable');
+    });
+
+    // Admin: parent accounts
+    Route::prefix('parent-accounts')->name('parent-accounts.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ParentAccountController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\ParentAccountController::class, 'store'])->name('store');
+        Route::post('/sync', [\App\Http\Controllers\ParentAccountController::class, 'sync'])->name('sync');
+        Route::post('/send-all', [\App\Http\Controllers\ParentAccountController::class, 'sendAll'])->name('send-all');
+        Route::post('/{user}/send', [\App\Http\Controllers\ParentAccountController::class, 'sendCredentials'])->whereNumber('user')->name('send');
+        Route::post('/{user}/link', [\App\Http\Controllers\ParentAccountController::class, 'link'])->whereNumber('user')->name('link');
+        Route::delete('/{user}/link/{student}', [\App\Http\Controllers\ParentAccountController::class, 'unlink'])->whereNumber(['user', 'student'])->name('unlink');
+        Route::post('/{user}/toggle', [\App\Http\Controllers\ParentAccountController::class, 'toggle'])->whereNumber('user')->name('toggle');
+    });
+});
+
+// ===================================================================
+// FEE INSTALMENT PLANS
+// ===================================================================
+Route::middleware('auth')->prefix('instalment-plans')->name('instalment-plans.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\InstalmentPlanController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\InstalmentPlanController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\InstalmentPlanController::class, 'store'])->name('store');
+    Route::get('/{plan}', [\App\Http\Controllers\InstalmentPlanController::class, 'show'])->whereNumber('plan')->name('show');
+    Route::get('/{plan}/edit', [\App\Http\Controllers\InstalmentPlanController::class, 'edit'])->whereNumber('plan')->name('edit');
+    Route::put('/{plan}', [\App\Http\Controllers\InstalmentPlanController::class, 'update'])->whereNumber('plan')->name('update');
+    Route::delete('/{plan}', [\App\Http\Controllers\InstalmentPlanController::class, 'destroy'])->whereNumber('plan')->name('destroy');
+    Route::post('/{plan}/toggle', [\App\Http\Controllers\InstalmentPlanController::class, 'toggle'])->whereNumber('plan')->name('toggle');
+    Route::get('/{plan}/students', [\App\Http\Controllers\InstalmentPlanController::class, 'classStudents'])->whereNumber('plan')->name('students');
+    Route::post('/{plan}/assign', [\App\Http\Controllers\InstalmentPlanController::class, 'assign'])->whereNumber('plan')->name('assign');
+    Route::delete('/{plan}/students/{student}', [\App\Http\Controllers\InstalmentPlanController::class, 'unassign'])->whereNumber(['plan', 'student'])->name('unassign');
+});
+
+// ===================================================================
+// MANAGEMENT DASHBOARD
+// ===================================================================
+Route::middleware('auth')->group(function () {
+    Route::get('/management', [\App\Http\Controllers\ManagementDashboardController::class, 'index'])->name('management.dashboard');
+    Route::get('/management/fee-status', [\App\Http\Controllers\ManagementDashboardController::class, 'feeStatus'])->name('management.fee-status');
+});
+
+// ===================================================================
+// CLUBS & SPORTS MEMBERSHIP / SCHOOL HOUSES
+// ===================================================================
+Route::middleware('auth')->group(function () {
+    Route::get('/activities/student', [\App\Http\Controllers\ActivityController::class, 'student'])->name('activities.student');
+    Route::post('/activities/student', [\App\Http\Controllers\ActivityController::class, 'saveStudent'])->name('activities.student.save');
+    Route::get('/activities/students/search', [\App\Http\Controllers\ActivityController::class, 'searchStudents'])->name('activities.students.search');
+    Route::post('/activities/sport/{id}/teams', [\App\Http\Controllers\ActivityController::class, 'addTeam'])->whereNumber('id')->name('activities.team');
+
+    Route::prefix('activities/{type}')->whereIn('type', ['club', 'sport'])->name('activities.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ActivityController::class, 'index'])->name('index');
+        Route::get('/{id}', [\App\Http\Controllers\ActivityController::class, 'show'])->whereNumber('id')->name('show');
+        Route::get('/{id}/students', [\App\Http\Controllers\ActivityController::class, 'classStudents'])->whereNumber('id')->name('class-students');
+        Route::get('/{id}/export', [\App\Http\Controllers\ActivityController::class, 'export'])->whereNumber('id')->name('export');
+        Route::post('/{id}/members', [\App\Http\Controllers\ActivityController::class, 'add'])->whereNumber('id')->name('add');
+        Route::put('/{id}/details', [\App\Http\Controllers\ActivityController::class, 'updateDetails'])->whereNumber('id')->name('details');
+        Route::put('/member/{member}', [\App\Http\Controllers\ActivityController::class, 'updateMember'])->whereNumber('member')->name('member.update');
+        Route::delete('/member/{member}', [\App\Http\Controllers\ActivityController::class, 'removeMember'])->whereNumber('member')->name('member.remove');
+    });
+
+    Route::prefix('houses')->name('houses.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\HouseController::class, 'index'])->name('index');
+        Route::get('/students', [\App\Http\Controllers\HouseController::class, 'classStudents'])->name('class-students');
+        Route::post('/auto/preview', [\App\Http\Controllers\HouseController::class, 'autoPreview'])->name('auto.preview');
+        Route::post('/auto/apply', [\App\Http\Controllers\HouseController::class, 'autoApply'])->name('auto.apply');
+        Route::post('/points', [\App\Http\Controllers\HouseController::class, 'award'])->name('points.award');
+        Route::delete('/points/{point}', [\App\Http\Controllers\HouseController::class, 'deletePoint'])->whereNumber('point')->name('points.delete');
+        Route::post('/student/{student}/role', [\App\Http\Controllers\HouseController::class, 'role'])->whereNumber('student')->name('role');
+        Route::post('/student/{student}/move', [\App\Http\Controllers\HouseController::class, 'move'])->whereNumber('student')->name('move');
+        Route::get('/{house}', [\App\Http\Controllers\HouseController::class, 'show'])->whereNumber('house')->name('show');
+        Route::post('/{house}/assign', [\App\Http\Controllers\HouseController::class, 'assign'])->whereNumber('house')->name('assign');
+        Route::put('/{house}/details', [\App\Http\Controllers\HouseController::class, 'details'])->whereNumber('house')->name('details');
+    });
+});
+
+// ===================================================================
+// STAFF SELF-SERVICE PAY + PUBLIC DOCUMENT CHECKS
+
+Route::middleware('auth')->group(function () {
+    Route::get('/activity-log', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity.index');
+    Route::get('/activity-log/export', [\App\Http\Controllers\ActivityLogController::class, 'export'])->name('activity.export');
+    Route::get('/online-staff', [\App\Http\Controllers\ActivityLogController::class, 'online'])->name('online-staff.index');
+    Route::get('/online-staff/count', [\App\Http\Controllers\ActivityLogController::class, 'onlineCount'])->name('online-staff.count');
+
+    // Student leave of absence: student/parent apply; class teacher recommends, principal approves.
+    Route::prefix('student-leave')->name('student-leave.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StudentLeaveController::class, 'mine'])->name('mine');
+        Route::post('/', [\App\Http\Controllers\StudentLeaveController::class, 'store'])->name('store');
+        Route::post('/{leave}/cancel', [\App\Http\Controllers\StudentLeaveController::class, 'cancel'])->whereNumber('leave')->name('cancel');
+        Route::get('/approvals', [\App\Http\Controllers\StudentLeaveController::class, 'approvals'])->name('approvals');
+        Route::post('/{leave}/act', [\App\Http\Controllers\StudentLeaveController::class, 'act'])->whereNumber('leave')->name('act');
+        Route::get('/records', [\App\Http\Controllers\StudentLeaveController::class, 'records'])->name('records');
+        Route::get('/records/export', [\App\Http\Controllers\StudentLeaveController::class, 'exportRecords'])->name('records.export');
+        Route::get('/{leave}/document', [\App\Http\Controllers\StudentLeaveController::class, 'attachment'])->whereNumber('leave')->name('attachment');
+    });
+
+    // School calendar (authenticated view for everyone; management gated in-controller).
+    Route::prefix('calendar')->name('calendar.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CalendarController::class, 'index'])->name('index');
+        Route::get('/event/{event}', [\App\Http\Controllers\CalendarController::class, 'show'])->whereNumber('event')->name('show');
+        Route::post('/', [\App\Http\Controllers\CalendarController::class, 'store'])->name('store');
+        Route::put('/{event}', [\App\Http\Controllers\CalendarController::class, 'update'])->whereNumber('event')->name('update');
+        Route::delete('/{event}', [\App\Http\Controllers\CalendarController::class, 'destroy'])->whereNumber('event')->name('destroy');
+        Route::post('/{event}/rsvp', [\App\Http\Controllers\CalendarController::class, 'rsvp'])->whereNumber('event')->name('rsvp');
+        Route::post('/{event}/attachments', [\App\Http\Controllers\CalendarController::class, 'uploadAttachment'])->whereNumber('event')->name('attachments.store');
+        Route::get('/attachments/{attachment}', [\App\Http\Controllers\CalendarController::class, 'attachment'])->whereNumber('attachment')->name('attachment');
+        Route::delete('/attachments/{attachment}', [\App\Http\Controllers\CalendarController::class, 'deleteAttachment'])->whereNumber('attachment')->name('attachments.destroy');
+        Route::post('/categories', [\App\Http\Controllers\CalendarController::class, 'storeCategory'])->name('categories.store');
+        Route::put('/categories/{category}', [\App\Http\Controllers\CalendarController::class, 'updateCategory'])->whereNumber('category')->name('categories.update');
+        Route::delete('/categories/{category}', [\App\Http\Controllers\CalendarController::class, 'destroyCategory'])->whereNumber('category')->name('categories.destroy');
+        Route::post('/sync-fees', [\App\Http\Controllers\CalendarController::class, 'syncFees'])->name('sync-fees');
+    });
+
+    // Certificates (confidential) — templates, generation, approval, audit.
+    Route::prefix('certificates')->name('certificates.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CertificateController::class, 'index'])->name('index');
+        Route::get('/generate', [\App\Http\Controllers\Admin\CertificateController::class, 'generate'])->name('generate');
+        Route::get('/students', [\App\Http\Controllers\Admin\CertificateController::class, 'students'])->name('students');
+        Route::post('/issue', [\App\Http\Controllers\Admin\CertificateController::class, 'issue'])->name('issue');
+        Route::get('/logs', [\App\Http\Controllers\Admin\CertificateController::class, 'logs'])->name('logs');
+
+        Route::prefix('templates')->name('templates.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'store'])->name('store');
+            Route::get('/{template}/edit', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'edit'])->whereNumber('template')->name('edit');
+            Route::post('/{template}', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'update'])->whereNumber('template')->name('update');
+            Route::delete('/{template}', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'destroy'])->whereNumber('template')->name('destroy');
+            Route::post('/{template}/duplicate', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'duplicate'])->whereNumber('template')->name('duplicate');
+        });
+        Route::post('/assets', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'uploadAsset'])->name('assets.upload');
+
+        Route::get('/{certificate}', [\App\Http\Controllers\Admin\CertificateController::class, 'show'])->whereNumber('certificate')->name('show');
+        Route::get('/{certificate}/print', [\App\Http\Controllers\Admin\CertificateController::class, 'print'])->whereNumber('certificate')->name('print');
+        Route::post('/{certificate}/generate-hit', [\App\Http\Controllers\Admin\CertificateController::class, 'generateHit'])->whereNumber('certificate')->name('generate-hit');
+        Route::post('/{certificate}/rendered', [\App\Http\Controllers\Admin\CertificateController::class, 'storeRendered'])->whereNumber('certificate')->name('rendered');
+        Route::get('/{certificate}/download', [\App\Http\Controllers\Admin\CertificateController::class, 'download'])->whereNumber('certificate')->name('download');
+        Route::post('/{certificate}/approve', [\App\Http\Controllers\Admin\CertificateController::class, 'approve'])->whereNumber('certificate')->name('approve');
+        Route::post('/{certificate}/revoke', [\App\Http\Controllers\Admin\CertificateController::class, 'revoke'])->whereNumber('certificate')->name('revoke');
+    });
+});
+
 // Finance operations: payouts, loans, cooperative, expenses, budgets, assets, general ledger
 require __DIR__ . '/finance.php';
 
@@ -1546,3 +1804,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/reminders', [\App\Http\Controllers\LeaveController::class, 'saveReminders'])->name('reminders');
     });
 });
+
+// Curriculum (topics, lesson notes, class reps, teaching methods) and exam papers (build / vet / bank / coverage)
+require __DIR__ . '/curriculum.php';
+require __DIR__ . '/exam.php';

@@ -495,6 +495,11 @@
                                     <a href="index.html" class="nav-link" data-key="t-ecommerce">Academics Analytics</a>
                                 </li>
                                 @endcan
+                                @can('View management dashboard')
+                                <li class="nav-item">
+                                    <a href="{{ route('management.dashboard') }}" class="nav-link">Management Overview</a>
+                                </li>
+                                @endcan
                             </ul>
                         </div>
                     </li>
@@ -619,6 +624,64 @@
                     </li>
                     @endif
 
+{{-- PARENT PORTAL --}}
+                    @role('Parent')
+                        @php $ppKids = \App\Services\Parents\ParentAccountService::children(auth()->user()); @endphp
+                        <li class="nav-item">
+                            <a href="{{ route('parent.dashboard') }}" class="nav-link menu-link {{ request()->routeIs('parent.dashboard') ? 'active' : '' }}">
+                                <i class="ri-parent-line"></i> <span>My Children</span>
+                            </a>
+                        </li>
+                        @foreach($ppKids as $k)
+                            <li class="nav-item">
+                                <a href="#sidebarChild{{ $k->id }}" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarChild{{ $k->id }}">
+                                    <i class="ri-user-smile-line"></i> <span>{{ $k->firstname }}</span>
+                                </a>
+                                <div class="collapse menu-dropdown" id="sidebarChild{{ $k->id }}">
+                                    <ul class="nav nav-sm flex-column">
+                                        <li class="nav-item"><a href="{{ route('parent.results', $k->id) }}" class="nav-link">Results</a></li>
+                                        <li class="nav-item"><a href="{{ route('parent.fees', $k->id) }}" class="nav-link">Fees &amp; Payments</a></li>
+                                        <li class="nav-item"><a href="{{ route('parent.attendance', $k->id) }}" class="nav-link">Attendance</a></li>
+                                        <li class="nav-item"><a href="{{ route('parent.timetable', $k->id) }}" class="nav-link">Timetable</a></li>
+                                        @if(Route::has('lms.parent.child'))<li class="nav-item"><a href="{{ route('lms.parent.child', $k->id) }}" class="nav-link">Learning</a></li>@endif
+                                    </ul>
+                                </div>
+                            </li>
+                        @endforeach
+                        @if(Route::has('student-leave.mine'))
+                        <li class="nav-item">
+                            <a href="{{ route('student-leave.mine') }}" class="nav-link menu-link {{ request()->routeIs('student-leave.mine') ? 'active' : '' }}"><i class="ri-calendar-event-line"></i> <span>Leave of Absence</span></a>
+                        </li>
+                        @if(Route::has('calendar.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('calendar.index') }}" class="nav-link menu-link {{ request()->routeIs('calendar.index') ? 'active' : '' }}"><i class="ri-calendar-2-line"></i> <span>School Calendar</span></a>
+                        </li>
+                        @endif
+                        @endif
+                        <li class="nav-item">
+                            <a href="{{ route('notifications.index') }}" class="nav-link menu-link"><i class="ri-notification-3-line"></i> <span>Notices</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('parent.password') }}" class="nav-link menu-link"><i class="ri-lock-password-line"></i> <span>Change Password</span></a>
+                        </li>
+                    @endrole
+
+                    
+
+@if(auth()->user()->student_id && Route::has('student-leave.mine'))
+                    <li class="nav-item">
+                        <a href="{{ route('student-leave.mine') }}" class="nav-link menu-link {{ request()->routeIs('student-leave.mine') ? 'active' : '' }}"><i class="ri-calendar-event-line"></i> <span>Leave of Absence</span></a>
+                    </li>
+                    @endif
+
+                    @if(auth()->user()->student_id && Route::has('calendar.index'))
+                    <li class="nav-item">
+                        <a href="{{ route('calendar.index') }}" class="nav-link menu-link {{ request()->routeIs('calendar.index') ? 'active' : '' }}"><i class="ri-calendar-2-line"></i> <span>School Calendar</span></a>
+                    </li>
+                    @endif
+
+                    
+
                     {{-- MY PAY (staff self-service) --}}
                     @php $myStaffId = \Illuminate\Support\Facades\DB::table('staffbioinfo')->where('userid', auth()->id())->value('id'); @endphp
                     @if($myStaffId)
@@ -639,6 +702,34 @@
                             </ul></div>
                         </li>
                     @endcanany
+@if(($myStaffId || auth()->user()->can('Manage school calendar') || auth()->user()->can('View school calendar')) && Route::has('calendar.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('calendar.index') }}" class="nav-link menu-link {{ request()->routeIs('calendar.index') ? 'active' : '' }}"><i class="ri-calendar-2-line"></i> <span>School Calendar</span></a>
+                        </li>
+                    @endif
+                    @if(auth()->user()->can('View activity log') || auth()->user()->can('View online staff'))
+                        <li class="nav-item">
+                            <a href="#sidebarActivity" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarActivity"><i class="ri-shield-user-line"></i> <span>Staff Monitoring</span></a>
+                            <div class="collapse menu-dropdown" id="sidebarActivity"><ul class="nav nav-sm flex-column">
+                                <li class="nav-item"><a href="{{ route('online-staff.index') }}" class="nav-link">Who's Online</a></li>
+                                @can('View activity log')<li class="nav-item"><a href="{{ route('activity.index') }}" class="nav-link">Activity Log</a></li>@endcan
+                            </ul></div>
+                        </li>
+                    @endif
+
+                    @canany(['Recommend student leave', 'Approve student leave', 'View student leave records'])
+                    @if(Route::has('student-leave.approvals'))
+                        <li class="nav-item">
+                            <a href="#sidebarStudentLeave" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarStudentLeave"><i class="ri-user-follow-line"></i> <span>Student Leave</span></a>
+                            <div class="collapse menu-dropdown" id="sidebarStudentLeave"><ul class="nav nav-sm flex-column">
+                                @canany(['Recommend student leave', 'Approve student leave'])<li class="nav-item"><a href="{{ route('student-leave.approvals') }}" class="nav-link">Approvals</a></li>@endcanany
+                            </ul></div>
+                        </li>
+                    @endif
+                    @endcanany
+
+                    
+
                     @canany(['View leave records', 'Approve leave'])
                         <li class="nav-item">
                             <a href="{{ route('leave.board') }}" class="nav-link menu-link {{ request()->routeIs('leave.board') ? 'active' : '' }}"><i class="ri-team-line"></i> <span>Who's Away</span></a>
@@ -900,6 +991,8 @@
                                     <li class="nav-item"><a href="{{ route('schoolpayment.index') }}" class="nav-link">Student Bill</a></li>
                                     <li class="nav-item"><a href="{{ route('payment.index') }}" class="nav-link">Payment Portal</a></li>
                                     <li class="nav-item"><a href="{{ route('payment.online.index') }}" class="nav-link">Online Payments</a></li>
+                                    @can('View online-fee-payments')<li class="nav-item"><a href="{{ route('online-fees.index') }}" class="nav-link">Online Payments</a></li>@endcan
+                                    @can('View instalment-plans')<li class="nav-item"><a href="{{ route('instalment-plans.index') }}" class="nav-link">Instalment Plans</a></li>@endcan
                                 </ul>
                             </div>
                         </li>
@@ -992,6 +1085,26 @@
                                 <i class="ph-credit-card"></i> <span>Payment Gateways</span>
                             </a>
                         </li>
+                    @endcan
+
+@can('Manage maintenance mode')
+                        <li class="nav-item">
+                            <a href="{{ route('maintenance.settings') }}" class="nav-link">
+                                <i class="ri-tools-line"></i> <span>Maintenance Mode</span>
+                                @php $mmActive = false; try { $mmActive = \App\Models\MaintenanceSetting::current()->is_active; } catch (\Throwable $e) {} @endphp
+                                @if($mmActive)<span class="badge bg-danger ms-1">ON</span>@endif
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('Manage backups')
+                    @if(Route::has('admin.backups.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('admin.backups.index') }}" class="nav-link {{ request()->routeIs('admin.backups.*') ? 'active' : '' }}">
+                                <i class="ri-database-2-line"></i> <span>Database Backups</span>
+                            </a>
+                        </li>
+                    @endif
                     @endcan
 
                     @can('Manage feature flags')
@@ -1097,6 +1210,60 @@
                     @endcan
                     @endfeature
 
+{{-- COMMUNICATION --}}
+                    @if(auth()->user()->can('View notices') || auth()->user()->can('Create notices') || auth()->user()->can('Manage notification settings') || auth()->user()->can('Manage parent contacts') || auth()->user()->can('Manage parent accounts'))
+                        <li class="menu-title"><i class="ri-more-fill"></i> <span>COMMUNICATION</span></li>
+                    @endif
+
+                    @feature('communication')
+                    @can('View notices')
+                        <li class="nav-item">
+                            <a href="#sidebarNotices" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarNotices">
+                                <i class="ri-megaphone-line"></i> <span>School Notices</span>
+                            </a>
+                            <div class="collapse menu-dropdown" id="sidebarNotices">
+                                <ul class="nav nav-sm flex-column">
+                                    <li class="nav-item"><a href="{{ route('notices.index') }}" class="nav-link">All Notices</a></li>
+                                    @can('Create notices')
+                                        <li class="nav-item"><a href="{{ route('notices.create') }}" class="nav-link">New Notice</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
+                        </li>
+                    @endcan
+                    @endfeature
+
+                    @can('Manage parent contacts')
+                        <li class="nav-item">
+                            <a href="{{ route('parent-contacts.index') }}" class="nav-link">
+                                <i class="ri-contacts-book-2-line"></i> <span>Parent Contacts</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('Manage parent accounts')
+                        <li class="nav-item">
+                            <a href="{{ route('parent-accounts.index') }}" class="nav-link">
+                                <i class="ri-parent-line"></i> <span>Parent Portal Accounts</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('Manage notification settings')
+                        <li class="nav-item">
+                            <a href="{{ route('notices.automations') }}" class="nav-link">
+                                <i class="ri-robot-2-line"></i> <span>Automatic Messages</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('notices.settings') }}" class="nav-link">
+                                <i class="ri-settings-3-line"></i> <span>Notification Settings</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    
+
                     {{-- SCHOOL BASIC SETTINGS --}}
                     @if(auth()->user()->can('View schoolinformation') || auth()->user()->can('View session') || auth()->user()->can('View term') || auth()->user()->can('View schoolhouse') || auth()->user()->can('View school-arm') || auth()->user()->can('View class-category') || auth()->user()->can('View school-class') || auth()->user()->can('View class-teacher') || auth()->user()->can('View subjects') || auth()->user()->can('View subject-teacher') || auth()->user()->can('View subject-class') || auth()->user()->can('View compulsory-subject') || auth()->user()->can('View principals-comment') || auth()->user()->can('View school-bills') || auth()->user()->can('View school-bill-for-term-session'))
                         <li class="menu-title"><i class="ri-more-fill"></i> <span>SCHOOL BASIC SETTINGS</span></li>
@@ -1161,6 +1328,25 @@
                             </div>
                         </li>
                     @endif
+
+{{-- HOUSES, CLUBS & SPORTS --}}
+                    @if(auth()->user()->can('View schoolhouse') || auth()->user()->can('Update schoolhouse') || auth()->user()->can('Award house points') || auth()->user()->can('View club') || auth()->user()->can('Update club') || auth()->user()->can('View sport') || auth()->user()->can('Update sport'))
+                        <li class="nav-item">
+                            <a href="#sidebarActivities" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarActivities">
+                                <i class="ri-trophy-line"></i> <span>Houses, Clubs &amp; Sports</span>
+                            </a>
+                            <div class="collapse menu-dropdown" id="sidebarActivities">
+                                <ul class="nav nav-sm flex-column">
+                                    @canany(['View schoolhouse', 'Update schoolhouse', 'Award house points'])<li class="nav-item"><a href="{{ route('houses.index') }}" class="nav-link">Houses &amp; Points</a></li>@endcanany
+                                    @canany(['View club', 'Update club'])<li class="nav-item"><a href="{{ route('activities.index', 'club') }}" class="nav-link">Clubs &amp; Members</a></li>@endcanany
+                                    @canany(['View sport', 'Update sport'])<li class="nav-item"><a href="{{ route('activities.index', 'sport') }}" class="nav-link">Sports &amp; Members</a></li>@endcanany
+                                    @canany(['Update club', 'Update sport'])<li class="nav-item"><a href="{{ route('activities.student') }}" class="nav-link">By Student</a></li>@endcanany
+                                </ul>
+                            </div>
+                        </li>
+                    @endif
+
+                    
 
                     {{-- ATTENDANCE ADMIN --}}
                     @if(auth()->user()->can('View attendance-settings') || auth()->user()->can('View attendance-holidays') || 
@@ -1242,6 +1428,76 @@
                             </div>
                         </li>
                     @endif
+
+{{-- CURRICULUM & PAPER EXAMS --}}
+                    @canany(['Manage topics','Verify topics','Track topics','Write lesson notes','Review lesson notes','Write exam papers','Vet exam papers','Manage exam bank','Manage certificate templates','Generate certificates','View certificate audit'])
+                        <li class="menu-title"><i class="ri-more-fill"></i> <span>CURRICULUM &amp; CERTIFICATES</span></li>
+                    @endcanany
+
+                    @canany(['Manage topics', 'Verify topics'])
+                    <li class="nav-item">
+                        <a href="#sidebarCurriculum" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCurriculum">
+                            <i class="ri-booklet-line"></i> <span>Curriculum</span>
+                        </a>
+                        <div class="collapse menu-dropdown" id="sidebarCurriculum">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item"><a href="{{ route('curriculum.topics.index') }}" class="nav-link">Topics &amp; Scheme</a></li>
+                                <li class="nav-item"><a href="{{ route('curriculum.topics.coverage') }}" class="nav-link">Coverage</a></li>
+                                @can('Manage topics')<li class="nav-item"><a href="{{ route('curriculum.reps.index') }}" class="nav-link">Class Reps</a></li>@endcan
+                                @can('Manage teaching methods')<li class="nav-item"><a href="{{ route('curriculum.methods.index') }}" class="nav-link">Teaching Methods</a></li>@endcan
+                            </ul>
+                        </div>
+                    </li>
+                    @endcanany
+
+                    @canany(['Track topics', 'Manage topics', 'Verify topics'])
+                    <li class="nav-item"><a href="{{ route('curriculum.progress.index') }}" class="nav-link menu-link {{ request()->routeIs('curriculum.progress.*') ? 'active' : '' }}"><i class="ri-task-line"></i> <span>My Topics</span></a></li>
+                    @canany(['Write lesson notes', 'Review lesson notes'])
+                    <li class="nav-item"><a href="{{ route('curriculum.notes.index') }}" class="nav-link menu-link {{ request()->routeIs('curriculum.notes.*') ? 'active' : '' }}"><i class="ri-booklet-line"></i> <span>Lesson Notes</span></a></li>
+                    @endcanany
+                    @endcanany
+
+                    @role('Class Rep')
+                    <li class="nav-item"><a href="{{ route('curriculum.reps.confirm') }}" class="nav-link menu-link {{ request()->routeIs('curriculum.reps.confirm') ? 'active' : '' }}"><i class="ri-shield-check-line"></i> <span>Confirm Topics</span></a></li>
+                    @endrole
+
+                    @canany(['Write exam papers', 'Vet exam papers', 'Manage exam bank'])
+                    <li class="nav-item">
+                        <a href="#sidebarExamVetting" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarExamVetting">
+                            <i class="ri-file-list-3-line"></i> <span>Paper Exams &amp; Vetting</span>
+                        </a>
+                        <div class="collapse menu-dropdown" id="sidebarExamVetting">
+                            <ul class="nav nav-sm flex-column">
+                                <li class="nav-item"><a href="{{ route('exam.papers.index') }}" class="nav-link {{ request()->routeIs('exam.papers.*') ? 'active' : '' }}">Exam Papers</a></li>
+                                @can('Vet exam papers')<li class="nav-item"><a href="{{ route('exam.vet.queue') }}" class="nav-link {{ request()->routeIs('exam.vet.*') ? 'active' : '' }}">Vetting Queue</a></li>@endcan
+                                @canany(['Manage exam bank', 'Write exam papers'])<li class="nav-item"><a href="{{ route('exam.bank.index') }}" class="nav-link {{ request()->routeIs('exam.bank.*') ? 'active' : '' }}">Question Bank</a></li>@endcanany
+                                <li class="nav-item"><a href="{{ route('exam.coverage.index') }}" class="nav-link {{ request()->routeIs('exam.coverage.index') ? 'active' : '' }}">Term-end Analysis</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    @endcanany
+
+                    @canany(['Manage certificate templates', 'Generate certificates', 'View certificate audit'])
+                    @if(Route::has('certificates.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('certificates.index') }}" class="nav-link {{ request()->routeIs('certificates.*') ? 'active' : '' }}">
+                                <i class="ri-award-line"></i> <span>Certificates</span>
+                            </a>
+                        </li>
+                    @endif
+                    @endcanany
+
+                    @canany(['Manage certificate templates', 'Generate certificates', 'View certificate audit'])
+                    @if(Route::has('certificates.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('certificates.index', ['kind' => 'testimonial']) }}" class="nav-link {{ request()->routeIs('certificates.*') && request('kind')==='testimonial' ? 'active' : '' }}">
+                                <i class="ri-file-user-line"></i> <span>Testimonials</span>
+                            </a>
+                        </li>
+                    @endif
+                    @endcanany
+
+                    
 
                     {{-- ADMIN TOOLS --}}
                     @can('View admin-score-entry')
@@ -1390,6 +1646,9 @@
                         $userRoles = $userdata->roles->pluck('name');
                     @endphp
 
+                    @include('layouts.partials.online-badge')
+                    @include('layouts.partials.notification-bell')
+
                     <div class="dropdown position-relative ms-sm-3 header-item topbar-user" id="user-dropdown-wrapper">
                         <button type="button" id="user-menu-btn" class="btn shadow-none p-0" style="background:transparent;border:none;">
                             <span class="d-flex align-items-center gap-2">
@@ -1456,6 +1715,8 @@
             </div>
         </div>
     </div>
+
+    @include('layouts.partials.maintenance-banner')
 
     @yield('content')
 

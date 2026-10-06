@@ -20,7 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Module on/off switches (feature flags). Fail-open when no flag is set.
-        $middleware->web(append: [\App\Http\Middleware\FeatureRouteGuard::class]);
+        $middleware->alias([
+            'force.password' => \App\Http\Middleware\ForcePasswordChange::class,
+            'maintenance.mode' => \App\Http\Middleware\MaintenanceMode::class,
+        ]);
+        // Maintenance banner/page, module switches, forced password change (new parent accounts), staff activity log.
+        $middleware->web(append: [\App\Http\Middleware\MaintenanceMode::class, \App\Http\Middleware\FeatureRouteGuard::class, \App\Http\Middleware\ForcePasswordChange::class, \App\Http\Middleware\LogActivity::class]);
+        // Payment-gateway webhooks are signature-checked, not CSRF-checked.
+        $middleware->validateCsrfTokens(except: ['webhook/*']);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
