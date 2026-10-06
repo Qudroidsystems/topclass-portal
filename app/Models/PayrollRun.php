@@ -24,7 +24,10 @@ class PayrollRun extends Model
         'loan_details', 'advance_details', 'total_deductions',
         'net_pay', 'bank_name', 'account_number', 'account_name',
         'payment_status', 'paid_at', 'transaction_reference',
-        'status', 'processed_by'
+        'status', 'processed_by',
+        'taxable_income', 'annual_chargeable', 'rent_relief', 'pension_base', 'nhia', 'employer_nhia', 'itf',
+        'employer_cost', 'proration', 'tax_rule', 'tax_breakdown', 'tax_state', 'tin', 'pfa_name', 'rsa_pin',
+        'warnings', 'verify_code',
     ];
 
     protected $casts = [
@@ -55,6 +58,9 @@ class PayrollRun extends Model
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
         'paid_at' => 'datetime',
+        'tax_breakdown' => 'array',
+        'warnings' => 'array',
+        'proration' => 'float',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -63,6 +69,11 @@ class PayrollRun extends Model
     public function payrollPeriod()
     {
         return $this->belongsTo(PayrollPeriod::class, 'payroll_period_id');
+    }
+
+    public function lines()
+    {
+        return $this->hasMany(PayrollRunLine::class, 'payroll_run_id')->orderBy('sort');
     }
 
     public function staff()

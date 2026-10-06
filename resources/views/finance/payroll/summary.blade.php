@@ -2,186 +2,68 @@
 @extends('layouts.master')
 
 @section('content')
-<style>
-.payroll-summary-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #4f46e5 100%);
-    border-radius: 16px;
-    padding: 28px 32px;
-    margin-bottom: 24px;
-}
-.summary-stat {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    transition: all 0.2s;
-}
-.summary-stat:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
-</style>
-
+@php $m = fn ($v) => '₦' . number_format((float) $v, 2); $t = $totals; $max = max(1, $rows->max(fn ($r) => (float) ($r->total_employer_cost ?: $r->total_gross_pay))); @endphp
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
+    <x-cb.hero title="Payroll Summary" icon="ri-bar-chart-2-line" :subtitle="'Approved and locked months in ' . $year">
+        <x-slot:actions>
+            <form method="GET"><select name="year" class="cb-select" onchange="this.form.submit()" aria-label="Year">@foreach($years as $y)<option @selected($y == $year)>{{ $y }}</option>@endforeach</select></form>
+        </x-slot:actions>
+    </x-cb.hero>
 
-    <div class="payroll-summary-hero">
-        <h1 class="text-white"><i class="ri-file-chart-line me-2"></i>{{ $pagetitle }}</h1>
-        <p class="text-white-50 mb-0">Annual payroll summary with statutory deductions breakdown.</p>
+    <div class="row g-3 mb-3">
+        <div class="col-md-3 col-6"><x-cb.stat label="Total cost to school" :value="$m($t['cost'])" icon="ri-building-line" accent="rose" :hint="$prevCost > 0 ? (($t['cost'] >= $prevCost ? '+' : '') . round(($t['cost'] - $prevCost) / $prevCost * 100, 1) . '% vs ' . ($year - 1)) : null" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="Gross pay" :value="$m($t['gross'])" icon="ri-money-dollar-circle-line" accent="teal" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="Net pay to staff" :value="$m($t['net'])" icon="ri-wallet-3-line" accent="green" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="PAYE + pension + NHF" :value="$m($t['paye'] + $t['pension_ee'] + $t['pension_er'] + $t['nhf'])" icon="ri-government-line" accent="violet" /></div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <select id="yearSelect" class="form-select form-select-lg">
-                @foreach($years as $y)
-                    <option value="{{ $y }}" {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
+    <div class="row g-3">
+        <div class="col-xl-8">
+            <x-cb.card title="Month by month" icon="ri-calendar-line" :count="$rows->count()" :flush="true">
+                @if($rows->isEmpty())
+                    <div class="empty-state"><i class="ri-bar-chart-2-line"></i><h6>No approved months in {{ $year }}</h6></div>
+                @else
+                    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Month</th><th style="min-width:140px">Cost to school</th><th class="text-end">Gross</th><th class="text-end">PAYE</th><th class="text-end">Pension (staff/school)</th><th class="text-end">NHF</th><th class="text-end">Net</th></tr></thead>
+                        <tbody>
+                        @foreach($rows as $r)
+                            @php $cost = (float) ($r->total_employer_cost ?: $r->total_gross_pay); @endphp
+                            <tr>
+                                <td><a href="{{ route('payroll.month.show', $r) }}">{{ $r->period_name }}</a></td>
+                                <td><div class="d-flex align-items-center gap-2"><div class="progress-track flex-grow-1" title="{{ $m($cost) }}"><div class="progress-fill" style="width:{{ round($cost / $max * 100) }}%"></div></div><small>{{ number_format($cost / 1000) }}k</small></div></td>
+                                <td class="text-end">{{ $m($r->total_gross_pay) }}</td>
+                                <td class="text-end">{{ $m($r->total_tax) }}</td>
+                                <td class="text-end">{{ $m($r->total_employee_pension) }} / {{ $m($r->total_employer_pension) }}</td>
+                                <td class="text-end">{{ $m($r->total_nhf) }}</td>
+                                <td class="text-end fw-bold">{{ $m($r->total_net_pay) }}</td>
+                            </tr>
+                        @endforeach
+                        <tr class="fw-bold table-light"><td>Total</td><td>{{ $m($t['cost']) }}</td><td class="text-end">{{ $m($t['gross']) }}</td><td class="text-end">{{ $m($t['paye']) }}</td><td class="text-end">{{ $m($t['pension_ee']) }} / {{ $m($t['pension_er']) }}</td><td class="text-end">{{ $m($t['nhf']) }}</td><td class="text-end">{{ $m($t['net']) }}</td></tr>
+                        </tbody>
+                    </table></div>
+                @endif
+            </x-cb.card>
+        </div>
+        <div class="col-xl-4">
+            <x-cb.card title="Where the money went" icon="ri-pie-chart-line">
+                @php $parts = ['Net pay to staff' => $t['net'], 'PAYE' => $t['paye'], 'Pension (staff + school)' => $t['pension_ee'] + $t['pension_er'], 'NHF' => $t['nhf'], 'Loans recovered' => $t['loans']]; $sum = max(1, array_sum($parts)); @endphp
+                @foreach($parts as $l => $v)
+                    <div class="d-flex justify-content-between small mb-1"><span>{{ $l }}</span><span>{{ $m($v) }} <span class="text-muted">({{ round($v / $sum * 100) }}%)</span></span></div>
+                    <div class="progress-track mb-2"><div class="progress-fill" style="width:{{ round($v / $sum * 100) }}%"></div></div>
                 @endforeach
-            </select>
-        </div>
-        <div class="col-md-9 text-end">
-            <button class="btn btn-success" id="exportExcelBtn"><i class="ri-file-excel-line me-1"></i>Export Excel</button>
-            <button class="btn btn-danger" id="exportPdfBtn"><i class="ri-file-pdf-line me-1"></i>Export PDF</button>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4" id="summaryStats"></div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3 border-bottom">
-            <h5 class="mb-0 fw-semibold"><i class="ri-table-line me-2"></i>Monthly Payroll Breakdown</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover w-100" id="payrollSummaryTable">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Period</th>
-                            <th>Gross Pay (₦)</th>
-                            <th>PAYE (₦)</th>
-                            <th>Pension (₦)</th>
-                            <th>NHF (₦)</th>
-                            <th>Net Pay (₦)</th>
-                            <th>Employer Cost (₦)</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            </x-cb.card>
+            @if($byDept->isNotEmpty())
+                <x-cb.card title="By department" icon="ri-building-2-line" :flush="true">
+                    <table class="table table-sm align-middle mb-0"><thead><tr><th>Department</th><th class="text-end">Staff</th><th class="text-end">Cost</th></tr></thead><tbody>
+                        @foreach($byDept as $d)<tr><td>{{ $d->dept }}</td><td class="text-end">{{ $d->staff }}</td><td class="text-end">{{ $m($d->cost) }}</td></tr>@endforeach
+                    </tbody></table>
+                </x-cb.card>
+            @endif
         </div>
     </div>
-
-    <div class="row g-3 mt-3">
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white py-3"><h5 class="mb-0"><i class="ri-tax-line me-2"></i>Statutory Remittance Summary</h5></div>
-                <div class="card-body"><canvas id="statutoryChart" height="250"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white py-3"><h5 class="mb-0"><i class="ri-trending-up-line me-2"></i>Monthly Payroll Trend</h5></div>
-                <div class="card-body"><canvas id="trendChart" height="250"></canvas></div>
-            </div>
-        </div>
-    </div>
-
 </div>
 </div>
 </div>
-
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
-let summaryTable, statutoryChart, trendChart;
-
-$(document).ready(function() {
-    summaryTable = $('#payrollSummaryTable').DataTable({
-        processing: true,
-        serverSide: true,
-        pageLength: 12,
-        ordering: false,
-        ajax: {
-            url: '{{ route("payroll.summary") }}',
-            type: 'GET',
-            data: function(d) {
-                d.year = $('#yearSelect').val();
-            }
-        },
-        columns: [
-            { data: 'month', name: 'month' },
-            { data: 'period_name', name: 'period_name' },
-            { data: 'gross_pay', name: 'gross_pay' },
-            { data: 'paye', name: 'paye' },
-            { data: 'pension', name: 'pension' },
-            { data: 'nhf', name: 'nhf' },
-            { data: 'net_pay', name: 'net_pay' },
-            { data: 'employer_cost', name: 'employer_cost' }
-        ]
-    });
-
-    $('#yearSelect').on('change', function() {
-        summaryTable.ajax.reload();
-        loadYearStats();
-    });
-
-    $('#exportExcelBtn').on('click', () => Swal.fire('Export Started', 'Excel file will download shortly', 'success'));
-    $('#exportPdfBtn').on('click', () => Swal.fire('Export Started', 'PDF file will download shortly', 'success'));
-
-    loadYearStats();
-});
-
-function loadYearStats() {
-    const year = $('#yearSelect').val();
-    $.ajax({
-        url: '{{ route("payroll.summary") }}',
-        data: { year: year, stats: true },
-        success: function(response) {
-            if (response.success) {
-                updateStatsAndCharts(response);
-            }
-        }
-    });
-}
-
-function updateStatsAndCharts(response) {
-    const s = response.stats;
-    $('#summaryStats').html(`
-        <div class="col-md-3"><div class="summary-stat"><div class="fs-2 fw-bold text-primary">₦${(s.total_gross || 0).toLocaleString()}</div><div>Total Gross Pay</div></div></div>
-        <div class="col-md-3"><div class="summary-stat"><div class="fs-2 fw-bold text-danger">₦${(s.total_tax || 0).toLocaleString()}</div><div>Total PAYE</div></div></div>
-        <div class="col-md-3"><div class="summary-stat"><div class="fs-2 fw-bold text-success">₦${(s.total_pension || 0).toLocaleString()}</div><div>Total Pension</div></div></div>
-        <div class="col-md-3"><div class="summary-stat"><div class="fs-2 fw-bold text-warning">₦${(s.total_net || 0).toLocaleString()}</div><div>Total Net Pay</div></div></div>
-    `);
-
-    // Statutory Chart
-    if (response.statutory_data) {
-        const ctx1 = document.getElementById('statutoryChart').getContext('2d');
-        if (statutoryChart) statutoryChart.destroy();
-        statutoryChart = new Chart(ctx1, {
-            type: 'pie',
-            data: {
-                labels: ['PAYE Tax', 'Employee Pension', 'NHF'],
-                datasets: [{ data: response.statutory_data, backgroundColor: ['#dc2626', '#2563eb', '#d97706'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-        });
-    }
-
-    // Trend Chart
-    if (response.trend_data) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const ctx2 = document.getElementById('trendChart').getContext('2d');
-        if (trendChart) trendChart.destroy();
-        trendChart = new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: months.slice(0, response.trend_data.length),
-                datasets: [{ label: 'Net Pay (₦)', data: response.trend_data, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.1)', fill: true, tension: 0.4 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-        });
-    }
-}
-</script>
 @endsection

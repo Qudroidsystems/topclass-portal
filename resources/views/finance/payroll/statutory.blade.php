@@ -2,137 +2,53 @@
 @extends('layouts.master')
 
 @section('content')
-<style>
-.report-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    overflow: hidden;
-}
-.report-header {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
-    color: white;
-    padding: 15px 20px;
-}
-.stat-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-}
-</style>
-
+@php
+    $m = fn ($v) => '₦' . number_format((float) $v, 2);
+    $cell = function ($r, $type, $amount) use ($remit, $m) {
+        $x = $remit[$r->id][$type] ?? null;
+        $state = !$x ? '' : ((float) $x->paid + 0.009 >= (float) $x->due ? 'paid' : ((float) $x->paid > 0 ? 'part' : 'due'));
+        $icon = ['paid' => '<i class="ri-checkbox-circle-fill text-success" title="Paid"></i>', 'part' => '<i class="ri-contrast-2-line text-warning" title="Part paid"></i>', 'due' => '<i class="ri-time-line text-danger" title="Not paid"></i>'][$state] ?? '';
+        return $m($amount) . ' ' . $icon;
+    };
+@endphp
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
+    <x-cb.hero title="Statutory Summary" icon="ri-government-line" :subtitle="'PAYE, pension and NHF deducted in ' . $year . ', and whether each was paid over'">
+        <x-slot:actions>
+            <form method="GET"><select name="year" class="cb-select" onchange="this.form.submit()" aria-label="Year">@foreach($years as $y)<option @selected($y == $year)>{{ $y }}</option>@endforeach</select></form>
+            <a href="{{ route('payroll.remittances', ['year' => $year]) }}" class="cb-hero-btn"><i class="ri-bank-card-line"></i>Record payments</a>
+        </x-slot:actions>
+    </x-cb.hero>
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="fw-bold">Statutory Remittance Report</h4>
-            <p class="text-muted">PAYE, Pension, NHF and other statutory deductions summary</p>
-        </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-3 col-6"><x-cb.stat label="PAYE" :value="$m($rows->sum('total_tax'))" icon="ri-government-line" accent="violet" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="Pension — staff" :value="$m($rows->sum('total_employee_pension'))" icon="ri-user-line" accent="teal" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="Pension — school" :value="$m($rows->sum('total_employer_pension'))" icon="ri-building-line" accent="amber" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="NHF" :value="$m($rows->sum('total_nhf'))" icon="ri-home-4-line" accent="sky" /></div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <select id="yearSelect" class="form-select">
-                @foreach($years as $y)
-                    <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
+    <x-cb.card title="Month by month" icon="ri-calendar-line" :count="$rows->count()" :flush="true">
+        @if($rows->isEmpty())
+            <div class="empty-state"><i class="ri-government-line"></i><h6>No approved months in {{ $year }}</h6></div>
+        @else
+            <div class="table-responsive"><table class="table align-middle mb-0">
+                <thead><tr><th>Month</th><th class="text-end">PAYE</th><th class="text-end">Pension (staff + school)</th><th class="text-end">NHF</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                @foreach($rows as $r)
+                    <tr><td>{{ $r->period_name }}</td>
+                        <td class="text-end">{!! $cell($r, 'paye', $r->total_tax) !!}</td>
+                        <td class="text-end">{!! $cell($r, 'pension', $r->total_employee_pension + $r->total_employer_pension) !!}</td>
+                        <td class="text-end">{!! $cell($r, 'nhf', $r->total_nhf) !!}</td>
+                        <td class="text-end fw-bold">{{ $m($r->total_tax + $r->total_employee_pension + $r->total_employer_pension + $r->total_nhf) }}</td></tr>
                 @endforeach
-            </select>
-        </div>
-        <div class="col-md-3">
-            <button class="btn btn-primary" id="filterBtn">
-                <i class="ri-search-line me-1"></i>Filter
-            </button>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="text-danger fs-2 fw-bold">₦{{ number_format($totalPaye, 2) }}</div>
-                <small>Total PAYE Tax</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="text-primary fs-2 fw-bold">₦{{ number_format($totalEmployeePension, 2) }}</div>
-                <small>Employee Pension</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="text-info fs-2 fw-bold">₦{{ number_format($totalEmployerPension, 2) }}</div>
-                <small>Employer Pension</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="text-warning fs-2 fw-bold">₦{{ number_format($totalNhf, 2) }}</div>
-                <small>Total NHF</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0">Monthly Statutory Breakdown</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover" id="statutoryTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Month</th>
-                            <th>Period</th>
-                            <th class="text-end">PAYE (₦)</th>
-                            <th class="text-end">Employee Pension (₦)</th>
-                            <th class="text-end">Employer Pension (₦)</th>
-                            <th class="text-end">NHF (₦)</th>
-                            <th class="text-end">Net Pay (₦)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($data as $row)
-                        <tr>
-                            <td>{{ date('F', mktime(0, 0, 0, $row->month, 1)) }}</td>
-                            <td>{{ $row->period_name }}</td>
-                            <td class="text-end">₦{{ number_format($row->paye, 2) }}</td>
-                            <td class="text-end">₦{{ number_format($row->employee_pension, 2) }}</td>
-                            <td class="text-end">₦{{ number_format($row->employer_pension, 2) }}</td>
-                            <td class="text-end">₦{{ number_format($row->nhf, 2) }}</td>
-                            <td class="text-end">₦{{ number_format($row->total_net_pay, 2) }}</td>
-                        </tr>
-                        @empty
-                            <tr><td colspan="7" class="text-center py-4 text-muted">No statutory data available</td></tr>
-                        @endforelse
-                    </tbody>
-                    <tfoot class="table-active">
-                        <tr>
-                            <th colspan="2" class="text-end">Totals:</th>
-                            <th class="text-end">₦{{ number_format($totalPaye, 2) }}</th>
-                            <th class="text-end">₦{{ number_format($totalEmployeePension, 2) }}</th>
-                            <th class="text-end">₦{{ number_format($totalEmployerPension, 2) }}</th>
-                            <th class="text-end">₦{{ number_format($totalNhf, 2) }}</th>
-                            <th class="text-end">₦{{ number_format($data->sum('total_net_pay'), 2) }}</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-    </div>
+                <tr class="fw-bold table-light"><td>Total</td><td class="text-end">{{ $m($rows->sum('total_tax')) }}</td><td class="text-end">{{ $m($rows->sum('total_employee_pension') + $rows->sum('total_employer_pension')) }}</td><td class="text-end">{{ $m($rows->sum('total_nhf')) }}</td><td class="text-end">{{ $m($rows->sum('total_tax') + $rows->sum('total_employee_pension') + $rows->sum('total_employer_pension') + $rows->sum('total_nhf')) }}</td></tr>
+                </tbody>
+            </table></div>
+        @endif
+    </x-cb.card>
+    <div class="small text-muted"><i class="ri-checkbox-circle-fill text-success"></i> paid · <i class="ri-contrast-2-line text-warning"></i> part paid · <i class="ri-time-line text-danger"></i> not yet paid. Details and receipts are on the Remittances page.</div>
 </div>
 </div>
 </div>
-
-<script>
-$(document).ready(function() {
-    $('#filterBtn').on('click', function() {
-        var year = $('#yearSelect').val();
-        window.location.href = '{{ route("payroll.statutory") }}?year=' + year;
-    });
-});
-</script>
 @endsection

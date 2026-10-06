@@ -35,6 +35,17 @@ return [
         ],
     ],
 
+    'paystack' => [
+        'active'          => env('PAYSTACK_ACTIVE', true),
+        'mode'            => env('PAYSTACK_MODE', 'sandbox'),
+        'secret_key'      => env('PAYSTACK_SECRET_KEY'),
+        'public_key'      => env('PAYSTACK_PUBLIC_KEY'),
+        'test_secret_key' => env('PAYSTACK_TEST_SECRET_KEY'),
+        'test_public_key' => env('PAYSTACK_TEST_PUBLIC_KEY'),
+        'live_secret_key' => env('PAYSTACK_LIVE_SECRET_KEY'),
+        'live_public_key' => env('PAYSTACK_LIVE_PUBLIC_KEY'),
+    ],
+
     'twilio' => [
     'sid' => env('TWILIO_SID'),
     'auth_token' => env('TWILIO_AUTH_TOKEN'),

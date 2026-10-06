@@ -40,16 +40,20 @@ class DefaultPaymentGatewaysSeeder extends Seeder
                     ->first();
 
                 if ($existing) {
-                    // Update existing gateway
+                    // Keys, mode and on/off are managed by the admin in Finance ›
+                    // Payment Gateways. Re-running this seeder must never overwrite
+                    // them, so only the name and non-key settings are refreshed.
+                    $current = json_decode($existing->config ?? '[]', true) ?: [];
+                    $defaults = array_filter(
+                        $gateway['config'] ?? [],
+                        fn ($k) => !preg_match('/(key|secret|merchant|contract|client|token)/i', $k),
+                        ARRAY_FILTER_USE_KEY
+                    );
                     DB::table('payment_gateways')
                         ->where('provider_key', $gateway['provider_key'])
                         ->update([
                             'name' => $gateway['name'],
-                            'secret_key' => $gateway['secret_key'] ?? $existing->secret_key,
-                            'public_key' => $gateway['public_key'] ?? $existing->public_key,
-                            'mode' => $gateway['mode'],
-                            'config' => json_encode($gateway['config']),
-                            'is_active' => $gateway['is_active'],
+                            'config' => json_encode(array_merge($defaults, $current)),
                             'updated_at' => now(),
                         ]);
                     $updatedCount++;
@@ -59,11 +63,15 @@ class DefaultPaymentGatewaysSeeder extends Seeder
                     DB::table('payment_gateways')->insert([
                         'name' => $gateway['name'],
                         'provider_key' => $gateway['provider_key'],
-                        'secret_key' => $gateway['secret_key'] ?? null,
-                        'public_key' => $gateway['public_key'] ?? null,
-                        'mode' => $gateway['mode'],
-                        'config' => json_encode($gateway['config']),
-                        'is_active' => $gateway['is_active'],
+                        'secret_key' => null, // entered by the admin in Payment Gateways
+                        'public_key' => null,
+                        'mode' => 'sandbox',
+                        'config' => json_encode(array_filter(
+                            $gateway['config'] ?? [],
+                            fn ($k) => !preg_match('/(key|secret|merchant|contract|client|token)/i', $k),
+                            ARRAY_FILTER_USE_KEY
+                        )),
+                        'is_active' => false,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

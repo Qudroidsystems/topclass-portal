@@ -17,7 +17,8 @@ class PayrollPeriod extends Model
         'payment_date', 'status', 'total_gross_pay', 'total_employee_pension',
         'total_employer_pension', 'total_tax', 'total_nhf', 'total_loan_deductions',
         'total_other_deductions', 'total_net_pay', 'processed_by', 'processed_at',
-        'approved_by', 'approved_at', 'journal_entry_id'
+        'approved_by', 'approved_at', 'journal_entry_id',
+        'locked_by', 'locked_at', 'total_employer_cost', 'staff_count', 'notes',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class PayrollPeriod extends Model
         'total_net_pay' => 'decimal:2',
         'processed_at' => 'datetime',
         'approved_at' => 'datetime',
+        'locked_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

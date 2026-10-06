@@ -2,135 +2,40 @@
 @extends('layouts.master')
 
 @section('content')
-<style>
-.modal-lg {
-    max-width: 800px;
-}
-.card-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-}
-.table th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-}
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-.structure-card {
-    transition: transform 0.2s;
-}
-.structure-card:hover {
-    transform: translateY(-2px);
-}
-</style>
+<style>.modal-lg { max-width: 800px; }</style>
 
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
+    <x-cb.hero :title="$pagetitle" icon="ri-bank-card-line" subtitle="Individual pay packages — basic salary plus allowances — for staff who are not paid from a salary grade.">
+        <x-slot:actions>
+            <button type="button" class="cb-hero-btn" data-bs-toggle="modal" data-bs-target="#createStructureModal"><i class="ri-add-line"></i>Add structure</button>
+            <a href="{{ route('payroll.scales') }}" class="cb-hero-btn"><i class="ri-stack-line"></i>Salary scales</a>
+            <a href="{{ route('payroll.items') }}" class="cb-hero-btn"><i class="ri-list-settings-line"></i>Allowances &amp; deductions</a>
+        </x-slot:actions>
+    </x-cb.hero>
 
-    {{-- Page Title --}}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="fw-bold mb-1" style="color: #1e3a5f;">
-                        <i class="ri-bank-card-line me-2"></i>{{ $pagetitle }}
-                    </h4>
-                    <p class="text-muted">Manage staff salary structures, allowances, and compensation packages.</p>
-                </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStructureModal">
-                    <i class="ri-add-line me-1"></i>Add Salary Structure
-                </button>
-            </div>
-        </div>
+    <div class="cb-banner info"><i class="ri-information-line"></i><div>Staff on a grade and step are paid from <a href="{{ route('payroll.scales') }}">Salary Scales</a>; use a structure here for anyone with an individual package (contract, part-time, management). Each person's pay profile says which one applies.</div></div>
+
+    <div class="row g-3 mb-3">
+        @foreach([['totalStructures', 'Structures', 'ri-bank-card-line', 'teal', '0'], ['activeStructures', 'Active', 'ri-checkbox-circle-line', 'green', '0'], ['avgBasicSalary', 'Average basic salary', 'ri-money-dollar-circle-line', 'amber', '₦0'], ['staffCovered', 'Staff covered', 'ri-user-line', 'rose', '0']] as [$id, $label, $icon, $acc, $v])
+            <div class="col-md-3 col-6"><div class="cb-stat accent-{{ $acc }}"><div class="stat-accent"></div><div class="stat-ico"><i class="{{ $icon }}"></i></div><div class="stat-value" id="{{ $id }}">{{ $v }}</div><div class="stat-label">{{ $label }}</div></div></div>
+        @endforeach
     </div>
 
-    {{-- Statistics Cards --}}
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm structure-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="text-muted small">Total Structures</span>
-                            <h3 class="mb-0" id="totalStructures">0</h3>
-                        </div>
-                        <div class="avatar-sm bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="ri-bank-card-line text-primary fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm structure-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="text-muted small">Active Structures</span>
-                            <h3 class="mb-0" id="activeStructures">0</h3>
-                        </div>
-                        <div class="avatar-sm bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="ri-check-line text-success fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm structure-card">
-                <div class-card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="text-muted small">Avg Basic Salary</span>
-                            <h3 class="mb-0" id="avgBasicSalary">₦0</h3>
-                        </div>
-                        <div class="avatar-sm bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="ri-money-dollar-circle-line text-info fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm structure-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="text-muted small">Staff Covered</span>
-                            <h3 class="mb-0" id="staffCovered">0</h3>
-                        </div>
-                        <div class="avatar-sm bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center">
-                            <i class="ri-user-line text-warning fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Data Table --}}
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3 border-bottom">
-            <h5 class="mb-0 fw-semibold">
-                <i class="ri-table-line me-2"></i>Salary Structures List
-            </h5>
-        </div>
-        <div class="card-body p-0">
+    <x-cb.card title="Salary structures" icon="ri-table-line" :flush="true">
             <div class="table-responsive">
-                <table class="table table-hover mb-0 w-100" id="structuresTable">
-                    <thead class="table-light">
+                <table class="table align-middle mb-0 w-100" id="structuresTable">
+                    <thead>
                         <tr>
                             <th width="50">#</th>
-                            <th>Staff Name</th>
+                            <th>Staff</th>
                             <th>Staff ID</th>
-                            <th>Basic Salary</th>
-                            <th>Total Earnings</th>
-                            <th>Effective Period</th>
+                            <th class="text-end">Basic salary</th>
+                            <th class="text-end">Total earnings</th>
+                            <th>Effective</th>
                             <th>Status</th>
-                            <th width="120">Actions</th>
+                            <th width="120"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,8 +50,7 @@
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
+    </x-cb.card>
 
 </div>
 </div>

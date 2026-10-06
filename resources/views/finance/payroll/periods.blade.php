@@ -2,219 +2,81 @@
 @extends('layouts.master')
 
 @section('content')
-<style>
-.payroll-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #4f46e5 100%);
-    border-radius: 12px;
-    padding: 28px 32px;
-    margin-bottom: 24px;
-}
-.stat-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 18px 20px;
-}
-</style>
-
+@php
+    $m = fn ($v) => '₦' . number_format((float) $v, 2);
+    $S = ['draft' => ['Not calculated', 'st-muted', 'ri-draft-line'], 'processing' => ['Awaiting approval', 'st-pending', 'ri-time-line'], 'approved' => ['Approved', 'st-info', 'ri-checkbox-circle-line'], 'paid' => ['Paid', 'st-paid', 'ri-bank-card-line'], 'locked' => ['Locked', 'st-paid', 'ri-lock-line']];
+@endphp
 <div class="main-content">
 <div class="page-content">
 <div class="container-fluid">
+    <x-cb.hero title="Payroll Months" icon="ri-calendar-check-line" subtitle="Create a month, calculate, approve and lock. Open a month to see every staff member's pay.">
+        <x-slot:actions>
+            <a href="{{ route('payroll.summary', ['year' => $year]) }}" class="cb-hero-btn"><i class="ri-bar-chart-2-line"></i>Summary</a>
+            @can('View payroll')<a href="{{ route('payroll.remittances') }}" class="cb-hero-btn"><i class="ri-government-line"></i>Remittances</a>@endcan
+        </x-slot:actions>
+    </x-cb.hero>
 
-    <div class="payroll-hero">
-        <h1 class="text-white"><i class="ri-money-dollar-circle-line me-2"></i>{{ $pagetitle }}</h1>
-        <p class="text-white-50 mb-0">Manage payroll periods, process salaries, and generate payslips</p>
+    @if(session('success'))<div class="cb-banner info"><i class="ri-checkbox-circle-line"></i><div>{{ session('success') }}</div></div>@endif
+    @if(session('error'))<div class="cb-banner warning"><i class="ri-error-warning-line"></i><div>{{ session('error') }}</div></div>@endif
+    @if($errors->any())<div class="cb-banner warning"><i class="ri-error-warning-line"></i><div>{{ $errors->first() }}</div></div>@endif
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3 col-6"><x-cb.stat :label="'Gross pay ' . $year" :value="$m($ytd['gross'])" icon="ri-money-dollar-circle-line" accent="teal" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat :label="'Net pay ' . $year" :value="$m($ytd['net'])" icon="ri-wallet-3-line" accent="green" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat :label="'PAYE ' . $year" :value="$m($ytd['paye'])" icon="ri-government-line" accent="violet" /></div>
+        <div class="col-md-3 col-6"><x-cb.stat label="Months still open" :value="$ytd['open']" icon="ri-time-line" :accent="$ytd['open'] ? 'amber' : 'green'" /></div>
     </div>
 
-    @if(isset($currentPeriod))
-    <div class="alert alert-info mb-4">
-        <div class="d-flex align-items-center justify-content-between">
-            <div>
-                <i class="ri-information-line me-2"></i>
-                <strong>Current Payroll Period:</strong> {{ $currentPeriod->period_name }}
-                ({{ $currentPeriod->start_date->format('d M Y') }} - {{ $currentPeriod->end_date->format('d M Y') }})
-            </div>
-            <button class="btn btn-sm btn-primary process-current" data-id="{{ $currentPeriod->id }}">
-                <i class="ri-play-line me-1"></i>Process Now
-            </button>
+    <div class="row g-3">
+        <div class="col-xl-9">
+            <x-cb.card :title="'Months in ' . $year" icon="ri-calendar-2-line" :count="$periods->count()" :flush="true">
+                <form class="cb-toolbar" method="GET"><select name="year" class="cb-select" onchange="this.form.submit()" aria-label="Year">@foreach($years as $y)<option @selected($y == $year)>{{ $y }}</option>@endforeach</select></form>
+                @if($periods->isEmpty())
+                    <div class="empty-state"><i class="ri-calendar-check-line"></i><h6>No payroll months in {{ $year }}</h6><p>Create the first month on the right.</p></div>
+                @else
+                    <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+                        <thead><tr><th>Month</th><th>Status</th><th class="text-end">Staff</th><th class="text-end">Gross</th><th class="text-end">PAYE</th><th class="text-end">Net pay</th><th>Pay date</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach($periods as $p)
+                            @php [$sl, $sc, $si] = $S[$p->status] ?? [$p->status, 'st-muted', 'ri-question-line']; @endphp
+                            <tr style="cursor:pointer" onclick="if(!event.target.closest('a,button'))location='{{ route('payroll.month.show', $p) }}'">
+                                <td><strong>{{ $p->period_name }}</strong>@if($p->approved_by)<div class="small text-muted">approved by {{ $users[$p->approved_by] ?? '—' }}</div>@endif</td>
+                                <td><span class="status-pill {{ $sc }}"><i class="{{ $si }}"></i> {{ $sl }}</span></td>
+                                <td class="text-end">{{ $p->staff_count ?: '—' }}</td>
+                                <td class="text-end">{{ $p->total_gross_pay > 0 ? $m($p->total_gross_pay) : '—' }}</td>
+                                <td class="text-end">{{ $p->total_tax > 0 ? $m($p->total_tax) : '—' }}</td>
+                                <td class="text-end fw-bold">{{ $p->total_net_pay > 0 ? $m($p->total_net_pay) : '—' }}</td>
+                                <td class="small">{{ $p->payment_date?->format('d M Y') }}</td>
+                                <td class="text-end"><a href="{{ route('payroll.month.show', $p) }}" class="action-btn btn-go"><i class="ri-arrow-right-line"></i>Open</a></td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table></div>
+                @endif
+            </x-cb.card>
         </div>
-    </div>
-    @endif
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold"><i class="ri-calendar-line me-2"></i>Payroll Periods</h5>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPeriodModal">
-                <i class="ri-add-line me-1"></i>Create Period
-            </button>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover w-100" id="payrollTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Period</th>
-                            <th>Total Gross</th>
-                            <th>Total Net</th>
-                            <th>Staff</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-</div>
-</div>
-</div>
-
-{{-- Create Period Modal --}}
-<div class="modal fade" id="createPeriodModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="ri-add-circle-line me-2"></i>Create Payroll Period</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="createPeriodForm">
-                @csrf
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Month <span class="text-danger">*</span></label>
-                        <select name="month" class="form-select" required>
-                            @for($m = 1; $m <= 12; $m++)
-                                <option value="{{ $m }}">{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
-                        <select name="year" class="form-select" required>
-                            @for($y = date('Y')-2; $y <= date('Y')+2; $y++)
-                                <option value="{{ $y }}" {{ $y == date('Y') ? 'selected' : '' }}>{{ $y }}</option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Date <span class="text-danger">*</span></label>
-                        <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-28') }}" required>
-                    </div>
-                    <div class="alert alert-danger d-none" id="periodErrors"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Period</button>
-                </div>
-            </form>
+        <div class="col-xl-3">
+            @can('Process payroll')
+            <x-cb.card title="New payroll month" icon="ri-add-line">
+                <form method="POST" action="{{ route('payroll.periods.create') }}">@csrf
+                    <label class="small">Month</label><input type="month" name="month" class="form-control form-control-sm mb-2" value="{{ $suggest->format('Y-m') }}" required>
+                    <label class="small">Pay date</label><input type="date" name="payment_date" class="form-control form-control-sm mb-3" value="{{ $suggest->copy()->day(min(25, $suggest->daysInMonth))->toDateString() }}" required>
+                    <button class="action-btn btn-primary-cb w-100 justify-content-center"><i class="ri-add-line"></i>Create month</button>
+                </form>
+            </x-cb.card>
+            @endcan
+            <x-cb.card title="The steps" icon="ri-route-line">
+                <ol class="small ps-3 mb-0">
+                    <li class="mb-1">Check <a href="{{ route('payroll.profiles') }}">pay profiles</a> and allowances.</li>
+                    <li class="mb-1"><b>Calculate</b> — review warnings and "what changed".</li>
+                    <li class="mb-1"><b>Approve</b> — staff see payslips; remittances are prepared.</li>
+                    <li class="mb-1">Pay staff (bank schedule), then <b>Lock</b>.</li>
+                    <li>Send payslips and pay PAYE / pension on time.</li>
+                </ol>
+            </x-cb.card>
         </div>
     </div>
 </div>
-
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
-let payrollTable;
-
-$(document).ready(function() {
-    payrollTable = $('#payrollTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: '{{ route("payroll.periods") }}',
-            type: 'GET'
-        },
-        columns: [
-            { data: 'DT_RowIndex', orderable: false, searchable: false },
-            { data: 'period_info', name: 'period_name' },
-            { data: 'total_gross', name: 'total_gross_pay' },
-            { data: 'total_net', name: 'total_net_pay' },
-            { data: 'staff_count', name: 'staff_count', orderable: false },
-            { data: 'status_badge', name: 'status', orderable: false },
-            { data: 'action', name: 'action', orderable: false, searchable: false }
-        ]
-    });
-
-    $('#createPeriodForm').on('submit', function(e) {
-        e.preventDefault();
-        var formData = $(this).serialize();
-
-        $.ajax({
-            url: '{{ route("payroll.periods.store") }}',
-            type: 'POST',
-            data: formData,
-            headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-            success: function(response) {
-                if (response.success) {
-                    Swal.fire('Success!', response.message, 'success').then(() => location.reload());
-                }
-            },
-            error: function(xhr) {
-                if (xhr.status === 422) {
-                    var errors = xhr.responseJSON.errors;
-                    var html = '<ul>';
-                    $.each(errors, function(k, v) { html += '<li>' + v + '</li>'; });
-                    html += '</ul>';
-                    $('#periodErrors').removeClass('d-none').html(html);
-                }
-            }
-        });
-    });
-
-    $(document).on('click', '.process-payroll, .process-current', function() {
-        var periodId = $(this).data('id');
-        Swal.fire({
-            title: 'Process Payroll?',
-            text: 'This will calculate salaries for all staff.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, process'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/payroll/periods/' + periodId + '/process',
-                    type: 'POST',
-                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                    success: function(response) {
-                        Swal.fire('Success!', response.message, 'success').then(() => location.reload());
-                    },
-                    error: function(xhr) {
-                        Swal.fire('Error!', xhr.responseJSON?.message || 'Failed to process', 'error');
-                    }
-                });
-            }
-        });
-    });
-
-    $(document).on('click', '.approve-payroll', function() {
-        var periodId = $(this).data('id');
-        Swal.fire({
-            title: 'Approve Payroll?',
-            text: 'This will lock the payroll and create accounting entries.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            confirmButtonText: 'Yes, approve'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '/payroll/periods/' + periodId + '/approve',
-                    type: 'POST',
-                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                    success: function(response) {
-                        Swal.fire('Approved!', response.message, 'success').then(() => location.reload());
-                    },
-                    error: function(xhr) {
-                        Swal.fire('Error!', xhr.responseJSON?.message || 'Failed to approve', 'error');
-                    }
-                });
-            }
-        });
-    });
-});
-</script>
+</div>
+</div>
 @endsection

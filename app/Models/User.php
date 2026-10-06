@@ -36,7 +36,24 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'date_of_birth' => 'date',
+        'must_change_password' => 'boolean',
+        'is_disabled' => 'boolean',
+        'last_login_at' => 'datetime',
+        'credentials_sent_at' => 'datetime',
     ];
+
+    /** This user's staff record (staffbioinfo). */
+    public function staff(): HasOne
+    {
+        return $this->hasOne(Staff::class, 'userid', 'id');
+    }
+
+    /** Parent portal: children linked to this parent account. */
+    public function parentChildren(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, 'parent_student', 'user_id', 'student_id')
+            ->withPivot('relationship', 'source')->withTimestamps();
+    }
 
     // Staff picture relationship
     public function staffPicture(): HasOne

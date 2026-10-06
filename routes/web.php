@@ -799,13 +799,13 @@ Route::group(['middleware' => ['auth']], function () {
     Route::prefix('staff/payments')->name('staff.payments.')->group(function () {
         Route::get('/', [StaffPaymentController::class, 'index'])->name('index');
         Route::get('/create', [StaffPaymentController::class, 'create'])->name('create');
-        Route::post('/store', [StaffPaymentController::class, 'store'])->name('store');
-        Route::get('/{id}', [StaffPaymentController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [StaffPaymentController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [StaffPaymentController::class, 'update'])->name('update');
-        Route::delete('/{id}', [StaffPaymentController::class, 'destroy'])->name('destroy');
         Route::get('/dashboard', [StaffPaymentController::class, 'staffDashboard'])->name('dashboard');
         Route::get('/history', [StaffPaymentController::class, 'getPaymentHistory'])->name('history');
+        Route::post('/store', [StaffPaymentController::class, 'store'])->name('store');
+        Route::get('/{id}', [StaffPaymentController::class, 'show'])->whereNumber('id')->name('show');
+        Route::get('/{id}/edit', [StaffPaymentController::class, 'edit'])->whereNumber('id')->name('edit');
+        Route::put('/{id}', [StaffPaymentController::class, 'update'])->whereNumber('id')->name('update');
+        Route::delete('/{id}', [StaffPaymentController::class, 'destroy'])->whereNumber('id')->name('destroy');
         Route::post('/reverse/{paymentId}', [StaffPaymentController::class, 'reversePayment'])->name('reverse');
         Route::post('/mark-paid/{paymentId}', [StaffPaymentController::class, 'markAsPaid'])->name('mark-paid');
         Route::get('/payslip/{payrollRunId}', [StaffPaymentController::class, 'viewPayslip'])->name('payslip');
@@ -816,7 +816,8 @@ Route::group(['middleware' => ['auth']], function () {
     // PAYROLL
     // ===================================================================
     Route::prefix('payroll')->name('payroll.')->group(function () {
-        Route::get('/periods', [PayrollController::class, 'periods'])->name('periods');
+        Route::get('/periods', [\App\Http\Controllers\Finance\PayrollReportsController::class, 'periods'])->name('periods');
+        Route::post('/periods/create', [\App\Http\Controllers\Finance\PayrollReportsController::class, 'store'])->name('periods.create');
         Route::post('/periods', [PayrollController::class, 'createPeriod'])->name('periods.store');
         Route::post('/periods/{periodId}/process', [PayrollController::class, 'processPayroll'])->name('process');
         Route::post('/periods/{periodId}/approve', [PayrollController::class, 'approvePayroll'])->name('approve');
@@ -824,8 +825,8 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/runs/{periodId}', [PayrollController::class, 'getPayrollRuns'])->name('runs');
         Route::get('/run/{payrollRunId}', [PayrollController::class, 'showPayrollRun'])->name('run.show');
         Route::post('/run/{payrollRunId}/pay', [PayrollController::class, 'processStaffPayment'])->name('run.pay');
-        Route::get('/summary', [PayrollController::class, 'summaryReport'])->name('summary');
-        Route::get('/statutory', [PayrollController::class, 'statutoryReport'])->name('statutory');
+        Route::get('/summary', [\App\Http\Controllers\Finance\PayrollReportsController::class, 'summary'])->name('summary');
+        Route::get('/statutory', [\App\Http\Controllers\Finance\PayrollReportsController::class, 'statutory'])->name('statutory');
         Route::get('/salary-structures', [PayrollController::class, 'salaryStructures'])->name('salary-structures');
         Route::post('/salary-structures', [PayrollController::class, 'storeSalaryStructure'])->name('salary-structures.store');
         Route::get('/payroll/salary-structures/{id}', [PayrollController::class, 'showSalaryStructure'])->name('payroll.salary-structures.show');
@@ -833,6 +834,52 @@ Route::group(['middleware' => ['auth']], function () {
         Route::put('/salary-structures/{id}', [PayrollController::class, 'updateSalaryStructure'])->name('salary-structures.update');
         Route::delete('/salary-structures/{id}', [PayrollController::class, 'destroySalaryStructure'])->name('salary-structures.destroy');
         Route::get('/structures', [PayrollController::class, 'salaryStructures'])->name('structures');
+
+        // Setup: statutory rates & staff pay profiles
+        Route::get('/rates', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'rates'])->name('rates');
+        Route::post('/rates', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'storeRate'])->name('rates.store');
+        Route::get('/profiles', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'profiles'])->name('profiles');
+        Route::post('/profiles/verify-account', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'verifyAccount'])->middleware('throttle:20,1')->name('profiles.verify');
+        Route::get('/profiles/{staff}', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'editProfile'])->whereNumber('staff')->name('profiles.edit');
+        Route::put('/profiles/{staff}', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'saveProfile'])->whereNumber('staff')->name('profiles.save');
+        // Government remittances
+        Route::get('/remittances', [\App\Http\Controllers\Finance\RemittanceController::class, 'index'])->name('remittances');
+        Route::post('/remittances/generate', [\App\Http\Controllers\Finance\RemittanceController::class, 'generate'])->name('remittances.generate');
+        Route::get('/remittances/{remittance}', [\App\Http\Controllers\Finance\RemittanceController::class, 'show'])->whereNumber('remittance')->name('remittances.show');
+        Route::get('/remittances/{remittance}/schedule', [\App\Http\Controllers\Finance\RemittanceController::class, 'schedule'])->whereNumber('remittance')->name('remittances.schedule');
+        Route::post('/remittances/{remittance}/pay', [\App\Http\Controllers\Finance\RemittanceController::class, 'pay'])->whereNumber('remittance')->name('remittances.pay');
+        Route::get('/remittances/{remittance}/receipt', [\App\Http\Controllers\Finance\RemittanceController::class, 'evidence'])->whereNumber('remittance')->name('remittances.evidence');
+
+        // Payroll month screen
+        Route::get('/month/{period}', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'show'])->whereNumber('period')->name('month.show');
+        Route::post('/month/{period}/calculate', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'calculate'])->whereNumber('period')->name('month.calculate');
+        Route::post('/month/{period}/approve', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'approve'])->whereNumber('period')->name('month.approve');
+        Route::post('/month/{period}/lock', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'lock'])->whereNumber('period')->name('month.lock');
+        Route::get('/month/{period}/register', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'register'])->whereNumber('period')->name('month.register');
+        Route::get('/month/{period}/bank-schedule', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'bankSchedule'])->whereNumber('period')->name('month.bank');
+        Route::post('/month/{period}/send', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'send'])->whereNumber('period')->name('month.send');
+        Route::get('/payslip-v2/{run}', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'payslip'])->whereNumber('run')->name('month.payslip');
+        Route::get('/payslip-v2/{run}/pdf', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'payslipPdf'])->whereNumber('run')->name('month.payslip.pdf');
+        Route::get('/employer', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'employer'])->name('employer');
+        Route::post('/employer', [\App\Http\Controllers\Finance\PayrollMonthController::class, 'saveEmployer'])->name('employer.save');
+        Route::get('/profiles/{staff}/preview', [\App\Http\Controllers\Finance\PayrollSetupController::class, 'preview'])->whereNumber('staff')->name('profiles.preview');
+        Route::post('/profiles/{staff}/placement', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'savePlacement'])->whereNumber('staff')->name('profiles.placement');
+
+        // Salary scales, pay items, reviews
+        Route::get('/scales', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'scales'])->name('scales');
+        Route::post('/grades', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'storeGrade'])->name('grades.store');
+        Route::put('/grades/{grade}', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'updateGrade'])->whereNumber('grade')->name('grades.update');
+        Route::post('/grades/{grade}/steps', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'saveSteps'])->whereNumber('grade')->name('grades.steps');
+        Route::get('/items', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'items'])->name('items');
+        Route::post('/items', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'storeItem'])->name('items.store');
+        Route::put('/items/{item}', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'updateItem'])->whereNumber('item')->name('items.update');
+        Route::post('/items/assign', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'assignItem'])->name('items.assign');
+        Route::delete('/staff-items/{id}', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'removeStaffItem'])->whereNumber('id')->name('staff-items.remove');
+        Route::get('/reviews', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'reviews'])->name('reviews');
+        Route::post('/reviews', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'reviewStore'])->name('reviews.store');
+        Route::get('/reviews/{review}', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'reviewShow'])->whereNumber('review')->name('reviews.show');
+        Route::post('/reviews/{review}/approve', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'reviewApprove'])->whereNumber('review')->name('reviews.approve');
+        Route::post('/reviews/{review}/apply', [\App\Http\Controllers\Finance\PayrollStructureController::class, 'reviewApply'])->whereNumber('review')->name('reviews.apply');
     });
 
     // ===================================================================
@@ -1440,3 +1487,39 @@ Route::group(['middleware' => ['auth']], function () {
     // ===================================================================
     Route::get('/api/search', [SearchController::class, 'search'])->name('api.search');
 });
+
+// ===================================================================
+// STAFF SELF-SERVICE PAY + PUBLIC DOCUMENT CHECKS
+// ===================================================================
+Route::middleware('auth')->prefix('my-pay')->name('my-pay.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Finance\MyPayController::class, 'index'])->name('index');
+    Route::get('/payslip/{run}', [\App\Http\Controllers\Finance\MyPayController::class, 'payslip'])->whereNumber('run')->name('payslip');
+    Route::get('/payslip/{run}/pdf', [\App\Http\Controllers\Finance\MyPayController::class, 'payslipPdf'])->whereNumber('run')->name('payslip.pdf');
+    Route::get('/tax', [\App\Http\Controllers\Finance\MyPayController::class, 'tax'])->name('tax');
+    Route::get('/tax-certificate', [\App\Http\Controllers\Finance\MyPayController::class, 'certificate'])->name('certificate');
+    Route::get('/pension', [\App\Http\Controllers\Finance\MyPayController::class, 'pension'])->name('pension');
+    Route::get('/deductions', [\App\Http\Controllers\Finance\MyPayController::class, 'deductions'])->name('deductions');
+    Route::get('/statement', [\App\Http\Controllers\Finance\MyPayController::class, 'statement'])->name('statement');
+});
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/verify/payslip/{code}', [\App\Http\Controllers\PayslipVerifyController::class, 'payslip'])->name('verify.payslip');
+    Route::get('/verify/tax-certificate/{staff}/{year}/{code}', [\App\Http\Controllers\PayslipVerifyController::class, 'certificate'])->whereNumber(['staff', 'year'])->name('verify.tax-certificate');
+});
+
+
+// Module access (feature flags)
+Route::middleware('auth')->group(function () {
+    // Module access (feature flags)
+    Route::get('/admin/feature-flags', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'index'])->name('feature-flags.index');
+    Route::post('/admin/feature-flags/sync-settings', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'saveSync'])->name('feature-flags.sync-settings');
+    Route::post('/admin/feature-flags/regenerate-key', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'regenerateKey'])->name('feature-flags.regenerate-key');
+    Route::post('/admin/feature-flags/pull', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'pullNow'])->name('feature-flags.pull');
+    Route::post('/admin/feature-flags/{flag}/toggle', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'toggle'])->whereNumber('flag')->name('feature-flags.toggle');
+    Route::post('/admin/feature-flags/{flag}/control', [\App\Http\Controllers\Admin\FeatureFlagController::class, 'setControl'])->whereNumber('flag')->name('feature-flags.control');
+});
+
+// Finance operations: payouts, loans, cooperative, expenses, budgets, assets, general ledger
+require __DIR__ . '/finance.php';
+
+// E-learning (LMS): courses, lessons, coursework, live classes, learner & parent views
+require __DIR__ . '/lms.php';

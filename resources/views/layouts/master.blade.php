@@ -609,6 +609,20 @@
                         </li>
                     @endif
 
+                    @if(auth()->user()->student_id && Route::has('lms.learn.index'))
+                    <li class="nav-item">
+                        <a href="{{ route('lms.learn.index') }}" class="nav-link menu-link {{ request()->routeIs('lms.learn.*') ? 'active' : '' }}"><i class="ri-graduation-cap-line"></i> <span>My Learning</span></a>
+                    </li>
+                    @endif
+
+                    {{-- MY PAY (staff self-service) --}}
+                    @php $myStaffId = \Illuminate\Support\Facades\DB::table('staffbioinfo')->where('userid', auth()->id())->value('id'); @endphp
+                    @if($myStaffId)
+                        <li class="nav-item">
+                            <a href="{{ route('my-pay.index') }}" class="nav-link menu-link {{ request()->routeIs('my-pay.*') ? 'active' : '' }}"><i class="ri-wallet-3-line"></i> <span>My Pay</span></a>
+                        </li>
+                    @endif
+
                     @if(auth()->user()->can('View student assessments') || auth()->user()->can('View student payments'))
                         <li class="menu-title"><i class="ph-graduation-cap"></i> <span>STUDENT PORTAL</span></li>
                     @endif
@@ -931,6 +945,25 @@
                         </li>
                     @endcan
 
+                    @feature('expenses')
+                    @if(auth()->user()->canany(['Create expenses', 'Approve expenses', 'Pay expenses', 'Manage budgets', 'Manage assets', 'Approve purchase requests', 'View financial reports']))
+                        <li class="nav-item">
+                            <a href="#sidebarExpenses" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarExpenses">
+                                <i class="ri-receipt-line"></i> <span>Expenses &amp; Assets</span>
+                            </a>
+                            <div class="collapse menu-dropdown" id="sidebarExpenses">
+                                <ul class="nav nav-sm flex-column">
+                                    <li class="nav-item"><a href="{{ route('finance.expenses') }}" class="nav-link">Expenses</a></li>
+                                    <li class="nav-item"><a href="{{ route('finance.purchases') }}" class="nav-link">Purchase Requests</a></li>
+                                    @can('Create expenses')<li class="nav-item"><a href="{{ route('finance.vendors') }}" class="nav-link">Vendors</a></li>@endcan
+                                    @canany(['Manage budgets', 'View financial reports'])<li class="nav-item"><a href="{{ route('finance.budgets') }}" class="nav-link">Budgets</a></li>@endcanany
+                                    @canany(['Manage assets', 'View financial reports'])<li class="nav-item"><a href="{{ route('finance.assets') }}" class="nav-link">Fixed Assets</a></li>@endcanany
+                                </ul>
+                            </div>
+                        </li>
+                    @endif
+                    @endfeature
+
                     @can('Manage payment gateways')
                         <li class="nav-item">
                             <a href="{{ route('admin.payment-gateways.index') }}" class="nav-link">
@@ -939,6 +972,33 @@
                         </li>
                     @endcan
 
+                    @can('Manage feature flags')
+                        <li class="nav-item">
+                            <a href="{{ route('feature-flags.index') }}" class="nav-link">
+                                <i class="ri-toggle-line"></i> <span>Module Access</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @canany(['Manage courses', 'Grade coursework'])
+                    @if(Route::has('lms.courses.index'))
+                        <li class="nav-item">
+                            <a href="#sidebarElearning" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarElearning">
+                                <i class="ri-book-open-line"></i> <span>E-Learning</span>
+                            </a>
+                            <div class="collapse menu-dropdown" id="sidebarElearning">
+                                <ul class="nav nav-sm flex-column">
+                                    <li class="nav-item"><a href="{{ route('lms.courses.index') }}" class="nav-link">Courses</a></li>
+                                    <li class="nav-item"><a href="{{ route('lms.courses.create') }}" class="nav-link">New Course</a></li>
+                                    @if(Route::has('lms.bank.index'))<li class="nav-item"><a href="{{ route('lms.bank.index') }}" class="nav-link">Question Bank</a></li>@endif
+                                </ul>
+                            </div>
+                        </li>
+                    @endif
+                    @endcanany
+
+
+                    @feature('accounting')
                     @can('View financial reports')
                         <li class="nav-item">
                             <a href="#sidebarAccounting" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarAccounting">
@@ -946,19 +1006,28 @@
                             </a>
                             <div class="collapse menu-dropdown" id="sidebarAccounting">
                                 <ul class="nav nav-sm flex-column">
-                                    <li class="nav-item"><a href="{{ route('reports.financial.balance-sheet') }}" class="nav-link">Balance Sheet</a></li>
-                                    <li class="nav-item"><a href="{{ route('reports.financial.income-statement') }}" class="nav-link">Income Statement</a></li>
-                                    <li class="nav-item"><a href="{{ route('reports.financial.trial-balance') }}" class="nav-link">Trial Balance</a></li>
-                                    <li class="nav-item"><a href="{{ route('reports.financial.cash-flow') }}" class="nav-link">Cash Flow</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.dashboard') }}" class="nav-link">Accounting Overview</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.journals') }}" class="nav-link">Journal</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.ledger') }}" class="nav-link">General Ledger</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.income-statement') }}" class="nav-link">Income &amp; Expenditure</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.balance-sheet') }}" class="nav-link">Balance Sheet</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.trial-balance') }}" class="nav-link">Trial Balance</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.cash-flow') }}" class="nav-link">Cash Flow</a></li>
+                                    <li class="nav-item"><a href="{{ route('accounting.accounts') }}" class="nav-link">Chart of Accounts</a></li>
                                     <li class="nav-item"><a href="{{ route('reports.financial.debtors') }}" class="nav-link">Student Debtors List</a></li>
                                     <li class="nav-item"><a href="{{ route('reports.financial.collection-summary') }}" class="nav-link">Collection Summary</a></li>
                                     <li class="nav-item"><a href="{{ route('reports.analysis.index') }}" class="nav-link">Class Analysis</a></li>
                                     <li class="nav-item"><a href="{{ route('reports.analysis.school-wide') }}" class="nav-link">School-Wide Analysis</a></li>
+                                    @can('View financial audit')@if(Route::has('finance.audit.dashboard'))
+                                    <li class="nav-item"><a href="{{ route('finance.audit.dashboard') }}" class="nav-link">Financial Audit</a></li>
+                                    @endif@endcan
                                 </ul>
                             </div>
                         </li>
                     @endcan
+                    @endfeature
 
+                    @feature('payroll')
                     @can('View payroll')
                         <li class="nav-item">
                             <a href="#sidebarPayroll" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarPayroll">
@@ -967,6 +1036,18 @@
                             <div class="collapse menu-dropdown" id="sidebarPayroll">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item"><a href="{{ route('payroll.periods') }}" class="nav-link">Payroll Periods</a></li>
+                                    @canany(['Manage staff pay profiles', 'Manage payroll settings'])<li class="nav-item"><a href="{{ route('payroll.profiles') }}" class="nav-link">Staff Pay Profiles</a></li>@endcanany
+                                    <li class="nav-item"><a href="{{ route('payroll.scales') }}" class="nav-link">Salary Scales</a></li>
+                                    <li class="nav-item"><a href="{{ route('payroll.items') }}" class="nav-link">Allowances &amp; Deductions</a></li>
+                                    <li class="nav-item"><a href="{{ route('payroll.reviews') }}" class="nav-link">Salary Reviews</a></li>
+                                    @can('Manage payroll settings')<li class="nav-item"><a href="{{ route('payroll.rates') }}" class="nav-link">Rates &amp; Tax Bands</a></li>@endcan
+                                    @can('Manage payroll settings')<li class="nav-item"><a href="{{ route('payroll.employer') }}" class="nav-link">Employer Details</a></li>@endcan
+                                    <li class="nav-item"><a href="{{ route('payroll.remittances') }}" class="nav-link">Government Remittances</a></li>
+                                    @canany(['View payroll', 'Release salary payments'])<li class="nav-item"><a href="{{ route('payroll.payouts') }}" class="nav-link">Salary Payments</a></li>@endcanany
+                                    @canany(['Manage staff loans', 'Approve staff loans', 'View payroll'])<li class="nav-item"><a href="{{ route('payroll.loans') }}" class="nav-link">Loans &amp; Advances</a></li>@endcanany
+                                    @canany(['Manage cooperative', 'View payroll'])<li class="nav-item"><a href="{{ route('payroll.coop') }}" class="nav-link">Staff Cooperative</a></li>@endcanany
+                                    <li class="nav-item"><a href="{{ route('payroll.attendance-pay') }}" class="nav-link">Attendance &amp; Pay</a></li>
+                                    @canany(['Approve duty claims', 'View payroll'])<li class="nav-item"><a href="{{ route('payroll.claims') }}" class="nav-link">Extra Duty Claims</a></li>@endcanany
                                     <li class="nav-item"><a href="{{ route('payroll.summary') }}" class="nav-link">Payroll Summary</a></li>
                                     <li class="nav-item"><a href="{{ route('payroll.statutory') }}" class="nav-link">Statutory Report</a></li>
                                     <li class="nav-item"><a href="{{ route('payroll.salary-structures') }}" class="nav-link">Salary Structures</a></li>
@@ -974,7 +1055,9 @@
                             </div>
                         </li>
                     @endcan
+                    @endfeature
 
+                    @feature('payroll')
                     @can('View staff payments')
                         <li class="nav-item">
                             <a href="#sidebarStaffPayments" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarStaffPayments">
@@ -984,10 +1067,13 @@
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item"><a href="{{ route('staff.payments.index') }}" class="nav-link">All Payments</a></li>
                                     <li class="nav-item"><a href="{{ route('staff.payments.dashboard') }}" class="nav-link">My Payments</a></li>
+                                    <li class="nav-item"><a href="{{ route('my-pay.loans') }}" class="nav-link">My Loans</a></li>
+                                    <li class="nav-item"><a href="{{ route('my-pay.claims') }}" class="nav-link">Extra Duty Claims</a></li>
                                 </ul>
                             </div>
                         </li>
                     @endcan
+                    @endfeature
 
                     {{-- SCHOOL BASIC SETTINGS --}}
                     @if(auth()->user()->can('View schoolinformation') || auth()->user()->can('View session') || auth()->user()->can('View term') || auth()->user()->can('View schoolhouse') || auth()->user()->can('View school-arm') || auth()->user()->can('View class-category') || auth()->user()->can('View school-class') || auth()->user()->can('View class-teacher') || auth()->user()->can('View subjects') || auth()->user()->can('View subject-teacher') || auth()->user()->can('View subject-class') || auth()->user()->can('View compulsory-subject') || auth()->user()->can('View principals-comment') || auth()->user()->can('View school-bills') || auth()->user()->can('View school-bill-for-term-session'))

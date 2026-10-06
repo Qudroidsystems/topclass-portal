@@ -10,6 +10,7 @@ use App\Models\StaffPayment;
 use App\Services\Accounting\AccountingService;
 use Illuminate\Support\Facades\DB;
 
+
 class NigerianPayrollService
 {
     protected $accountingService;
@@ -37,35 +38,15 @@ class NigerianPayrollService
     }
 
     /**
-     * Calculate PAYE Tax
+     * Monthly PAYE on a monthly gross (Nigeria Tax Act 2025 rules, no reliefs
+     * other than none given). Kept for older callers; payroll uses PayrollEngine.
      */
     public function calculatePAYE($monthlyGrossPay)
     {
-        $annualGrossPay = $monthlyGrossPay * 12;
-
-        // Consolidated Relief Allowance
-        $cra = max(self::CRA_MINIMUM, $annualGrossPay * self::CRA_PERCENTAGE);
-
-        // Taxable Income
-        $taxableIncome = max(0, $annualGrossPay - $cra);
-
-        // Apply tax brackets
-        $annualTax = 0;
-        $remaining = $taxableIncome;
-        $previousBracket = 0;
-
-        foreach ($this->taxBrackets as $bracket) {
-            $bracketAmount = min($remaining, $bracket['up_to'] - $previousBracket);
-            if ($bracketAmount <= 0) break;
-
-            $annualTax += $bracketAmount * $bracket['rate'];
-            $remaining -= $bracketAmount;
-            $previousBracket = $bracket['up_to'];
-
-            if ($remaining <= 0) break;
-        }
-
-        return round($annualTax / 12, 2);
+        $rates = StatutoryRates::on(now());
+        $r = PayrollCalculator::compute([['code' => 'GROSS', 'label' => 'Gross', 'amount' => (float) $monthlyGrossPay, 'taxable' => true]],
+            ['paye' => true], $rates);
+        return $r['paye'];
     }
 
     /**
@@ -101,117 +82,14 @@ class NigerianPayrollService
     }
 
     /**
-     * Process payroll for a period
+     * Process payroll for a period (new engine: staffbioinfo + pay profiles,
+     * NTA 2025 PAYE, payslip lines saved).
      */
     public function processPayroll($periodId)
     {
         $period = PayrollPeriod::findOrFail($periodId);
-
-        if ($period->status !== 'draft') {
-            throw new \Exception('Payroll period must be in draft status');
-        }
-
-        return DB::transaction(function () use ($period) {
-            $staffList = \App\Models\StaffRecord::where('status', 'active')->get();
-
-            $periodTotals = [
-                'total_gross_pay' => 0,
-                'total_employee_pension' => 0,
-                'total_employer_pension' => 0,
-                'total_tax' => 0,
-                'total_nhf' => 0,
-                'total_loan_deductions' => 0,
-                'total_net_pay' => 0,
-            ];
-
-            foreach ($staffList as $staff) {
-                $salaryStructure = StaffSalaryStructure::where('staff_id', $staff->id)
-                    ->where('is_active', true)
-                    ->where('effective_from', '<=', $period->end_date)
-                    ->where(function ($q) use ($period) {
-                        $q->whereNull('effective_to')->orWhere('effective_to', '>=', $period->start_date);
-                    })
-                    ->first();
-
-                if (!$salaryStructure) {
-                    continue;
-                }
-
-                $grossPay = $this->calculateGrossPay($salaryStructure);
-                $payeTax = $this->calculatePAYE($grossPay);
-                $employeePension = $this->calculateEmployeePension($grossPay);
-                $nhf = $this->calculateNHF($salaryStructure->basic_salary);
-                $loanRepayment = 0;
-
-                $totalDeductions = $payeTax + $employeePension + $nhf + $loanRepayment;
-                $netPay = $grossPay - $totalDeductions;
-
-                PayrollRun::create([
-                    'payroll_period_id' => $period->id,
-                    'staff_id' => $staff->id,
-                    'salary_structure_id' => $salaryStructure->id,
-                    'basic_salary' => $salaryStructure->basic_salary,
-                    'housing_allowance' => $salaryStructure->housing_allowance,
-                    'transport_allowance' => $salaryStructure->transport_allowance,
-                    'meal_allowance' => $salaryStructure->meal_allowance,
-                    'medical_allowance' => $salaryStructure->medical_allowance,
-                    'utility_allowance' => $salaryStructure->utility_allowance,
-                    'other_allowances' => $salaryStructure->other_allowances,
-                    'total_earnings' => $grossPay,
-                    'paye_tax' => $payeTax,
-                    'employee_pension' => $employeePension,
-                    'employer_pension' => $this->calculateEmployerPension($grossPay),
-                    'nhf' => $nhf,
-                    'loan_repayment' => $loanRepayment,
-                    'total_deductions' => $totalDeductions,
-                    'net_pay' => $netPay,
-                    'status' => 'draft',
-                ]);
-
-                $periodTotals['total_gross_pay'] += $grossPay;
-                $periodTotals['total_employee_pension'] += $employeePension;
-                $periodTotals['total_employer_pension'] += $this->calculateEmployerPension($grossPay);
-                $periodTotals['total_tax'] += $payeTax;
-                $periodTotals['total_nhf'] += $nhf;
-                $periodTotals['total_loan_deductions'] += $loanRepayment;
-                $periodTotals['total_net_pay'] += $netPay;
-            }
-
-            $period->update([
-                'total_gross_pay' => $periodTotals['total_gross_pay'],
-                'total_employee_pension' => $periodTotals['total_employee_pension'],
-                'total_employer_pension' => $periodTotals['total_employer_pension'],
-                'total_tax' => $periodTotals['total_tax'],
-                'total_nhf' => $periodTotals['total_nhf'],
-                'total_loan_deductions' => $periodTotals['total_loan_deductions'],
-                'total_net_pay' => $periodTotals['total_net_pay'],
-                'status' => 'processing',
-            ]);
-
-            return $period;
-        });
-    }
-
-    /**
-     * Calculate gross pay
-     */
-    private function calculateGrossPay($salaryStructure)
-    {
-        $grossPay = $salaryStructure->basic_salary
-            + $salaryStructure->housing_allowance
-            + $salaryStructure->transport_allowance
-            + $salaryStructure->meal_allowance
-            + $salaryStructure->medical_allowance
-            + $salaryStructure->utility_allowance
-            + $salaryStructure->other_allowances;
-
-        if ($salaryStructure->custom_allowances) {
-            foreach (json_decode($salaryStructure->custom_allowances ?? '[]', true) as $allowance) {
-                $grossPay += $allowance['amount'] ?? 0;
-            }
-        }
-
-        return $grossPay;
+        $result = app(PayrollEngine::class)->process($period, auth()->id());
+        return $period->fresh()->setAttribute('result', $result);
     }
 
     /**
@@ -220,22 +98,15 @@ class NigerianPayrollService
     public function approvePayroll($periodId)
     {
         $period = PayrollPeriod::findOrFail($periodId);
+        app(PayrollEngine::class)->approve($period, (int) auth()->id());
+        return $period->fresh();
+    }
 
-        if ($period->status !== 'processing') {
-            throw new \Exception('Payroll must be processed before approval');
-        }
-
-        return DB::transaction(function () use ($period) {
-            PayrollRun::where('payroll_period_id', $period->id)->update(['status' => 'approved']);
-
-            $period->update([
-                'status' => 'approved',
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-            ]);
-
-            return $period;
-        });
+    public function lockPayroll($periodId)
+    {
+        $period = PayrollPeriod::findOrFail($periodId);
+        app(PayrollEngine::class)->lock($period, (int) auth()->id());
+        return $period->fresh();
     }
 
     /**

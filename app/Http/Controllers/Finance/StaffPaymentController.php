@@ -102,10 +102,28 @@ class StaffPaymentController extends Controller
                 ->make(true);
         }
 
-        $staff = Staff::with('user')->active()->get();
-        $payrollPeriods = PayrollPeriod::orderBy('id', 'desc')->get();
+        $q = StaffPayment::with(['staff.user'])
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->search;
+                $q->where(fn ($w) => $w->where('payment_reference', 'like', "%$s%")->orWhere('transaction_ref', 'like', "%$s%")
+                    ->orWhereHas('staff', fn ($st) => $st->where('employmentid', 'like', "%$s%")->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%$s%"))));
+            })
+            ->when($request->filled('month'), fn ($q) => $q->whereYear('payment_date', substr($request->month, 0, 4))->whereMonth('payment_date', substr($request->month, 5, 2)))
+            ->when($request->filled('type'), fn ($q) => $q->where('payment_type', $request->type))
+            ->when($request->filled('status'), fn ($q) => $q->where('payment_status', $request->status))
+            ->orderByDesc('payment_date')->orderByDesc('id');
+        $payments = $q->paginate(25)->withQueryString();
 
-        return view('finance.staff.payments-index', compact('pagetitle', 'staff', 'payrollPeriods'));
+        $stats = [
+            'month_paid'    => StaffPayment::where('payment_status', 'paid')->whereYear('payment_date', now()->year)->whereMonth('payment_date', now()->month)->sum('amount'),
+            'month_count'   => StaffPayment::where('payment_status', 'paid')->whereYear('payment_date', now()->year)->whereMonth('payment_date', now()->month)->count(),
+            'pending'       => StaffPayment::whereIn('payment_status', ['pending', 'processed'])->sum('amount'),
+            'pending_count' => StaffPayment::whereIn('payment_status', ['pending', 'processed'])->count(),
+            'year_paid'     => StaffPayment::where('payment_status', 'paid')->whereYear('payment_date', now()->year)->sum('amount'),
+            'reversed'      => StaffPayment::where('payment_status', 'reversed')->count(),
+        ];
+
+        return view('finance.staff.payments-index', compact('pagetitle', 'payments', 'stats'));
     }
 
     /**
@@ -324,6 +342,10 @@ class StaffPaymentController extends Controller
      */
     public function staffDashboard(Request $request)
     {
+        if (!$request->ajax() && \Illuminate\Support\Facades\Route::has('my-pay.index')) {
+            return redirect()->route('my-pay.index');
+        }
+
         $staff = Auth::user()->staff;
 
         if (!$staff) {
@@ -479,7 +501,6 @@ class StaffPaymentController extends Controller
 
             $payment->update([
                 'payment_status' => 'paid',
-                'paid_at' => now(),
             ]);
 
             DB::commit();
