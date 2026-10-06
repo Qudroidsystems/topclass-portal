@@ -426,10 +426,58 @@ body{font-family:var(--rol-font);}
                         </div>
 
                         <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:9px;padding:10px 14px;font-size:12.5px;color:#3730a3;margin-bottom:16px;">
-                            <i class="bi bi-info-circle-fill me-1"></i> Tick the permissions this role should have. Use a group's checkbox to select everything under it at once, or the search box to find one quickly.
+                            <i class="bi bi-info-circle-fill me-1"></i> Check the permissions this role should have access to.
                         </div>
 
-                        @include('roles.partials.permission-picker', ['pickerId' => 'createPermPicker', 'checkedIds' => []])
+                        <div class="table-responsive">
+                            <table class="perm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Module</th>
+                                        <th colspan="8">
+                                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;font-weight:700;">
+                                                <input type="checkbox" class="perm-check" id="kt_roles_select_all">
+                                                Select All
+                                            </label>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (array_unique($perm_title) as $value)
+                                    @php
+                                        $permission = Permission::where('title',$value)->get();
+                                    @endphp
+                                    <tr>
+                                        <td class="perm-group">
+                                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                                <input type="checkbox" class="perm-check module-select-all" data-module="{{ Str::slug($value) }}">
+                                                {{ $value }}
+                                            </label>
+                                        </td>
+                                        @foreach ($permission as $v)
+                                        @php
+                                            $word = '';
+                                            if      (str_contains($v->name,'View '))            $word='View';
+                                            elseif  (str_contains($v->name,'Create '))          $word='Create';
+                                            elseif  (str_contains($v->name,'Update '))          $word='Edit';
+                                            elseif  (str_contains($v->name,'Delete '))          $word='Delete';
+                                            elseif  (str_contains($v->name,'Update user-role')) $word='Edit Role';
+                                            elseif  (str_contains($v->name,'Add user-role'))    $word='Add to Role';
+                                            elseif  (str_contains($v->name,'Remove user-role')) $word='Remove Role';
+                                            elseif  (str_contains($v->name,'Show '))            $word='Show';
+                                        @endphp
+                                        <td>
+                                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap;">
+                                                <input class="perm-check module-perm" type="checkbox" value="{{ $v->id }}" name="permission[]" data-module="{{ Str::slug($value) }}">
+                                                {{ $word }}
+                                            </label>
+                                        </td>
+                                        @endforeach
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>

@@ -302,9 +302,6 @@ class DatabaseSeeder extends Seeder
             'FinancialReportPermissionSeeder' =>
                 '📊 Seeding financial report permissions...',
 
-            'PaymentGatewayPermissionSeeder' =>
-                '🌐 Seeding payment gateway permissions...',
-
             'PayrollPermissionSeeder' =>
                 '💰 Seeding payroll permissions...',
 
@@ -477,60 +474,6 @@ class DatabaseSeeder extends Seeder
             $failedCount,
             $skippedCount
         );
-
-        // ============================================================
-        // PART 12B: PORTED MODULE PERMISSIONS (always re-run)
-        // These seeders use updateOrCreate / firstOrCreate, so they run
-        // every time and new permissions reach existing installs.
-        // ============================================================
-
-        $this->printSection(
-            '🆕 PART 12B: MODULE PERMISSIONS (payroll, leave, finance, LMS, audit, module access)'
-        );
-
-        $moduleSeeders = [
-            'PayrollPermissionSeeder' =>
-                '💰 Seeding payroll permissions (pay profiles, rates, remittances)...',
-
-            'LeavePermissionSeeder' =>
-                '🌴 Seeding staff leave permissions...',
-
-            'FinanceOpsPermissionSeeder' =>
-                '🏦 Seeding payouts, loans, expenses, assets & accounting permissions...',
-
-            'FeatureFlagPermissionSeeder' =>
-                '🔀 Seeding feature-flag (module access) permission...',
-
-            'FinancialAuditPermissionSeeder' =>
-                '🔎 Seeding financial-audit permissions...',
-
-            'LmsPermissionSeeder' =>
-                '🎓 Seeding e-learning (LMS) permissions...',
-
-            'AccountingSetupSeeder' =>
-                '📒 Adding ledger accounts and linking expense categories...',
-        ];
-
-        $this->runSeederList(
-            $moduleSeeders,
-            $seededCount,
-            $failedCount,
-            $skippedCount,
-            true
-        );
-
-        // Super Admin always holds every permission, including ones added above.
-        try {
-            $superAdmin = \Spatie\Permission\Models\Role::where('name', 'Super Admin')->where('guard_name', 'web')->first();
-            if ($superAdmin) {
-                $superAdmin->syncPermissions(\Spatie\Permission\Models\Permission::where('guard_name', 'web')->pluck('id')->all());
-                $this->command->info('  ✅ Super Admin now has all ' . \Spatie\Permission\Models\Permission::where('guard_name', 'web')->count() . ' permissions');
-            }
-            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
-        } catch (\Throwable $e) {
-            $this->command->warn('  ⚠️  Could not sync Super Admin permissions: ' . $e->getMessage());
-        }
-        $this->command->info('');
 
         // ============================================================
         // PART 13: DEMO / TEST DATA
@@ -737,8 +680,7 @@ class DatabaseSeeder extends Seeder
         array $seeders,
         int &$seededCount,
         int &$failedCount,
-        int &$skippedCount,
-        bool $force = false
+        int &$skippedCount
     ): void {
 
         foreach ($seeders as $seeder => $message) {
@@ -746,8 +688,7 @@ class DatabaseSeeder extends Seeder
             $result = $this->safeCall(
                 $seeder,
                 $seeder,
-                $message,
-                $force
+                $message
             );
 
             $this->updateStats(
@@ -1078,8 +1019,7 @@ class DatabaseSeeder extends Seeder
     protected function safeCall(
         $seeder,
         $name,
-        $message = null,
-        bool $force = false
+        $message = null
     ): array {
 
         if ($message) {
@@ -1129,7 +1069,6 @@ class DatabaseSeeder extends Seeder
          * Check whether this seeder has already run.
          */
         if (
-            !$force &&
             $this->hasBeenRun(
                 $seederClass
             )

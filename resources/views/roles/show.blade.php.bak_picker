@@ -628,11 +628,52 @@ body{font-family:var(--rol-font);}
                         <div class="permission-section-header">
                             <label class="rol-form-label mb-2">Permissions Assignment</label>
                             <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:9px;padding:8px 12px;font-size:12px;color:#3730a3;margin-bottom:12px;">
-                                <i class="bi bi-info-circle-fill me-1"></i> Tick the permissions for this role. A group's checkbox selects everything under it at once; hover a permission to read what it does.
+                                <i class="bi bi-info-circle-fill me-1"></i> Check/uncheck permissions to assign them to this role.
                             </div>
                         </div>
 
-                        @include('roles.partials.permission-picker', ['pickerId' => 'editPermPicker', 'checkedIds' => $role->permissions->pluck('id')->all()])
+                        <div class="table-responsive">
+                            <table class="perm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Module</th>
+                                        <th colspan="8">
+                                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;font-weight:700;">
+                                                <input type="checkbox" class="perm-check" id="kt_roles_select_all_edit">
+                                                Select All
+                                            </label>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (array_unique($perm_title) as $value)
+                                    @php $permission = \Spatie\Permission\Models\Permission::where('title',$value)->get(); @endphp
+                                    <tr>
+                                        <td class="perm-group">{{ $value }}</td>
+                                        @foreach ($permission as $v)
+                                        @php
+                                            $word = '';
+                                            if      (str_contains($v->name,'View '))            $word='View';
+                                            elseif  (str_contains($v->name,'Create '))          $word='Create';
+                                            elseif  (str_contains($v->name,'Update '))          $word='Edit';
+                                            elseif  (str_contains($v->name,'Delete '))          $word='Delete';
+                                            elseif  (str_contains($v->name,'Update user-role')) $word='Edit Role';
+                                            elseif  (str_contains($v->name,'Add user-role'))    $word='Add to Role';
+                                            elseif  (str_contains($v->name,'Remove user-role')) $word='Remove Role';
+                                        @endphp
+                                        <td>
+                                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;white-space:nowrap;">
+                                                <input class="perm-check" type="checkbox" value="{{ $v->id }}" name="permission[]"
+                                                    {{ $role->hasPermissionTo($v->name) ? 'checked' : '' }}>
+                                                {{ $word }}
+                                            </label>
+                                        </td>
+                                        @endforeach
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
