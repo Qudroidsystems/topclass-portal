@@ -2327,14 +2327,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (bar) bar.style.width = '100%';
                 if (data.success) {
-                    if (data.failures && data.failures.length) {
-                        const list = data.failures.slice(0, 10).map(f => (f.row ? 'Row ' + f.row + ': ' : '') + f.errors.join('; ')).join('\n');
-                        Swal.fire({ icon: 'warning', title: 'Imported with issues', text: data.message + '\n' + list })
-                            .then(() => location.reload());
-                    } else {
-                        Swal.fire({ icon: 'success', title: 'Success!', text: data.message, timer: 2000, showConfirmButton: false });
-                        setTimeout(() => location.reload(), 2000);
-                    }
+                    Swal.fire({ icon: 'success', title: 'Success!', text: data.message, timer: 2000, showConfirmButton: false });
+                    setTimeout(() => location.reload(), 2000);
                 } else {
                     Swal.fire({ icon: 'error', title: 'Import Failed', text: data.message });
                 }

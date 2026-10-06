@@ -143,20 +143,9 @@ class AdminRecordsheetExport implements FromView, ShouldAutoSize, WithStyles, Wi
 
         $school = SchoolInformation::first();
 
-        // Max score per component comes from the class category settings
-        $category = \App\Models\Schoolclass::with('classcategory')->find($this->schoolclassId)?->classcategory;
-        $pick = fn ($v) => ($v !== null && (float) $v > 0) ? (float) $v : 100.0;
-        $max = [
-            'ca1'  => $pick($category->ca1score  ?? null),
-            'ca2'  => $pick($category->ca2score  ?? null),
-            'ca3'  => $pick($category->ca3score  ?? null),
-            'exam' => $pick($category->examscore ?? null),
-        ];
-
         return view('exports.admin_scoresheet_export', [
             'broadsheets' => $broadsheets,
             'school'      => $school,
-            'max'         => $max,
         ]);
     }
 

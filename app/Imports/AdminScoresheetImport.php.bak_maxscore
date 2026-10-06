@@ -30,6 +30,7 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
     use Importable, SkipsFailures;
 
     protected const SCORE_FIELDS = ['ca1' => 'CA1', 'ca2' => 'CA2', 'ca3' => 'CA3', 'exam' => 'Exam'];
+    protected const MAX_SCORE    = 100;
 
     protected array $importData;
     protected int   $successCount   = 0;
@@ -42,7 +43,6 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
     protected int   $admissionColumnIndex = -1;
     protected array $scoreColumnMap       = []; // field => column index
     protected int   $headerRowIndex       = -1;
-    protected array $maxScores            = []; // field => max from classcategory
 
     public function __construct(array $importData)
     {
@@ -51,16 +51,6 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
         if (!empty($importData['schoolclass_id'])) {
             $this->schoolclass = Schoolclass::with('classcategory')->find($importData['schoolclass_id']);
         }
-
-        // Max score per component from the class category settings (0/unset => 100)
-        $cat  = $this->schoolclass?->classcategory;
-        $pick = fn ($v) => ($v !== null && (float) $v > 0) ? (float) $v : 100.0;
-        $this->maxScores = [
-            'ca1'  => $pick($cat->ca1score  ?? null),
-            'ca2'  => $pick($cat->ca2score  ?? null),
-            'ca3'  => $pick($cat->ca3score  ?? null),
-            'exam' => $pick($cat->examscore ?? null),
-        ];
 
         if (!empty($importData['subjectclass_id'])) {
             $subjectClass    = Subjectclass::find($importData['subjectclass_id']);
@@ -221,9 +211,8 @@ class AdminScoresheetImport implements ToCollection, SkipsOnFailure
                 throw new \Exception("{$label} value '{$raw}' for '{$admissionNo}' is not a number.");
             }
             $n = (float) $raw;
-            $max = $this->maxScores[$field];
-            if ($n < 0 || $n > $max) {
-                throw new \Exception("{$label} score ({$n}) for '{$admissionNo}' must be between 0 and {$max}.");
+            if ($n < 0 || $n > self::MAX_SCORE) {
+                throw new \Exception("{$label} score ({$n}) for '{$admissionNo}' must be between 0 and " . self::MAX_SCORE . '.');
             }
             $scores[$field] = $n;
         }

@@ -954,24 +954,9 @@ class AdminScoreEntryController extends Controller
                 (int) $importData['session_id']
             );
 
-            $failures = $importer->getFailures();
-            $okCount  = $importer->getSuccessCount();
-
-            if ($okCount === 0 && !empty($failures)) {
-                return response()->json([
-                    'success'  => false,
-                    'message'  => 'Import failed: ' . implode(' | ', array_slice(array_map(
-                        fn ($f) => ($f['row'] ? 'Row ' . $f['row'] . ': ' : '') . implode('; ', $f['errors']),
-                        $failures
-                    ), 0, 5)),
-                    'failures' => $failures,
-                ], 422);
-            }
-
             return response()->json([
                 'success'     => true,
-                'message'     => $okCount . ' score(s) imported'
-                    . (empty($failures) ? ' successfully!' : ', ' . count($failures) . ' row(s) skipped.'),
+                'message'     => 'Scores imported successfully!',
                 'broadsheets' => $importer->getUpdatedBroadsheets(),
                 'failures'    => $importer->getFailures(),
             ]);

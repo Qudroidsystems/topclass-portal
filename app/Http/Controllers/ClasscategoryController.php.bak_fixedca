@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Assessment;
 use Illuminate\Http\Request;
 use App\Models\Classcategory;
+use App\Models\SubAssessment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Yajra\DataTables\Facades\DataTables;
@@ -42,12 +44,13 @@ class ClasscategoryController extends Controller
     public function data(Request $request)
     {
         try {
-            $categories = Classcategory::select('classcategories.*');
-            $fmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') ?: '0';
+            $categories = Classcategory::with(['assessments.subAssessments'])
+                ->select('classcategories.*');
 
             return DataTables::of($categories)
                 ->addIndexColumn()
 
+                // ── Category Name ─────────────────────────────────────────
                 ->addColumn('category_info', function ($row) {
                     return '<div>
                         <span class="fw-semibold text-dark">' . e($this->cleanUtf8String($row->category ?? '')) . '</span>
@@ -55,22 +58,47 @@ class ClasscategoryController extends Controller
                     </div>';
                 })
 
-                ->addColumn('scores_info', function ($row) use ($fmt) {
-                    return '<span class="fw-semibold">' . $fmt($row->ca1score) . ' / ' . $fmt($row->ca2score)
-                        . ' / ' . $fmt($row->ca3score) . ' / ' . $fmt($row->examscore) . '</span>';
+                // ── Assessment Info ──────────────────────────────────────
+                ->addColumn('assessment_info', function ($row) {
+                    $assessment = $row->assessments->first();
+                    $subAssessments = $assessment ? $assessment->subAssessments : collect();
+                    
+                    if ($assessment) {
+                        $html = '<div class="fw-semibold">' . e($this->cleanUtf8String($assessment->name ?? '')) . '</div>';
+                        $html .= '<div class="small text-muted">Max Score: ' . number_format($assessment->max_score, 2) . '</div>';
+                        if ($subAssessments->count() > 0) {
+                            $html .= '<div class="mt-1">
+                                <span class="badge bg-secondary-subtle text-secondary">
+                                    ' . $subAssessments->count() . ' Sub-assessment(s)
+                                </span>
+                            </div>';
+                        }
+                        return $html;
+                    } else {
+                        return '<span class="text-muted">No Assessment</span>';
+                    }
                 })
 
+                // ── Grade Type ───────────────────────────────────────────
                 ->addColumn('grade_type', function ($row) {
-                    return $row->is_senior
-                        ? '<span class="cc-badge cc-badge-senior">Senior (A1-F9)</span>'
-                        : '<span class="cc-badge cc-badge-junior">Junior (A-F)</span>';
+                    if ($row->is_senior) {
+                        return '<span class="cc-badge cc-badge-senior">Senior (A1-F9)</span>';
+                    } else {
+                        return '<span class="cc-badge cc-badge-junior">Junior (A-F)</span>';
+                    }
                 })
 
-                ->addColumn('total_max', function ($row) use ($fmt) {
-                    return '<span class="badge bg-info text-white">'
-                        . $fmt($row->ca1score + $row->ca2score + $row->ca3score + $row->examscore) . '</span>';
+                // ── Sub Assessments Count ──────────────────────────────
+                ->addColumn('sub_count', function ($row) {
+                    $assessment = $row->assessments->first();
+                    if ($assessment) {
+                        $count = $assessment->subAssessments->count();
+                        return '<span class="badge bg-info text-white">' . $count . ' Subs</span>';
+                    }
+                    return '<span class="text-muted">—</span>';
                 })
 
+                // ── Date ──────────────────────────────────────────────────
                 ->addColumn('formatted_date', function ($row) {
                     if (!$row->updated_at) {
                         return '<span class="text-muted small">—</span>';
@@ -80,22 +108,24 @@ class ClasscategoryController extends Controller
                         . '</small>';
                 })
 
+                // ── Actions ──────────────────────────────────────────────
                 ->addColumn('action', function ($row) {
+                    $assessment = $row->assessments->first();
+                    $subAssessments = $assessment ? $assessment->subAssessments : collect();
+                    
                     $buttons = '<div class="d-flex gap-1">';
 
                     if (auth()->user()->can('Update class-category')) {
                         $buttons .= sprintf(
                             '<button class="btn btn-sm btn-outline-secondary edit-category-btn" title="Edit" '
                             . 'data-id="%s" data-category="%s" data-is_senior="%s" '
-                            . 'data-ca1score="%s" data-ca2score="%s" data-ca3score="%s" data-examscore="%s">'
+                            . 'data-assessment-name="%s" data-sub-assessments=\'%s\'>'
                             . '<i class="ph-pencil"></i></button>',
                             $row->id,
                             e($this->cleanUtf8String($row->category ?? '')),
                             $row->is_senior ? 1 : 0,
-                            (float) $row->ca1score,
-                            (float) $row->ca2score,
-                            (float) $row->ca3score,
-                            (float) $row->examscore
+                            $assessment ? e($this->cleanUtf8String($assessment->name ?? '')) : '',
+                            e($subAssessments->toJson())
                         );
                     }
 
@@ -111,12 +141,18 @@ class ClasscategoryController extends Controller
                     return $buttons . '</div>';
                 })
 
-                ->rawColumns(['category_info', 'scores_info', 'grade_type', 'total_max', 'formatted_date', 'action'])
+                ->rawColumns(['category_info', 'assessment_info', 'grade_type', 'sub_count', 'formatted_date', 'action'])
                 ->make(true);
 
         } catch (\Exception $e) {
-            Log::error('Class Category DataTable error:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Class Category DataTable error:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -132,7 +168,7 @@ class ClasscategoryController extends Controller
                     'total' => Classcategory::count(),
                     'senior' => Classcategory::where('is_senior', true)->count(),
                     'junior' => Classcategory::where('is_senior', false)->count(),
-                    'with_assessment' => Classcategory::where(function ($q) { $q->where('ca1score', '>', 0)->orWhere('ca2score', '>', 0)->orWhere('ca3score', '>', 0)->orWhere('examscore', '>', 0); })->count(),
+                    'with_assessment' => Classcategory::has('assessments')->count(),
                 ],
             ]);
         } catch (\Exception $e) {
@@ -154,10 +190,11 @@ class ClasscategoryController extends Controller
         $validator = \Validator::make($request->all(), [
             'category' => 'required|string|max:255|unique:classcategories,category',
             'is_senior' => 'required|boolean',
-            'ca1score'  => 'required|numeric|min:0|max:100',
-            'ca2score'  => 'required|numeric|min:0|max:100',
-            'ca3score'  => 'required|numeric|min:0|max:100',
-            'examscore' => 'required|numeric|min:0|max:100',
+            'assessments' => 'required|array|size:1',
+            'assessments.0.name' => 'required|string|max:100',
+            'assessments.0.sub_assessments' => 'required|array|min:1',
+            'assessments.0.sub_assessments.*.name' => 'nullable|string|max:100',
+            'assessments.0.sub_assessments.*.max_score' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -169,17 +206,47 @@ class ClasscategoryController extends Controller
         }
 
         try {
-            $category = Classcategory::create($request->only(['category', 'is_senior', 'ca1score', 'ca2score', 'ca3score', 'examscore']));
+            DB::beginTransaction();
+
+            $category = Classcategory::create([
+                'category' => $request->input('category'),
+                'is_senior' => $request->input('is_senior'),
+            ]);
+
+            $assessmentData = $request->input('assessments')[0];
+            $subAssessments = $assessmentData['sub_assessments'];
+            $avg = count($subAssessments) > 0 ? array_sum(array_column($subAssessments, 'max_score')) / count($subAssessments) : 0;
+
+            $assessment = Assessment::create([
+                'classcategory_id' => $category->id,
+                'name' => $assessmentData['name'],
+                'max_score' => $avg,
+            ]);
+
+            foreach ($subAssessments as $sub) {
+                SubAssessment::create([
+                    'assessment_id' => $assessment->id,
+                    'name' => $sub['name'] ?? null,
+                    'max_score' => $sub['max_score'],
+                ]);
+            }
+
+            DB::commit();
             Log::info('Class Category Created:', $category->toArray());
 
             return response()->json([
                 'success' => true,
-                'message' => 'Class category created successfully',
-                'data'    => $category,
+                'message' => 'Class category and assessment created successfully',
+                'data' => $category->load('assessments.subAssessments')
             ], 201);
+
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error creating class category:', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Failed to create class category: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create class category: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -195,10 +262,11 @@ class ClasscategoryController extends Controller
             'id' => 'required|exists:classcategories,id',
             'category' => "required|string|max:255|unique:classcategories,category,{$request->id}",
             'is_senior' => 'required|boolean',
-            'ca1score'  => 'required|numeric|min:0|max:100',
-            'ca2score'  => 'required|numeric|min:0|max:100',
-            'ca3score'  => 'required|numeric|min:0|max:100',
-            'examscore' => 'required|numeric|min:0|max:100',
+            'assessments' => 'required|array|size:1',
+            'assessments.0.name' => 'required|string|max:100',
+            'assessments.0.sub_assessments' => 'required|array|min:1',
+            'assessments.0.sub_assessments.*.name' => 'nullable|string|max:100',
+            'assessments.0.sub_assessments.*.max_score' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -210,18 +278,52 @@ class ClasscategoryController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+
             $category = Classcategory::findOrFail($request->id);
-            $category->update($request->only(['category', 'is_senior', 'ca1score', 'ca2score', 'ca3score', 'examscore']));
+            $category->update([
+                'category' => $request->input('category'),
+                'is_senior' => $request->input('is_senior'),
+            ]);
+
+            // Delete existing assessment and sub-assessments
+            Assessment::where('classcategory_id', $request->id)->delete();
+
+            // Create new assessment and sub-assessments
+            $assessmentData = $request->input('assessments')[0];
+            $subAssessments = $assessmentData['sub_assessments'];
+            $avg = count($subAssessments) > 0 ? array_sum(array_column($subAssessments, 'max_score')) / count($subAssessments) : 0;
+
+            $assessment = Assessment::create([
+                'classcategory_id' => $category->id,
+                'name' => $assessmentData['name'],
+                'max_score' => $avg,
+            ]);
+
+            foreach ($subAssessments as $sub) {
+                SubAssessment::create([
+                    'assessment_id' => $assessment->id,
+                    'name' => $sub['name'] ?? null,
+                    'max_score' => $sub['max_score'],
+                ]);
+            }
+
+            DB::commit();
             Log::info('Class Category Updated via AJAX:', $category->toArray());
 
             return response()->json([
                 'success' => true,
-                'message' => 'Class category updated successfully',
-                'data'    => $category->fresh(),
+                'message' => 'Class category and assessment updated successfully',
+                'data' => $category->load('assessments.subAssessments')
             ], 200);
+
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error updating class category via AJAX:', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Failed to update class category: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update class category: ' . $e->getMessage()
+            ], 500);
         }
     }
 

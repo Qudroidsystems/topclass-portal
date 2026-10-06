@@ -24,10 +24,10 @@
         <th>SN</th>
         <th>Admission No</th>
         <th>Student Name</th>
-        <th>CA1 ({{ rtrim(rtrim(number_format($max['ca1'] ?? 100, 2, '.', ''), '0'), '.') }})</th>
-        <th>CA2 ({{ rtrim(rtrim(number_format($max['ca2'] ?? 100, 2, '.', ''), '0'), '.') }})</th>
-        <th>CA3 ({{ rtrim(rtrim(number_format($max['ca3'] ?? 100, 2, '.', ''), '0'), '.') }})</th>
-        <th>Exam ({{ rtrim(rtrim(number_format($max['exam'] ?? 100, 2, '.', ''), '0'), '.') }})</th>
+        <th>CA1 (100)</th>
+        <th>CA2 (100)</th>
+        <th>CA3 (100)</th>
+        <th>Exam (100)</th>
         <th>Total</th>
         <th>BF</th>
         <th>Cum</th>
