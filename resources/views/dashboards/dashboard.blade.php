@@ -648,7 +648,7 @@
             <div class="section-hd">
                 <div>
                     <div class="section-title">🏆 Top Performing Students</div>
-                    <div class="section-sub">Highest averages — {{ $selectedTerm?->term }} · {{ $selectedSession?->session }}</div>
+                    <div class="section-sub">Whole school · ranked by {{ strtolower($best_students['measure_label'] ?? 'cumulative average') }} (same as broadsheet) — {{ $selectedTerm?->term }} · {{ $selectedSession?->session }}</div>
                 </div>
                 <button class="pill-btn" onclick="openM('mTopStudents')">Full List →</button>
             </div>
@@ -666,13 +666,13 @@
                     @php
                         $avg = $stu['average'];
                         $spClass = $avg >= 75 ? 'sp-A' : ($avg >= 60 ? 'sp-B' : ($avg >= 50 ? 'sp-C' : ($avg >= 40 ? 'sp-D' : 'sp-F')));
-                        $stObj = \App\Models\Student::find($stu['student_id']);
-                        $pic = $stObj?->picture?->picture;
+                        $pic = !empty($stu['picture']) ? basename($stu['picture']) : null;
+                        $rk  = (int) ($stu['rank'] ?? $idx + 1);
                     @endphp
                     <tr>
                         <td>
-                            <span class="rank {{ $idx===0?'r1':($idx===1?'r2':($idx===2?'r3':'rn')) }}">
-                                {{ $idx < 3 ? ['🥇','🥈','🥉'][$idx] : $idx+1 }}
+                            <span class="rank {{ $rk===1?'r1':($rk===2?'r2':($rk===3?'r3':'rn')) }}">
+                                {{ $rk <= 3 ? ['🥇','🥈','🥉'][$rk-1] : $rk }}
                             </span>
                         </td>
                         <td>
@@ -762,6 +762,115 @@
                     @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════
+     ROW 3B — BEST STUDENTS BY CLASS (ALL ARMS) & BY ARM
+     Same figures as the broadsheet: Cum Ave with BF, same ranking rules.
+═══════════════════════════════════════════════════════════ --}}
+@php
+    $bs        = $best_students ?? ['by_class' => [], 'by_arm' => [], 'measure_label' => 'Cumulative average', 'ranked' => 0, 'students' => 0];
+    $bsMedal   = fn ($r) => $r === 1 ? 'r1' : ($r === 2 ? 'r2' : ($r === 3 ? 'r3' : 'rn'));
+    $bsSp      = fn ($v) => $v >= 75 ? 'sp-A' : ($v >= 60 ? 'sp-B' : ($v >= 50 ? 'sp-C' : ($v >= 40 ? 'sp-D' : 'sp-F')));
+    $bsFmt     = fn ($v) => rtrim(rtrim(number_format((float) $v, 2), '0'), '.');
+@endphp
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="section" style="animation-delay:.27s;">
+            <div class="section-hd">
+                <div>
+                    <div class="section-title">🎓 Best Students by Class &amp; Arm</div>
+                    <div class="section-sub">
+                        Ranked by {{ strtolower($bs['measure_label']) }} — the same figures and rules as the broadsheet ·
+                        {{ $selectedTerm?->term }} · {{ $selectedSession?->session }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap" role="tablist" aria-label="Best students view">
+                    <button type="button" class="pill-btn on bsx-tab" data-pane="bsxClass" role="tab" aria-selected="true">By Class (all arms)</button>
+                    <button type="button" class="pill-btn bsx-tab" data-pane="bsxArm" role="tab" aria-selected="false">By Arm</button>
+                    @if(Route::has('broadsheet.best-students'))
+                        <a href="{{ route('broadsheet.best-students') }}" class="pill-btn" style="text-decoration:none;">Compare classes →</a>
+                    @endif
+                </div>
+            </div>
+            <div class="section-bd">
+                @if(empty($bs['by_class']))
+                    <div class="text-center py-3" style="color:var(--c-muted);font-size:12.5px;">No results recorded for this term yet</div>
+                @else
+                    {{-- By class (all arms together) --}}
+                    <div class="bsx-pane" id="bsxClass" role="tabpanel">
+                        <div class="row g-3">
+                            @foreach($bs['by_class'] as $className => $c)
+                            <div class="col-xxl-3 col-lg-4 col-md-6">
+                                <div style="border:1px solid var(--c-border);border-radius:12px;height:100%;">
+                                    <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+                                        <span class="cmd-heading" style="font-weight:700;font-size:13.5px;color:var(--c-text);">{{ $className }}</span>
+                                        <span style="font-size:10.5px;color:var(--c-muted);white-space:nowrap;">{{ $c['arms'] }} arm{{ $c['arms'] > 1 ? 's' : '' }} · {{ $c['students'] }} students</span>
+                                    </div>
+                                    <div style="padding:6px 14px 10px;">
+                                        @forelse($c['top'] as $e)
+                                        <div style="display:flex;align-items:center;gap:9px;padding:6px 0;{{ !$loop->last ? 'border-bottom:1px solid #f8fafc;' : '' }}">
+                                            <span class="rank {{ $bsMedal($e['rank']) }}">{{ $e['rank'] }}</span>
+                                            @if(!empty($e['picture']) && $e['picture'] !== 'unnamed.jpg')
+                                                <img src="{{ asset('storage/student_avatars/'.basename($e['picture'])) }}" class="av" style="width:28px;height:28px;" alt="">
+                                            @else
+                                                <div class="av" style="width:28px;height:28px;font-size:9px;">{{ strtoupper(substr($e['name'],0,2)) }}</div>
+                                            @endif
+                                            <div style="min-width:0;flex:1;">
+                                                <div style="font-weight:600;font-size:12px;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $e['name'] }}</div>
+                                                <div style="font-size:10.5px;color:var(--c-muted);">{{ $e['arm'] ? 'Arm '.$e['arm'] : $e['admission_no'] }}</div>
+                                            </div>
+                                            <span class="sp {{ $bsSp($e['average']) }}" title="{{ $bs['measure_label'] }}: {{ $bsFmt($e['value']) }}">{{ $bsFmt($e['value']) }}</span>
+                                        </div>
+                                        @empty
+                                        <div style="font-size:11.5px;color:var(--c-muted);padding:8px 0;">No student met the ranking rules</div>
+                                        @endforelse
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- By arm --}}
+                    <div class="bsx-pane" id="bsxArm" role="tabpanel" hidden>
+                        <div class="row g-3">
+                            @foreach($bs['by_arm'] as $armLabel => $a)
+                            <div class="col-xxl-3 col-lg-4 col-md-6">
+                                <div style="border:1px solid var(--c-border);border-radius:12px;height:100%;">
+                                    <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;">
+                                        <span class="cmd-heading" style="font-weight:700;font-size:13.5px;color:var(--c-text);">{{ $armLabel }}</span>
+                                    </div>
+                                    <div style="padding:6px 14px 10px;">
+                                        @foreach($a['top'] as $e)
+                                        <div style="display:flex;align-items:center;gap:9px;padding:6px 0;{{ !$loop->last ? 'border-bottom:1px solid #f8fafc;' : '' }}">
+                                            <span class="rank {{ $bsMedal($e['rank']) }}">{{ $e['rank'] }}</span>
+                                            @if(!empty($e['picture']) && $e['picture'] !== 'unnamed.jpg')
+                                                <img src="{{ asset('storage/student_avatars/'.basename($e['picture'])) }}" class="av" style="width:28px;height:28px;" alt="">
+                                            @else
+                                                <div class="av" style="width:28px;height:28px;font-size:9px;">{{ strtoupper(substr($e['name'],0,2)) }}</div>
+                                            @endif
+                                            <div style="min-width:0;flex:1;">
+                                                <div style="font-weight:600;font-size:12px;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $e['name'] }}</div>
+                                                <div style="font-size:10.5px;color:var(--c-muted);">{{ $e['admission_no'] }} · {{ $e['subject_count'] }} subjects</div>
+                                            </div>
+                                            <span class="sp {{ $bsSp($e['average']) }}" title="{{ $bs['measure_label'] }}: {{ $bsFmt($e['value']) }}">{{ $bsFmt($e['value']) }}</span>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div style="font-size:11px;color:var(--c-muted);margin-top:12px;">
+                        {{ $bs['ranked'] }} of {{ $bs['students'] }} students met the ranking rules (Broadsheet Ranking settings). Active students only. Ties share a position.
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -1251,7 +1360,7 @@
     </div>
     <div class="m-body">
         <div class="kpi-grid mb-4">
-            <div class="kpi"><div class="kpi-l">Analysed</div><div class="kpi-v">{{ count($top_students) }}</div></div>
+            <div class="kpi"><div class="kpi-l">Ranked</div><div class="kpi-v">{{ $best_students['ranked'] ?? count($top_students) }}</div></div>
             @if(count($top_students)>0)
             <div class="kpi"><div class="kpi-l">Top Student</div><div class="kpi-v" style="font-size:14px;">{{ $top_students[0]['name'] }}</div></div>
             <div class="kpi"><div class="kpi-l">Top Avg</div><div class="kpi-v" style="color:#059669;">{{ $top_students[0]['average'] }}%</div></div>
@@ -1265,11 +1374,11 @@
             @php
                 $avg=$stu['average'];
                 $spC=$avg>=75?'sp-A':($avg>=60?'sp-B':($avg>=50?'sp-C':($avg>=40?'sp-D':'sp-F')));
-                $stO=\App\Models\Student::find($stu['student_id']);
-                $pic=$stO?->picture?->picture;
+                $pic=!empty($stu['picture']) ? basename($stu['picture']) : null;
+                $rk=(int)($stu['rank'] ?? $i+1);
             @endphp
             <tr>
-                <td><span class="rank {{ $i===0?'r1':($i===1?'r2':($i===2?'r3':'rn')) }}">{{ $i+1 }}</span></td>
+                <td><span class="rank {{ $rk===1?'r1':($rk===2?'r2':($rk===3?'r3':'rn')) }}">{{ $rk }}</span></td>
                 <td>
                     <div style="display:flex;align-items:center;gap:7px;">
                         @if($pic&&$pic!=='unnamed.jpg')<img src="{{ asset('storage/student_avatars/'.$pic) }}" class="av" style="width:28px;height:28px;">
@@ -1987,6 +2096,18 @@ function initPanelCharts(panelId) {
     mk('mAttTrendChart',{type:'line',data:{labels:D.attTrendDates,datasets:[{label:'Attendance Rate',data:D.attTrendRates,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}},animation:{duration:600}}});
   }
 }
+
+/* ── Best students: By Class / By Arm tabs ── */
+document.querySelectorAll('.bsx-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.bsx-tab').forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('.bsx-pane').forEach(p => { p.hidden = p.id !== btn.dataset.pane; });
+  });
+});
 
 /* ── Reinit dropdown fix ── */
 setTimeout(()=>{
