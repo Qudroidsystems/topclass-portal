@@ -510,6 +510,12 @@ class DatabaseSeeder extends Seeder
             'AccountingSetupSeeder' =>
                 '📒 Adding ledger accounts and linking expense categories...',
 
+            'ClubPermissionSeeder' =>
+                '🎭 Seeding club permissions...',
+
+            'SportPermissionSeeder' =>
+                '⚽ Seeding sport permissions...',
+
             'ActivityPermissionSeeder' =>
                 '🧩 Seeding ActivityPermission...',
 
