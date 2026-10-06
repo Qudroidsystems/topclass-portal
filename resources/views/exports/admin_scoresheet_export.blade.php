@@ -1,4 +1,4 @@
-<table>
+{{-- <table>
     <thead>
         <tr>
             <th colspan="{{ 3 + $assessments->count() + 7 }}" style="text-align: center; font-size: 14pt; font-weight: bold;">
@@ -75,4 +75,63 @@
             </tr>
         @endforelse
     </tbody>
+</table> --}}
+{{-- resources/views/exports/admin_scoresheet_export.blade.php --}}
+{{-- Layout: rows 1-6 header block (row 6 = headings), data from row 7. --}}
+{{-- Columns: 3 fixed + 4 scores (CA1, CA2, CA3, Exam) + 7 calculated = 14 --}}
+@php
+    $first    = $broadsheets->first();
+    $colCount = 3 + 4 + 7;
+@endphp
+<table>
+    <tr><td colspan="{{ $colCount }}">{{ $school->school_name ?? 'School Name' }}</td></tr>
+    <tr><td colspan="{{ $colCount }}">SCORESHEET</td></tr>
+    <tr><td colspan="{{ $colCount }}">
+        Subject: {{ $first->subject ?? '' }} ({{ $first->subject_code ?? '' }})
+        | Class: {{ $first->schoolclass ?? '' }} {{ $first->arm ?? '' }}
+    </td></tr>
+    <tr><td colspan="{{ $colCount }}">
+        Teacher: {{ $first->staffname ?? '' }}
+        | Term: {{ $first->term ?? '' }} | Session: {{ $first->session ?? '' }}
+    </td></tr>
+    <tr><td colspan="{{ $colCount }}"></td></tr>
+
+    {{-- Row 6: headings. The importer finds this row by searching for "Admission",
+         and maps score columns by the names CA1 / CA2 / CA3 / Exam. --}}
+    <tr>
+        <th>SN</th>
+        <th>Admission No</th>
+        <th>Student Name</th>
+        <th>CA1 (100)</th>
+        <th>CA2 (100)</th>
+        <th>CA3 (100)</th>
+        <th>Exam (100)</th>
+        <th>Total</th>
+        <th>BF</th>
+        <th>Cum</th>
+        <th>Grade</th>
+        <th>Position</th>
+        <th>Remark</th>
+        <th>Class Avg</th>
+    </tr>
+
+    {{-- Row 7+: data --}}
+    @foreach($broadsheets as $i => $b)
+        <tr>
+            <td>{{ $i + 1 }}</td>
+            <td>{{ $b->admissionno }}</td>
+            <td>{{ $b->lname }} {{ $b->fname }} {{ $b->mname }}</td>
+            <td>{{ (float) ($b->ca1  ?? 0) }}</td>
+            <td>{{ (float) ($b->ca2  ?? 0) }}</td>
+            <td>{{ (float) ($b->ca3  ?? 0) }}</td>
+            <td>{{ (float) ($b->exam ?? 0) }}</td>
+            <td>{{ $b->total }}</td>
+            <td>{{ $b->bf }}</td>
+            <td>{{ $b->cum }}</td>
+            <td>{{ $b->grade }}</td>
+            <td>{{ $b->position }}</td>
+            <td>{{ $b->remark }}</td>
+            <td>{{ $b->avg }}</td>
+        </tr>
+    @endforeach
 </table>
