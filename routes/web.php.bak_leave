@@ -1523,26 +1523,3 @@ require __DIR__ . '/finance.php';
 
 // E-learning (LMS): courses, lessons, coursework, live classes, learner & parent views
 require __DIR__ . '/lms.php';
-
-// Staff leave: apply, approve, balances, records, who's away
-Route::middleware('auth')->group(function () {
-    Route::prefix('leave')->name('leave.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\LeaveController::class, 'index'])->name('index');
-        Route::get('/board', [\App\Http\Controllers\LeaveBoardController::class, 'index'])->name('board');
-        Route::get('/records/export', [\App\Http\Controllers\LeaveController::class, 'exportRecords'])->name('records.export');
-        Route::get('/balances', [\App\Http\Controllers\LeaveController::class, 'hrBalances'])->name('balances');
-        Route::post('/', [\App\Http\Controllers\LeaveController::class, 'store'])->name('store');
-        Route::post('/{id}/cancel', [\App\Http\Controllers\LeaveController::class, 'cancel'])->whereNumber('id')->name('cancel');
-        Route::get('/approvals', [\App\Http\Controllers\LeaveController::class, 'approvals'])->name('approvals');
-        Route::post('/{id}/act', [\App\Http\Controllers\LeaveController::class, 'act'])->whereNumber('id')->name('act');
-        Route::get('/{id}/document', [\App\Http\Controllers\LeaveController::class, 'attachment'])->whereNumber('id')->name('attachment');
-        Route::get('/records', [\App\Http\Controllers\LeaveController::class, 'records'])->name('records');
-        Route::post('/types', [\App\Http\Controllers\LeaveController::class, 'storeType'])->name('types.store');
-        Route::put('/types/{id}', [\App\Http\Controllers\LeaveController::class, 'updateType'])->whereNumber('id')->name('types.update');
-        Route::post('/adjust', [\App\Http\Controllers\LeaveController::class, 'adjust'])->name('adjust');
-        Route::post('/{id}/resume', [\App\Http\Controllers\LeaveController::class, 'resume'])->whereNumber('id')->name('resume');
-        Route::post('/{id}/mark-resumed', [\App\Http\Controllers\LeaveController::class, 'markResumed'])->whereNumber('id')->name('mark-resumed');
-        Route::post('/{id}/extend', [\App\Http\Controllers\LeaveController::class, 'extend'])->whereNumber('id')->name('extend');
-        Route::post('/reminders', [\App\Http\Controllers\LeaveController::class, 'saveReminders'])->name('reminders');
-    });
-});

@@ -28,3 +28,9 @@ Schedule::command('payroll:remittance-reminders')->dailyAt('08:00')->withoutOver
 
 // Financial audit digest to auditors each morning.
 Schedule::command('financial-audit:digest')->dailyAt('07:45')->withoutOverlapping(30);
+
+// Leave reminders (starts tomorrow, days left, resume date, not back yet)
+Schedule::command('leave:reminders')->dailyAt('07:00')->withoutOverlapping(30);
+
+// Carry unused annual leave into the new year (idempotent; runs once at year start).
+Schedule::command('leave:carry-over')->yearlyOn(1, 1, '01:00')->withoutOverlapping(60);

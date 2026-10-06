@@ -621,25 +621,7 @@
                         <li class="nav-item">
                             <a href="{{ route('my-pay.index') }}" class="nav-link menu-link {{ request()->routeIs('my-pay.*') ? 'active' : '' }}"><i class="ri-wallet-3-line"></i> <span>My Pay</span></a>
                         </li>
-                        <li class="nav-item">
-                            <a href="{{ route('leave.index') }}" class="nav-link menu-link {{ request()->routeIs('leave.*') ? 'active' : '' }}"><i class="ri-calendar-event-line"></i> <span>My Leave</span></a>
-                        </li>
                     @endif
-
-                    @canany(['View leave records', 'Manage leave types'])
-                        <li class="nav-item">
-                            <a href="#sidebarLeaveAdmin" class="nav-link menu-link collapsed" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarLeaveAdmin"><i class="ri-calendar-check-line"></i> <span>Staff Leave</span></a>
-                            <div class="collapse menu-dropdown" id="sidebarLeaveAdmin"><ul class="nav nav-sm flex-column">
-                                <li class="nav-item"><a href="{{ route('leave.records') }}" class="nav-link">Leave Records</a></li>
-                                <li class="nav-item"><a href="{{ route('leave.balances') }}" class="nav-link">Leave Balances</a></li>
-                            </ul></div>
-                        </li>
-                    @endcanany
-                    @canany(['View leave records', 'Approve leave'])
-                        <li class="nav-item">
-                            <a href="{{ route('leave.board') }}" class="nav-link menu-link {{ request()->routeIs('leave.board') ? 'active' : '' }}"><i class="ri-team-line"></i> <span>Who's Away</span></a>
-                        </li>
-                    @endcanany
 
                     @if(auth()->user()->can('View student assessments') || auth()->user()->can('View student payments'))
                         <li class="menu-title"><i class="ph-graduation-cap"></i> <span>STUDENT PORTAL</span></li>
