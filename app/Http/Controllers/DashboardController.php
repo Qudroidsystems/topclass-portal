@@ -533,7 +533,25 @@ class DashboardController extends Controller
             'measure_label' => 'Cumulative average',
             'ranked'        => 0,
             'students'      => 0,
+            'notice'        => null,   // why nothing could be loaded (shown on the dashboard)
+            'excluded_summary' => [],  // [reason => count] when nobody met the ranking rules
         ];
+    }
+
+    /** Group exclusion reasons so the dashboard can say WHY a list is empty. */
+    private function summariseExclusions(array $excluded): array
+    {
+        $out = [];
+        foreach ($excluded as $reason) {
+            $key = preg_match('/^Only \d+ subject\(s\) scored \(minimum (\d+)\)/', $reason, $m)
+                ? "Fewer than {$m[1]} subjects scored (Ranking settings → minimum subjects)"
+                : (preg_match('/^Average .* is below (.+)$/', $reason, $m2)
+                    ? "Average below {$m2[1]} (Ranking settings → minimum average)"
+                    : $reason);
+            $out[$key] = ($out[$key] ?? 0) + 1;
+        }
+        arsort($out);
+        return $out;
     }
 
     private function getBestStudents(Schoolterm $term, Schoolsession $session): array
@@ -543,7 +561,10 @@ class DashboardController extends Controller
         try {
             $data = app(ClassResultsLoader::class)->load((int) $term->id, (int) $session->id);
             $rows = $data['rows'];
-            if (empty($rows)) return $result;
+            if (empty($rows)) {
+                $result['notice'] = 'No student results were found for this term and session (active students, matched to their class).';
+                return $result;
+            }
 
             $service  = app(BroadsheetRankingService::class);
             $settings = [
@@ -616,8 +637,12 @@ class DashboardController extends Controller
             $result['measure_label'] = $overall['measure_label'];
             $result['ranked']        = $overall['eligible_count'];
             $result['students']      = count($unique);
+            if (empty($result['overall'])) {
+                $result['excluded_summary'] = $this->summariseExclusions($overall['excluded']);
+            }
         } catch (\Throwable $e) {
             Log::warning('Dashboard best students failed: ' . $e->getMessage());
+            $result['notice'] = 'Best students could not be loaded: ' . $e->getMessage();
         }
 
         return $result;

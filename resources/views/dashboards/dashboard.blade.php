@@ -698,7 +698,21 @@
                         <td style="font-size:12px;font-weight:700;color:{{ $avg>=60?'#16a34a':($avg>=40?'#d97706':'#dc2626') }};">{{ $stu['grade'] }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="text-center text-muted py-3" style="font-size:12.5px;">No academic data for this term</td></tr>
+                    @php
+                        $bsWhy = $best_students['notice'] ?? null;
+                        $bsEx  = $best_students['excluded_summary'] ?? [];
+                    @endphp
+                    <tr><td colspan="5" class="text-center text-muted py-3" style="font-size:12.5px;">
+                        @if($bsWhy)
+                            {{ $bsWhy }}
+                        @elseif(!empty($bsEx))
+                            No student met the ranking rules:
+                            @foreach($bsEx as $reason => $n)<div style="font-size:11.5px;">{{ $n }} × {{ $reason }}</div>@endforeach
+                            @if(Route::has('broadsheet.ranking.index'))<a href="{{ route('broadsheet.ranking.index') }}" style="font-size:11.5px;">Open Ranking settings</a>@endif
+                        @else
+                            No academic data for this term
+                        @endif
+                    </td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -798,7 +812,7 @@
             </div>
             <div class="section-bd">
                 @if(empty($bs['by_class']))
-                    <div class="text-center py-3" style="color:var(--c-muted);font-size:12.5px;">No results recorded for this term yet</div>
+                    <div class="text-center py-3" style="color:var(--c-muted);font-size:12.5px;">{{ $bs['notice'] ?? 'No results recorded for this term yet' }}</div>
                 @else
                     {{-- By class (all arms together) --}}
                     <div class="bsx-pane" id="bsxClass" role="tabpanel">

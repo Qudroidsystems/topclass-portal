@@ -55,7 +55,7 @@ class BroadsheetRankingSetting extends Model
             'section'                => $section,
             'primary_measure'        => 'cum_ave',
             'tiebreakers'            => ['distinctions', 'lowest_score'],
-            'min_subjects'           => $section === 'senior' ? 8 : 10,
+            'min_subjects'           => 0,   // no minimum until the school sets one
             'min_average'            => null,
             'require_all_compulsory' => false,
             'exclude_failed'         => false,
