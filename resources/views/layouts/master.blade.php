@@ -1,3 +1,8 @@
+@use('App\Models\User', 'UserModel')
+@use('App\Models\Student')
+@use('Illuminate\Support\Facades\Storage')
+@use('Illuminate\Support\Facades\Auth')
+@use('App\Models\SchoolInformation')
 <!doctype html>
 <html lang="en" data-layout="vertical" data-sidebar="dark" data-sidebar-size="lg" data-preloader="disable" data-theme="default" data-topbar="light" data-bs-theme="light">
 
@@ -434,7 +439,6 @@
         <!-- LOGO -->
         <div class="navbar-brand-box">
             @php
-                use App\Models\SchoolInformation;
                 $schoolInfo = SchoolInformation::getActiveSchool();
                 $schoolName = $schoolInfo?->school_name ?? config('app.name', 'School System');
                 $defaultLogo      = asset('theme/layouts/assets/images/logo-dark.png');
@@ -1616,11 +1620,6 @@
 
                     <!-- ===== USER DROPDOWN ===== -->
                     @php
-                        use App\Models\User as UserModel;
-                        use App\Models\Student;
-                        use Illuminate\Support\Facades\Storage;
-                        use Illuminate\Support\Facades\Auth;
-
                         $userdata  = Auth::user();
                         $isStudent = $userdata->hasRole('student');
                         $fullName  = $userdata->name ?? 'User';
