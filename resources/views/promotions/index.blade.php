@@ -993,7 +993,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small mb-3">Apply the same new class / session / term and decision to all selected students.</p>
+                <p class="text-muted small mb-3">Apply the same new class / session / term and decision to all selected students.
+                    The decision you pick here is saved as-is, whatever the system recommends from scores, so students with no
+                    results yet (for example a school just starting on the portal) can still be promoted.</p>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">New Class</label>
                     <select class="form-select" id="bulkNewClass">
@@ -1027,7 +1029,7 @@
                         <option value="promoted">Promote</option>
                         <option value="trial">On Trial</option>
                         <option value="see_principal">See Principal</option>
-                        <option value="repeated">Repeat</option>
+                        <option value="repeat">Repeat</option>
                     </select>
                 </div>
             </div>
@@ -1779,7 +1781,7 @@ function submitBulkPromote() {
     fd.append('new_schoolclassid', newClass);
     fd.append('new_sessionid', newSession);
     fd.append('new_termid', newTerm);
-    fd.append('decision', decision);
+    fd.append('promotion_type', decision);
     fd.append('schoolclassid', document.getElementById('idclass').value);
     fd.append('sessionid', document.getElementById('idsession').value);
     fd.append('termid', document.getElementById('idterm').value);

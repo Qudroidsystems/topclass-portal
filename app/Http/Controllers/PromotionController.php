@@ -79,6 +79,10 @@ class PromotionController extends Controller
                 $query = Studentclass::query()
                     ->where('studentclass.schoolclassid', $schoolclassId)
                     ->where('studentclass.sessionid',     $sessionId)
+                    // A promotion writes one row per term (1-3) of the new
+                    // session, so keep one row per student or each promoted
+                    // student is listed three times.
+                    ->whereIn('studentclass.id', Studentclass::oneRowPerStudent($schoolclassId, $sessionId))
                     // NOTE: deliberately NOT filtering by studentclass.termid
                     // here. studentclass is one row per student per
                     // class+session (not one row per term), so its termid
@@ -595,7 +599,7 @@ class PromotionController extends Controller
             'new_schoolclassid' => 'required|exists:schoolclass,id',
             'new_sessionid'     => 'required|exists:schoolsession,id',
             'new_termid'        => 'required|integer|min:1|max:3',
-            'promotion_type'    => 'required|in:promoted,trial,see_principal,repeat',
+            'promotion_type'    => 'required|in:promoted,trial,see_principal,repeat,repeated',
         ]);
 
         $successCount = 0;
@@ -605,7 +609,7 @@ class PromotionController extends Controller
             'promoted'      => 'PROMOTED',
             'trial'         => 'TRIAL',
             'see_principal' => 'SEE_PRINCIPAL',
-            'repeat'        => 'REPEAT',
+            'repeat', 'repeated' => 'REPEAT',
             default         => 'PARENTS_TO_SEE_PRINCIPAL',
         };
 
