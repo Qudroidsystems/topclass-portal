@@ -5608,11 +5608,70 @@ use Spatie\Permission\Models\Role;
 
             addForm.removeEventListener('submit', this.handleAddSubmit);
             addForm.addEventListener('submit', (e) => this.handleAddSubmit(e));
+
+            // Clear a field's error as soon as the user changes it
+            addForm.addEventListener('input', (e) => this.clearFieldError(e.target));
+            addForm.addEventListener('change', (e) => this.clearFieldError(e.target));
+
+            // Default to an auto-generated admission number and fetch a fresh one each time the modal opens
+            const addModal = document.getElementById('addStudentModal');
+            if (addModal) {
+                addModal.addEventListener('show.bs.modal', () => this.prepareAddForm(addForm));
+            }
+        },
+
+        prepareAddForm: function(form) {
+            const autoRadio = form.querySelector('input[name="admissionMode"][value="auto"]');
+            if (autoRadio && !form.querySelector('input[name="admissionMode"]:checked')) {
+                autoRadio.checked = true;
+            }
+            AdmissionNumberManager.updateAdmissionNumber('');
+        },
+
+        clearFieldError: function(field) {
+            if (!field || !field.name) return;
+            const form = field.form;
+            if (!form) return;
+            form.querySelectorAll(`[name="${field.name}"]`).forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll(`.server-feedback[data-field="${field.name}"]`).forEach(el => el.remove());
+        },
+
+        clearFormErrors: function(form) {
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll('.server-feedback').forEach(el => el.remove());
+        },
+
+        showFieldErrors: function(form, errors) {
+            let firstField = null;
+            Object.entries(errors).forEach(([name, messages]) => {
+                const fields = form.querySelectorAll(`[name="${name}"]`);
+                if (!fields.length) return;
+                fields.forEach(el => el.classList.add('is-invalid'));
+                const last = fields[fields.length - 1];
+                const anchor = last.type === 'radio' ? last.closest('.d-flex') || last.parentElement : last;
+                const feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback d-block server-feedback';
+                feedback.dataset.field = name;
+                feedback.textContent = Array.isArray(messages) ? messages[0] : messages;
+                anchor.insertAdjacentElement('afterend', feedback);
+                if (!firstField) firstField = fields[0];
+            });
+            if (firstField) {
+                firstField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         },
 
         async handleAddSubmit(e) {
             e.preventDefault();
             const form = e.target;
+            const submitBtn = form.querySelector('#add-btn');
+
+            // Ignore repeat clicks while a save is in progress (a second submit would hit the duplicate admission number check)
+            if (form.dataset.submitting === 'true') return;
+            form.dataset.submitting = 'true';
+            if (submitBtn) submitBtn.disabled = true;
+
+            this.clearFormErrors(form);
             const formData = new FormData(form);
 
             try {
@@ -5632,20 +5691,43 @@ use Spatie\Permission\Models\Role;
                 if (response.data.success) {
                     const modal = bootstrap.Modal.getInstance(document.getElementById('addStudentModal'));
                     if (modal) modal.hide();
-                    await StudentManager.fetchStudents();
-                    Utils.showSuccess(response.data.message || 'Student registered successfully.');
 
                     form.reset();
                     const avatarImg = document.getElementById('addStudentAvatar');
                     if (avatarImg) {
                         avatarImg.src = 'https://via.placeholder.com/120x120/667eea/ffffff?text=Photo';
                     }
+                    const lgaSelect = document.getElementById('addLocal');
+                    if (lgaSelect) lgaSelect.innerHTML = '<option value="">Select LGA</option>';
+
+                    const admissionNo = response.data.student?.admissionNo;
+                    Utils.showSuccess(admissionNo
+                        ? `${response.data.message || 'Student registered successfully.'} Admission No: ${admissionNo}`
+                        : (response.data.message || 'Student registered successfully.'));
+
+                    await StudentManager.fetchStudents();
                 } else {
                     Utils.showError(response.data.message || 'Failed to save student.');
                 }
             } catch (error) {
                 Swal.close();
-                Utils.showError(Utils.extractErrorMessage(error, 'Failed to save student.'));
+                const errors = error.response?.status === 422 ? error.response.data?.errors : null;
+                if (errors && Object.keys(errors).length) {
+                    this.showFieldErrors(form, errors);
+                    const list = Object.values(errors).map(m => `<li>${Utils.escapeHtml(m[0])}</li>`).join('');
+                    Swal.fire({
+                        title: 'Please correct the following',
+                        html: `<ul class="text-start mb-0">${list}</ul>`,
+                        icon: 'warning',
+                        confirmButtonText: 'OK',
+                        customClass: { confirmButton: 'btn btn-primary' }
+                    });
+                } else {
+                    Utils.showError(Utils.extractErrorMessage(error, 'Failed to save student.'));
+                }
+            } finally {
+                form.dataset.submitting = 'false';
+                if (submitBtn) submitBtn.disabled = false;
             }
         },
 
