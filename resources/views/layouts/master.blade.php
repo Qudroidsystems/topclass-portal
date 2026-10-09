@@ -1879,6 +1879,7 @@
      SCRIPTS
      ===================================================== -->
 <script src="{{ asset('theme/layouts/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ asset('theme/layouts/assets/js/modal-button-reset.js') }}"></script>
 <script src="{{ asset('theme/layouts/assets/js/app.js') }}"></script>
 <script src="{{ asset('theme/layouts/assets/libs/simplebar/simplebar.min.js') }}"></script>
 <script src="{{ asset('theme/layouts/assets/js/plugins.js') }}"></script>
@@ -2591,7 +2592,10 @@
 @if (Route::is('subject.*'))               @include('layouts.pages-assets.js.subject-list-js') @endif
 @if (Route::is('subjects.*'))              @include('layouts.pages-assets.js.subject-list-js') @endif
 @if (Route::is('subjectteacher.*'))        @include('layouts.pages-assets.js.subjectteacher-list-js') @endif
-@if (Route::is('subjectclass.*'))          @include('layouts.pages-assets.js.subjectclass-list-js') @endif
+{{-- Disabled: subjectclass/index.blade.php has its own inline script. This legacy
+     init.js bound a second submit handler to the same Add/Edit forms, threw errors
+     on every modal open/close and overwrote the Add Subject Class button label.
+@if (Route::is('subjectclass.*'))          @include('layouts.pages-assets.js.subjectclass-list-js') @endif --}}
 @if (Route::is('schoolbill.*'))            @include('layouts.pages-assets.js.schoolbill-list-js') @endif
 @if (Route::is('schoolbilltermsession.*')) @include('layouts.pages-assets.js.schoolbilltermsession-list-js') @endif
 @if (Route::is('student.*'))               @include('layouts.pages-assets.js.student-list-js') @endif
