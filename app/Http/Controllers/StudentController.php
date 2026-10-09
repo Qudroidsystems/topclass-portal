@@ -391,7 +391,10 @@ class StudentController extends Controller
                 'avatar'             => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'admissionMode'      => 'required|in:auto,manual',
                 'title'              => 'nullable|in:Master,Miss',
-                'admissionNo'        => ['required','string','max:255','unique:studentRegistration,admissionNo'],
+                // In auto mode the number is generated below, so the value shown in the form is not checked.
+                'admissionNo'        => $request->admissionMode === 'auto'
+                    ? ['nullable','string','max:255']
+                    : ['required','string','max:255','unique:studentRegistration,admissionNo'],
                 'admissionYear'      => 'required|integer|min:1900|max:'.date('Y'),
                 'admissionDate'      => 'required|date|before_or_equal:today',
                 'firstname'          => 'required|string|max:255',
@@ -401,7 +404,7 @@ class StudentController extends Controller
                 'dateofbirth'        => 'required|date|before:today',
                 'placeofbirth'       => 'required|string|max:255',
                 'nationality'        => 'required|string|max:255',
-                'age'                => 'required|integer|min:1|max:100',
+                'age'                => 'nullable|integer|min:0|max:100',
                 'blood_group'        => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
                 'genotype'           => 'nullable|in:AA,AS,SS,AC,SC,CC',
                 'mother_tongue'      => 'nullable|string|max:255',
@@ -450,11 +453,14 @@ class StudentController extends Controller
                 'last_school'        => 'nullable|string|max:255',
                 'last_class'         => 'nullable|string|max:255',
                 'reason_for_leaving' => 'nullable|string|max:500',
+            ], [
+                'admissionNo.unique' => 'Admission number :input is already in use. Choose Auto Generate or enter a different number.',
             ]);
 
             if ($validator->fails()) {
                 if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success'=>false,'message'=>'Validation failed','errors'=>$validator->errors()], 422);
+                    Log::warning('Validation failed for new student', ['errors' => $validator->errors()->toArray()]);
+                    return response()->json(['success'=>false,'message'=>$validator->errors()->first(),'errors'=>$validator->errors()], 422);
                 }
                 return redirect()->route('student.index')->withErrors($validator)->withInput();
             }
@@ -480,7 +486,7 @@ class StudentController extends Controller
             $student->othername          = $request->othername;
             $student->gender             = $request->gender;
             $student->dateofbirth        = $request->dateofbirth;
-            $student->age                = $request->age;
+            $student->age                = $request->filled('age') ? $request->age : Carbon::parse($request->dateofbirth)->age;
             $student->blood_group        = $request->blood_group;
             $student->genotype           = $request->genotype;
             $student->mother_tongue      = $request->mother_tongue;
@@ -1550,15 +1556,15 @@ public function getBatchImportProgress(Request $request)
                 return response()->json(['success'=>false,'message'=>'Invalid year format'], 400);
             }
 
-            $lastStudent = Student::where('admissionNo', 'LIKE', "TCC/{$year}/%")->orderBy('id','desc')->first();
-            $lastNumber  = 870;
-
-            if ($lastStudent && $lastStudent->admissionNo) {
-                $parts = explode('/', $lastStudent->admissionNo);
-                if (count($parts) === 3 && is_numeric($parts[2])) {
-                    $lastNumber = max(870, (int)$parts[2]);
-                }
-            }
+            // Use the highest number issued for the year, not the most recently created
+            // student, so manual entries and imports out of order can't cause a duplicate.
+            $lastNumber = Student::where('admissionNo', 'LIKE', "TCC/{$year}/%")
+                ->pluck('admissionNo')
+                ->map(fn ($no) => explode('/', $no)[2] ?? null)
+                ->filter(fn ($n) => is_numeric($n))
+                ->map(fn ($n) => (int) $n)
+                ->push(870)
+                ->max();
 
             return response()->json(['success'=>true,'admissionNo'=>sprintf('TCC/%s/%04d',$year,$lastNumber+1)], 200);
 
