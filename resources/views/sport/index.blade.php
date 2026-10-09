@@ -783,6 +783,8 @@ $(document).ready(function () {
 
             success: function(res) {
                 if (res.success) {
+                    hideModalLoader('create');
+                    btnReset($('#create-save-btn')); // clear loading state before hiding so the next open is clean
                     $('#createModal').modal('hide');
                     toast('success', 'Created!', res.message);
                     table.ajax.reload();
@@ -860,6 +862,8 @@ $(document).ready(function () {
 
             success: function(res) {
                 if (res.success) {
+                    hideModalLoader('edit');
+                    btnReset($('#edit-update-btn')); // clear loading state before hiding so the next open is clean
                     $('#editModal').modal('hide');
                     toast('success', 'Updated!', res.message);
                     table.ajax.reload();

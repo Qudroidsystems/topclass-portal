@@ -511,6 +511,7 @@ $(document).ready(function () {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function(res) {
                 if (res.success) {
+                    btnReset($('#create-save-btn')); // clear loading state before hiding so the next open is clean
                     $('#createModal').modal('hide');
                     toast('success', 'Added!', res.message);
                     table.ajax.reload(); loadStats();
@@ -583,6 +584,7 @@ $(document).ready(function () {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function(res) {
                 if (res.success) {
+                    btnReset($('#edit-update-btn')); // clear loading state before hiding so the next open is clean
                     $('#editModal').modal('hide');
                     toast('success', 'Updated!', res.message);
                     table.ajax.reload(); loadStats();

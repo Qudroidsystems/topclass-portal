@@ -792,6 +792,7 @@ $(document).ready(function () {
         applyAddFilters();
 
         btnReset($('#add-btn'));
+        updateAddBtn(); // keep it disabled until a class and a teacher are picked
         $('#add-modal-loader').removeClass('active');
         new bootstrap.Modal(document.getElementById('addSubjectClassModal')).show();
     });

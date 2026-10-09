@@ -774,6 +774,7 @@ $(document).ready(function () {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
             success: function (res) {
                 if (res.success) {
+                    btnReset($btn); // clear loading state before hiding so the next open is clean
                     $('#addSubjectVettingModal').modal('hide');
                     toast('success', 'Added!', res.message);
                     table.ajax.reload(); loadStats();
@@ -986,6 +987,7 @@ $(document).ready(function () {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF, 'X-HTTP-Method-Override': 'PUT' },
             success: function (res) {
                 if (res.success) {
+                    btnReset($btn); // clear loading state before hiding so the next open is clean
                     $('#editModal').modal('hide');
                     toast('success', 'Updated!', res.message);
                     table.ajax.reload(); loadStats();
