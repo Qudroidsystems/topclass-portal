@@ -646,6 +646,9 @@ class ViewStudentReportController extends Controller
                 $query = Studentclass::query()
                     ->where('schoolclassid', $request->input('schoolclassid'))
                     ->where('sessionid',     $request->input('sessionid'))
+                    ->whereIn('studentclass.id', Studentclass::oneRowPerStudent(
+                        $request->input('schoolclassid'), $request->input('sessionid')
+                    ))
                     ->leftJoin('studentRegistration', 'studentRegistration.id', '=', 'studentclass.studentId')
                     ->leftJoin('studentpicture',      'studentpicture.studentid', '=', 'studentRegistration.id')
                     ->leftJoin('schoolclass',         'schoolclass.id',           '=', 'studentclass.schoolclassid')
