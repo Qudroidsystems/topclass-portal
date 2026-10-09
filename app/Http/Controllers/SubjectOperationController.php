@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Student;
+use App\Models\Studentclass;
 use App\Models\Schoolterm;
 use App\Models\Broadsheets;
 use App\Models\Schoolclass;
@@ -159,6 +160,9 @@ class SubjectOperationController extends Controller
 
             $query->where('studentclass.schoolclassid', $request->input('class_id'))
                 ->where('studentclass.sessionid', $request->input('session_id'))
+                ->whereIn('studentclass.id', Studentclass::oneRowPerStudent(
+                    $request->input('class_id'), $request->input('session_id')
+                ))
                 ->orderBy('studentRegistration.lastname')
                 ->orderBy('studentRegistration.firstname');
 
