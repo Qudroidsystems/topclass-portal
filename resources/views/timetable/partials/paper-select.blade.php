@@ -21,7 +21,7 @@
     @foreach($primarySizes as $size)
         @php $meta = $labels[$size] ?? [strtoupper($size), '', '']; @endphp
         <option value="{{ $size }}" {{ $selected === $size ? 'selected' : '' }}>
-            {{ $meta[0] }}@if(!empty($meta[1])) — {{ $meta[1] }}@endif@if(!empty($meta[2])) ({{ $meta[2] }})@endif
+            {{ $meta[0] }}@if(!empty($meta[1])) — {{ $meta[1] }}@endif @if(!empty($meta[2])) ({{ $meta[2] }})@endif
         </option>
     @endforeach
 

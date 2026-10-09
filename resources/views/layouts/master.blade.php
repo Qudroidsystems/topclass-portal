@@ -1159,7 +1159,7 @@
                                     <li class="nav-item"><a href="{{ route('reports.analysis.school-wide') }}" class="nav-link">School-Wide Analysis</a></li>
                                     @can('View financial audit')@if(Route::has('finance.audit.dashboard'))
                                     <li class="nav-item"><a href="{{ route('finance.audit.dashboard') }}" class="nav-link">Financial Audit</a></li>
-                                    @endif@endcan
+                                    @endif @endcan
                                 </ul>
                             </div>
                         </li>

@@ -7,7 +7,7 @@
     <x-cb.hero title="Certificate {{ $certificate->serial }}" icon="ri-award-fill" subtitle="{{ trim(($certificate->student->firstname ?? '').' '.($certificate->student->lastname ?? '')) }} · {{ $t->name ?? '' }}" :back="route('certificates.index')" back-label="Certificates">
         <x-slot name="actions">
             @can('Generate certificates')<a href="{{ route('certificates.print', $certificate) }}" class="action-btn btn-primary-cb"><i class="ri-printer-line"></i>Print</a>@endcan
-            @can('Approve certificates')@if($certificate->status==='draft')<form method="POST" action="{{ route('certificates.approve', $certificate) }}" class="d-inline">@csrf<button class="action-btn btn-go"><i class="ri-check-double-line"></i>Approve</button></form>@endif@endcan
+            @can('Approve certificates')@if($certificate->status==='draft')<form method="POST" action="{{ route('certificates.approve', $certificate) }}" class="d-inline">@csrf<button class="action-btn btn-go"><i class="ri-check-double-line"></i>Approve</button></form>@endif @endcan
             <a href="{{ route('certificates.verify', ['token'=>$certificate->verify_token]) }}" target="_blank" class="action-btn btn-go"><i class="ri-qr-code-line"></i>Verify page</a>
         </x-slot>
     </x-cb.hero>

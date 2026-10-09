@@ -42,7 +42,7 @@
                     @endforeach
                 </select>
                 <div class="small text-muted">Text fields drop as «Label»; image fields (photo, logo, QR) drop as a placeholder box that fills at generation.</div>
-                <div class="small text-muted mt-2">Tip: inside any text you can also type inline tokens like <code>{{'{{'}}student.name{{'}}'}}</code> or <code>{{'{{'}}testimonial.conduct{{'}}'}}</code> — great for testimonial letters.</div>
+                <div class="small text-muted mt-2">Tip: inside any text you can also type inline tokens like <code>@{{student.name}}</code> or <code>@{{testimonial.conduct}}</code> — great for testimonial letters.</div>
             </div></div>
 
             <div class="card mt-3"><div class="card-body">
