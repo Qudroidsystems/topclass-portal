@@ -15,7 +15,7 @@
     <x-cb.hero title="Who's Away" icon="ri-team-line" subtitle="A single view of every approved absence — staff and students — for today and across the month.">
         <x-slot name="actions">
             @can('View leave records')<a href="{{ route('leave.records') }}" class="action-btn btn-go"><i class="ri-briefcase-line"></i>Staff records</a>@endcan
-            @can('View student leave records')@if(Route::has('student-leave.records'))<a href="{{ route('student-leave.records') }}" class="action-btn btn-go"><i class="ri-user-line"></i>Student records</a>@endif@endcan
+            @can('View student leave records')@if(Route::has('student-leave.records'))<a href="{{ route('student-leave.records') }}" class="action-btn btn-go"><i class="ri-user-line"></i>Student records</a>@endif @endcan
         </x-slot>
     </x-cb.hero>
 

@@ -50,7 +50,7 @@
                         <td class="text-end">
                             @can('Generate certificates')<a href="{{ route('certificates.print', $c) }}" class="action-btn btn-open" title="Print"><i class="ri-printer-line"></i></a>@endcan
                             <a href="{{ route('certificates.show', $c) }}" class="action-btn btn-open" title="Details"><i class="ri-eye-line"></i></a>
-                            @can('Approve certificates')@if($c->status==='draft')<form method="POST" action="{{ route('certificates.approve', $c) }}" class="d-inline">@csrf<button class="action-btn btn-open" title="Approve"><i class="ri-check-double-line"></i></button></form>@endif@endcan
+                            @can('Approve certificates')@if($c->status==='draft')<form method="POST" action="{{ route('certificates.approve', $c) }}" class="d-inline">@csrf<button class="action-btn btn-open" title="Approve"><i class="ri-check-double-line"></i></button></form>@endif @endcan
                             <a href="{{ route('certificates.verify', ['token'=>$c->verify_token]) }}" target="_blank" class="action-btn btn-open" title="Verify page"><i class="ri-qr-code-line"></i></a>
                         </td>
                     </tr>
