@@ -15,6 +15,7 @@ use App\Models\Student;
 use App\Models\Studentclass;
 use App\Models\StudentCurrentTerm;
 use App\Services\PromotionEvaluator;
+use App\Services\StudentExitService;
 use Throwable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -102,6 +103,10 @@ class PromotionController extends Controller
                     ->leftJoin('schoolarm',           'schoolarm.id',             '=', 'schoolclass.arm')
                     ->leftJoin('schoolsession',       'schoolsession.id',         '=', 'studentclass.sessionid');
 
+                // Students who have left the school drop out from the term
+                // they left onwards (they still show for earlier terms).
+                StudentExitService::excludeLeavers($query, $sessionId, $termId);
+
                 if ($search = $request->input('search')) {
                     $query->where(function ($q) use ($search) {
                         $q->where('studentRegistration.admissionNo', 'like', "%{$search}%")
@@ -112,6 +117,8 @@ class PromotionController extends Controller
                 }
 
                 $allstudents = $query->select([
+                    'studentRegistration.student_status as student_status',
+                    'studentRegistration.exit_date      as exit_date',
                     'studentRegistration.id           as stid',
                     'studentRegistration.admissionNo  as admissionno',
                     'studentRegistration.firstname    as firstname',
@@ -513,6 +520,14 @@ class PromotionController extends Controller
             default                            => 'PARENTS_TO_SEE_PRINCIPAL',
         };
 
+        $leftAs = $this->exitStatusOf((int) $studentId);
+        if ($leftAs) {
+            return response()->json([
+                'success' => false,
+                'message' => "This student is marked as {$leftAs}. Reactivate them from Former Students before promoting.",
+            ], 422);
+        }
+
         try {
             $newClassId   = $request->new_schoolclassid;
             $newSessionId = $request->new_sessionid;
@@ -622,7 +637,13 @@ class PromotionController extends Controller
             3 => $this->buildClassPositions($request->new_schoolclassid, $request->new_sessionid, 3, 'total'),
         ];
 
+        $leaverCount = 0;
+
         foreach ($request->student_ids as $studentId) {
+            if ($this->exitStatusOf((int) $studentId)) {
+                $leaverCount++;
+                continue;
+            }
             try {
                 DB::transaction(function () use ($studentId, $request, $promotionStatus, $classPositionsByTerm) {
                     $this->applyPromotionDecision(
@@ -647,9 +668,11 @@ class PromotionController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => "{$successCount} students promoted successfully. {$failCount} failed.",
+            'message'       => "{$successCount} students promoted successfully. {$failCount} failed."
+                . ($leaverCount ? " {$leaverCount} skipped because they have left the school." : ''),
             'success_count' => $successCount,
             'fail_count'    => $failCount,
+            'leaver_count'  => $leaverCount,
         ]);
     }
 
@@ -690,7 +713,13 @@ class PromotionController extends Controller
         // once, not per student.
         $classPositions = $this->buildClassPositions($schoolclassId, $sessionId, $newTermId, 'total');
 
+        $leaverCount = 0;
+
         foreach ($request->student_ids as $studentId) {
+            if ($this->exitStatusOf((int) $studentId)) {
+                $leaverCount++;
+                continue;
+            }
             try {
                 DB::transaction(function () use (
                     $studentId, $schoolclassId, $sessionId, $newTermId, $classPositions
@@ -761,7 +790,8 @@ class PromotionController extends Controller
 
         return response()->json([
             'success'       => true,
-            'message'       => "{$successCount} student(s) advanced to Term {$newTermId}. {$failCount} failed.",
+            'message'       => "{$successCount} student(s) advanced to Term {$newTermId}. {$failCount} failed."
+                . ($leaverCount ? " {$leaverCount} skipped because they have left the school." : ''),
             'success_count' => $successCount,
             'fail_count'    => $failCount,
         ]);
@@ -770,6 +800,14 @@ class PromotionController extends Controller
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
+
+    /** The student's leaving status (Left, Transferred, ...) or null if still in school. */
+    private function exitStatusOf(int $studentId): ?string
+    {
+        $status = DB::table('studentRegistration')->where('id', $studentId)->value('student_status');
+
+        return Student::isExitStatus($status) ? $status : null;
+    }
 
     /**
      * Writes the Studentclass enrolment + PromotionStatus decision for a

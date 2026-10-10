@@ -610,6 +610,7 @@
                                 <ul class="nav nav-sm flex-column">
                                     @can('View student')
                                         <li class="nav-item"><a href="{{ route('student.index') }}" class="nav-link">All Students</a></li>
+                                        <li class="nav-item"><a href="{{ route('students.former') }}" class="nav-link">Former Students</a></li>
                                     @endcan
                                     @can('Create student-bulk-upload')
                                         <li class="nav-item"><a href="{{ route('studentbatchindex') }}" class="nav-link">Batch Student Registration</a></li>

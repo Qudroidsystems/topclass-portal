@@ -765,6 +765,12 @@
                 <button type="button" class="btn pm-btn pm-btn-primary pm-btn-sm" id="bulkPromoteActionBtn" onclick="openBulkPromoteModal()">
                     <i class="ri-user-shared-line"></i>Bulk Promote
                 </button>
+                <button type="button" class="btn pm-btn pm-btn-outline pm-btn-sm text-danger" onclick="openStudentExitModal(
+                            Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value),
+                            () => { clearSelection(); filterData(); })"
+                        title="Record that the selected students have left the school">
+                    <i class="ri-door-open-line"></i>Mark as Left
+                </button>
                 <button type="button" class="btn pm-btn pm-btn-ghost pm-btn-sm" onclick="clearSelection()">Clear</button>
             </div>
 
@@ -1042,6 +1048,8 @@
         </div>
     </div>
 </div>
+
+@include('student.partials.exit-modal')
 
 <div id="loadingOverlay" class="loading-overlay" style="display:none;">
     <div class="loading-spinner">

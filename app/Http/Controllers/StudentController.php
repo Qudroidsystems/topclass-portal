@@ -185,7 +185,7 @@ class StudentController extends Controller
             if ($status !== 'all' && !empty($status)) {
                 if (in_array($status, ['1', '2'])) {
                     $idQuery->where('studentRegistration.statusId', $status);
-                } elseif (in_array($status, ['Active', 'Inactive'])) {
+                } elseif (in_array($status, array_merge(['Active', 'Inactive'], Student::EXIT_STATUSES), true)) {
                     $idQuery->where('studentRegistration.student_status', $status);
                 }
             }
@@ -916,7 +916,8 @@ public function update(Request $request, $id): JsonResponse
             'termid'             => 'required|exists:schoolterm,id',
             'sessionid'          => 'required|exists:schoolsession,id',
             'statusId'           => 'required|in:1,2',
-            'student_status'     => 'required|in:Active,Inactive',
+            // Not required: a former student's edit form has no Active/Inactive choice.
+            'student_status'     => 'nullable|in:Active,Inactive',
             'father_title'       => 'nullable|in:Mr,Dr,Prof',
             'mother_title'       => 'nullable|in:Mrs,Dr,Prof',
             'father_name'        => 'nullable|string|max:255',
@@ -1014,43 +1015,51 @@ public function update(Request $request, $id): JsonResponse
         $student->home_address2      = $request->permanent_address;
         $student->student_category   = $request->student_category;
         $student->statusId           = $request->statusId;
-        $student->student_status     = $request->student_status;
+        // A student who has left keeps that status here; bringing them back
+        // goes through Former Students > Reactivate, which also restores their
+        // class enrolments.
+        $isLeaver = Student::isExitStatus($student->student_status);
+        if (!$isLeaver && $request->filled('student_status')) {
+            $student->student_status = $request->student_status;
+        }
         $student->last_school        = $request->last_school;
         $student->last_class         = $request->last_class;
         $student->reason_for_leaving = $request->reason_for_leaving;
         $student->registeredBy       = auth()->user()->id;
         $student->save();
 
-        // 2. Studentclass
-        $existingClass = Studentclass::where('studentId', $id)
-            ->where('termid',    $request->termid)
-            ->where('sessionid', $request->sessionid)
-            ->first();
+        // 2. Studentclass (not re-created for a student who has left)
+        if (!$isLeaver) {
+            $existingClass = Studentclass::where('studentId', $id)
+                ->where('termid',    $request->termid)
+                ->where('sessionid', $request->sessionid)
+                ->first();
 
-        if ($existingClass) {
-            $existingClass->update(['schoolclassid' => $request->schoolclassid]);
-        } else {
-            Studentclass::create([
-                'studentId'     => $id,
-                'schoolclassid' => $request->schoolclassid,
-                'termid'        => $request->termid,
-                'sessionid'     => $request->sessionid,
-            ]);
+            if ($existingClass) {
+                $existingClass->update(['schoolclassid' => $request->schoolclassid]);
+            } else {
+                Studentclass::create([
+                    'studentId'     => $id,
+                    'schoolclassid' => $request->schoolclassid,
+                    'termid'        => $request->termid,
+                    'sessionid'     => $request->sessionid,
+                ]);
+            }
+
+            // 3. PromotionStatus
+            PromotionStatus::updateOrCreate(
+                [
+                    'studentId'     => $id,
+                    'schoolclassid' => $request->schoolclassid,
+                    'termid'        => $request->termid,
+                    'sessionid'     => $request->sessionid,
+                ],
+                [
+                    'promotionStatus' => 'PROMOTED',
+                    'classstatus'     => 'CURRENT',
+                ]
+            );
         }
-
-        // 3. PromotionStatus
-        PromotionStatus::updateOrCreate(
-            [
-                'studentId'     => $id,
-                'schoolclassid' => $request->schoolclassid,
-                'termid'        => $request->termid,
-                'sessionid'     => $request->sessionid,
-            ],
-            [
-                'promotionStatus' => 'PROMOTED',
-                'classstatus'     => 'CURRENT',
-            ]
-        );
 
         // 4. Parent
         $parent = ParentRegistration::firstOrNew(['studentId' => $id]);
@@ -1131,34 +1140,36 @@ public function update(Request $request, $id): JsonResponse
 
         // 8. StudentCurrentTerm - FIXED
         // First, check if there's already a record for this specific combination
-        $existingTerm = StudentCurrentTerm::where('studentId', $id)
-            ->where('termId', $request->termid)
-            ->where('sessionId', $request->sessionid)
-            ->first();
+        if (!$isLeaver) {
+            $existingTerm = StudentCurrentTerm::where('studentId', $id)
+                ->where('termId', $request->termid)
+                ->where('sessionId', $request->sessionid)
+                ->first();
 
-        if ($existingTerm) {
-            // Update existing record
-            $existingTerm->update([
-                'schoolclassId' => $request->schoolclassid,
-                'is_current'    => true
-            ]);
+            if ($existingTerm) {
+                // Update existing record
+                $existingTerm->update([
+                    'schoolclassId' => $request->schoolclassid,
+                    'is_current'    => true
+                ]);
 
-            // Set all other term records for this student to is_current = false
-            StudentCurrentTerm::where('studentId', $id)
-                ->where('id', '!=', $existingTerm->id)
-                ->update(['is_current' => false]);
-        } else {
-            // Create new record - first, set all existing to false
-            StudentCurrentTerm::where('studentId', $id)->update(['is_current' => false]);
+                // Set all other term records for this student to is_current = false
+                StudentCurrentTerm::where('studentId', $id)
+                    ->where('id', '!=', $existingTerm->id)
+                    ->update(['is_current' => false]);
+            } else {
+                // Create new record - first, set all existing to false
+                StudentCurrentTerm::where('studentId', $id)->update(['is_current' => false]);
 
-            // Then create the new record
-            StudentCurrentTerm::create([
-                'studentId'     => $id,
-                'schoolclassId' => $request->schoolclassid,
-                'termId'        => $request->termid,
-                'sessionId'     => $request->sessionid,
-                'is_current'    => true,
-            ]);
+                // Then create the new record
+                StudentCurrentTerm::create([
+                    'studentId'     => $id,
+                    'schoolclassId' => $request->schoolclassid,
+                    'termId'        => $request->termid,
+                    'sessionId'     => $request->sessionid,
+                    'is_current'    => true,
+                ]);
+            }
         }
 
         DB::commit();

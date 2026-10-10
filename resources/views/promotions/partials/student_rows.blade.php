@@ -39,7 +39,14 @@
                         {{ strtoupper(substr($student->firstname, 0, 1)) }}
                     </span>
                 @endif
-                <span>{{ $student->lastname }}, {{ $student->firstname }} {{ $student->othername ?? '' }}</span>
+                <span>{{ $student->lastname }}, {{ $student->firstname }} {{ $student->othername ?? '' }}
+                    @if (\App\Models\Student::isExitStatus($student->student_status ?? null))
+                        {{-- Still listed here because this term is before they left. --}}
+                        <span class="badge bg-danger-subtle text-danger ms-1" title="Left the school{{ $student->exit_date ? ' on ' . $student->exit_date : '' }}">
+                            {{ $student->student_status }}
+                        </span>
+                    @endif
+                </span>
             </div>
         </td>
 

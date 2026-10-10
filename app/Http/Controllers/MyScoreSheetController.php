@@ -22,6 +22,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Services\StudentExitService;
+
 
 class MyScoreSheetController extends Controller
 {
@@ -201,6 +203,9 @@ class MyScoreSheetController extends Controller
             ->leftJoin('schoolterm', 'schoolterm.id', '=', 'broadsheets.term_id')
             ->leftJoin('schoolsession', 'schoolsession.id', '=', 'broadsheet_records.session_id')
             ->where('broadsheet_records.session_id', $sessionId);
+
+        // No score entry for students who left the school before this term.
+        StudentExitService::excludeLeavers($query, (int) $sessionId, (int) $termId);
 
         if ($schoolClassId) {
             $query->where('schoolclass.id', $schoolClassId);
