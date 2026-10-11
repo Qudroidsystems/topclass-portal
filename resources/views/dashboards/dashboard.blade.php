@@ -574,6 +574,105 @@
 </div>
 
 {{-- ═══════════════════════════════════════════════════════
+     FORMER STUDENTS — Left / Transferred / Graduated / Expelled
+═══════════════════════════════════════════════════════════ --}}
+@if($leavers['available'] ?? false)
+@php
+    $lvColors = ['Left'=>'#dc2626','Transferred'=>'#d97706','Graduated'=>'#059669','Expelled'=>'#7c3aed'];
+    $lvFormer = Route::has('students.former');
+@endphp
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="section" style="animation-delay:.08s;">
+            <div class="section-hd">
+                <div>
+                    <div class="section-title">Former Students</div>
+                    <div class="section-sub">
+                        Students who have left the school · counts for {{ $selectedTerm?->term ?? '—' }}, {{ $selectedSession?->session ?? '—' }} use the term they stopped attending from
+                    </div>
+                </div>
+                @if($lvFormer)
+                <a class="pill-btn" href="{{ route('students.former', ['session_id' => $selectedSession?->id]) }}">View all →</a>
+                @endif
+            </div>
+            <div class="section-bd">
+                <div class="kpi-grid mb-3">
+                    <div class="kpi">
+                        <div class="kpi-l">All time</div>
+                        <div class="kpi-v">{{ number_format($leavers['total']) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-l">Left in {{ $selectedSession?->session ?? 'session' }}</div>
+                        <div class="kpi-v" style="color:#dc2626;">{{ number_format($leavers['in_session']) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-l">Left from {{ $selectedTerm?->term ?? 'term' }}</div>
+                        <div class="kpi-v" style="color:#dc2626;">{{ number_format($leavers['in_term']) }}</div>
+                    </div>
+                    @foreach($leavers['by_status'] as $lvStatus => $lvCount)
+                    <div class="kpi">
+                        <div class="kpi-l">{{ $lvStatus }}</div>
+                        <div class="kpi-v" style="color:{{ $lvColors[$lvStatus] ?? 'inherit' }};">{{ number_format($lvCount) }}</div>
+                        <div style="font-size:10.5px;color:var(--c-muted);">{{ $leavers['session_by_status'][$lvStatus] ?? 0 }} in {{ $selectedSession?->session ?? 'session' }}</div>
+                    </div>
+                    @endforeach
+                </div>
+
+                @if(count($leavers['list']))
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" style="font-size:12.5px;">
+                        <thead>
+                            <tr style="color:var(--c-muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;">
+                                <th>Student</th>
+                                <th>Admission No</th>
+                                <th>Status</th>
+                                <th>Last class</th>
+                                <th>Arm</th>
+                                <th>Left from</th>
+                                <th>Date</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($leavers['list'] as $lv)
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if(!empty($lv['picture']) && $lv['picture'] !== 'unnamed.jpg')
+                                        <img src="{{ asset('storage/student_avatars/'.$lv['picture']) }}" class="av" style="width:26px;height:26px;">
+                                        @else
+                                        <div class="av" style="width:26px;height:26px;font-size:10px;">{{ strtoupper(substr($lv['firstname'] ?? '',0,1).substr($lv['lastname'] ?? '',0,1)) }}</div>
+                                        @endif
+                                        <span>{{ $lv['lastname'] }}, {{ $lv['firstname'] }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ $lv['admissionno'] }}</td>
+                                <td>
+                                    <span style="background:{{ $lvColors[$lv['status']] ?? '#64748b' }}1a;color:{{ $lvColors[$lv['status']] ?? '#64748b' }};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">{{ $lv['status'] }}</span>
+                                </td>
+                                <td>{{ $lv['class_name'] ?? '—' }}</td>
+                                <td>{{ $lv['arm'] ?: '—' }}</td>
+                                <td>{{ $lv['term'] ?? '—' }} · {{ $lv['session'] ?? '—' }}</td>
+                                <td>{{ $lv['exit_date'] ? \Illuminate\Support\Carbon::parse($lv['exit_date'])->format('d M Y') : '—' }}</td>
+                                <td style="max-width:240px;">
+                                    {{ \Illuminate\Support\Str::limit($lv['exit_reason'] ?? '', 60) ?: '—' }}
+                                    @if(!empty($lv['exit_destination']))<div style="font-size:11px;color:var(--c-muted);">To: {{ $lv['exit_destination'] }}</div>@endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div style="font-size:12.5px;color:var(--c-muted);">No students left the school in {{ $selectedSession?->session ?? 'this session' }}.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════
      ROW 2 — ACADEMIC PERFORMANCE + GRADE DISTRIBUTION
 ═══════════════════════════════════════════════════════════ --}}
 <div class="row g-3 mb-4">
