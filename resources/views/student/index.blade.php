@@ -1300,6 +1300,10 @@ use Spatie\Permission\Models\Role;
                                         <option value="2">New Students</option>
                                         <option value="Active">Active</option>
                                         <option value="Inactive">Inactive</option>
+                                        <option value="Left">Left</option>
+                                        <option value="Transferred">Transferred</option>
+                                        <option value="Graduated">Graduated</option>
+                                        <option value="Expelled">Expelled</option>
                                     </select>
                                 </div>
                             </div>
@@ -4096,7 +4100,15 @@ use Spatie\Permission\Models\Role;
                 document.getElementById('editStatusNew').checked = true;
             }
 
-            // Activity Status
+            // Activity Status. A former student (Left, Transferred, ...) has
+            // neither option; they are reactivated from Former Students.
+            const isFormer = ['Left','Transferred','Graduated','Expelled'].includes(student.student_status);
+            ['editStatusActive','editStatusInactive'].forEach(id => {
+                const r = document.getElementById(id);
+                r.checked = false;
+                r.required = !isFormer;
+                r.disabled = isFormer;
+            });
             if (student.student_status === 'Active') {
                 document.getElementById('editStatusActive').checked = true;
             } else if (student.student_status === 'Inactive') {
@@ -4691,7 +4703,9 @@ use Spatie\Permission\Models\Role;
                 // Status badge
                 const statusBadge = student.student_status === 'Active'
                     ? '<span class="badge bg-success bg-gradient px-2 py-1 rounded-pill"><span class="status-dot active"></span>Active</span>'
-                    : '<span class="badge bg-secondary bg-gradient px-2 py-1 rounded-pill"><span class="status-dot inactive"></span>Inactive</span>';
+                    : ['Left','Transferred','Graduated','Expelled'].includes(student.student_status)
+                        ? `<span class="badge bg-danger bg-gradient px-2 py-1 rounded-pill">${student.student_status}</span>`
+                        : '<span class="badge bg-secondary bg-gradient px-2 py-1 rounded-pill"><span class="status-dot inactive"></span>Inactive</span>';
 
                 // Type badge (New/Old)
                 const typeBadge = student.statusId == 2
@@ -4889,6 +4903,10 @@ use Spatie\Permission\Models\Role;
             } else if (student.student_status === 'Inactive') {
                 badges += `<span class="status-badge status-inactive">
                             <i class="fas fa-pause-circle"></i> Inactive
+                        </span>`;
+            } else if (['Left','Transferred','Graduated','Expelled'].includes(student.student_status)) {
+                badges += `<span class="status-badge status-inactive text-danger">
+                            <i class="fas fa-door-open"></i> ${student.student_status}
                         </span>`;
             }
 

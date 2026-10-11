@@ -18,6 +18,16 @@ class Student extends Model
 
     protected $table = 'studentRegistration';
 
+    // Statuses meaning the student is no longer in the school. A student with
+    // one of these is dropped from class lists, promotion and score entry from
+    // their exit session/term onwards (see StudentExitService).
+    public const EXIT_STATUSES = ['Left', 'Transferred', 'Graduated', 'Expelled'];
+
+    public static function isExitStatus(?string $status): bool
+    {
+        return in_array($status, self::EXIT_STATUSES, true);
+    }
+
     protected $fillable = [
         'userid', 'title', 'firstname', 'lastname', 'othername',
         'nationality', 'gender', 'phone_number', 'future_ambition',
@@ -34,6 +44,8 @@ class Student extends Model
         'emergency_contact_name',
         'emergency_contact_phone',
         'allergies_medical_conditions',
+        'exit_date', 'exit_reason', 'exit_destination', 'exit_session_id',
+        'exit_term_id', 'exit_class_id', 'exit_recorded_by',
     ];
 
     protected $casts = [

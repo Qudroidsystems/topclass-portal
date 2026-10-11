@@ -71,6 +71,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StaffImageUploadController;
 use App\Http\Controllers\StudentAssessmentController;
 use App\Http\Controllers\StudentClassOperationsController;
+use App\Http\Controllers\StudentExitController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentHouseController;
 use App\Http\Controllers\StudentIdCardController;
@@ -414,6 +415,10 @@ Route::group(['middleware' => ['auth']], function () {
     });
 
     // Class & term operations
+    Route::get('students/former', [StudentExitController::class, 'index'])->name('students.former');
+    Route::post('students/exit', [StudentExitController::class, 'store'])->name('students.exit');
+    Route::post('students/{studentId}/reactivate', [StudentExitController::class, 'reactivate'])->name('students.reactivate');
+    Route::get('students/{studentId}/status-history', [StudentExitController::class, 'history'])->name('students.status-history');
     Route::get('student/class-operations', [StudentClassOperationsController::class, 'index'])->name('student.class-operations');
 
     Route::get('students-in-term', [StudentClassOperationsController::class, 'getStudentsInTerm'])->name('students.in-term');
