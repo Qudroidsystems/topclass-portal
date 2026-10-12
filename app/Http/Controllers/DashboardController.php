@@ -485,6 +485,11 @@ class DashboardController extends Controller
         // ============================================================
         $best_explorer = $this->bestStudentsExplorer($request, $selectedTerm, $selectedSession);
 
+        // ============================================================
+        // FORMER STUDENTS (Left / Transferred / Graduated / Expelled)
+        // ============================================================
+        $leavers = $this->getLeaverStats($selectedTerm, $selectedSession);
+
         return view('dashboards.dashboard', compact(
             'pagetitle', 'best_explorer',
             // Selectors
@@ -517,8 +522,95 @@ class DashboardController extends Controller
             'total_exams', 'upcoming_exams', 'completed_exams',
             // Misc
             'recent_activities', 'yearly_trends',
-            'class_teachers'
+            'class_teachers',
+            // Former students
+            'leavers'
         ));
+    }
+
+    /**
+     * Counts and list of students who have left the school. "In session" /
+     * "in term" use the session and term they stopped attending from.
+     * Best-effort: before the leaver migration has run (or on any error) the
+     * dashboard still renders with an empty panel.
+     */
+    private function getLeaverStats(?Schoolterm $term, ?Schoolsession $session): array
+    {
+        $empty = [
+            'available' => false, 'total' => 0, 'by_status' => [], 'in_session' => 0,
+            'in_term' => 0, 'session_by_status' => [], 'list' => [],
+        ];
+
+        try {
+            if (!Schema::hasColumn('studentRegistration', 'exit_session_id')) {
+                return $empty;
+            }
+
+            $base = fn () => DB::table('studentRegistration')
+                ->whereIn('studentRegistration.student_status', Student::EXIT_STATUSES);
+
+            $byStatus = $base()->groupBy('student_status')
+                ->selectRaw('student_status, COUNT(*) as cnt')
+                ->pluck('cnt', 'student_status')->map(fn ($c) => (int) $c)->toArray();
+            $byStatus = collect(Student::EXIT_STATUSES)->mapWithKeys(fn ($st) => [$st => $byStatus[$st] ?? 0])->toArray();
+
+            $sessionByStatus = [];
+            $inSession = $inTerm = 0;
+            $list = [];
+
+            if ($session) {
+                $sessionByStatus = $base()->where('exit_session_id', $session->id)
+                    ->groupBy('student_status')
+                    ->selectRaw('student_status, COUNT(*) as cnt')
+                    ->pluck('cnt', 'student_status')->map(fn ($c) => (int) $c)->toArray();
+                $inSession = array_sum($sessionByStatus);
+                $inTerm    = $term
+                    ? $base()->where('exit_session_id', $session->id)->where('exit_term_id', $term->id)->count()
+                    : 0;
+
+                $list = $base()
+                    ->where('studentRegistration.exit_session_id', $session->id)
+                    ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
+                    ->leftJoin('schoolclass', 'schoolclass.id', '=', 'studentRegistration.exit_class_id')
+                    ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+                    ->leftJoin('schoolsession', 'schoolsession.id', '=', 'studentRegistration.exit_session_id')
+                    ->leftJoin('schoolterm', 'schoolterm.id', '=', 'studentRegistration.exit_term_id')
+                    ->orderByDesc('studentRegistration.exit_term_id')
+                    ->orderByDesc('studentRegistration.exit_date')
+                    ->limit(15)
+                    ->get([
+                        'studentRegistration.id',
+                        'studentRegistration.admissionNo as admissionno',
+                        'studentRegistration.firstname',
+                        'studentRegistration.lastname',
+                        'studentRegistration.gender',
+                        'studentRegistration.student_status as status',
+                        'studentRegistration.exit_date',
+                        'studentRegistration.exit_reason',
+                        'studentRegistration.exit_destination',
+                        'studentpicture.picture',
+                        'schoolclass.schoolclass as class_name',
+                        'schoolarm.arm',
+                        'schoolsession.session',
+                        'schoolterm.term',
+                    ])
+                    ->map(fn ($r) => (array) $r)
+                    ->toArray();
+            }
+
+            return [
+                'available'         => true,
+                'total'             => array_sum($byStatus),
+                'by_status'         => $byStatus,
+                'in_session'        => $inSession,
+                'in_term'           => $inTerm,
+                'session_by_status' => $sessionByStatus,
+                'list'              => $list,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Dashboard leaver stats failed', ['error' => $e->getMessage()]);
+            return $empty;
+        }
     }
 
     // =========================================================================
