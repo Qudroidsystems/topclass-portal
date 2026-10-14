@@ -14,6 +14,42 @@
         <div class="container">@include('website.partials.app-promo')</div>
     </section>
 
+    @php
+        $features = collect();
+        try { $features = \App\Models\Website\WebsiteItem::where('kind', 'app_screen')->where('published', true)->orderBy('sort')->orderBy('id')->get(); } catch (\Throwable $e) {}
+    @endphp
+    @if($features->count())
+        <section class="section showcase">
+            <div class="container">
+                <div class="section-head center reveal">
+                    <span class="eyebrow">Take a look inside</span>
+                    <h2>The app, screen by screen</h2>
+                </div>
+                @foreach($features as $n => $f)
+                    @php $shots = collect($f->screens())->map(fn ($p) => \App\Services\Website\WebsiteContent::fileUrl($p)); @endphp
+                    <div class="show-row {{ $n % 2 ? 'flip' : '' }}">
+                        <div class="show-text reveal">
+                            <span class="show-pill">{{ $f->title }}</span>
+                            @if($f->body)<p>{{ $f->body }}</p>@endif
+                        </div>
+                        <div class="show-panel reveal d2 n{{ $shots->count() }}">
+                            @if($shots->count() >= 3)
+                                @include('website.partials.device', ['src' => $shots[1], 'alt' => $f->title, 'class' => 'side left'])
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                                @include('website.partials.device', ['src' => $shots[2], 'alt' => $f->title, 'class' => 'side right'])
+                            @elseif($shots->count() === 2)
+                                @include('website.partials.device', ['src' => $shots[1], 'alt' => $f->title, 'class' => 'behind'])
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                            @else
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     <section class="section soft">
         <div class="container">
             <div class="section-head center reveal">

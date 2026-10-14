@@ -374,3 +374,57 @@ p { margin: 0 0 1.1em; }
 .note { padding: 16px 20px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 10%, #fff); border: 1px solid color-mix(in srgb, var(--accent) 30%, #fff); color: var(--ink); }
 .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
 .empty i { font-size: 3rem; color: var(--line); display: block; margin-bottom: 10px; }
+
+/* ── Phone frames for real app screenshots (Admin › Website › App screens) ── */
+.device { position: relative; width: 250px; aspect-ratio: 9 / 19.5; border-radius: 44px; padding: 9px; flex: none;
+  background: linear-gradient(145deg, #2b2d31, #0c0d0f 45%, #1d1f23); box-shadow: 0 0 0 1.5px #4a4d53, 0 40px 70px -28px rgba(0,0,0,.55), 0 18px 30px -18px rgba(0,0,0,.35); }
+.device::after { content: ""; position: absolute; top: 19px; left: 50%; transform: translateX(-50%); width: 30%; height: 21px; border-radius: 20px; background: #050506; z-index: 2; box-shadow: inset 8px 0 0 -6px #1b2340; }
+.device-screen { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: #fff; }
+.device-screen img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+.device-btn { position: absolute; width: 3px; background: #2b2d31; border-radius: 2px; }
+.device-btn.l1 { left: -3px; top: 22%; height: 9%; } .device-btn.l2 { left: -3px; top: 33%; height: 9%; } .device-btn.r1 { right: -3px; top: 27%; height: 13%; }
+
+/* Home / promo: two phones, tilted and overlapping */
+.device-pair { position: relative; justify-self: center; width: min(430px, 100%); height: 560px; }
+.device-pair .device { position: absolute; width: 235px; }
+.device-pair .back { left: 0; top: 18px; transform: rotate(-9deg); z-index: 1; animation: float-a 7s ease-in-out infinite; }
+.device-pair .front { right: 0; top: 50px; transform: rotate(-3deg); z-index: 2; animation: float-b 7s ease-in-out infinite; }
+.device-pair.single .back { left: 50%; transform: translateX(-50%) rotate(-5deg); animation: none; }
+@keyframes float-a { 50% { transform: rotate(-9deg) translateY(-10px); } }
+@keyframes float-b { 50% { transform: rotate(-3deg) translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .device-pair .device { animation: none; } }
+@media (max-width: 900px) {
+  .device-pair { height: 470px; width: 340px; } .device-pair .device { width: 190px; }
+}
+
+/* Mobile app page: feature rows with phones on a soft panel, alternating sides */
+.showcase .show-row { display: grid; grid-template-columns: 1fr 1.35fr; gap: clamp(28px, 5vw, 70px); align-items: center; margin-top: clamp(40px, 6vw, 80px); }
+.showcase .show-row.flip .show-text { order: 2; }
+.showcase .show-pill { display: inline-block; background: color-mix(in srgb, var(--primary) 12%, #fff); color: var(--ink); font-family: var(--head);
+  font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 600; padding: 12px 28px; border-radius: 999px; margin-bottom: 22px; }
+.showcase .show-text p { font-size: 1.15rem; line-height: 1.7; color: var(--muted); max-width: 30ch; }
+.showcase .show-panel { position: relative; background: #f0f1f3; border-radius: 40px; height: 600px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; }
+.showcase .show-panel .device { position: absolute; width: 250px; }
+.showcase .show-panel .main { z-index: 3; transform: translateY(20px); }
+.showcase .show-panel .side { z-index: 1; width: 225px; top: 70px; }
+.showcase .show-panel .side.left { left: calc(50% - 125px - 190px); }
+.showcase .show-panel .side.right { right: calc(50% - 125px - 190px); }
+.showcase .show-panel.n2 .main { transform: translate(55px, 30px) rotate(2deg); }
+.showcase .show-panel .behind { z-index: 1; width: 235px; transform: translate(-95px, -25px) rotate(-6deg); }
+@media (max-width: 900px) {
+  .showcase .show-row, .showcase .show-row.flip { grid-template-columns: 1fr; }
+  .showcase .show-row.flip .show-text { order: 0; }
+  .showcase .show-text p { max-width: none; }
+  .showcase .show-panel { height: 470px; border-radius: 28px; }
+  .showcase .show-panel .device { width: 190px; } .showcase .show-panel .side { width: 170px; top: 60px; }
+  .showcase .show-panel .side.left { left: calc(50% - 95px - 130px); } .showcase .show-panel .side.right { right: calc(50% - 95px - 130px); }
+  .showcase .show-panel.n2 .main { transform: translate(40px, 20px) rotate(2deg); } .showcase .show-panel .behind { width: 180px; transform: translate(-70px, -20px) rotate(-6deg); }
+}
+@media (max-width: 520px) {
+  .device-pair { width: 100%; max-width: 300px; height: 400px; }
+  .device-pair .device { width: 158px; padding: 6px; border-radius: 30px; }
+  .device-pair .device-screen { border-radius: 25px; }
+  .device-pair .device::after { top: 13px; height: 15px; }
+  .device-pair .front { top: 40px; }
+}

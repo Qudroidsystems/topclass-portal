@@ -15,6 +15,7 @@
         ['website.admin.list', ['partners'], 'ri-shake-hands-line', 'Partners'],
         ['website.admin.messages', [], 'ri-mail-line', 'Messages'],
         ['website.admin.app', [], 'ri-smartphone-line', 'Mobile app'],
+        ['website.admin.list', ['appscreens'], 'ri-smartphone-line', 'App screens'],
     ];
     $unread = \Illuminate\Support\Facades\Schema::hasTable('website_messages') ? \App\Models\Website\WebsiteMessage::whereNull('read_at')->where('type', '!=', 'newsletter')->count() : 0;
 @endphp

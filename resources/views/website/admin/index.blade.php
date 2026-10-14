@@ -27,7 +27,7 @@
                         ['posts', 'News & events', 'ri-newspaper-line', $counts['posts']], [null, 'Gallery albums', 'ri-image-2-line', $counts['albums']],
                         ['people', 'Our people', 'ri-team-line', $counts['people']], ['testimonials', 'Testimonials', 'ri-chat-quote-line', $counts['testimonials']],
                         ['values', 'Core values', 'ri-medal-line', $counts['values']], ['highlights', 'Highlights', 'ri-star-smile-line', $counts['highlights']],
-                        ['faqs', 'FAQs', 'ri-question-answer-line', $counts['faqs']], ['partners', 'Partners', 'ri-shake-hands-line', $counts['partners']],
+                        ['faqs', 'FAQs', 'ri-question-answer-line', $counts['faqs']], ['partners', 'Partners', 'ri-shake-hands-line', $counts['partners']], ['appscreens', 'App screens', 'ri-smartphone-line', $counts['appscreens']],
                     ] as [$type, $label, $icon, $n])
                         <div class="col-sm-6">
                             <a href="{{ $type ? route('website.admin.list', $type) : route('website.admin.albums') }}" class="d-flex align-items-center gap-3 border rounded-3 p-3 text-reset h-100">

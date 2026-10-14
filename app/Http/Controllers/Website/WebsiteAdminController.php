@@ -96,6 +96,14 @@ class WebsiteAdminController extends Controller
                 ['title', 'Highlight', 'text', ['required' => true]], ['body', 'Short text', 'textarea'],
                 ['icon', 'Icon', 'icon'], ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
             ]),
+            'appscreens' => $item('app_screen', [
+                ['title', 'Feature (e.g. Results, Pay fees, Score entry)', 'text', ['required' => true]],
+                ['body', 'Description', 'textarea', ['hint' => 'One or two sentences shown beside the phones.']],
+                ['image', 'Main screenshot (front phone)', 'image', ['max' => 1400, 'required' => true, 'hint' => 'A phone screenshot, portrait. Use a demo account — no real student names or photos.']],
+                ['image2', 'Second screenshot (optional)', 'image', ['max' => 1400]],
+                ['image3', 'Third screenshot (optional)', 'image', ['max' => 1400]],
+                ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
+            ]),
             'partners' => $item('partner', [
                 ['title', 'Name', 'text', ['required' => true]], ['image', 'Logo', 'image', ['max' => 600, 'required' => true]],
                 ['link', 'Website (optional)', 'text'], ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
@@ -123,6 +131,7 @@ class WebsiteAdminController extends Controller
                 'values' => $count('website_items', fn ($q) => $q->where('kind', 'value')),
                 'highlights' => $count('website_items', fn ($q) => $q->where('kind', 'highlight')),
                 'partners' => $count('website_items', fn ($q) => $q->where('kind', 'partner')),
+                'appscreens' => $count('website_items', fn ($q) => $q->where('kind', 'app_screen')),
                 'unread' => $count('website_messages', fn ($q) => $q->whereNull('read_at')->where('type', '!=', 'newsletter')),
                 'admissions' => $count('website_messages', fn ($q) => $q->where('type', 'admission')),
                 'subscribers' => $count('website_messages', fn ($q) => $q->where('type', 'newsletter')),

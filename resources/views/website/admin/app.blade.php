@@ -29,6 +29,12 @@
                     <div class="form-text">Build it with <code>flutter build apk --release</code> and upload <code>app-release.apk</code>. Server upload limit: {{ $maxUpload }} — raise <code>upload_max_filesize</code> / <code>post_max_size</code> in PHP if the APK is larger.</div>
                     @if($apk)<div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="remove_apk" value="1" id="rapk"><label class="form-check-label small" for="rapk">Remove the APK</label></div>@endif
                 </x-cb.card>
+                <x-cb.card title="App screens" icon="ri-smartphone-line">
+                    @php $scr = \App\Models\Website\WebsiteItem::where('kind', 'app_screen')->count(); @endphp
+                    <p class="small text-muted mb-2">Screenshots of the app, shown in phone frames on the home page and the Mobile app page.
+                        {{ $scr ? $scr . ' feature' . ($scr === 1 ? '' : 's') . ' added.' : 'None yet — a drawn phone is shown instead.' }}</p>
+                    <a href="{{ route('website.admin.list', 'appscreens') }}" class="btn btn-sm btn-outline-primary"><i class="ri-image-add-line me-1"></i>Manage app screens</a>
+                </x-cb.card>
                 <button class="btn btn-primary w-100"><i class="ri-save-3-line me-1"></i>Save</button>
             </div>
         </div>
