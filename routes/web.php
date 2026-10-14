@@ -100,9 +100,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return redirect('/login');
-});
+// Public school website (content managed under Admin > Website)
+Route::get('/', [\App\Http\Controllers\Website\SiteController::class, 'home'])->name('site.home');
+require __DIR__ . '/website.php';
 
 Route::get('/test-sibling-data/{id}', function ($id) {
     $group = DB::table('sibling_groups')->where('id', $id)->first();
@@ -1538,6 +1538,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-payments/pay', [\App\Http\Controllers\Payment\OnlineFeeController::class, 'myFees'])->name('student.fees.pay');
     Route::get('/admin/maintenance', [\App\Http\Controllers\Admin\MaintenanceController::class, 'index'])->name('maintenance.settings');
     Route::post('/admin/maintenance', [\App\Http\Controllers\Admin\MaintenanceController::class, 'save'])->name('maintenance.save');
+
+    // Mobile app: AI learning & career guidance settings
+    Route::get('/admin/ai-guidance', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'index'])->name('ai-guidance.index');
+    Route::post('/admin/ai-guidance', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'save'])->name('ai-guidance.save');
+    Route::post('/admin/ai-guidance/reset', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'reset'])->name('ai-guidance.reset');
 });
 
 // Public: school calendar, certificate verification, fee webhooks

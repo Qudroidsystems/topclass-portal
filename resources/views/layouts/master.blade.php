@@ -1112,6 +1112,24 @@
                     @endif
                     @endcan
 
+                    @can('Manage website')
+                        <li class="nav-item">
+                            <a href="{{ route('website.admin.index') }}" class="nav-link">
+                                <i class="ri-global-line"></i> <span>Website</span>
+                                @php $wsUnread = 0; try { $wsUnread = \App\Models\Website\WebsiteMessage::whereNull('read_at')->where('type', '!=', 'newsletter')->count(); } catch (\Throwable $e) {} @endphp
+                                @if($wsUnread)<span class="badge bg-danger ms-1">{{ $wsUnread }}</span>@endif
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('Manage AI guidance')
+                        <li class="nav-item">
+                            <a href="{{ route('ai-guidance.index') }}" class="nav-link">
+                                <i class="ri-sparkling-2-line"></i> <span>AI Learning Guidance</span>
+                            </a>
+                        </li>
+                    @endcan
+
                     @can('Manage feature flags')
                         <li class="nav-item">
                             <a href="{{ route('feature-flags.index') }}" class="nav-link">

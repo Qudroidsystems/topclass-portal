@@ -49,3 +49,6 @@ Schedule::command('calendar:sync-fees')->dailyAt('06:30')->withoutOverlapping(30
 Schedule::command('calendar:reminders')->dailyAt('07:15')->withoutOverlapping(30);
 // Database backup: the command checks the admin's schedule and runs when due.
 Schedule::command('backup:run')->everyFifteenMinutes()->withoutOverlapping(30);
+
+// Mobile app: push "your lesson starts soon" to teachers (TIMETABLE_REMINDER_MINUTES before each period).
+Schedule::command('timetable:lesson-reminders')->everyMinute()->withoutOverlapping(5);

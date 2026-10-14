@@ -6,6 +6,12 @@ use Illuminate\Support\Facades\Route;
 | API routes (prefixed /api). Currently only the feature-flag endpoints used by the remote control portal.
 */
 
+// =========================================================================
+// Mobile app API v1 (Sanctum tokens) — see routes/api_v1.php
+// =========================================================================
+Route::prefix('v1')->name('api.v1.')->group(base_path('routes/api_v1.php'));
+
+// =========================================================================
 // Module feature flags — the remote control portal reads/sets 1/0 here.
 // Protected by the shared key (bearer) + HMAC signature on writes.
 // =========================================================================

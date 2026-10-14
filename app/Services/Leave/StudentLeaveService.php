@@ -133,7 +133,9 @@ class StudentLeaveService
     protected function notifyRequester(StudentLeaveRequest $req, string $title, string $body): void
     {
         $ids = [];
-        $studentUserId = DB::table('studentRegistration')->where('id', $req->student_id)->value('userid');
+        // A student's login is the users row whose student_id points at them
+        // (studentRegistration has no userid column on every install).
+        $studentUserId = DB::table('users')->where('student_id', $req->student_id)->value('id');
         if ($studentUserId) $ids[] = (int) $studentUserId;
         foreach (ParentAccountService::parentUserIds([(int) $req->student_id]) as $pid) $ids[] = (int) $pid;
         $this->notify(array_unique($ids), $title, $body, route('student-leave.mine'), 'sleave:done:' . $req->id . ':' . $req->status);
