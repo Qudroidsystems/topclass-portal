@@ -6112,7 +6112,19 @@ class TimetableController extends Controller
 
         foreach ($byTeacher as $teacherId => $teacherSlots) {
             $teacher = $teacherSlots->first()->teacher;
-            if (!$teacher || !$teacher->email) continue;
+            if (!$teacher) continue;
+
+            // Bell + mobile app push, even for teachers without an e-mail address.
+            $titles = ['daily_summary' => "Today's lessons", 'weekly_preview' => 'Your timetable', 'change_alert' => 'Timetable changed'];
+            \App\Services\Messaging\PortalNotifier::toUsers(
+                [(int) $teacherId],
+                ($titles[$type] ?? 'Timetable') . ' — ' . $this->getClassName($setting->schoolclass),
+                $teacherSlots->count() . ' lesson(s) for ' . $this->getClassName($setting->schoolclass)
+                    . ($type === 'change_alert' ? ' have changed.' : ' are on your timetable.') . ' Open the app to see your week.',
+                null, 'timetable', 'tt:' . $type . ':' . $setting->id . ':' . $teacherId . ':' . now()->format('YmdHi')
+            );
+
+            if (!$teacher->email) continue;
 
             $notifData = [
                 'teacher'         => $teacher->name,

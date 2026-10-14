@@ -24,6 +24,8 @@ class PortalNotifier
         'fees'     => 'ri-bill-line',
         'birthday' => 'ri-cake-2-line',
         'system'   => 'ri-notification-3-line',
+        'timetable'=> 'ri-calendar-schedule-line',
+        'approval' => 'ri-shield-check-line',
     ];
 
     public static function available(): bool
@@ -66,6 +68,10 @@ class PortalNotifier
                     'data' => $data, 'read_at' => null, 'created_at' => $now, 'updated_at' => $now,
                 ], $chunk));
             }
+
+            // The same message as a push to the mobile app (sent after the response).
+            \App\Services\Push\PushService::toUsers($userIds, $title, $body, ['type' => $type, 'url' => (string) $url, 'key' => (string) $key]);
+
             return count($userIds);
         } catch (\Throwable $e) {
             Log::warning('Portal notification failed', ['error' => $e->getMessage()]);

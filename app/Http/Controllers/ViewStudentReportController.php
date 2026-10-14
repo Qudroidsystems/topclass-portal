@@ -1014,6 +1014,43 @@ class ViewStudentReportController extends Controller
     // PDF EXPORTS
     // =========================================================================
 
+    /**
+     * One student's terminal report as PDF bytes (null when there is nothing
+     * to print). Same layout as "Export PDF"; used by the mobile app.
+     */
+    public function renderReportCardPdf(int $studentId, int $schoolclassid, int $sessionid, int $termid): ?string
+    {
+        @ini_set('memory_limit', '1024M');
+        if (!$this->calculateClassPositionsAndAverages($schoolclassid, $sessionid, $termid)) return null;
+
+        $data = $this->getStudentResultData($studentId, $schoolclassid, $sessionid, $termid);
+        if (empty($data) || empty($data['students']) || $data['students']->isEmpty()) return null;
+        $data['selected_columns'] = [];
+        $all = [$data];
+        $this->fixImagePaths($all);
+
+        $schoolclass = Schoolclass::where('id', $schoolclassid)->with(['arms', 'classcategories'])->first(['id', 'schoolclass', 'arm']);
+        $className = $schoolclass ? ($schoolclass->schoolclass . ($schoolclass->arms ? $schoolclass->arms->arm : '')) : 'Class';
+
+        // Same template as "Export class results" (one student).
+        return Pdf::loadView('studentreports.class_results_pdf', [
+            'allStudentData' => $all,
+            'metadata' => [
+                'class_name'       => $className,
+                'session'          => Schoolsession::where('id', $sessionid)->value('session') ?? 'N/A',
+                'term'             => $this->getTermName($termid),
+                'generation_date'  => now()->format('Y-m-d H:i:s'),
+                'student_count'    => 1,
+                'selected_columns' => [],
+                'grade_basis'      => 'total',
+            ],
+        ])->setPaper('A4', 'portrait')->setOptions([
+            'dpi' => 96, 'defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => true, 'isHtml5ParserEnabled' => true,
+            'isFontSubsettingEnabled' => true, 'isPhpEnabled' => false, 'chroot' => [public_path(), storage_path()],
+            'fontCache' => storage_path('fonts/'), 'logOutputFile' => storage_path('logs/dompdf.log'),
+        ])->output();
+    }
+
     public function exportStudentResultPdf($id, $schoolclassid, $sessionid, $termid)
     {
         try {

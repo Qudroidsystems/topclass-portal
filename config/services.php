@@ -52,4 +52,23 @@ return [
     'phone_number' => env('TWILIO_PHONE_NUMBER'),
 ],
 
+
+    // Push notifications to the Vite Schools mobile app (Firebase Cloud Messaging).
+    'fcm' => [
+        'enabled'     => env('FCM_ENABLED', true),
+        'credentials' => env('FCM_CREDENTIALS', storage_path('app/fcm-service-account.json')),
+        'project_id'  => env('FCM_PROJECT_ID'),
+    ],
+
+    // Lesson reminders pushed to teachers before each class.
+    'mobile' => [
+        // Show teachers' phone/e-mail to parents in the app's "Teachers" screen.
+        'share_teacher_contacts' => env('MOBILE_SHARE_TEACHER_CONTACTS', true),
+        // Show results, report cards, progress and guidance to parents/students in the app.
+        'parent_results' => env('MOBILE_PARENT_RESULTS', true),
+    ],
+
+    'timetable_reminders' => [
+        'minutes' => (int) env('TIMETABLE_REMINDER_MINUTES', 10),
+    ],
 ];
