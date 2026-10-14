@@ -1,6 +1,11 @@
 @php
     $s = fn ($k, $d = null) => (isset($site[$k]) && $site[$k] !== '') ? $site[$k] : $d;
     $hasApk = $s('app_apk') && \Illuminate\Support\Facades\Storage::disk('public')->exists($s('app_apk'));
+    $promoShots = collect();
+    try {
+        $promoShots = \App\Models\Website\WebsiteItem::where('kind', 'app_screen')->where('published', true)->orderBy('sort')->orderBy('id')->get()
+            ->flatMap(fn ($i) => collect($i->screens())->map(fn ($p) => [\App\Services\Website\WebsiteContent::fileUrl($p), $i->title]))->take(2)->values();
+    } catch (\Throwable $e) {}
 @endphp
 <div class="app-promo reveal">
     <div>
@@ -22,6 +27,13 @@
             <a class="btn btn-ghost" href="{{ route('site.app') }}">How to install</a>
         </div>
     </div>
+    @if($promoShots->count())
+        <div class="device-pair {{ $promoShots->count() === 1 ? 'single' : '' }}" aria-hidden="true">
+            @foreach($promoShots as $i => [$src, $alt])
+                @include('website.partials.device', ['src' => $src, 'alt' => $alt, 'class' => $i === 0 ? 'back' : 'front'])
+            @endforeach
+        </div>
+    @else
     <div class="phone" aria-hidden="true">
         <div class="screen">
             <div class="bar"><small>Good morning</small><b>{{ \Illuminate\Support\Str::limit($school->name, 22) }}</b></div>
@@ -33,4 +45,5 @@
             <div class="chart">@foreach([45, 60, 52, 70, 66, 82, 78] as $h)<span style="height:{{ $h }}%"></span>@endforeach</div>
         </div>
     </div>
+    @endif
 </div>

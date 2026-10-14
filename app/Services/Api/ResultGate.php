@@ -3,21 +3,18 @@
 namespace App\Services\Api;
 
 /**
- * Whether results may be shown in the mobile app — TopClass edition.
+ * Result hold check — TopClass edition.
  *
- * TopClass has no unpaid-fees result hold, so this only applies the school's
- * switch: MOBILE_PARENT_RESULTS=false hides results (and the report card,
- * progress chart and guidance built from them) from parents and students.
+ * TopClass has no unpaid-fees result hold, so every term is allowed here.
+ * Whether parents and students may see results at all is set by the admin
+ * under Admin → Result display (App\Services\Results\ResultDisplay::viewerMaySee);
+ * MOBILE_PARENT_RESULTS only provides that page's starting value.
  * Same shape as ResultAccessService::check() on other portals.
  */
 class ResultGate
 {
     public function check(int $studentId, int $termId, int $sessionId, bool $log = true): array
     {
-        if (!config('services.mobile.parent_results', true)) {
-            return ['allowed' => false, 'reason' => 'not_released',
-                    'message' => 'The school has not made results available in the app yet.', 'owed' => 0];
-        }
         return ['allowed' => true];
     }
 }

@@ -49,7 +49,7 @@
                 <tbody>
                 @forelse($rows as $r)
                     <tr>
-                        @if($image)<td>@if($r->{$image[0]})<img src="{{ $F($r->{$image[0]}) }}" style="width:64px;height:44px;object-fit:cover;border-radius:8px">@else<span class="d-inline-block bg-light rounded" style="width:64px;height:44px"></span>@endif</td>@endif
+                        @if($image)<td>@if($r->{$image[0]})<img src="{{ $F($r->{$image[0]}) }}" style="{{ $t['key'] === 'appscreens' ? 'width:34px;height:70px;object-position:top' : 'width:64px;height:44px' }};object-fit:cover;border-radius:8px">@else<span class="d-inline-block bg-light rounded" style="width:64px;height:44px"></span>@endif</td>@endif
                         <td><a href="{{ route('website.admin.edit', [$t['key'], $r->id]) }}" class="fw-semibold">{{ \Illuminate\Support\Str::limit($r->{$titleField}, 70) }}</a>
                             @if(isset($r->slug) && in_array($t['key'], ['pages', 'posts']))<div class="small text-muted">/{{ $t['key'] === 'pages' ? 'pages' : 'news' }}/{{ $r->slug }}</div>@endif</td>
                         <td class="small text-muted">

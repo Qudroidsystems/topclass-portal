@@ -25,7 +25,10 @@ class SiteController extends Controller
 {
     public function home()
     {
+        // "/" is the portal login unless this request came in on the website's own
+        // domain; /website previews the site before the domain is set up.
         if (!W::enabled()) return redirect('/login');
+        if (!request()->routeIs('site.preview') && !W::isWebsiteHost()) return redirect('/login');
 
         return view('website.home', [
             'slides'       => WebsiteSlide::where('published', true)->orderBy('sort')->orderBy('id')->get(),

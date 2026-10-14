@@ -1122,6 +1122,14 @@
                         </li>
                     @endcan
 
+                    @can('Manage result display')
+                        <li class="nav-item">
+                            <a href="{{ route('result-display.index') }}" class="nav-link">
+                                <i class="ri-layout-grid-line"></i> <span>Result Display</span>
+                            </a>
+                        </li>
+                    @endcan
+
                     @can('Manage AI guidance')
                         <li class="nav-item">
                             <a href="{{ route('ai-guidance.index') }}" class="nav-link">

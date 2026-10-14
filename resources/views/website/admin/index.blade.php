@@ -5,9 +5,9 @@
     <x-cb.hero title="Website" icon="ri-global-line" subtitle="Manage the school's public website: pages, news, gallery, admissions enquiries and the mobile-app download.">
         <x-slot:pills>
             <span class="cb-meta-pill"><span class="status-pill {{ $enabled ? 'st-paid' : 'st-danger' }}">{{ $enabled ? 'Website is live' : 'Website switched off' }}</span></span>
-            <span class="cb-meta-pill"><i class="ri-link"></i>{{ url('/') }}</span>
+            <span class="cb-meta-pill"><i class="ri-link"></i>{{ \App\Services\Website\WebsiteContent::websiteDomain() ?: 'Website domain not set — preview at /website-preview' }}</span>
         </x-slot:pills>
-        <x-slot:actions><a class="cb-hero-btn" href="{{ route('site.home') }}" target="_blank"><i class="ri-external-link-line me-1"></i>Open website</a></x-slot:actions>
+        <x-slot:actions><a class="cb-hero-btn" href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" target="_blank"><i class="ri-external-link-line me-1"></i>Open website</a></x-slot:actions>
     </x-cb.hero>
     @include('website.admin._nav')
 
@@ -27,7 +27,7 @@
                         ['posts', 'News & events', 'ri-newspaper-line', $counts['posts']], [null, 'Gallery albums', 'ri-image-2-line', $counts['albums']],
                         ['people', 'Our people', 'ri-team-line', $counts['people']], ['testimonials', 'Testimonials', 'ri-chat-quote-line', $counts['testimonials']],
                         ['values', 'Core values', 'ri-medal-line', $counts['values']], ['highlights', 'Highlights', 'ri-star-smile-line', $counts['highlights']],
-                        ['faqs', 'FAQs', 'ri-question-answer-line', $counts['faqs']], ['partners', 'Partners', 'ri-shake-hands-line', $counts['partners']],
+                        ['faqs', 'FAQs', 'ri-question-answer-line', $counts['faqs']], ['partners', 'Partners', 'ri-shake-hands-line', $counts['partners']], ['appscreens', 'App screens', 'ri-smartphone-line', $counts['appscreens']],
                     ] as [$type, $label, $icon, $n])
                         <div class="col-sm-6">
                             <a href="{{ $type ? route('website.admin.list', $type) : route('website.admin.albums') }}" class="d-flex align-items-center gap-3 border rounded-3 p-3 text-reset h-100">

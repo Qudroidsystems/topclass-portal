@@ -4,7 +4,7 @@
     $s = fn ($k, $d = null) => (isset($site[$k]) && $site[$k] !== '') ? $site[$k] : $d;
     $hasApk = $s('app_apk') && \Illuminate\Support\Facades\Storage::disk('public')->exists($s('app_apk'));
     $size = $hasApk ? round(\Illuminate\Support\Facades\Storage::disk('public')->size($s('app_apk')) / 1048576, 1) : null;
-    $portal = rtrim(url('/'), '/');
+    $portal = \App\Services\Website\WebsiteContent::portalUrl();
 @endphp
 
 @section('content')
@@ -13,6 +13,42 @@
     <section class="section">
         <div class="container">@include('website.partials.app-promo')</div>
     </section>
+
+    @php
+        $features = collect();
+        try { $features = \App\Models\Website\WebsiteItem::where('kind', 'app_screen')->where('published', true)->orderBy('sort')->orderBy('id')->get(); } catch (\Throwable $e) {}
+    @endphp
+    @if($features->count())
+        <section class="section showcase">
+            <div class="container">
+                <div class="section-head center reveal">
+                    <span class="eyebrow">Take a look inside</span>
+                    <h2>The app, screen by screen</h2>
+                </div>
+                @foreach($features as $n => $f)
+                    @php $shots = collect($f->screens())->map(fn ($p) => \App\Services\Website\WebsiteContent::fileUrl($p)); @endphp
+                    <div class="show-row {{ $n % 2 ? 'flip' : '' }}">
+                        <div class="show-text reveal">
+                            <span class="show-pill">{{ $f->title }}</span>
+                            @if($f->body)<p>{{ $f->body }}</p>@endif
+                        </div>
+                        <div class="show-panel reveal d2 n{{ $shots->count() }}">
+                            @if($shots->count() >= 3)
+                                @include('website.partials.device', ['src' => $shots[1], 'alt' => $f->title, 'class' => 'side left'])
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                                @include('website.partials.device', ['src' => $shots[2], 'alt' => $f->title, 'class' => 'side right'])
+                            @elseif($shots->count() === 2)
+                                @include('website.partials.device', ['src' => $shots[1], 'alt' => $f->title, 'class' => 'behind'])
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                            @else
+                                @include('website.partials.device', ['src' => $shots[0], 'alt' => $f->title, 'class' => 'main'])
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <section class="section soft">
         <div class="container">
@@ -57,7 +93,7 @@
                     @if($s('app_ios_url'))
                         <li><b>Open the App Store</b><br>Tap <a href="{{ $s('app_ios_url') }}" target="_blank" rel="noopener">Download on the App Store</a> and press <b>Get</b>.</li>
                     @else
-                        <li><b>Coming soon</b><br>The iPhone version is on its way. Meanwhile use the <a href="{{ url('/login') }}">web portal</a> in Safari — tap <b>Share › Add to Home Screen</b> for an app-like icon.</li>
+                        <li><b>Coming soon</b><br>The iPhone version is on its way. Meanwhile use the <a href="{{ \App\Services\Website\WebsiteContent::portalUrl('login') }}">web portal</a> in Safari — tap <b>Share › Add to Home Screen</b> for an app-like icon.</li>
                     @endif
                     <li><b>Connect &amp; sign in</b><br>Enter <code style="background:var(--soft);padding:2px 8px;border-radius:6px">{{ $portal }}</code> and sign in with your portal details.</li>
                 </ol>

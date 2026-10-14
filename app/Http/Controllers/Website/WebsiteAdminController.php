@@ -96,6 +96,14 @@ class WebsiteAdminController extends Controller
                 ['title', 'Highlight', 'text', ['required' => true]], ['body', 'Short text', 'textarea'],
                 ['icon', 'Icon', 'icon'], ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
             ]),
+            'appscreens' => $item('app_screen', [
+                ['title', 'Feature (e.g. Results, Pay fees, Score entry)', 'text', ['required' => true]],
+                ['body', 'Description', 'textarea', ['hint' => 'One or two sentences shown beside the phones.']],
+                ['image', 'Main screenshot (front phone)', 'image', ['max' => 1400, 'required' => true, 'hint' => 'A phone screenshot, portrait. Use a demo account — no real student names or photos.']],
+                ['image2', 'Second screenshot (optional)', 'image', ['max' => 1400]],
+                ['image3', 'Third screenshot (optional)', 'image', ['max' => 1400]],
+                ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
+            ]),
             'partners' => $item('partner', [
                 ['title', 'Name', 'text', ['required' => true]], ['image', 'Logo', 'image', ['max' => 600, 'required' => true]],
                 ['link', 'Website (optional)', 'text'], ['sort', 'Order', 'number'], ['published', 'Show', 'check'],
@@ -123,6 +131,7 @@ class WebsiteAdminController extends Controller
                 'values' => $count('website_items', fn ($q) => $q->where('kind', 'value')),
                 'highlights' => $count('website_items', fn ($q) => $q->where('kind', 'highlight')),
                 'partners' => $count('website_items', fn ($q) => $q->where('kind', 'partner')),
+                'appscreens' => $count('website_items', fn ($q) => $q->where('kind', 'app_screen')),
                 'unread' => $count('website_messages', fn ($q) => $q->whereNull('read_at')->where('type', '!=', 'newsletter')),
                 'admissions' => $count('website_messages', fn ($q) => $q->where('type', 'admission')),
                 'subscribers' => $count('website_messages', fn ($q) => $q->where('type', 'newsletter')),
@@ -143,7 +152,7 @@ class WebsiteAdminController extends Controller
     {
         $text = ['hero_title', 'hero_subtitle', 'hero_button_text', 'hero_button_link', 'intro_title', 'values_title', 'footer_about',
                  'social_facebook', 'social_instagram', 'social_x', 'social_youtube', 'social_tiktok', 'whatsapp', 'office_hours',
-                 'meta_description', 'founded_year', 'primary_color', 'secondary_color', 'accent_color'];
+                 'meta_description', 'founded_year', 'primary_color', 'secondary_color', 'accent_color', 'website_domain', 'portal_url'];
         $rules = array_fill_keys($text, 'nullable|string|max:500');
         $rules = array_merge($rules, [
             'primary_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/', 'secondary_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
@@ -157,6 +166,16 @@ class WebsiteAdminController extends Controller
         foreach ($text as $k) $values[$k] = trim((string) ($data[$k] ?? ''));
         foreach (['social_facebook', 'social_instagram', 'social_x', 'social_youtube', 'social_tiktok'] as $k) {
             if ($values[$k] !== '' && !Str::startsWith($values[$k], ['http://', 'https://'])) $values[$k] = 'https://' . $values[$k];
+        }
+        // Domains: keep just the host for the website, a clean base URL for the portal.
+        $values['website_domain'] = W::hostOf($values['website_domain']);
+        if ($values['portal_url'] !== '') {
+            $ph = W::hostOf($values['portal_url']);
+            $values['portal_url'] = $ph === '' ? '' : (str_starts_with(strtolower($values['portal_url']), 'http://') ? 'http://' : 'https://') . $ph;
+        }
+        if ($values['website_domain'] !== '' && $values['portal_url'] !== ''
+            && preg_replace('/^www\./', '', $values['website_domain']) === preg_replace('/^www\./', '', W::hostOf($values['portal_url']))) {
+            return back()->withInput()->withErrors(['website_domain' => 'The website and the portal need different addresses (e.g. www.school.ng and portal.school.ng).']);
         }
         $values['intro_body'] = W::clean($data['intro_body'] ?? '') ?? '';
         $values['admission_text'] = W::clean($data['admission_text'] ?? '') ?? '';

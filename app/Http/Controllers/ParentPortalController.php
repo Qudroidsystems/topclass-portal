@@ -68,15 +68,65 @@ class ParentPortalController extends Controller
 
     public function results(Request $request, int $student)
     {
-        // Result viewing is not enabled in TopClass (score/result logic is separate).
-        $this->child($request, $student);
-        return redirect()->route('parent.dashboard')->with('info', 'Results are not available in the parent portal yet.');
+        $child = $this->child($request, $student);
+        $visible = \App\Services\Results\ResultDisplay::viewerMaySee($request->user(), $student);
+
+        $terms = DB::table('broadsheet_records as br')->join('broadsheets as b', 'b.broadsheet_record_id', '=', 'br.id')
+            ->join('schoolterm as t', 't.id', '=', 'b.term_id')->join('schoolsession as ss', 'ss.id', '=', 'br.session_id')
+            ->leftJoin('schoolclass as c', 'c.id', '=', 'br.schoolclass_id')->leftJoin('schoolarm as a', 'a.id', '=', 'c.arm')
+            ->where('br.student_id', $student)
+            ->groupBy('br.session_id', 'b.term_id', 'br.schoolclass_id', 't.term', 'ss.session', 'c.schoolclass', 'a.arm')
+            ->orderByDesc('br.session_id')->orderByDesc('b.term_id')
+            ->get(['br.session_id', 'b.term_id', 'br.schoolclass_id as class_id', 't.term', 'ss.session',
+                   DB::raw("TRIM(CONCAT(COALESCE(c.schoolclass,''), ' ', COALESCE(a.arm,''))) as class_name"),
+                   DB::raw('COUNT(*) as subjects'), DB::raw('SUM(b.vettedstatus = 1) as vetted'),
+                   DB::raw('ROUND(AVG(b.total), 1) as average')]);
+
+        $access = app(\App\Services\Api\ResultGate::class);
+        $terms = $terms->map(function ($t) use ($access, $student, $visible) {
+            $chk = $visible
+                ? $access->check($student, (int) $t->term_id, (int) $t->session_id, false)
+                : ['allowed' => false, 'reason' => 'not_released', 'message' => 'The school has not made results available on the portal yet.'];
+            $t->allowed = !empty($chk['allowed']);
+            $t->hold_message = $chk['message'] ?? null;
+            $t->not_released = ($chk['reason'] ?? '') === 'not_released';
+            $t->owed = (float) ($chk['owed'] ?? 0);
+            $t->ready = (int) $t->vetted >= (int) $t->subjects;
+            return $t;
+        });
+
+        $selected = $terms->first(fn ($t) => $t->term_id == $request->get('term_id') && $t->session_id == $request->get('session_id')) ?? $terms->first();
+        $result = null;
+        if ($selected && $selected->allowed) {
+            $result = app(\App\Http\Controllers\Api\V1\StudentController::class)->detailFor($student, [
+                'term_id' => (int) $selected->term_id, 'session_id' => (int) $selected->session_id, 'class_id' => (int) $selected->class_id,
+            ]);
+        }
+
+        return view('parent.results', [
+            'pagetitle' => 'Results — ' . $child->firstname,
+            'child' => $child, 'children' => ParentAccountService::children($request->user()),
+            'terms' => $terms, 'selected' => $selected, 'result' => $result,
+        ]);
     }
 
     public function reportCard(Request $request, int $student, int $session, int $term, int $class)
     {
         $this->child($request, $student);
-        return redirect()->route('parent.dashboard')->with('info', 'Report cards are not available in the parent portal yet.');
+        abort_unless(\App\Services\Results\ResultDisplay::viewerMaySee($request->user(), $student)
+            && \App\Services\Results\ResultDisplay::show('summary', 'report_card'), 403, 'The school has not made report cards available here.');
+        $chk = app(\App\Services\Api\ResultGate::class)->check($student, $term, $session, false);
+        abort_unless(!empty($chk['allowed']), 403, $chk['message'] ?? 'This result is on hold.');
+
+        $pdf = app(ViewStudentReportController::class)->renderReportCardPdf($student, $class, $session, $term);
+        abort_unless($pdf, 404, 'The report card could not be generated.');
+
+        $s = Student::find($student);
+        $name = preg_replace('/[^A-Za-z0-9_-]+/', '_', ($s->firstname ?? '') . '_' . ($s->lastname ?? '')) ?: 'student';
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Report_Card_' . $name . '.pdf"',
+        ]);
     }
 
     // ── Fees ────────────────────────────────────────────────────────────

@@ -62,6 +62,9 @@ return [
 
     // Lesson reminders pushed to teachers before each class.
     'mobile' => [
+        // Which Vite Schools app this portal pairs with: 'dynamic' (assessments set per class
+        // category — Vite Schools app) or 'fixed' (CA1, CA2, CA3, Exam — TopClass Schools app).
+        'score_model' => 'fixed',
         // Show teachers' phone/e-mail to parents in the app's "Teachers" screen.
         'share_teacher_contacts' => env('MOBILE_SHARE_TEACHER_CONTACTS', true),
         // Show results, report cards, progress and guidance to parents/students in the app.
