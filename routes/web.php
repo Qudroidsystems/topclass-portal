@@ -1543,6 +1543,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/ai-guidance', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'index'])->name('ai-guidance.index');
     Route::post('/admin/ai-guidance', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'save'])->name('ai-guidance.save');
     Route::post('/admin/ai-guidance/reset', [\App\Http\Controllers\Admin\AiGuidanceController::class, 'reset'])->name('ai-guidance.reset');
+
+    // What parents/students see on result pages (portal + mobile app)
+    Route::get('/admin/result-display', [\App\Http\Controllers\Admin\ResultDisplayController::class, 'index'])->name('result-display.index');
+    Route::post('/admin/result-display', [\App\Http\Controllers\Admin\ResultDisplayController::class, 'save'])->name('result-display.save');
 });
 
 // Public: school calendar, certificate verification, fee webhooks

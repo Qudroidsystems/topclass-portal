@@ -14,6 +14,9 @@ class WebsiteServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // Website on its own domain, portal on its own (see WebsiteDomain).
+        $this->app['router']->pushMiddlewareToGroup('web', \App\Http\Middleware\WebsiteDomain::class);
+
         View::composer(['website.*', 'website.partials.*'], function ($view) {
             if (str_starts_with($view->getName(), 'website.admin')) return;
             $view->with([

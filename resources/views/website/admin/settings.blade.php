@@ -61,6 +61,34 @@
                             <div class="form-text">Google Maps › Share › Embed a map › Copy HTML.</div></div>
                     </div>
                 </x-cb.card>
+
+                <x-cb.card title="Domains" icon="ri-links-line">
+                    @php $W = \App\Services\Website\WebsiteContent::class; @endphp
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Website domain</label>
+                            <input name="website_domain" class="form-control" value="{{ $v('website_domain') }}" placeholder="www.csskabba.ng">
+                            <div class="form-text">The school's main address. Works with and without "www".</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Portal address</label>
+                            <input name="portal_url" class="form-control" value="{{ $v('portal_url') }}" placeholder="https://portal.csskabba.ng">
+                            <div class="form-text">Where "Portal login" on the website goes. Empty = {{ rtrim(config('app.url'), '/') }}.</div>
+                        </div>
+                    </div>
+                    <div class="cb-banner info mt-3 mb-0"><i class="ri-information-line"></i><div class="small">
+                        @if($W::websiteDomain())
+                            <b>Live set-up:</b> <code>{{ $W::websiteDomain() }}</code> shows the website; any other address of this portal opens the login page at <code>/</code>,
+                            and website pages opened on the portal's address are sent to the website domain.
+                        @else
+                            <b>No website domain yet.</b> The portal's <code>/</code> opens the login page, and you can preview the website at
+                            <a href="{{ url('/website-preview') }}" target="_blank">{{ url('/website-preview') }}</a>.
+                        @endif
+                        <br><b>To connect the domain:</b> 1) In your DNS, point <code>@</code> and <code>www</code> (A record) to this server's IP.
+                        2) In your hosting panel, add the domain as an <i>alias</i>/<i>parked domain</i> of the portal (same folder — <code>public</code>), or add a virtual host with the same document root.
+                        3) Install an SSL certificate for both names. 4) Save the domain here.
+                    </div></div>
+                </x-cb.card>
             </div>
 
             <div class="col-xl-4">

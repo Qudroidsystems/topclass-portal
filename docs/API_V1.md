@@ -200,22 +200,65 @@ conflicts are shown after sync).
 upload / download and PDFs not yet downloaded, leave requests and approvals, report-card approval, AI guide refresh,
 admin dashboard and student search.
 
-## Topclass portal differences
+## Two apps: Vite Schools and TopClass Schools
 
-Same API and same app. Topclass enters the portal URL in the app like any school.
+CSS Kabba and TopClass are different portals, so each has its own app. Both apps still ask for the school's
+portal address, so any number of schools can use each one.
+
+| | Vite Schools (`viteSchoolsApp v2`) | TopClass Schools (`StudioProjects/topclassApp`) |
+|---|---|---|
+| Portal | CSS Kabba-type | TopClass-type |
+| `GET /school` → `score_model` | `dynamic` | `fixed` |
+| App id | `com.qudroid.viteschools` | `com.qudroid.topclassschools` |
+
+`score_model` is set in `config/services.php` (`mobile.score_model`). Each app refuses the other kind of portal and
+tells the user which app to install. `GET /school` also sends `gpa` (true on `dynamic` portals).
+
+### TopClass portal differences
 
 * Scores: fixed CA1, CA2, CA3, Exam (assessment ids 1–4, each out of 100), `total_formula: avg_ca_exam`. Excel
   template and import are Topclass's own layout; marks sheet uses `resources/views/api/marksheet.blade.php`.
+* No GPA anywhere (results, broadsheet, display settings).
 * Results: no report-card approval workflow — `/results/board` sends `meta.approvals: false` (the app hides the
   approval tab) and the approval endpoints answer 404 `not_available`. Broadsheet uses Topclass's `ClassResultsLoader`.
-* Parents' results follow `MOBILE_PARENT_RESULTS` (default `true`) via `App\Services\Api\ResultGate`.
+* No unpaid-fees result hold (`App\Services\Api\ResultGate` allows every term); who may see results is set under
+  Admin → Result display. The parent portal's Results page and report card now work on TopClass too.
 * Attendance backdating: past dates allowed, future dates refused.
 * Setup: `composer update laravel/sanctum`, then `php artisan migrate`.
 
+## Result display (both portals)
+
+**Admin → Result display** (permission *Manage result display*) decides what parents and students see on the
+portal's Results page and in the apps. The printed report card keeps its own layout and column picker.
+
+* Who: parents can view / students can view (staff always can). Off → terms answer `not_released`, and the
+  report card, progress chart and AI guide are refused (403 `not_released`); `/auth/me` turns `modules.results` off.
+* Per subject: CA & exam breakdown, total, BF, cum, cum average, grade, remark, subject position (class, by
+  cumulative / by term total), arm position (by total / by cumulative), class average, highest & lowest.
+* Overall: total obtained, term average, cumulative average, position in class (all arms), position in arm,
+  number in class / arm, GPA (dynamic portals), comments, times absent, report card download.
+* Overall positions rank every student with results in the class on the cumulative or the term average (setting);
+  equal averages share a position.
+
+`GET /students/{id}/results` → `result` now carries:
+
+```json
+"summary": { "term_total": 157, "term_average": 78.5, "cum_average": 78.5, "gpa": 4.5,
+             "class_position": 1, "class_position_label": "1st", "class_size": 84,
+             "arm_position": 1, "arm_position_label": "1st", "arm_size": 28, "basis": "cum" },
+"display": { "subject": { "total": true, "position": true, … }, "summary": { "class_position": true, … },
+             "position_basis": "cum", "score_model": "dynamic" }
+```
+
+Subjects also carry `position_label`, `position_total`, `arm_position`, `arm_position_cum` (ordinals). Anything the
+school hides is left out of the response, not just hidden by the app. Code: `App\Services\Results\ResultDisplay`.
+
+`GET /results/classes/{class}/broadsheet` (staff) now also sends per subject `cum` and `position` (subject position
+on the chosen basis), and `class_size` and `gpa` (show GPA or not).
+
 ## School website (both portals)
 
-The portal's home page (`/`) is now the school's public website; the portal sign-in moves to `/login` (signing out
-returns there). Content is managed under **Admin → Website** (permission *Manage website*): settings (hero, intro,
+Each portal has a public school website. Content is managed under **Admin → Website** (permission *Manage website*): settings (hero, intro,
 colours, socials, map, admission open/closed), home slides, pages (About, Principal's welcome, Admission criteria /
 policy, Curriculum, …), news / events / stories, gallery albums (multi-photo upload, auto-resized with thumbnails),
 our people (can import from staff records), testimonials, FAQs, core values, highlights, partners, messages
@@ -223,7 +266,19 @@ our people (can import from staff records), testimonials, FAQs, core values, hig
 APK upload up to 200 MB, install steps). Class levels, subjects, staff and calendar events come straight from the
 portal's own tables. Turning the website off in settings sends `/` to the login page.
 
-Public routes: `/pages/{slug}`, `/news`, `/news/{slug}`, `/gallery`, `/gallery/{slug}`, `/our-people`, `/academics`,
+**Domains.** The website runs on the school's main domain and the portal on its own, from the same Laravel app
+(Admin → Website → Settings → Domains: *Website domain* e.g. `www.csskabba.ng`, *Portal address* e.g.
+`https://portal.csskabba.ng`). `App\Http\Middleware\WebsiteDomain` then sends:
+
+* `www.csskabba.ng` / `csskabba.ng` → the website; portal pages asked for there (`/login`, `/dashboard`, …) → the portal;
+* `portal.csskabba.ng/` → the portal login, as before; website pages asked for there → the website domain;
+* `/media/…` and `/app/download` work on both.
+
+Until a website domain is saved, `/` opens the login page and the website is previewed at `/website-preview`.
+Server: point the domain's DNS (`@` and `www`) at the server, add it to the hosting as an alias / parked domain
+of the portal (same `public` folder), and install SSL for both names.
+
+Public routes: `/` (on the website domain), `/website-preview`, `/pages/{slug}`, `/news`, `/news/{slug}`, `/gallery`, `/gallery/{slug}`, `/our-people`, `/academics`,
 `/admissions` (+ online application), `/contact`, `/school-calendar`, `/app`, `/app/download`.
 
 Setup: `php artisan migrate`, `php artisan storage:link` (uploads also work without it through `/media/...`), and for
@@ -233,7 +288,7 @@ APK uploads raise PHP `upload_max_filesize` / `post_max_size` to ~210M.
 
 ```bash
 composer update laravel/sanctum        # adds laravel/sanctum (already in composer.json)
-php artisan migrate                    # personal_access_tokens, mobile_devices, mobile_preferences
+php artisan migrate                    # API, AI guidance, website and result-display tables
 php artisan route:clear && php artisan config:clear
 ```
 

@@ -25,7 +25,7 @@
             @if($label === 'Messages' && $unread)<span class="badge bg-danger ms-1">{{ $unread }}</span>@endif
         </a>
     @endforeach
-    <a href="{{ route('site.home') }}" target="_blank" class="btn btn-sm btn-outline-success ms-auto"><i class="ri-external-link-line me-1"></i>View website</a>
+    <a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" target="_blank" class="btn btn-sm btn-outline-success ms-auto"><i class="ri-external-link-line me-1"></i>View website</a>
 </div>
 @if(session('success'))<div class="cb-banner info"><i class="ri-checkbox-circle-line"></i><div>{{ session('success') }}</div></div>@endif
 @if(session('error'))<div class="cb-banner warning"><i class="ri-error-warning-line"></i><div>{{ session('error') }}</div></div>@endif

@@ -4,7 +4,7 @@
     $s = fn ($k, $d = null) => (isset($site[$k]) && $site[$k] !== '') ? $site[$k] : $d;
     $hasApk = $s('app_apk') && \Illuminate\Support\Facades\Storage::disk('public')->exists($s('app_apk'));
     $size = $hasApk ? round(\Illuminate\Support\Facades\Storage::disk('public')->size($s('app_apk')) / 1048576, 1) : null;
-    $portal = rtrim(url('/'), '/');
+    $portal = \App\Services\Website\WebsiteContent::portalUrl();
 @endphp
 
 @section('content')
@@ -57,7 +57,7 @@
                     @if($s('app_ios_url'))
                         <li><b>Open the App Store</b><br>Tap <a href="{{ $s('app_ios_url') }}" target="_blank" rel="noopener">Download on the App Store</a> and press <b>Get</b>.</li>
                     @else
-                        <li><b>Coming soon</b><br>The iPhone version is on its way. Meanwhile use the <a href="{{ url('/login') }}">web portal</a> in Safari — tap <b>Share › Add to Home Screen</b> for an app-like icon.</li>
+                        <li><b>Coming soon</b><br>The iPhone version is on its way. Meanwhile use the <a href="{{ \App\Services\Website\WebsiteContent::portalUrl('login') }}">web portal</a> in Safari — tap <b>Share › Add to Home Screen</b> for an app-like icon.</li>
                     @endif
                     <li><b>Connect &amp; sign in</b><br>Enter <code style="background:var(--soft);padding:2px 8px;border-radius:6px">{{ $portal }}</code> and sign in with your portal details.</li>
                 </ol>

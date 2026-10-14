@@ -11,6 +11,7 @@ use App\Services\Api\TimetableGrid;
 use App\Services\Billing\StudentFeeStatementService;
 use App\Services\Api\ResultGate as ResultAccessService;
 use Carbon\Carbon;
+use App\Services\Results\ResultDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -80,8 +81,11 @@ class StudentController extends ApiController
                    DB::raw('ROUND(AVG(b.total), 1) as average')]);
 
         $access = app(ResultAccessService::class);
-        $terms = $terms->map(function ($t) use ($access, $student) {
-            $chk = $access->check($student, (int) $t->term_id, (int) $t->session_id, false);
+        $visible = ResultDisplay::viewerMaySee($request->user(), $student);
+        $terms = $terms->map(function ($t) use ($access, $student, $visible) {
+            $chk = $visible
+                ? $access->check($student, (int) $t->term_id, (int) $t->session_id, false)
+                : ['allowed' => false, 'reason' => 'not_released', 'message' => 'The school has not made results available here yet.'];
             return [
                 'session_id'   => (int) $t->session_id,
                 'session'      => $t->session,
@@ -114,6 +118,16 @@ class StudentController extends ApiController
         ]);
     }
 
+    /**
+     * One term's result as the app gets it (subjects, summary, comments,
+     * `display` switches) — also used by the parent portal's results page.
+     * $t: ['term_id','session_id','class_id'].
+     */
+    public function detailFor(int $student, array $t): array
+    {
+        return $this->termDetail($student, $t);
+    }
+
     protected function termDetail(int $student, array $t): array
     {
         $rows = DB::table('broadsheets as b')->join('broadsheet_records as br', 'br.id', '=', 'b.broadsheet_record_id')
@@ -122,7 +136,8 @@ class StudentController extends ApiController
             ->where('br.schoolclass_id', $t['class_id'])->where('b.term_id', $t['term_id'])
             ->orderBy('sj.subject')
             ->get(['b.id', 'sj.subject', 'sj.subject_code', 'b.total', 'b.bf', 'b.cum', 'b.cum_ave', 'b.grade', 'b.remark',
-                   'b.subject_position_class as position', 'b.avg as class_average', 'b.cmin', 'b.cmax']);
+                   'b.subject_position_class as position', 'b.subject_position_class_total as position_total',
+                   'b.arm_position', 'b.arm_position_cum', 'b.avg as class_average', 'b.cmin', 'b.cmax']);
 
         // Continuous-assessment breakdown: TopClass's fixed CA1, CA2, CA3 and Exam (each out of 100).
         $parts = $rows->isEmpty() ? collect() : DB::table('broadsheets')->whereIn('id', $rows->pluck('id'))
@@ -143,6 +158,10 @@ class StudentController extends ApiController
             'grade'         => $r->grade,
             'remark'        => $r->remark,
             'position'      => $r->position,
+            'position_label'   => ResultDisplay::ordinal($r->position),
+            'position_total'   => ResultDisplay::ordinal($r->position_total),
+            'arm_position'     => ResultDisplay::ordinal($r->arm_position),
+            'arm_position_cum' => ResultDisplay::ordinal($r->arm_position_cum),
             'class_average' => $this->num($r->class_average),
             'lowest'        => $this->num($r->cmin),
             'highest'       => $this->num($r->cmax),
@@ -155,7 +174,12 @@ class StudentController extends ApiController
 
         $total = $rows->sum(fn ($r) => (float) $r->total);
 
-        return [
+        $summary = ResultDisplay::summary($student, $t['term_id'], $t['session_id'], $t['class_id']);
+        $summary['class_position_label'] = ResultDisplay::ordinal($summary['class_position']);
+        $summary['arm_position_label'] = ResultDisplay::ordinal($summary['arm_position']);
+
+        return ResultDisplay::apply([
+            'summary'       => $summary,
             'subjects'      => $subjects->values(),
             'total_score'   => round($total, 2),
             'average'       => $rows->count() ? round($total / $rows->count(), 2) : null,
@@ -166,13 +190,16 @@ class StudentController extends ApiController
             'report_card_url'       => route('api.v1.students.report-card', [
                 'student' => $student, 'session' => $t['session_id'], 'term' => $t['term_id'], 'class' => $t['class_id'],
             ]),
-        ];
+        ]);
     }
 
     /** The printable report card (PDF), same as the web portal. */
     public function reportCard(Request $request, int $student, int $session, int $term, int $class)
     {
         if ($deny = $this->deny($request, $student)) return $deny;
+        if (!ResultDisplay::viewerMaySee($request->user(), $student) || !ResultDisplay::show('summary', 'report_card')) {
+            return $this->fail('The school has not made report cards available here.', 403, 'not_released');
+        }
 
         $chk = app(ResultAccessService::class)->check($student, $term, $session, false);
         if (empty($chk['allowed'])) {

@@ -36,6 +36,9 @@ class SchoolController extends ApiController
             'terms'     => DB::table('schoolterm')->orderBy('id')->get(['id', 'term']),
             'portal_url'  => rtrim(url('/'), '/'),
             'api_version' => 'v1',
+            // 'dynamic' = CSS Kabba-type portal (Vite Schools app); 'fixed' = TopClass-type portal (TopClass Schools app).
+            'score_model' => config('services.mobile.score_model', 'dynamic'),
+            'gpa' => config('services.mobile.score_model', 'dynamic') !== 'fixed',
         ]);
     }
 }

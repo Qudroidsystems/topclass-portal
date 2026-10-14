@@ -9,6 +9,7 @@ use App\Services\Billing\StudentFeeStatementService;
 use App\Services\Api\ResultGate as ResultAccessService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Services\Results\ResultDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -110,6 +111,9 @@ class StudentExtrasController extends ApiController
     public function performance(Request $request, int $student)
     {
         if ($deny = $this->deny($request, $student)) return $deny;
+        if (!ResultDisplay::viewerMaySee($request->user(), $student)) {
+            return $this->fail('The school has not made results available here yet.', 403, 'not_released');
+        }
 
         $rows = DB::table('broadsheet_records as br')->join('broadsheets as b', 'b.broadsheet_record_id', '=', 'br.id')
             ->join('subject as sj', 'sj.id', '=', 'br.subject_id')
@@ -204,6 +208,9 @@ class StudentExtrasController extends ApiController
     protected function guidanceReply(Request $request, int $student, bool $refresh)
     {
         if ($deny = $this->deny($request, $student)) return $deny;
+        if (!ResultDisplay::viewerMaySee($request->user(), $student)) {
+            return $this->fail('The school has not made results available here yet.', 403, 'not_released');
+        }
 
         $settings = \App\Models\AiGuidanceSetting::current();
         $user = $request->user();

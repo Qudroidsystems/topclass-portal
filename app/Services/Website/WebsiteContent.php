@@ -56,6 +56,65 @@ class WebsiteContent
         return Schema::hasTable('website_settings') && self::get('enabled', '1') === '1';
     }
 
+    // ── domains ─────────────────────────────────────────────────────────
+    //
+    // The website lives on the school's main domain (e.g. www.csskabba.ng)
+    // and the portal on its own (e.g. portal.csskabba.ng). Both domains point
+    // at this same Laravel app; the request's host decides which one answers.
+    // With no website domain set, "/" opens the portal login and the website
+    // can be previewed at /website-preview.
+
+    /** Normalise "https://www.School.ng/path" → "www.school.ng". */
+    public static function hostOf(?string $value): string
+    {
+        $v = strtolower(trim((string) $value));
+        if ($v === '') return '';
+        if (!str_contains($v, '://')) $v = 'http://' . $v;
+        return (string) (parse_url($v, PHP_URL_HOST) ?? '');
+    }
+
+    /** The website's domain without "www." (empty = not set). */
+    public static function websiteDomain(): string
+    {
+        return preg_replace('/^www\./', '', self::hostOf(self::get('website_domain')));
+    }
+
+    /** True when this request came in on the website's domain (with or without www). */
+    public static function isWebsiteHost(?string $host = null): bool
+    {
+        $domain = self::websiteDomain();
+        if ($domain === '') return false;
+        $host = preg_replace('/^www\./', '', strtolower($host ?? request()->getHost()));
+        return $host === $domain;
+    }
+
+    /** Base URL of the portal, e.g. https://portal.csskabba.ng (falls back to APP_URL). */
+    public static function portalUrl(string $path = ''): string
+    {
+        $base = trim((string) self::get('portal_url', ''));
+        if ($base === '') {
+            // On the portal itself, or before domains are set: this app's own address.
+            $base = self::isWebsiteHost() ? rtrim((string) config('app.url'), '/') : rtrim(request()->getSchemeAndHttpHost(), '/');
+        }
+        if (!str_contains($base, '://')) $base = 'https://' . $base;
+        return rtrim($base, '/') . ($path === '' ? '' : '/' . ltrim($path, '/'));
+    }
+
+    /** The website's home page: its own domain once set, otherwise the /website-preview page. */
+    public static function homeUrl(): string
+    {
+        return self::websiteDomain() === '' ? url('/website-preview') : self::websiteUrl('/');
+    }
+
+    /** Full URL on the website's domain (keeps "www." if the admin typed it). */
+    public static function websiteUrl(string $path = ''): string
+    {
+        $host = self::hostOf(self::get('website_domain'));
+        if ($host === '') return $path === '' || $path === '/' ? url('/website-preview') : url($path);
+        $scheme = request()->isSecure() || str_starts_with((string) config('app.url'), 'https') ? 'https' : 'http';
+        return $scheme . '://' . $host . ($path === '' ? '' : '/' . ltrim($path, '/'));
+    }
+
     // ── school (from the portal) ────────────────────────────────────────
 
     public static function school(): object

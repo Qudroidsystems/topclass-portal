@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::name('site.')->group(function () {
+    Route::get('/website-preview', [SiteController::class, 'home'])->name('preview');
     Route::get('/pages/{slug}', [SiteController::class, 'page'])->name('page');
     Route::get('/news', [SiteController::class, 'news'])->name('news');
     Route::get('/news/{slug}', [SiteController::class, 'post'])->name('post');

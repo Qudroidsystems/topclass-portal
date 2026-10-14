@@ -47,21 +47,21 @@
                 <a href="{{ route('site.contact') }}#visit">Visit us</a>
                 <a href="{{ route('site.news') }}">News &amp; updates</a>
                 <a href="{{ route('site.gallery') }}">Gallery</a>
-                <a href="{{ url('/login') }}" class="login"><i class="ri-user-3-line"></i> Portal login</a>
+                <a href="{{ \App\Services\Website\WebsiteContent::portalUrl('login') }}" class="login"><i class="ri-user-3-line"></i> Portal login</a>
             </div>
         </div>
     </div>
 
     <header class="header">
         <div class="container">
-            <a href="{{ route('site.home') }}" class="brand">
+            <a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" class="brand">
                 @if($school->logo)<img src="{{ $school->logo }}" alt="{{ $school->name }} logo">@endif
                 <span class="name">{{ $school->name }}@if($school->motto)<small>{{ $school->motto }}</small>@endif</span>
             </a>
             <button class="burger" aria-label="Open menu"><i class="ri-menu-3-line"></i></button>
             <nav class="nav" aria-label="Main">
                 <button class="nav-close" aria-label="Close menu"><i class="ri-close-line"></i></button>
-                <div class="item {{ $cur === '/' ? 'active' : '' }}"><a href="{{ route('site.home') }}">Home</a></div>
+                <div class="item {{ $cur === '/' ? 'active' : '' }}"><a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}">Home</a></div>
                 <div class="item has-drop">
                     <a href="{{ isset($about[0]) ? route('site.page', $about[0]['slug']) : route('site.people') }}">About <i class="ri-arrow-down-s-line"></i></a>
                     <div class="drop">
@@ -110,7 +110,7 @@
         <div class="container">
             <div class="cols">
                 <div>
-                    <a href="{{ route('site.home') }}" class="brand" style="margin-bottom:16px">
+                    <a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" class="brand" style="margin-bottom:16px">
                         @if($school->logo)<img src="{{ $school->logo }}" alt="">@endif
                         <span class="name">{{ $school->name }}</span>
                     </a>
@@ -156,7 +156,7 @@
             </div>
             <div class="bottom">
                 <span>© {{ date('Y') }} {{ $school->name }}. All rights reserved.</span>
-                <span><a href="{{ url('/login') }}">Portal login</a> · <a href="{{ route('site.app') }}">Mobile app</a> · <a href="{{ route('site.contact') }}">Contact</a></span>
+                <span><a href="{{ \App\Services\Website\WebsiteContent::portalUrl('login') }}">Portal login</a> · <a href="{{ route('site.app') }}">Mobile app</a> · <a href="{{ route('site.contact') }}">Contact</a></span>
             </div>
         </div>
     </footer>

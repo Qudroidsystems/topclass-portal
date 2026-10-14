@@ -102,16 +102,24 @@ class ResultsController extends ApiController
         }
 
         $classRow = collect($data['classes'])->firstWhere('id', $class);
+        // Subject positions as stored by the portal (all arms): by cumulative or by term total.
+        $subjectPositions = DB::table('broadsheets as b')->join('broadsheet_records as br', 'br.id', '=', 'b.broadsheet_record_id')
+            ->where('br.schoolclass_id', $class)->where('br.session_id', $sessionId)->where('b.term_id', $termId)
+            ->get(['br.student_id', 'br.subject_id', 'b.cum', 'b.subject_position_class', 'b.subject_position_class_total'])
+            ->keyBy(fn ($p) => $p->student_id . '-' . $p->subject_id);
+        $posKey = $basis === 'total' ? 'subject_position_class_total' : 'subject_position_class';
         $out = $sorted->map(fn ($r) => [
             'student_id'   => $r['id'],
             'admission_no' => $r['admissionno'],
             'name'         => trim(($r['lastname'] ?? '') . ' ' . ($r['firstname'] ?? '')),
             'gender'       => $r['gender'],
             'photo_url'    => $this->studentPhotoUrl($r['picture'] ?? null),
-            'subjects'     => (object) collect($r['subjects'])->map(fn ($s) => [
-                'total'   => $this->num($s['total']),
-                'cum_ave' => $this->num($s['cum']),
-                'grade'   => $s['grade'],
+            'subjects'     => (object) collect($r['subjects'])->map(fn ($s, $sid) => [
+                'total'    => $this->num($s['total']),
+                'cum'      => $this->num($subjectPositions[$r['id'] . '-' . $sid]->cum ?? $s['cum']),
+                'cum_ave'  => $this->num($s['cum']),
+                'grade'    => $s['grade'],
+                'position' => \App\Services\Results\ResultDisplay::ordinal($subjectPositions[$r['id'] . '-' . $sid]->{$posKey} ?? null),
             ])->all(),
             'num_subjects' => $r['num_subjects'],
             'total_term'   => $this->num($r['total_term'], 1),
@@ -135,6 +143,8 @@ class ResultsController extends ApiController
                 'subject_id' => (int) $s['subject_id'], 'name' => $s['subject_name'], 'code' => ($s['subject_code'] ?? null) ?: null,
             ])->values(),
             'students'      => $out->values(),
+            'class_size' => $sorted->count(),
+            'gpa'        => \App\Services\Results\ResultDisplay::supportsGpa() && \App\Services\Results\ResultDisplay::show('summary', 'gpa'),
         ]);
     }
 

@@ -5,9 +5,9 @@
     <x-cb.hero title="Website" icon="ri-global-line" subtitle="Manage the school's public website: pages, news, gallery, admissions enquiries and the mobile-app download.">
         <x-slot:pills>
             <span class="cb-meta-pill"><span class="status-pill {{ $enabled ? 'st-paid' : 'st-danger' }}">{{ $enabled ? 'Website is live' : 'Website switched off' }}</span></span>
-            <span class="cb-meta-pill"><i class="ri-link"></i>{{ url('/') }}</span>
+            <span class="cb-meta-pill"><i class="ri-link"></i>{{ \App\Services\Website\WebsiteContent::websiteDomain() ?: 'Website domain not set — preview at /website-preview' }}</span>
         </x-slot:pills>
-        <x-slot:actions><a class="cb-hero-btn" href="{{ route('site.home') }}" target="_blank"><i class="ri-external-link-line me-1"></i>Open website</a></x-slot:actions>
+        <x-slot:actions><a class="cb-hero-btn" href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" target="_blank"><i class="ri-external-link-line me-1"></i>Open website</a></x-slot:actions>
     </x-cb.hero>
     @include('website.admin._nav')
 
