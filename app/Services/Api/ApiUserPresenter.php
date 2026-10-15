@@ -23,7 +23,14 @@ class ApiUserPresenter
         $staff = DB::table('staffbioinfo')->where('userid', $user->id)->first();
         $isParent  = self::safe(fn () => $user->hasRole(ParentAccountService::ROLE))
             && DB::table('parent_student')->where('user_id', $user->id)->exists();
-        $isStudent = !empty($user->student_id);
+        // Roles decide what the person is. Any role other than Parent / Student (Teacher,
+        // Staff, Registrar, Bursar, Admin ...) means they work at the school, whether or not
+        // a staff record has been created for them yet.
+        $roleNames   = self::safe(fn () => $user->getRoleNames()->map(fn ($r) => strtolower($r))->values()->all(), []);
+        $workRoles   = array_values(array_diff($roleNames, [strtolower((string) ParentAccountService::ROLE), 'parent', 'student']));
+        $hasWorkRole = !empty($workRoles);
+        // A student link on someone with a work role and no Student role is a stray link: ignore it.
+        $isStudent = !empty($user->student_id) && (in_array('student', $roleNames, true) || !$hasWorkRole);
         $isStaff   = (bool) $staff;
 
         $can = fn (string ...$perms) => self::safe(function () use ($user, $perms) {
@@ -31,8 +38,8 @@ class ApiUserPresenter
             return false;
         });
 
-        $teaches = $isStaff && DB::table('subjectteacher')->where('staffid', $user->id)->exists();
-        $classTeacher = $isStaff && DB::table('classteacher')->where('staffid', $user->id)->exists();
+        $teaches = ($isStaff || $hasWorkRole) && DB::table('subjectteacher')->where('staffid', $user->id)->exists();
+        $classTeacher = ($isStaff || $hasWorkRole) && DB::table('classteacher')->where('staffid', $user->id)->exists();
 
         // Every permission the user has (from all their roles + any given directly).
         $permissions = self::safe(fn () => $user->getAllPermissions()->pluck('name')->values()->all(), []);
@@ -60,7 +67,7 @@ class ApiUserPresenter
         // school (staff / management) lands there even if they are also a parent or have a
         // student record; they can still switch views in the app.
         $faces = array_values(array_filter([
-            ($isStaff || (!$isParent && !$isStudent && self::safe(fn () => $user->hasAnyRole(['Super Admin', 'Admin'])))) ? 'staff' : null,
+            ($isStaff || $hasWorkRole) ? 'staff' : null,
             ($abilities['management.dashboard'] || $abilities['reports.approve']) ? 'admin' : null,
             $isParent ? 'parent' : null,
             $isStudent ? 'student' : null,
