@@ -1,3 +1,13 @@
+@php
+    // TopClass uses fixed columns: CA1, CA2, CA3 and Exam (Total is out of 100).
+    $assessments = collect([
+        (object) ['id' => 'ca1',  'name' => 'CA1',  'max_score' => (float) ($classInfo->ca1score ?? 0)],
+        (object) ['id' => 'ca2',  'name' => 'CA2',  'max_score' => (float) ($classInfo->ca2score ?? 0)],
+        (object) ['id' => 'ca3',  'name' => 'CA3',  'max_score' => (float) ($classInfo->ca3score ?? 0)],
+        (object) ['id' => 'exam', 'name' => 'Exam', 'max_score' => (float) ($classInfo->examscore ?? 0)],
+    ]);
+    $totalMax = 100;
+@endphp
 <!DOCTYPE html>
 <html>
 <head>
@@ -292,9 +302,9 @@
                 <li>
                     Max scores:
                     @foreach($assessments as $a)
-                        <strong>{{ $a->name }}</strong> ({{ number_format($a->max_score, 2) }}){{ !$loop->last ? ', ' : '' }}
+                        <strong>{{ $a->name }}</strong>@if($a->max_score > 0) ({{ number_format($a->max_score, 2) }})@endif{{ !$loop->last ? ', ' : '' }}
                     @endforeach
-                    &mdash; <strong>Total</strong> ({{ number_format($assessments->sum('max_score'), 2) }})
+                    &mdash; <strong>Total</strong> ({{ number_format($totalMax, 2) }})
                 </li>
             @endif
             <li>Sign and submit to the Academic Office after completion.</li>
@@ -316,12 +326,12 @@
                 @foreach($assessments as $assessment)
                     <th class="score-col">
                         {{ $assessment->name }}<br>
-                        <small style="font-weight:normal;font-size:9px;">({{ number_format($assessment->max_score, 2) }})</small>
+                        @if($assessment->max_score > 0)<small style="font-weight:normal;font-size:9px;">({{ number_format($assessment->max_score, 2) }})</small>@endif
                     </th>
                 @endforeach
                 <th class="score-col" style="background:#163275;">
                     Total<br>
-                    <small style="font-weight:normal;font-size:9px;">({{ number_format($assessments->sum('max_score'), 2) }})</small>
+                    <small style="font-weight:normal;font-size:9px;">({{ number_format($totalMax, 2) }})</small>
                 </th>
             </tr>
         </thead>
