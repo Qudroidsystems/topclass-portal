@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PreferenceController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ResultsController;
 use App\Http\Controllers\Api\V1\SchoolController;
 use App\Http\Controllers\Api\V1\Staff\AttendanceController as StaffAttendance;
@@ -72,6 +73,7 @@ Route::middleware(['auth:sanctum', 'api.active', 'throttle:120,1,api'])->group(f
 
     Route::get('calendar', [CalendarController::class, 'index'])->name('calendar');
 
+    Route::get('me/profile', [ProfileController::class, 'show'])->name('profile');
     Route::get('me/preferences', [PreferenceController::class, 'show'])->name('preferences.show');
     Route::put('me/preferences', [PreferenceController::class, 'update'])->name('preferences.update');
 
