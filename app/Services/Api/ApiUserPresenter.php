@@ -59,7 +59,7 @@ class ApiUserPresenter
         $faces = array_values(array_filter([
             $isParent ? 'parent' : null,
             $isStudent ? 'student' : null,
-            $isStaff ? 'staff' : null,
+            ($isStaff || (!$isParent && !$isStudent && self::safe(fn () => $user->hasAnyRole(['Super Admin', 'Admin'])))) ? 'staff' : null,
             ($abilities['management.dashboard'] || $abilities['reports.approve']) ? 'admin' : null,
         ]));
 
