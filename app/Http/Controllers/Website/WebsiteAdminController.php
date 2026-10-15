@@ -153,6 +153,8 @@ class WebsiteAdminController extends Controller
         $text = ['hero_title', 'hero_subtitle', 'hero_button_text', 'hero_button_link', 'intro_title', 'values_title', 'footer_about',
                  'social_facebook', 'social_instagram', 'social_x', 'social_youtube', 'social_tiktok', 'whatsapp', 'office_hours',
                  'meta_description', 'founded_year', 'primary_color', 'secondary_color', 'accent_color', 'website_domain', 'portal_url',
+                 'school_name', 'school_motto', 'school_address', 'school_email', 'school_phones',
+                 'stats_students', 'stats_staff', 'stats_classes', 'stats_subjects',
                  'quick1_title', 'quick1_text', 'quick2_title', 'quick2_text', 'quick3_title', 'quick3_text',
                  'gallery_title', 'testimonials_title', 'news_title', 'faq_title', 'faq_text', 'cta_title', 'cta_text'];
         $rules = array_fill_keys($text, 'nullable|string|max:500');

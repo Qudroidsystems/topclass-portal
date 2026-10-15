@@ -122,13 +122,15 @@ class WebsiteContent
         static $school;
         if ($school) return $school;
         $row = Schema::hasTable('school_information') ? DB::table('school_information')->orderByDesc('is_active')->first() : null;
-        $logo = $row->school_logo ?? null;
-        $phones = collect(preg_split('/[,;\/]+/', (string) ($row->school_phones ?? '')))->map(fn ($p) => trim($p))->filter()->values()->all();
+        // Portal data first; the website's own saved copy when the portal's isn't available.
+        $pick = fn ($v, string $key) => (is_string($v) ? trim($v) !== '' : !empty($v)) ? $v : self::get($key);
+        $logo = $pick($row->school_logo ?? null, 'school_logo');
+        $phones = collect(preg_split('/[,;\/]+/', (string) $pick($row->school_phones ?? null, 'school_phones')))->map(fn ($p) => trim($p))->filter()->values()->all();
         return $school = (object) [
-            'name'    => $row->school_name ?? config('app.name'),
-            'motto'   => $row->school_motto ?? null,
-            'address' => $row->school_address ?? null,
-            'email'   => $row->school_email ?? null,
+            'name'    => $pick($row->school_name ?? null, 'school_name') ?: config('app.name'),
+            'motto'   => $pick($row->school_motto ?? null, 'school_motto'),
+            'address' => $pick($row->school_address ?? null, 'school_address'),
+            'email'   => $pick($row->school_email ?? null, 'school_email'),
             'phones'  => $phones,
             'website' => $row->school_website ?? null,
             'logo'    => $logo ? self::fileUrl($logo) : null,
@@ -164,6 +166,11 @@ class WebsiteContent
                 $classes = Schema::hasTable('schoolclass') ? (int) DB::table('schoolclass')->count() : 0;
                 $subjects = Schema::hasTable('subject') ? (int) DB::table('subject')->count() : 0;
             } catch (\Throwable $e) {}
+            // Saved numbers when the portal's tables can't be read here.
+            $students = $students ?: (int) self::get('stats_students', 0);
+            $staff = $staff ?: (int) self::get('stats_staff', 0);
+            $classes = $classes ?: (int) self::get('stats_classes', 0);
+            $subjects = $subjects ?: (int) self::get('stats_subjects', 0);
             $founded = (int) self::get('founded_year', 0);
             return array_values(array_filter([
                 $students ? ['value' => $students, 'label' => 'Students', 'suffix' => '+'] : null,

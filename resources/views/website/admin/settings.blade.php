@@ -70,6 +70,20 @@
                     </div>
                 </x-cb.card>
 
+                <x-cb.card title="School details (fallback)" icon="ri-building-line">
+                    <p class="small text-muted">The website shows the portal's <i>School information</i> when it can read it. These are used when it can't (for example on a separately hosted website), so the header, footer and numbers are never empty.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">School name</label><input name="school_name" class="form-control" value="{{ $v('school_name') }}"></div>
+                        <div class="col-md-6"><label class="form-label">Motto</label><input name="school_motto" class="form-control" value="{{ $v('school_motto') }}"></div>
+                        <div class="col-12"><label class="form-label">Address</label><input name="school_address" class="form-control" value="{{ $v('school_address') }}"></div>
+                        <div class="col-md-6"><label class="form-label">E-mail</label><input name="school_email" class="form-control" value="{{ $v('school_email') }}"></div>
+                        <div class="col-md-6"><label class="form-label">Phone numbers (separate with commas)</label><input name="school_phones" class="form-control" value="{{ $v('school_phones') }}"></div>
+                        @foreach(['stats_students' => 'Students', 'stats_staff' => 'Teachers & staff', 'stats_classes' => 'Classes', 'stats_subjects' => 'Subjects'] as $k => $label)
+                            <div class="col-6 col-md-3"><label class="form-label">{{ $label }}</label><input name="{{ $k }}" type="number" min="0" class="form-control" value="{{ $v($k) }}"></div>
+                        @endforeach
+                    </div>
+                </x-cb.card>
+
                 <x-cb.card title="Contacts & map" icon="ri-map-pin-line">
                     <p class="small text-muted">The school name, logo, address, phone numbers and e-mail come from <a href="{{ Route::has('schoolinformation.index') ? route('schoolinformation.index') : '#' }}">School information</a> ({{ $school->name }}).</p>
                     <div class="row g-3">
