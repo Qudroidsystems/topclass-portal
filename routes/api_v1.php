@@ -31,10 +31,17 @@ use App\Http\Controllers\Api\V1\Staff\SubjectController as StaffSubjects;
 use App\Http\Controllers\Api\V1\StudentController;
 use App\Http\Controllers\Api\V1\StudentExtrasController;
 use App\Http\Controllers\Api\V1\StudentLeaveController;
+use App\Http\Controllers\Api\V1\WebsiteFeedController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────────────────────────────
 Route::get('school', [SchoolController::class, 'show'])->name('school');
+
+// The school's separate public website (shared key, see VerifyWebsiteKey).
+Route::middleware(['api.website', 'throttle:120,1'])->prefix('website')->name('website.')->group(function () {
+    Route::get('feed', [WebsiteFeedController::class, 'feed'])->name('feed');
+    Route::get('staff', [WebsiteFeedController::class, 'staff'])->name('staff');
+});
 
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1,api-login')->name('login');

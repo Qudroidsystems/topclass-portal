@@ -49,6 +49,7 @@ class ApiUserPresenter
             'reports.submit'        => false, // no report-card approval on TopClass
             'reports.approve'       => false,
             'timetable.reminders'   => $isStaff,
+            'website.manage'        => $can('Manage website'),
         ];
 
         $faces = array_values(array_filter([

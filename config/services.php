@@ -14,6 +14,11 @@ return [
     |
     */
 
+    // Shared key the school's public website (separate project) sends as X-Website-Key.
+    'website' => [
+        'key' => env('WEBSITE_API_KEY'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],

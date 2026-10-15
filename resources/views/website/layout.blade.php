@@ -43,10 +43,7 @@
                 @if(!$socials && $school->phones)<span><i class="ri-phone-line"></i> {{ $school->phones[0] }}</span>@endif
             </div>
             <div class="quick">
-                <a href="{{ route('site.admissions') }}#apply">Apply</a>
-                <a href="{{ route('site.contact') }}#visit">Visit us</a>
-                <a href="{{ route('site.news') }}">News &amp; updates</a>
-                <a href="{{ route('site.gallery') }}">Gallery</a>
+                @foreach(\App\Services\Website\WebsiteContent::topbarLinks() as [$tl, $tu])<a href="{{ $tu }}">{{ $tl }}</a>@endforeach
                 <a href="{{ \App\Services\Website\WebsiteContent::portalUrl('login') }}" class="login"><i class="ri-user-3-line"></i> Portal login</a>
             </div>
         </div>
