@@ -102,7 +102,7 @@ body { font-family: var(--rol-font); }
                 </p>
             </div>
 
-            <form action="{{ route('roles.updateuserrole') }}" method="GET">
+            <form action="{{ route('roles.updateuserrole') }}" method="POST">
                 @csrf
                 <input type="hidden" name="roleid" value="{{ $role->id }}">
 
@@ -113,7 +113,7 @@ body { font-family: var(--rol-font); }
                     </div>
                     <div class="col-md-5">
                         <label class="rol-form-label">Select User <span class="text-danger">*</span></label>
-                        <select name="name" class="rol-form-control" required>
+                        <select name="users[]" class="rol-form-control" required>
                             <option value="">Choose a user…</option>
                             @foreach ($users as $user)
                             <option value="{{ $user->id }}">{{ $user->name }} — {{ $user->email }}</option>
