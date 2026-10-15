@@ -228,10 +228,10 @@
              <th style="width:40px;">Photo</th>
             <th style="min-width:70px;">Adm. No</th>
             <th style="min-width:130px;">Student Name</th>
-            @foreach($assessments as $assessment)
-                <th>{{ $assessment->name }}<br><span style="font-weight:400;font-size:8.5px;">({{ number_format($assessment->max_score, 0) }})</span></th>
+            @foreach(['ca1'=>'CA1','ca2'=>'CA2','ca3'=>'CA3','exam'=>'Exam'] as $k => $lbl)
+                <th>{{ $lbl }}<br>@if(($classInfo->{$k . 'score'} ?? 0) > 0)<span style="font-weight:400;font-size:8.5px;">({{ number_format($classInfo->{$k . 'score'}, 0) }})</span>@endif</th>
             @endforeach
-            <th style="background:#163275;">Total<br><span style="font-weight:400;font-size:8.5px;">({{ number_format($assessments->sum('max_score'), 0) }})</span></th>
+            <th style="background:#163275;">Total<br><span style="font-weight:400;font-size:8.5px;">(100)</span></th>
             <th>BF</th>
             <th>Cum</th>
             <th>Grade</th>
@@ -242,11 +242,7 @@
     <tbody>
         @forelse($broadsheets as $idx => $student)
             @php
-                $rowTotal = 0;
-                foreach($assessments as $a) {
-                    $so = $student->assessmentScores->where('assessment_id', $a->id)->first();
-                    $rowTotal += $so ? $so->score : 0;
-                }
+                $rowTotal = $student->total ?? 0;
                 $cum      = $student->cum ?? 0;
                 $grade    = $student->grade ?? '-';
                 $gradeClass = 'g-' . str_replace(' ', '', $grade);
@@ -272,9 +268,8 @@
                 </td>
                 <td>{{ $student->admissionno ?? '-' }}</td>
                 <td class="name-col"><strong>{{ $student->lname ?? '' }}</strong> {{ $student->fname ?? '' }} {{ $student->mname ?? '' }}</td>
-                @foreach($assessments as $assessment)
-                    @php $so = $student->assessmentScores->where('assessment_id', $assessment->id)->first(); @endphp
-                    <td>{{ $so ? number_format($so->score, 1) : '0.0' }}</td>
+                @foreach(['ca1'=>'CA1','ca2'=>'CA2','ca3'=>'CA3','exam'=>'Exam'] as $k => $lbl)
+                    <td>{{ number_format($student->{$k} ?? 0, 1) }}</td>
                 @endforeach
                 <td style="font-weight:700;">{{ number_format($rowTotal, 1) }}</td>
                 <td>{{ number_format($student->bf ?? 0, 1) }}</td>
@@ -288,7 +283,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="{{ 5 + $assessments->count() + 5 }}" style="text-align:center;padding:12px;">No students found.</td>
+                <td colspan="{{ 5 + 4 + 5 }}" style="text-align:center;padding:12px;">No students found.</td>
             </tr>
         @endforelse
     </tbody>
@@ -298,9 +293,8 @@
             <td colspan="3" style="text-align:right;font-style:italic;">
                 {{ $broadsheets->count() }} student(s) &nbsp;|&nbsp; Class Avg: {{ $avg }}
             </td>
-            @foreach($assessments as $a)
-                @php $aSum = $broadsheets->sum(fn($b) => optional($b->assessmentScores->where('assessment_id',$a->id)->first())->score ?? 0); @endphp
-                <td>{{ number_format($aSum / max($broadsheets->count(),1), 1) }}</td>
+            @foreach(['ca1'=>'CA1','ca2'=>'CA2','ca3'=>'CA3','exam'=>'Exam'] as $k => $lbl)
+                <td>{{ number_format($broadsheets->avg($k) ?? 0, 1) }}</td>
             @endforeach
             <td>-</td>
             <td>-</td>
