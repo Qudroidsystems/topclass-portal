@@ -52,7 +52,7 @@
                     <input name="values_title" class="form-control" value="{{ $v('values_title', 'Let your child be part of this exceptional growth system') }}">
                 </x-cb.card>
 
-                <x-cb.card title="Home page text" icon="ri-text"
+                <x-cb.card title="Home page text" icon="ri-text-block">
                     <p class="small text-muted">The three cards under the banner, section headings and the closing call-to-action. Leave a box empty to use the standard wording.</p>
                     <div class="row g-3">
                         @foreach([1 => ['Academics', 'Classes, subjects and how our learners grow.'], 2 => ['Admission ongoing', "Start your child's application online today."], 3 => ['Our mobile app', 'Results, fees, attendance and news on your phone.']] as $n => [$dt, $dx])
