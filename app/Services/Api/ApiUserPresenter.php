@@ -34,6 +34,9 @@ class ApiUserPresenter
         $teaches = $isStaff && DB::table('subjectteacher')->where('staffid', $user->id)->exists();
         $classTeacher = $isStaff && DB::table('classteacher')->where('staffid', $user->id)->exists();
 
+        // Every permission the user has (from all their roles + any given directly).
+        $permissions = self::safe(fn () => $user->getAllPermissions()->pluck('name')->values()->all(), []);
+
         $abilities = [
             'scores.enter'          => $teaches,
             'attendance.mark'       => $classTeacher || $can('Create attendance-register'),
@@ -50,6 +53,7 @@ class ApiUserPresenter
             'reports.approve'       => false,
             'timetable.reminders'   => $isStaff,
             'website.manage'        => $can('Manage website'),
+            'calendar.view'         => $can('View school calendar', 'Manage school calendar'),
         ];
 
         $faces = array_values(array_filter([
@@ -58,6 +62,11 @@ class ApiUserPresenter
             $isStaff ? 'staff' : null,
             ($abilities['management.dashboard'] || $abilities['reports.approve']) ? 'admin' : null,
         ]));
+
+        // Anyone whose role(s) carry permissions but who has no parent / student / staff
+        // record (e.g. a Registrar) gets the admin face: the app then builds its tabs from
+        // the permissions below (students, approvals, calendar, inbox ...).
+        if (!$faces && $permissions) $faces = ['admin'];
 
         $flags = self::safe(fn () => FeatureFlag::map(), []);
         $modules = [];
@@ -75,6 +84,7 @@ class ApiUserPresenter
             'phone'                => $user->phone_number,
             'avatar_url'           => self::safe(fn () => $user->avatar_url),
             'roles'                => self::safe(fn () => $user->getRoleNames()->values()->all(), []),
+            'permissions'          => $permissions,
             'faces'                => $faces ?: ['guest'],
             'default_face'         => $faces[0] ?? 'guest',
             'student_id'           => $isStudent ? (int) $user->student_id : null,
