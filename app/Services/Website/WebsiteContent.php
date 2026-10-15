@@ -106,6 +106,12 @@ class WebsiteContent
         return self::websiteDomain() === '' ? url('/website-preview') : self::websiteUrl('/');
     }
 
+    /** The live website's own admin (www.<school>/admin), or null until the website domain is set. */
+    public static function websiteAdminUrl(): ?string
+    {
+        return self::websiteDomain() === '' ? null : self::websiteUrl('/admin');
+    }
+
     /** Full URL on the website's domain (keeps "www." if the admin typed it). */
     public static function websiteUrl(string $path = ''): string
     {
