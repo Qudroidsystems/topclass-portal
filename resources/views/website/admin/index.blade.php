@@ -11,6 +11,17 @@
     </x-cb.hero>
     @include('website.admin._nav')
 
+    @if($wa = \App\Services\Website\WebsiteContent::websiteAdminUrl())
+        <div class="cb-banner info mb-3"><i class="ri-information-line"></i><div class="small">
+            The public website at <b>{{ \App\Services\Website\WebsiteContent::websiteDomain() }}</b> is managed in its own admin. Sign in there with your portal e-mail/phone and password.
+            <a href="{{ $wa }}" target="_blank" rel="noopener" class="fw-semibold">Open the live website admin <i class="ri-arrow-right-up-line"></i></a>
+        </div></div>
+    @else
+        <div class="cb-banner info mb-3"><i class="ri-information-line"></i><div class="small">
+            Once the school's website is live on its own domain, enter that address under <a href="{{ route('website.admin.settings') }}">Settings › Domains</a> and a <b>Live website admin</b> button appears here.
+        </div></div>
+    @endif
+
     <div class="row g-3 mb-3">
         <div class="col-6 col-md-3"><x-cb.stat label="Unread messages" :value="$counts['unread']" icon="ri-mail-unread-line" accent="rose" /></div>
         <div class="col-6 col-md-3"><x-cb.stat label="Admission applications" :value="$counts['admissions']" icon="ri-user-add-line" accent="teal" /></div>
