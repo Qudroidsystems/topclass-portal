@@ -58,41 +58,16 @@
             <button class="burger" aria-label="Open menu"><i class="ri-menu-3-line"></i></button>
             <nav class="nav" aria-label="Main">
                 <button class="nav-close" aria-label="Close menu"><i class="ri-close-line"></i></button>
-                <div class="item {{ $cur === '/' ? 'active' : '' }}"><a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}">Home</a></div>
-                <div class="item has-drop">
-                    <a href="{{ isset($about[0]) ? route('site.page', $about[0]['slug']) : route('site.people') }}">About <i class="ri-arrow-down-s-line"></i></a>
-                    <div class="drop">
-                        @foreach($about as $p)<a href="{{ route('site.page', $p['slug']) }}">{{ $p['title'] }}</a>@endforeach
-                        <a href="{{ route('site.people') }}">Our people</a>
-                    </div>
-                </div>
-                <div class="item has-drop">
-                    <a href="{{ route('site.admissions') }}">Admissions <i class="ri-arrow-down-s-line"></i></a>
-                    <div class="drop">
-                        <a href="{{ route('site.admissions') }}">Admissions overview</a>
-                        @foreach($admissions as $p)<a href="{{ route('site.page', $p['slug']) }}">{{ $p['title'] }}</a>@endforeach
-                        <a href="{{ route('site.admissions') }}#apply">Apply online</a>
-                    </div>
-                </div>
-                <div class="item has-drop">
-                    <a href="{{ route('site.academics') }}">Academics <i class="ri-arrow-down-s-line"></i></a>
-                    <div class="drop">
-                        <a href="{{ route('site.academics') }}">Classes &amp; subjects</a>
-                        @foreach($academics as $p)<a href="{{ route('site.page', $p['slug']) }}">{{ $p['title'] }}</a>@endforeach
-                        <a href="{{ route('site.calendar') }}">School calendar</a>
-                    </div>
-                </div>
-                <div class="item has-drop">
-                    <a href="{{ route('site.news') }}">School life <i class="ri-arrow-down-s-line"></i></a>
-                    <div class="drop">
-                        <a href="{{ route('site.news') }}">News &amp; updates</a>
-                        <a href="{{ route('site.news', ['type' => 'event']) }}">Events</a>
-                        <a href="{{ route('site.gallery') }}">Gallery</a>
-                        @foreach($life as $p)<a href="{{ route('site.page', $p['slug']) }}">{{ $p['title'] }}</a>@endforeach
-                    </div>
-                </div>
-                <div class="item {{ str_starts_with($cur, 'app') ? 'active' : '' }}"><a href="{{ route('site.app') }}">Mobile app</a></div>
-                <div class="item {{ str_starts_with($cur, 'contact') ? 'active' : '' }}"><a href="{{ route('site.contact') }}">Contact</a></div>
+                @foreach(\App\Services\Website\WebsiteContent::mainMenu() as $mi)
+                    @if($mi['children'])
+                        <div class="item has-drop {{ $mi['active'] ? 'active' : '' }}">
+                            <a href="{{ $mi['url'] }}">{{ $mi['label'] }} <i class="ri-arrow-down-s-line"></i></a>
+                            <div class="drop">@foreach($mi['children'] as [$ct, $cu])<a href="{{ $cu }}">{{ $ct }}</a>@endforeach</div>
+                        </div>
+                    @else
+                        <div class="item {{ $mi['active'] ? 'active' : '' }}"><a href="{{ $mi['url'] }}">{{ $mi['label'] }}</a></div>
+                    @endif
+                @endforeach
                 <div class="item cta"><a class="btn btn-primary btn-sm" href="{{ route('site.admissions') }}#apply" style="padding:11px 22px">Apply now</a></div>
             </nav>
         </div>

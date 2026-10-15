@@ -163,7 +163,7 @@ class WebsiteAdminController extends Controller
             'accent_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/', 'founded_year' => 'nullable|integer|min:1800|max:' . date('Y'),
             'app_features' => 'nullable|string|max:1000',
             'intro_body' => 'nullable|string|max:20000', 'admission_text' => 'nullable|string|max:20000', 'map_embed' => 'nullable|string|max:3000',
-            'website_logo' => 'nullable|image|max:4096', 'topbar_links' => 'nullable|string|max:1000',
+            'website_logo' => 'nullable|image|max:4096', 'topbar_links' => 'nullable|string|max:1000', 'main_menu' => 'nullable|string|max:1500',
             'hero_image' => 'nullable|image|max:8192', 'intro_image' => 'nullable|image|max:8192',
         ]);
         $data = $request->validate($rules);
@@ -183,6 +183,7 @@ class WebsiteAdminController extends Controller
             && preg_replace('/^www\./', '', $values['website_domain']) === preg_replace('/^www\./', '', W::hostOf($values['portal_url']))) {
             return back()->withInput()->withErrors(['website_domain' => 'The website and the portal need different addresses (e.g. www.school.ng and portal.school.ng).']);
         }
+        $values['main_menu'] = trim((string) ($data['main_menu'] ?? ''));
         $values['topbar_links'] = trim((string) ($data['topbar_links'] ?? ''));
         $values['app_features'] = trim((string) ($data['app_features'] ?? ''));
         $values['intro_body'] = W::clean($data['intro_body'] ?? '') ?? '';

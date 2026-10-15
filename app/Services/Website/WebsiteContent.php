@@ -251,6 +251,55 @@ class WebsiteContent
         return $items->sortBy('date')->take($limit)->values();
     }
 
+    /**
+     * The main navigation, from the admin's "Main menu" setting: one item per line, "Label | target".
+     * target = a page of this website (/news), a full https:// address, or a built-in dropdown:
+     * @about, @admissions, @academics, @life (these list the pages the admin put under that menu).
+     * @return array<int,array{label:string,url:string,children:array<int,array{0:string,1:string}>,active:bool}>
+     */
+    public static function mainMenu(): array
+    {
+        $default = "Home | /\nAbout | @about\nAdmissions | @admissions\nAcademics | @academics\nSchool life | @life\nMobile app | /app\nContact | /contact";
+        $pages = self::menu();
+        $group = fn (string $k) => array_map(fn ($p) => [$p['title'], route('site.page', $p['slug'])], $pages[$k] ?? []);
+        $builtin = [
+            'about' => fn () => ['url' => isset($pages['about'][0]) ? route('site.page', $pages['about'][0]['slug']) : route('site.people'),
+                'children' => array_merge($group('about'), [['Our people', route('site.people')]])],
+            'admissions' => fn () => ['url' => route('site.admissions'),
+                'children' => array_merge([['Admissions overview', route('site.admissions')]], $group('admissions'), [['Apply online', route('site.admissions') . '#apply']])],
+            'academics' => fn () => ['url' => route('site.academics'),
+                'children' => array_merge([['Classes & subjects', route('site.academics')]], $group('academics'), [['School calendar', route('site.calendar')]])],
+            'life' => fn () => ['url' => route('site.news'),
+                'children' => array_merge([['News & updates', route('site.news')], ['Events', route('site.news', ['type' => 'event'])], ['Gallery', route('site.gallery')]], $group('life'))],
+        ];
+        $cur = '/' . ltrim(request()->path(), '/');
+        $out = [];
+        foreach (preg_split('/\R/', (string) self::get('main_menu', $default)) as $line) {
+            [$label, $target] = array_pad(array_map('trim', explode('|', $line, 2)), 2, '');
+            if ($label === '' || $target === '') continue;
+            $children = [];
+            if (str_starts_with($target, '@')) {
+                $b = $builtin[substr($target, 1)] ?? null;
+                if (!$b) continue;
+                ['url' => $url, 'children' => $children] = $b();
+            } elseif ($target === '/') {
+                $url = self::homeUrl();
+            } else {
+                $url = str_starts_with($target, '/') ? self::menuPathUrl($target) : $target;
+            }
+            $path = '/' . ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+            $active = $target === '/' ? $cur === '/' || $cur === '/website-preview'
+                : (!str_starts_with($target, '@') && str_starts_with($target, '/') && $path !== '/' && str_starts_with($cur, rtrim($path, '/')));
+            $out[] = ['label' => $label, 'url' => $url, 'children' => $children, 'active' => $active];
+        }
+        return $out;
+    }
+
+    protected static function menuPathUrl(string $path): string
+    {
+        return self::websiteUrl($path);
+    }
+
     /** Pages grouped by menu (about, admissions, academics, life). */
     public static function menu(): array
     {
