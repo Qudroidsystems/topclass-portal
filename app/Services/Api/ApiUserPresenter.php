@@ -56,11 +56,14 @@ class ApiUserPresenter
             'calendar.view'         => $can('View school calendar', 'Manage school calendar'),
         ];
 
+        // Order matters: the first face is the one the app opens. Someone who works at the
+        // school (staff / management) lands there even if they are also a parent or have a
+        // student record; they can still switch views in the app.
         $faces = array_values(array_filter([
-            $isParent ? 'parent' : null,
-            $isStudent ? 'student' : null,
             ($isStaff || (!$isParent && !$isStudent && self::safe(fn () => $user->hasAnyRole(['Super Admin', 'Admin'])))) ? 'staff' : null,
             ($abilities['management.dashboard'] || $abilities['reports.approve']) ? 'admin' : null,
+            $isParent ? 'parent' : null,
+            $isStudent ? 'student' : null,
         ]));
 
         // Anyone whose role(s) carry permissions but who has no parent / student / staff
