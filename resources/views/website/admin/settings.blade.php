@@ -52,6 +52,24 @@
                     <input name="values_title" class="form-control" value="{{ $v('values_title', 'Let your child be part of this exceptional growth system') }}">
                 </x-cb.card>
 
+                <x-cb.card title="Home page text" icon="ri-text"
+                    <p class="small text-muted">The three cards under the banner, section headings and the closing call-to-action. Leave a box empty to use the standard wording.</p>
+                    <div class="row g-3">
+                        @foreach([1 => ['Academics', 'Classes, subjects and how our learners grow.'], 2 => ['Admission ongoing', "Start your child's application online today."], 3 => ['Our mobile app', 'Results, fees, attendance and news on your phone.']] as $n => [$dt, $dx])
+                            <div class="col-md-5"><label class="form-label">Card {{ $n }} title</label><input name="quick{{ $n }}_title" class="form-control" value="{{ $v('quick' . $n . '_title', $dt) }}"></div>
+                            <div class="col-md-7"><label class="form-label">Card {{ $n }} text</label><input name="quick{{ $n }}_text" class="form-control" value="{{ $v('quick' . $n . '_text', $dx) }}"></div>
+                        @endforeach
+                        <div class="col-md-6"><label class="form-label">Gallery heading</label><input name="gallery_title" class="form-control" value="{{ $v('gallery_title', 'Life at ' . $school->name) }}"></div>
+                        <div class="col-md-6"><label class="form-label">Testimonials heading</label><input name="testimonials_title" class="form-control" value="{{ $v('testimonials_title', 'What our families say') }}"></div>
+                        <div class="col-md-6"><label class="form-label">News heading</label><input name="news_title" class="form-control" value="{{ $v('news_title', 'From around the school') }}"></div>
+                        <div class="col-md-6"><label class="form-label">FAQ heading</label><input name="faq_title" class="form-control" value="{{ $v('faq_title', 'Frequently asked questions') }}"></div>
+                        <div class="col-12"><label class="form-label">FAQ intro</label><input name="faq_text" class="form-control" value="{{ $v('faq_text', "Can't find what you're looking for? Our admissions team is happy to help.") }}"></div>
+                        <div class="col-md-5"><label class="form-label">Closing banner heading</label><input name="cta_title" class="form-control" value="{{ $v('cta_title', 'Give your child the best start') }}"></div>
+                        <div class="col-md-7"><label class="form-label">Closing banner text</label><input name="cta_text" class="form-control" value="{{ $v('cta_text', 'Visit our campus, meet our teachers and see learning in action.') }}"></div>
+                        <div class="col-12"><label class="form-label">Mobile app features (one per line)</label><textarea name="app_features" class="form-control" rows="6">{{ $v('app_features', "Results & report cards\nPay school fees online\nAttendance & timetable\nHomework & e-learning\nAI learning guidance\nNotices & reminders") }}</textarea></div>
+                    </div>
+                </x-cb.card>
+
                 <x-cb.card title="Contacts & map" icon="ri-map-pin-line">
                     <p class="small text-muted">The school name, logo, address, phone numbers and e-mail come from <a href="{{ Route::has('schoolinformation.index') ? route('schoolinformation.index') : '#' }}">School information</a> ({{ $school->name }}).</p>
                     <div class="row g-3">
