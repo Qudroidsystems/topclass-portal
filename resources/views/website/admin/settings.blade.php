@@ -70,9 +70,18 @@
                     </div>
                 </x-cb.card>
 
-                <x-cb.card title="School details (fallback)" icon="ri-building-line">
+                <x-cb.card title="School name, logo & contacts" icon="ri-building-line">
                     <p class="small text-muted">The website shows the portal's <i>School information</i> when it can read it. These are used when it can't (for example on a separately hosted website), so the header, footer and numbers are never empty.</p>
                     <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Website logo</label>
+                            <div class="d-flex gap-3 align-items-center">
+                                <img src="{{ $F(!empty($s['website_logo']) ? $s['website_logo'] : null) ?: $school->logo }}" alt="" style="height:64px;max-width:160px;object-fit:contain;background:#f4f5f7;border-radius:10px;padding:6px">
+                                <div class="flex-grow-1"><input type="file" name="website_logo" accept="image/*" class="form-control">
+                                    @if(!empty($s['website_logo']))<div class="form-check mt-1"><input class="form-check-input" type="checkbox" name="remove_website_logo" value="1" id="rwl"><label class="form-check-label small" for="rwl">Remove (use the School information logo)</label></div>@endif
+                                    <div class="form-text">Leave empty to use the logo from School information.</div></div>
+                            </div>
+                        </div>
                         <div class="col-md-6"><label class="form-label">School name</label><input name="school_name" class="form-control" value="{{ $v('school_name') }}"></div>
                         <div class="col-md-6"><label class="form-label">Motto</label><input name="school_motto" class="form-control" value="{{ $v('school_motto') }}"></div>
                         <div class="col-12"><label class="form-label">Address</label><input name="school_address" class="form-control" value="{{ $v('school_address') }}"></div>
@@ -82,6 +91,11 @@
                             <div class="col-6 col-md-3"><label class="form-label">{{ $label }}</label><input name="{{ $k }}" type="number" min="0" class="form-control" value="{{ $v($k) }}"></div>
                         @endforeach
                     </div>
+                </x-cb.card>
+
+                <x-cb.card title="Top bar links" icon="ri-links-line">
+                    <p class="small text-muted">One link per line as <code>Label | address</code>. Use <code>/news</code> for pages of this website or a full <code>https://…</code> address. "Portal login" is always added at the end.</p>
+                    <textarea name="topbar_links" class="form-control" rows="5">{{ $v('topbar_links', "Apply | /admissions#apply\nVisit us | /contact#visit\nNews & updates | /news\nGallery | /gallery") }}</textarea>
                 </x-cb.card>
 
                 <x-cb.card title="Contacts & map" icon="ri-map-pin-line">
