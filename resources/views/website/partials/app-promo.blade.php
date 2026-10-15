@@ -1,6 +1,7 @@
 @php
     $s = fn ($k, $d = null) => (isset($site[$k]) && $site[$k] !== '') ? $site[$k] : $d;
     $hasApk = $s('app_apk') && \Illuminate\Support\Facades\Storage::disk('public')->exists($s('app_apk'));
+    $appFeatures = collect(preg_split('/\R/', (string) $s('app_features', "Results & report cards\nPay school fees online\nAttendance & timetable\nHomework & e-learning\nAI learning guidance\nNotices & reminders")))->map(fn ($f) => trim($f))->filter()->values();
     $promoShots = collect();
     try {
         $promoShots = \App\Models\Website\WebsiteItem::where('kind', 'app_screen')->where('published', true)->orderBy('sort')->orderBy('id')->get()
@@ -13,12 +14,9 @@
         <h2>{{ $s('app_name', $school->name . ' App') }}</h2>
         <p>{{ $s('app_intro', 'Results, fees, attendance, timetable, homework and school news — in your pocket.') }}</p>
         <ul class="features">
-            <li><i class="ri-checkbox-circle-fill"></i> Results &amp; report cards</li>
-            <li><i class="ri-checkbox-circle-fill"></i> Pay school fees online</li>
-            <li><i class="ri-checkbox-circle-fill"></i> Attendance &amp; timetable</li>
-            <li><i class="ri-checkbox-circle-fill"></i> Homework &amp; e-learning</li>
-            <li><i class="ri-checkbox-circle-fill"></i> AI learning guidance</li>
-            <li><i class="ri-checkbox-circle-fill"></i> Notices &amp; reminders</li>
+            @foreach($appFeatures as $feat)
+            <li><i class="ri-checkbox-circle-fill"></i> {{ $feat }}</li>
+            @endforeach
         </ul>
         <div class="store-btns">
             @if($s('app_play_url'))<a class="store-btn" href="{{ $s('app_play_url') }}" target="_blank" rel="noopener"><i class="ri-google-play-fill"></i><span><small>GET IT ON</small><b>Google Play</b></span></a>@endif

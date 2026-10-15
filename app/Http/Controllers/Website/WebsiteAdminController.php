@@ -152,11 +152,14 @@ class WebsiteAdminController extends Controller
     {
         $text = ['hero_title', 'hero_subtitle', 'hero_button_text', 'hero_button_link', 'intro_title', 'values_title', 'footer_about',
                  'social_facebook', 'social_instagram', 'social_x', 'social_youtube', 'social_tiktok', 'whatsapp', 'office_hours',
-                 'meta_description', 'founded_year', 'primary_color', 'secondary_color', 'accent_color', 'website_domain', 'portal_url'];
+                 'meta_description', 'founded_year', 'primary_color', 'secondary_color', 'accent_color', 'website_domain', 'portal_url',
+                 'quick1_title', 'quick1_text', 'quick2_title', 'quick2_text', 'quick3_title', 'quick3_text',
+                 'gallery_title', 'testimonials_title', 'news_title', 'faq_title', 'faq_text', 'cta_title', 'cta_text'];
         $rules = array_fill_keys($text, 'nullable|string|max:500');
         $rules = array_merge($rules, [
             'primary_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/', 'secondary_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'accent_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/', 'founded_year' => 'nullable|integer|min:1800|max:' . date('Y'),
+            'app_features' => 'nullable|string|max:1000',
             'intro_body' => 'nullable|string|max:20000', 'admission_text' => 'nullable|string|max:20000', 'map_embed' => 'nullable|string|max:3000',
             'hero_image' => 'nullable|image|max:8192', 'intro_image' => 'nullable|image|max:8192',
         ]);
@@ -177,6 +180,7 @@ class WebsiteAdminController extends Controller
             && preg_replace('/^www\./', '', $values['website_domain']) === preg_replace('/^www\./', '', W::hostOf($values['portal_url']))) {
             return back()->withInput()->withErrors(['website_domain' => 'The website and the portal need different addresses (e.g. www.school.ng and portal.school.ng).']);
         }
+        $values['app_features'] = trim((string) ($data['app_features'] ?? ''));
         $values['intro_body'] = W::clean($data['intro_body'] ?? '') ?? '';
         $values['admission_text'] = W::clean($data['admission_text'] ?? '') ?? '';
         $map = trim((string) ($data['map_embed'] ?? ''));

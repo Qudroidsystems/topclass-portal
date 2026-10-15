@@ -42,15 +42,15 @@
             <div class="grid">
                 <a href="{{ route('site.academics') }}" class="reveal">
                     <i class="ri-book-open-line"></i>
-                    <div><h3>Academics</h3><p>Classes, subjects and how our learners grow.</p></div>
+                    <div><h3>{{ $s('quick1_title', 'Academics') }}</h3><p>{{ $s('quick1_text', 'Classes, subjects and how our learners grow.') }}</p></div>
                 </a>
                 <a href="{{ route('site.admissions') }}" class="reveal d1">
                     <i class="ri-user-add-line"></i>
-                    <div><h3>{{ $s('admission_open', '1') === '1' ? 'Admission ongoing' : 'Admissions' }}</h3><p>Start your child's application online today.</p></div>
+                    <div><h3>{{ $s('admission_open', '1') === '1' ? $s('quick2_title', 'Admission ongoing') : 'Admissions' }}</h3><p>{{ $s('quick2_text', "Start your child's application online today.") }}</p></div>
                 </a>
                 <a href="{{ route('site.app') }}" class="reveal d2">
                     <i class="ri-smartphone-line"></i>
-                    <div><h3>Our mobile app</h3><p>Results, fees, attendance and news on your phone.</p></div>
+                    <div><h3>{{ $s('quick3_title', 'Our mobile app') }}</h3><p>{{ $s('quick3_text', 'Results, fees, attendance and news on your phone.') }}</p></div>
                 </a>
             </div>
         </div>
@@ -151,7 +151,7 @@
             <div class="container">
                 <div class="section-head center reveal">
                     <span class="eyebrow">Gallery</span>
-                    <h2>Life at {{ $school->name }}</h2>
+                    <h2>{{ $s('gallery_title', 'Life at ' . $school->name) }}</h2>
                 </div>
                 <div class="masonry reveal">
                     @foreach($photos as $x)
@@ -171,7 +171,7 @@
             <div class="container">
                 <div class="section-head center reveal">
                     <span class="eyebrow">Stories</span>
-                    <h2>What our families say</h2>
+                    <h2>{{ $s('testimonials_title', 'What our families say') }}</h2>
                 </div>
                 <div class="quotes">
                     @foreach($testimonials->take(6) as $i => $t)
@@ -193,7 +193,7 @@
         <section class="section soft">
             <div class="container">
                 <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:40px" class="reveal">
-                    <div><span class="eyebrow">News &amp; updates</span><h2 style="margin:0">From around the school</h2></div>
+                    <div><span class="eyebrow">News &amp; updates</span><h2 style="margin:0">{{ $s('news_title', 'From around the school') }}</h2></div>
                     <a class="link-arrow" href="{{ route('site.news') }}">View all news <i class="ri-arrow-right-line"></i></a>
                 </div>
                 <div class="grid-3">
@@ -233,8 +233,8 @@
             <div class="container split" style="align-items:start">
                 <div class="reveal">
                     <span class="eyebrow">FAQs</span>
-                    <h2>Frequently asked questions</h2>
-                    <p class="lead">Can't find what you're looking for? Our admissions team is happy to help.</p>
+                    <h2>{{ $s('faq_title', 'Frequently asked questions') }}</h2>
+                    <p class="lead">{{ $s('faq_text', "Can't find what you're looking for? Our admissions team is happy to help.") }}</p>
                     <div style="display:flex;gap:12px;flex-wrap:wrap">
                         <a class="btn btn-primary" href="{{ route('site.contact') }}">Ask a question</a>
                         @if($school->phones)<a class="btn btn-outline" href="tel:{{ preg_replace('/\s+/', '', $school->phones[0]) }}"><i class="ri-phone-line"></i> {{ $school->phones[0] }}</a>@endif
@@ -253,8 +253,8 @@
         <div class="container">
             <div class="cta-band reveal">
                 <div>
-                    <h2>Give your child the best start</h2>
-                    <p>Visit our campus, meet our teachers and see learning in action.</p>
+                    <h2>{{ $s('cta_title', 'Give your child the best start') }}</h2>
+                    <p>{{ $s('cta_text', 'Visit our campus, meet our teachers and see learning in action.') }}</p>
                 </div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap">
                     <a class="btn btn-light" href="{{ route('site.admissions') }}#apply">Apply now</a>
