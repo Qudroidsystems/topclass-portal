@@ -93,6 +93,11 @@
                     </div>
                 </x-cb.card>
 
+                <x-cb.card title="Main menu" icon="ri-menu-line">
+                    <p class="small text-muted">One item per line as <code>Label | address</code>, in the order they appear. Address can be a page of this website (<code>/news</code>), a full <code>https://…</code> link, or a dropdown of pages: <code>@about</code>, <code>@admissions</code>, <code>@academics</code>, <code>@life</code> (the pages you put under that menu in Pages). Delete a line to hide an item.</p>
+                    <textarea name="main_menu" class="form-control" rows="8">{{ $v('main_menu', "Home | /\nAbout | @about\nAdmissions | @admissions\nAcademics | @academics\nSchool life | @life\nMobile app | /app\nContact | /contact") }}</textarea>
+                </x-cb.card>
+
                 <x-cb.card title="Top bar links" icon="ri-links-line">
                     <p class="small text-muted">One link per line as <code>Label | address</code>. Use <code>/news</code> for pages of this website or a full <code>https://…</code> address. "Portal login" is always added at the end.</p>
                     <textarea name="topbar_links" class="form-control" rows="5">{{ $v('topbar_links', "Apply | /admissions#apply\nVisit us | /contact#visit\nNews & updates | /news\nGallery | /gallery") }}</textarea>
