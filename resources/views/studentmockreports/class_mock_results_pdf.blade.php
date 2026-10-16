@@ -747,11 +747,11 @@
                     <tr>
                         <td width="50%">
                             <div class="h6">Class Teacher's Remark</div>
-                            <div>{{ $profile ? ($profile->classteachercomment ?? 'NO INFO') : 'NO INFO' }}</div>
+                            <div>NO INFO</div>
                         </td>
                         <td width="50%">
                             <div class="h6">Principal's Remark</div>
-                            <div>{{ $profile ? ($profile->principalscomment ?? 'NO INFO') : 'NO INFO' }}</div>
+                            <div>NO INFO</div>
                         </td>
                     </tr>
                 </tbody>
