@@ -44,16 +44,16 @@ class SearchController extends Controller
         // ============================================================
         if (auth()->user()->can('View student')) {
             Student::where(function($q) use ($query) {
-                    $q->where('first_name', 'like', "%{$query}%")
-                      ->orWhere('last_name', 'like', "%{$query}%")
+                    $q->where('firstname', 'like', "%{$query}%")
+                      ->orWhere('lastname', 'like', "%{$query}%")
                       ->orWhere('admissionNo', 'like', "%{$query}%")
-                      ->orWhere(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', "%{$query}%");
+                      ->orWhere(DB::raw("CONCAT(firstname, ' ', lastname)"), 'like', "%{$query}%");
                 })
                 ->limit(8)
                 ->get()
                 ->each(function ($student) use (&$results) {
                     $results[] = [
-                        'title'     => $student->first_name . ' ' . $student->last_name,
+                        'title'     => $student->firstname . ' ' . $student->lastname,
                         'subtitle'  => 'Student · ' . ($student->admissionNo ?? 'No Admission No'),
                         'url'       => route('student.overview', $student->id),
                         'icon'      => 'mdi-school',
