@@ -213,14 +213,16 @@ protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid
             $classIds  = $className ? Schoolclass::where('schoolclass', $className)->pluck('id')->toArray() : [(int) $schoolclassid];
             $subjectIds = $mockScores->pluck('subject_id')->unique()->values()->toArray();
 
-            $rows = BroadsheetsMock::whereIn('broadsheet_records_mock.subject_id', $subjectIds)
+            $rows = \Illuminate\Support\Facades\DB::table('broadsheetmock')
+                ->join('broadsheet_records_mock', 'broadsheet_records_mock.id', '=', 'broadsheetmock.broadsheet_records_mock_id')
+                ->whereIn('broadsheet_records_mock.subject_id', $subjectIds)
                 ->where('broadsheetmock.term_id', $termid)
                 ->where('broadsheet_records_mock.session_id', $sessionid)
                 ->whereIn('broadsheet_records_mock.schoolclass_id', $classIds)
-                ->join('broadsheet_records_mock', 'broadsheet_records_mock.id', '=', 'broadsheetmock.broadsheet_records_mock_id')
-                ->get(['broadsheet_records_mock.subject_id', 'broadsheetmock.total'])
-                ->filter(fn ($r) => $r->total !== null && (float) $r->total != 0)
-                ->groupBy('subject_id');
+                ->select('broadsheet_records_mock.subject_id as sid', 'broadsheetmock.total as tot')
+                ->get()
+                ->filter(fn ($r) => $r->tot !== null && (float) $r->tot != 0)
+                ->groupBy('sid');
 
             foreach ($mockScores as $score) {
                 $total = $score->total;
@@ -229,13 +231,13 @@ protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid
                     continue;
                 }
                 $group = $rows->get($score->subject_id, collect());
-                $score->position = $this->formatOrdinal(1 + $group->filter(fn ($r) => (float) $r->total > (float) $total)->count());
+                $score->position = $this->formatOrdinal(1 + $group->filter(fn ($r) => (float) $r->tot > (float) $total)->count());
                 if (empty($score->class_average) && $group->count() > 0) {
-                    $score->class_average = round($group->sum(fn ($r) => (float) $r->total) / $group->count(), 1);
+                    $score->class_average = round($group->sum(fn ($r) => (float) $r->tot) / $group->count(), 1);
                 }
             }
         } catch (\Throwable $e) {
-            Log::warning('applyLiveMockPositions failed', ['message' => $e->getMessage()]);
+            Log::warning('applyLiveMockPositions failed', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
         }
     }
 
