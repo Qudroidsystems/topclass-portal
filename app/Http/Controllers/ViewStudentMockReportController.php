@@ -199,6 +199,48 @@ protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid
     // STUDENT MOCK RESULT DATA
     // =========================================================================
 
+    /**
+     * Fills in every subject's class position (and class average when missing) straight from the
+     * class's mock scores, so a printout never shows a blank position because a stored value was
+     * never written. Same rule as the stored one: ties share a position, zero / empty scores get "-".
+     */
+    private function applyLiveMockPositions($mockScores, $schoolclassid, $sessionid, $termid): void
+    {
+        try {
+            if ($mockScores->isEmpty()) return;
+
+            $className = Schoolclass::where('id', $schoolclassid)->value('schoolclass');
+            $classIds  = $className ? Schoolclass::where('schoolclass', $className)->pluck('id')->toArray() : [(int) $schoolclassid];
+            $subjectIds = $mockScores->pluck('subject_id')->unique()->values()->toArray();
+
+            $rows = \Illuminate\Support\Facades\DB::table('broadsheetmock')
+                ->join('broadsheet_records_mock', 'broadsheet_records_mock.id', '=', 'broadsheetmock.broadsheet_records_mock_id')
+                ->whereIn('broadsheet_records_mock.subject_id', $subjectIds)
+                ->where('broadsheetmock.term_id', $termid)
+                ->where('broadsheet_records_mock.session_id', $sessionid)
+                ->whereIn('broadsheet_records_mock.schoolclass_id', $classIds)
+                ->select('broadsheet_records_mock.subject_id as sid', 'broadsheetmock.total as tot')
+                ->get()
+                ->filter(fn ($r) => $r->tot !== null && (float) $r->tot != 0)
+                ->groupBy('sid');
+
+            foreach ($mockScores as $score) {
+                $total = $score->total;
+                if ($total === null || (float) $total == 0) {
+                    $score->position = '-';
+                    continue;
+                }
+                $group = $rows->get($score->subject_id, collect());
+                $score->position = $this->formatOrdinal(1 + $group->filter(fn ($r) => (float) $r->tot > (float) $total)->count());
+                if (empty($score->class_average) && $group->count() > 0) {
+                    $score->class_average = round($group->sum(fn ($r) => (float) $r->tot) / $group->count(), 1);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('applyLiveMockPositions failed', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
+        }
+    }
+
     private function getStudentMockResultData($id, $schoolclassid, $sessionid, $termid)
     {
         try {
@@ -245,6 +287,8 @@ protected function calculateClassPositionsAndAverages($schoolclassid, $sessionid
                     'broadsheetmock.cmax',
                 ])
                 ->get();
+
+            $this->applyLiveMockPositions($mockScores, $schoolclassid, $sessionid, $termid);
 
             // Totals summary
             $totalObtained   = $mockScores->sum(fn ($s) => (float) ($s->total ?? 0));
