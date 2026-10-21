@@ -35,6 +35,9 @@
 .score-input.is-invalid { border-color: var(--ss-danger)  !important; background: #fef2f2; }
 .score-input.is-saved   { border-color: var(--ss-success) !important; background: #f0fdf4; }
 .score-input:disabled   { background: #f3f4f6; cursor: not-allowed; opacity: 0.7; }
+.score-input.is-absent, .score-input-large.is-absent { color: #b91c1c; font-weight: 700; letter-spacing: .5px; background: #fff7ed; border-color: #fdba74; }
+.score-input.is-absent.is-saved { border-color: var(--ss-success) !important; }
+.abs-hint kbd { background: #fff7ed; color: #b91c1c; border: 1px solid #fdba74; font-weight: 700; padding: 0 4px; }
 
 /* ══ TABLE ══ */
 #scoresheetTable { font-size: 12.5px; }
@@ -868,43 +871,51 @@
 
                             {{-- ══ FIXED CA FIELDS ══ --}}
                             <td class="col-ca1 text-center">
-                                <input type="number" class="score-input"
+                                @php $shown = $broadsheet->isAbsentFor('ca1') ? 'ABS' : $ca1; @endphp
+                                <input type="text" class="score-input {{ $shown === 'ABS' ? 'is-absent' : '' }}"
                                        data-field="ca1" data-max="100"
                                        data-id="{{ $broadsheet->id }}"
-                                       data-original="{{ $ca1 }}"
+                                       data-original="{{ $shown }}"
                                        data-assessment-name="CA1"
-                                       value="{{ $ca1 }}"
-                                       min="0" max="100" step="0.1"
+                                       value="{{ $shown }}"
+                                       maxlength="6" autocomplete="off"
+                                       title="Enter a score (0–100), or ABS if the student was absent"
                                        {{ $isLocked ? 'disabled' : '' }}>
                             </td>
                             <td class="col-ca2 text-center">
-                                <input type="number" class="score-input"
+                                @php $shown = $broadsheet->isAbsentFor('ca2') ? 'ABS' : $ca2; @endphp
+                                <input type="text" class="score-input {{ $shown === 'ABS' ? 'is-absent' : '' }}"
                                        data-field="ca2" data-max="100"
                                        data-id="{{ $broadsheet->id }}"
-                                       data-original="{{ $ca2 }}"
+                                       data-original="{{ $shown }}"
                                        data-assessment-name="CA2"
-                                       value="{{ $ca2 }}"
-                                       min="0" max="100" step="0.1"
+                                       value="{{ $shown }}"
+                                       maxlength="6" autocomplete="off"
+                                       title="Enter a score (0–100), or ABS if the student was absent"
                                        {{ $isLocked ? 'disabled' : '' }}>
                             </td>
                             <td class="col-ca3 text-center">
-                                <input type="number" class="score-input"
+                                @php $shown = $broadsheet->isAbsentFor('ca3') ? 'ABS' : $ca3; @endphp
+                                <input type="text" class="score-input {{ $shown === 'ABS' ? 'is-absent' : '' }}"
                                        data-field="ca3" data-max="100"
                                        data-id="{{ $broadsheet->id }}"
-                                       data-original="{{ $ca3 }}"
+                                       data-original="{{ $shown }}"
                                        data-assessment-name="CA3"
-                                       value="{{ $ca3 }}"
-                                       min="0" max="100" step="0.1"
+                                       value="{{ $shown }}"
+                                       maxlength="6" autocomplete="off"
+                                       title="Enter a score (0–100), or ABS if the student was absent"
                                        {{ $isLocked ? 'disabled' : '' }}>
                             </td>
                             <td class="col-exam text-center">
-                                <input type="number" class="score-input"
+                                @php $shown = $broadsheet->isAbsentFor('exam') ? 'ABS' : $exam; @endphp
+                                <input type="text" class="score-input {{ $shown === 'ABS' ? 'is-absent' : '' }}"
                                        data-field="exam" data-max="100"
                                        data-id="{{ $broadsheet->id }}"
-                                       data-original="{{ $exam }}"
+                                       data-original="{{ $shown }}"
                                        data-assessment-name="Exam"
-                                       value="{{ $exam }}"
-                                       min="0" max="100" step="0.1"
+                                       value="{{ $shown }}"
+                                       maxlength="6" autocomplete="off"
+                                       title="Enter a score (0–100), or ABS if the student was absent"
                                        {{ $isLocked ? 'disabled' : '' }}>
                             </td>
 
@@ -1112,6 +1123,7 @@
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted abs-hint"><i class="ri-user-unfollow-line me-1"></i>Student absent? Type <kbd>ABS</kbd> (or <kbd>A</kbd>) instead of 0</small>
                         <small class="text-muted"><i class="ri-keyboard-line me-1"></i>Ctrl+S to save</small>
                         <button class="btn btn-success btn-sm px-4" id="bulkUpdateScores">
                             <i class="ri-save-line me-1"></i>Save All Scores
@@ -1417,11 +1429,27 @@ function showToast(msg, type = 'info') {
     setTimeout(() => document.getElementById(id)?.remove(), 4500);
 }
 
-function validateInput(inp) {
+/* ── Absent ("ABS") handling ─────────────────────────────────────────
+   Type ABS (or A / ABSENT) in a score cell when the student was absent.
+   It counts as 0 in every calculation, but is saved and shown as ABS so
+   it is not confused with a real score of 0.                              */
+const isAbs        = v => /^\s*(abs|absent|a)\s*$/i.test(String(v ?? ''));
+const scoreNum     = v => isAbs(v) ? 0 : (parseFloat(v) || 0);
+const scoreKey     = v => isAbs(v) ? 'ABS' : String(scoreNum(v));
+const scorePayload = v => isAbs(v) ? 'ABS' : scoreNum(v);
+const cellVal      = (row, f) => row.querySelector(`.score-input[data-field="${f}"]`)?.value;
+
+function validateInput(inp, normalize = false) {
+    const raw = String(inp.value ?? '').trim();
+    const abs = isAbs(raw);
+    if (abs && normalize) inp.value = 'ABS';
+    inp.classList.toggle('is-absent', abs);
+    if (abs || raw === '') { inp.classList.remove('is-invalid'); return true; }
+
     const max = parseFloat(inp.dataset.max) || 100;
-    const val = parseFloat(inp.value) || 0;
-    inp.classList.toggle('is-invalid', val > max || val < 0);
-    return val <= max && val >= 0;
+    const ok  = /^\d*\.?\d+$|^\d+\.$/.test(raw) && parseFloat(raw) >= 0 && parseFloat(raw) <= max;
+    inp.classList.toggle('is-invalid', !ok);
+    return ok;
 }
 
 // ══ Update row totals from CA fields ══
@@ -1461,18 +1489,16 @@ function updateRowGrades(row) {
 // ══ Single CA save ══
 function saveIndividualScore(input) {
     const row = input.closest('tr');
-    const originalValue = parseFloat(input.dataset.original) || 0;
-    const newValue = parseFloat(input.value) || 0;
-
-    if (Math.abs(newValue - originalValue) < 0.01) return;
+    const originalValue = input.dataset.original ?? '';
+    if (scoreKey(originalValue) === scoreKey(input.value)) return;
 
     // Collect ALL 4 CA fields from the row
     const payload = {
         broadsheet_id: input.dataset.id,
-        ca1:  parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0,
-        ca2:  parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0,
-        ca3:  parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0,
-        exam: parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0,
+        ca1:  scorePayload(cellVal(row, 'ca1')),
+        ca2:  scorePayload(cellVal(row, 'ca2')),
+        ca3:  scorePayload(cellVal(row, 'ca3')),
+        exam: scorePayload(cellVal(row, 'exam')),
         term_id: CTX.termId,
         session_id: CTX.sessionId,
         subjectclass_id: CTX.subjectclassId,
@@ -1489,7 +1515,7 @@ function saveIndividualScore(input) {
         if (r.status === 423) {
             const d = await r.json().catch(() => ({}));
             showToast(d.message || 'This scoresheet is locked.', 'warning');
-            input.value = originalValue;
+            input.value = originalValue; validateInput(input);
             return null;
         }
         return r.json();
@@ -1534,13 +1560,13 @@ function saveIndividualScore(input) {
             refreshAllPositions();
         } else {
             showToast(data.message || 'Error saving score', 'danger');
-            input.value = originalValue;
+            input.value = originalValue; validateInput(input);
         }
     })
     .catch(err => {
         console.error(err);
         showToast('Network error', 'danger');
-        input.value = originalValue;
+        input.value = originalValue; validateInput(input);
     });
 }
 
@@ -1672,9 +1698,10 @@ function ssClose() {
 
 // ══ Bulk save ══
 function bulkSaveScores() {
+    document.querySelectorAll('.score-input:not(:disabled)').forEach(i => validateInput(i, true));
     const invalid = document.querySelectorAll('.score-input.is-invalid').length;
     if (invalid) {
-        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) are invalid.` });
+        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) are not valid. Enter a number from 0 to 100, or ABS if the student was absent.` });
         return;
     }
 
@@ -1683,10 +1710,10 @@ function bulkSaveScores() {
         if (row.dataset.isLocked === 'true') return;
         scores.push({
             id: row.dataset.id,
-            ca1:  parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0,
-            ca2:  parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0,
-            ca3:  parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0,
-            exam: parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0,
+            ca1:  scorePayload(cellVal(row, 'ca1')),
+            ca2:  scorePayload(cellVal(row, 'ca2')),
+            ca3:  scorePayload(cellVal(row, 'ca3')),
+            exam: scorePayload(cellVal(row, 'exam')),
         });
     });
 
@@ -1849,10 +1876,11 @@ function openScoreEntryModal(broadsheetId, studentName, studentAdmission, studen
     document.getElementById('modalStudentAvatar').src = studentAvatar;
 
     // Build CA summary
-    const ca1  = parseFloat(currentScores.ca1)  || 0;
-    const ca2  = parseFloat(currentScores.ca2)  || 0;
-    const ca3  = parseFloat(currentScores.ca3)  || 0;
-    const exam = parseFloat(currentScores.exam) || 0;
+    const ca1  = scoreNum(currentScores.ca1);
+    const ca2  = scoreNum(currentScores.ca2);
+    const ca3  = scoreNum(currentScores.ca3);
+    const exam = scoreNum(currentScores.exam);
+    const shown = f => isAbs(currentScores[f]) ? 'ABS' : scoreNum(currentScores[f]);
 
     const caAvg = (ca1 + ca2 + ca3) / 3;
     const total = Math.round(((caAvg + exam) / 2) * 10) / 10;
@@ -1865,23 +1893,24 @@ function openScoreEntryModal(broadsheetId, studentName, studentAdmission, studen
 
     let html = '';
     [
-        { field: 'ca1',  label: 'CA1',  max: 100, value: ca1 },
-        { field: 'ca2',  label: 'CA2',  max: 100, value: ca2 },
-        { field: 'ca3',  label: 'CA3',  max: 100, value: ca3 },
-        { field: 'exam', label: 'Exam', max: 100, value: exam },
+        { field: 'ca1',  label: 'CA1',  max: 100, value: shown('ca1') },
+        { field: 'ca2',  label: 'CA2',  max: 100, value: shown('ca2') },
+        { field: 'ca3',  label: 'CA3',  max: 100, value: shown('ca3') },
+        { field: 'exam', label: 'Exam', max: 100, value: shown('exam') },
     ].forEach(item => {
         html += `
             <div class="assessment-score-row">
                 <div>
                     <strong>${item.label}</strong>
-                    <small class="text-muted ms-2">(Max: ${item.max})</small>
+                    <small class="text-muted ms-2">(Max: ${item.max}, or ABS if absent)</small>
                 </div>
-                <input type="number"
-                       class="form-control score-input-large"
+                <input type="text"
+                       class="form-control score-input-large ${item.value === 'ABS' ? 'is-absent' : ''}"
                        data-field="${item.field}"
                        data-max="${item.max}"
                        value="${item.value}"
-                       min="0" max="${item.max}" step="0.1"
+                       maxlength="6" autocomplete="off"
+                       oninput="this.classList.toggle('is-absent', isAbs(this.value))"
                        style="width: 100px;">
             </div>`;
     });
@@ -1903,9 +1932,11 @@ function saveModalScores() {
     inputs.forEach(input => {
         const field = input.dataset.field;
         const maxScore = parseFloat(input.dataset.max) || 100;
-        let value = parseFloat(input.value) || 0;
-        if (value > maxScore || value < 0) {
-            Swal.fire({ icon: 'error', title: 'Invalid Score', text: `Score for ${field} must be between 0 and ${maxScore}.` });
+        if (isAbs(input.value)) { payload[field] = 'ABS'; return; }
+        const raw = String(input.value ?? '').trim();
+        const value = parseFloat(raw) || 0;
+        if ((raw !== '' && !/^\d*\.?\d+$|^\d+\.$/.test(raw)) || value > maxScore || value < 0) {
+            Swal.fire({ icon: 'error', title: 'Invalid Score', text: `Score for ${field.toUpperCase()} must be between 0 and ${maxScore}, or ABS if the student was absent.` });
             hasError = true;
             return;
         }
@@ -1941,7 +1972,7 @@ function saveModalScores() {
         if (row) {
             ['ca1','ca2','ca3','exam'].forEach(field => {
                 const inp = row.querySelector(`.score-input[data-field="${field}"]`);
-                if (inp) { inp.value = payload[field]; inp.dataset.original = payload[field]; }
+                if (inp) { inp.value = payload[field]; inp.dataset.original = payload[field]; validateInput(inp); }
             });
             updateRowGrades(row);
         }
@@ -2089,7 +2120,7 @@ function tipPosition(inp) {
 function tipRefresh(inp) {
     if (!inp) return;
     const row = inp.closest('tr');
-    const val = parseFloat(inp.value) || 0;
+    const val = scoreNum(inp.value);
     const max = parseFloat(inp.dataset.max) || 100;
     const asmtName = inp.dataset.assessmentName || 'Score';
 
@@ -2107,7 +2138,7 @@ function tipRefresh(inp) {
     document.getElementById('stAvatar').src = row.dataset.avatar || '{{ asset("storage/student_avatars/unnamed.jpg") }}';
     document.getElementById('stName').textContent = row.dataset.name || '—';
     document.getElementById('stMeta').textContent = (row.dataset.admissionno || '—') + ' · ' + asmtName + ' (max ' + max + ')';
-    document.getElementById('stVal').textContent = val % 1 === 0 ? String(val) : val.toFixed(1);
+    document.getElementById('stVal').textContent = isAbs(inp.value) ? 'ABS (absent)' : (val % 1 === 0 ? String(val) : val.toFixed(1));
     document.getElementById('stTotal').textContent = total.toFixed(1);
     const gEl = document.getElementById('stGrade');
     gEl.textContent = grade;
@@ -2246,10 +2277,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.querySelector(`tr[data-id="${broadsheetId}"]`);
         const currentScores = { ca1: 0, ca2: 0, ca3: 0, exam: 0 };
         if (row) {
-            currentScores.ca1  = parseFloat(row.querySelector('.score-input[data-field="ca1"]')?.value)  || 0;
-            currentScores.ca2  = parseFloat(row.querySelector('.score-input[data-field="ca2"]')?.value)  || 0;
-            currentScores.ca3  = parseFloat(row.querySelector('.score-input[data-field="ca3"]')?.value)  || 0;
-            currentScores.exam = parseFloat(row.querySelector('.score-input[data-field="exam"]')?.value) || 0;
+            ['ca1','ca2','ca3','exam'].forEach(f => { currentScores[f] = cellVal(row, f) ?? 0; });
         }
 
         openScoreEntryModal(
@@ -2275,14 +2303,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         inp.addEventListener('blur', function() {
             setTimeout(() => { if (tipInput === this) tipHide(); }, 80);
-            if (!validateInput(this)) { this.value = this.dataset.original || 0; return; }
+            if (!validateInput(this, true)) { this.value = this.dataset.original || 0; validateInput(this); return; }
             saveIndividualScore(this);
         });
         inp.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') { e.preventDefault(); tipHide(); this.blur(); return; }
             if (e.key !== 'Enter') return;
             e.preventDefault();
-            if (validateInput(this)) saveIndividualScore(this);
+            if (validateInput(this, true)) saveIndividualScore(this);
             const all = Array.from(document.querySelectorAll('.score-input:not(:disabled)'));
             const idx = all.indexOf(this);
             if (idx < all.length - 1) all[idx + 1].focus();

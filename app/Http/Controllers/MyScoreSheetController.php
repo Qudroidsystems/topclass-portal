@@ -688,12 +688,7 @@ class MyScoreSheetController extends Controller
         }
 
         // Each score is a number 0–100, or "ABS" when the student was absent.
-        $scoreRule = ['nullable', function ($attribute, $value, $fail) {
-            if (Broadsheets::isAbsentMark($value)) return;
-            if (!is_numeric($value) || $value < 0 || $value > 100) {
-                $fail(strtoupper($attribute) . ' must be a number between 0 and 100, or ABS if the student was absent.');
-            }
-        }];
+        $scoreRule = Broadsheets::scoreRule();
         $request->validate([
             'ca1'  => $scoreRule,
             'ca2'  => $scoreRule,
@@ -919,20 +914,7 @@ class MyScoreSheetController extends Controller
      */
     protected function readScoreInput(array $input): array
     {
-        $values = [];
-        $absent = [];
-
-        foreach (Broadsheets::SCORE_FIELDS as $field) {
-            $raw = $input[$field] ?? null;
-            if (Broadsheets::isAbsentMark($raw)) {
-                $absent[]       = $field;
-                $values[$field] = 0.0;
-            } else {
-                $values[$field] = is_numeric($raw) ? (float) $raw : 0.0;
-            }
-        }
-
-        return [$values, $absent ? implode(',', $absent) : null];
+        return Broadsheets::readScoreInput($input);
     }
 
     protected function getDefaultGrade($score)

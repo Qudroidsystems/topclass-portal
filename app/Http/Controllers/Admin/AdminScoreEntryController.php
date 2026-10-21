@@ -296,7 +296,9 @@ class AdminScoreEntryController extends Controller
                     $q->where('ca1', '>', 0)
                       ->orWhere('ca2', '>', 0)
                       ->orWhere('ca3', '>', 0)
-                      ->orWhere('exam', '>', 0);
+                      ->orWhere('exam', '>', 0)
+                      // a student marked ABS has been dealt with by the teacher
+                      ->orWhereNotNull('absent_fields');
                 })
                 ->count();
 
@@ -486,10 +488,11 @@ class AdminScoreEntryController extends Controller
 
             $validated = $request->validate([
                 'broadsheet_id' => 'required|exists:broadsheets,id',
-                'ca1'           => 'nullable|numeric|min:0|max:100',
-                'ca2'           => 'nullable|numeric|min:0|max:100',
-                'ca3'           => 'nullable|numeric|min:0|max:100',
-                'exam'          => 'nullable|numeric|min:0|max:100',
+                // number 0–100, or "ABS" when the student was absent
+                'ca1'           => Broadsheets::scoreRule(),
+                'ca2'           => Broadsheets::scoreRule(),
+                'ca3'           => Broadsheets::scoreRule(),
+                'exam'          => Broadsheets::scoreRule(),
             ]);
 
             $broadsheet = Broadsheets::findOrFail($broadsheetId);
@@ -500,10 +503,8 @@ class AdminScoreEntryController extends Controller
                 return response()->json(['success' => false, 'message' => 'Broadsheet record missing.'], 404);
             }
 
-            $ca1  = (float) ($validated['ca1']  ?? 0);
-            $ca2  = (float) ($validated['ca2']  ?? 0);
-            $ca3  = (float) ($validated['ca3']  ?? 0);
-            $exam = (float) ($validated['exam'] ?? 0);
+            [$scoreVals, $absentFields] = Broadsheets::readScoreInput($validated);
+            ['ca1' => $ca1, 'ca2' => $ca2, 'ca3' => $ca3, 'exam' => $exam] = $scoreVals;
 
             $caAverage = ($ca1 + $ca2 + $ca3) / 3;
             $total = round(($caAverage + $exam) / 2, 1);
@@ -521,6 +522,7 @@ class AdminScoreEntryController extends Controller
                 'ca2'              => $ca2,
                 'ca3'              => $ca3,
                 'exam'             => $exam,
+                'absent_fields'    => $absentFields,
                 'total'            => $total,
                 'bf'               => $bf,
                 'cum'              => $cum,
@@ -546,6 +548,7 @@ class AdminScoreEntryController extends Controller
                     'ca2'    => (float) $fresh->ca2,
                     'ca3'    => (float) $fresh->ca3,
                     'exam'   => (float) $fresh->exam,
+                    'absent_fields' => $fresh->absentFieldList(),
                     'total'  => (float) $fresh->total,
                     'bf'     => (float) $fresh->bf,
                     'cum'    => (float) $fresh->cum,
@@ -633,10 +636,10 @@ class AdminScoreEntryController extends Controller
         $validated = $request->validate([
             'scores'            => 'required|array',
             'scores.*.id'       => 'required|exists:broadsheets,id',
-            'scores.*.ca1'      => 'nullable|numeric|min:0|max:100',
-            'scores.*.ca2'      => 'nullable|numeric|min:0|max:100',
-            'scores.*.ca3'      => 'nullable|numeric|min:0|max:100',
-            'scores.*.exam'     => 'nullable|numeric|min:0|max:100',
+            'scores.*.ca1'      => Broadsheets::scoreRule(),
+            'scores.*.ca2'      => Broadsheets::scoreRule(),
+            'scores.*.ca3'      => Broadsheets::scoreRule(),
+            'scores.*.exam'     => Broadsheets::scoreRule(),
             'term_id'           => 'required|exists:schoolterm,id',
             'session_id'        => 'required|exists:schoolsession,id',
             'subjectclass_id'   => 'required|exists:subjectclass,id',
@@ -678,10 +681,8 @@ class AdminScoreEntryController extends Controller
                 $broadsheet = Broadsheets::find($score['id']);
                 if (!$broadsheet) continue;
 
-                $ca1  = (float) ($score['ca1']  ?? 0);
-                $ca2  = (float) ($score['ca2']  ?? 0);
-                $ca3  = (float) ($score['ca3']  ?? 0);
-                $exam = (float) ($score['exam'] ?? 0);
+                [$scoreVals, $absentFields] = Broadsheets::readScoreInput($score);
+                ['ca1' => $ca1, 'ca2' => $ca2, 'ca3' => $ca3, 'exam' => $exam] = $scoreVals;
 
                 $caAverage = ($ca1 + $ca2 + $ca3) / 3;
                 $total     = round(($caAverage + $exam) / 2, 1);
@@ -701,6 +702,7 @@ class AdminScoreEntryController extends Controller
                     'ca2'              => $ca2,
                     'ca3'              => $ca3,
                     'exam'             => $exam,
+                    'absent_fields'    => $absentFields,
                     'total'            => $total,
                     'bf'               => $bf,
                     'cum'              => $cum,
@@ -1672,6 +1674,7 @@ class AdminScoreEntryController extends Controller
             'broadsheets.ca2',
             'broadsheets.ca3',
             'broadsheets.exam',
+            'broadsheets.absent_fields',
 
             'broadsheets.total',
             'broadsheets.bf',
