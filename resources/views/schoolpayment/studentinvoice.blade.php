@@ -1057,6 +1057,11 @@
     </div>
 </div>
 
+{{-- One-page printable copy (same layout as the PDF). Inert until printed. --}}
+<template id="invoice-print-template">
+    @include('schoolpayment.partials.invoice-print')
+</template>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const originalTitle = document.title;
@@ -1094,13 +1099,42 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Prints only the compact one-page invoice (from #invoice-print-template)
+    // inside a hidden iframe, so the site layout, avatar and large on-screen
+    // cards never spill the printout onto several pages.
+    function printOnePageInvoice() {
+        const tpl = document.getElementById('invoice-print-template');
+        if (!tpl) { window.print(); return; }
+
+        const old = document.getElementById('invoice-print-frame');
+        if (old) old.remove();
+
+        const frame = document.createElement('iframe');
+        frame.id = 'invoice-print-frame';
+        frame.setAttribute('aria-hidden', 'true');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(frame);
+
+        const doc = frame.contentWindow.document;
+        doc.open();
+        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + customFilename +
+                  '</title></head><body>' + tpl.innerHTML + '</body></html>');
+        doc.close();
+
+        const imgs = Array.from(doc.images);
+        Promise.all(imgs.map(img => img.complete ? Promise.resolve()
+                : new Promise(res => { img.onload = img.onerror = res; })))
+            .then(() => {
+                frame.contentWindow.focus();
+                frame.contentWindow.print();
+                setTimeout(() => { document.title = originalTitle; }, 1000);
+            });
+    }
+
     function handlePrint() {
         document.title = customFilename;
         confirmInvoiceOnServer().finally(function () {
-            setTimeout(() => {
-                window.print();
-                setTimeout(() => { document.title = originalTitle; }, 1000);
-            }, 100);
+            setTimeout(printOnePageInvoice, 100);
         });
     }
 
