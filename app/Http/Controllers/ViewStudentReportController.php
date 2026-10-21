@@ -278,6 +278,7 @@ class ViewStudentReportController extends Controller
                     'broadsheets.ca2',
                     'broadsheets.ca3',
                     'broadsheets.exam',
+                    'broadsheets.absent_fields',
                     'broadsheets.total',
                     'broadsheets.bf',
                     'broadsheets.cum',
@@ -396,6 +397,15 @@ class ViewStudentReportController extends Controller
                 $score->bf_display   = $this->formatScore($bf);
                 $score->cum_score    = $this->formatScore($columnH);
                 $score->cum_numeric  = $columnH;
+
+                // Fields the teacher/admin marked ABS on the scoresheet: show
+                // "ABS" instead of 0. The score still counts as 0 in the maths,
+                // exactly as on the scoresheet, so totals/positions agree.
+                foreach (['ca1', 'ca2', 'ca3', 'exam'] as $f) {
+                    if ($score->isAbsentFor($f)) {
+                        $score->{$f . '_display'} = 'ABS';
+                    }
+                }
 
                 if ($score->cum_numeric !== null && is_numeric($score->cum_numeric)) {
                     $score->grade  = $isSenior
@@ -913,6 +923,7 @@ class ViewStudentReportController extends Controller
                     'ca2'               => $score->ca2  !== null ? (float) $score->ca2  : null,
                     'ca3'               => $score->ca3  !== null ? (float) $score->ca3  : null,
                     'exam'              => $score->exam !== null ? (float) $score->exam : null,
+                    'absent_fields'     => $score->absentFieldList(),
                     'total'             => $score->total !== null ? (float) $score->total : null,
                     'bf'                => $score->bf    !== null ? (float) $score->bf    : null,
                     'cum'               => $score->cum    !== null ? (float) $score->cum    : null,

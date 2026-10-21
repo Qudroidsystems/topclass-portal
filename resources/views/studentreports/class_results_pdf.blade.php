@@ -723,6 +723,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                    @if(collect($studentData['scores'] ?? [])->contains(fn($sc) => in_array('ABS', [$sc->ca1_display ?? null, $sc->ca2_display ?? null, $sc->ca3_display ?? null, $sc->exam_display ?? null], true)))
+                        <div style="font-size:8px;margin-top:2px;"><span class="abs-text">ABS</span> = Absent (scored as 0)</div>
+                    @endif
                 </div>
 
                 <!-- Remarks Section -->
