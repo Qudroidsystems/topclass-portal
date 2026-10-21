@@ -37,6 +37,9 @@
 .score-input.is-invalid { border-color: var(--ss-danger)  !important; background: #fef2f2; }
 .score-input.is-saved   { border-color: var(--ss-success) !important; background: #f0fdf4; }
 .score-input:disabled   { background: #f3f4f6; cursor: not-allowed; opacity: 0.7; }
+.score-input.is-absent  { color: #b91c1c; font-weight: 700; letter-spacing: .5px; background: #fff7ed; border-color: #fdba74; }
+.score-input.is-absent.is-saved { border-color: var(--ss-success) !important; }
+.abs-hint kbd { background: #fff7ed; color: #b91c1c; border: 1px solid #fdba74; font-weight: 700; padding: 0 4px; }
 
 /* ══════════════════════════════════════════════════════════════════════
    TABLE STYLING
@@ -722,17 +725,19 @@
                             @foreach (['ca1','ca2','ca3','exam'] as $field)
                                 @php
                                     $rawVal     = $broadsheet->$field ?? null;
-                                    $displayVal = $rawVal === null ? '' : (float) $rawVal;
+                                    $isAbsent   = $broadsheet->isAbsentFor($field);
+                                    $displayVal = $isAbsent ? 'ABS' : ($rawVal === null ? '' : (float) $rawVal);
                                 @endphp
                                 <td class="col-{{ $field }} text-center">
-                                    <input type="number" class="score-input"
+                                    <input type="text" class="score-input {{ $isAbsent ? 'is-absent' : '' }}"
                                            data-field="{{ $field }}"
                                            data-max="100"
                                            data-id="{{ $broadsheet->id }}"
                                            data-original="{{ $displayVal }}"
                                            data-raw="{{ $rawVal === null ? 'NULL' : $rawVal }}"
                                            value="{{ $displayVal }}"
-                                           min="0" max="100" step="0.1"
+                                           maxlength="6" autocomplete="off"
+                                           title="Enter a score (0–100), or ABS if the student was absent"
                                            {{ $isRowLocked ? 'disabled' : '' }}>
                                 </td>
                             @endforeach
@@ -863,6 +868,7 @@
                         </a>
                     </div>
                     <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted abs-hint"><i class="ri-user-unfollow-line me-1"></i>Student absent? Type <kbd>ABS</kbd> (or <kbd>A</kbd>) instead of 0</small>
                         <small class="text-muted"><i class="ri-keyboard-line me-1"></i>Ctrl+S to save</small>
                         <button class="btn btn-success btn-sm px-4" id="bulkUpdateScores"
                             {{ (isset($teacherEditingEnabled) && !$teacherEditingEnabled) || isset($globalLock) ? 'disabled' : '' }}>
@@ -1087,11 +1093,26 @@ function applyGrade(badge, grade) {
     setTimeout(() => badge.classList.remove('updated'), 500);
 }
 
-function validateInput(inp) {
+/* ── Absent ("ABS") handling ─────────────────────────────────────────
+   Staff type ABS (or A / ABSENT) in a score cell when the student was
+   absent. It counts as 0 in every calculation, but is saved and shown as
+   ABS so it is not confused with a real score of 0.                       */
+const isAbs = v => /^\s*(abs|absent|a)\s*$/i.test(String(v ?? ''));
+const scoreNum = v => isAbs(v) ? 0 : (parseFloat(v) || 0);
+const scoreKey = v => isAbs(v) ? 'ABS' : String(scoreNum(v));
+const scorePayload = v => isAbs(v) ? 'ABS' : scoreNum(v);
+
+function validateInput(inp, normalize = false) {
+    const raw = String(inp.value ?? '').trim();
+    const abs = isAbs(raw);
+    if (abs && normalize) inp.value = 'ABS';
+    inp.classList.toggle('is-absent', abs);
+    if (abs || raw === '') { inp.classList.remove('is-invalid'); return true; }
+
     const max = parseFloat(inp.dataset.max) || 100;
-    const val = parseFloat(inp.value)       || 0;
-    inp.classList.toggle('is-invalid', val > max || val < 0);
-    return val <= max && val >= 0;
+    const ok  = /^\d*\.?\d+$|^\d+\.$/.test(raw) && parseFloat(raw) >= 0 && parseFloat(raw) <= max;
+    inp.classList.toggle('is-invalid', !ok);
+    return ok;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1141,7 +1162,7 @@ function updateRowGrades(row) {
 
     let ca1 = 0, ca2 = 0, ca3 = 0, exam = 0;
     row.querySelectorAll('.score-input').forEach(inp => {
-        const v = parseFloat(inp.value) || 0;
+        const v = scoreNum(inp.value);
         switch (inp.dataset.field) {
             case 'ca1':  ca1  = v; break;
             case 'ca2':  ca2  = v; break;
@@ -1217,7 +1238,7 @@ function saveIndividualScore(input) {
     // Collect all 4 CA fields from the row
     const payload = { ca1: 0, ca2: 0, ca3: 0, exam: 0 };
     row.querySelectorAll('.score-input').forEach(inp => {
-        payload[inp.dataset.field] = parseFloat(inp.value) || 0;
+        payload[inp.dataset.field] = scorePayload(inp.value);
     });
 
     fetch(window.routes.update.replace('__ID__', input.dataset.id), {
@@ -1372,9 +1393,10 @@ function bulkSave() {
         return;
     }
 
+    document.querySelectorAll('.score-input:not(:disabled)').forEach(i => validateInput(i, true));
     const invalid = document.querySelectorAll('.score-input.is-invalid').length;
     if (invalid) {
-        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) exceed their maximum.` });
+        Swal.fire({ icon:'warning', title:'Invalid Scores', text:`${invalid} score(s) are not valid. Enter a number from 0 to 100, or ABS if the student was absent.` });
         return;
     }
 
@@ -1383,7 +1405,7 @@ function bulkSave() {
         if (row.dataset.isLocked === 'true') return;
         const obj = { id: row.dataset.id, ca1: 0, ca2: 0, ca3: 0, exam: 0 };
         row.querySelectorAll('.score-input').forEach(inp => {
-            obj[inp.dataset.field] = parseFloat(inp.value) || 0;
+            obj[inp.dataset.field] = scorePayload(inp.value);
         });
         scores.push(obj);
     });
@@ -1599,11 +1621,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         inp.addEventListener('blur', function () {
             setTimeout(() => { if (tipInput === this) tipHide(); }, 80);
-            if (!validateInput(this)) return;
+            if (!validateInput(this, true)) return;
             if (window.isEditingDisabled) return;
-            const orig = parseFloat(this.dataset.original) || 0;
-            const curr = parseFloat(this.value)            || 0;
-            if (Math.abs(curr - orig) > 0.001) {
+            if (scoreKey(this.dataset.original) !== scoreKey(this.value)) {
                 this.dataset.original = this.value;
                 saveIndividualScore(this);
             }
@@ -1614,7 +1634,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.key !== 'Enter')  return;
             e.preventDefault();
             if (window.isEditingDisabled) return;
-            if (validateInput(this)) saveIndividualScore(this);
+            if (validateInput(this, true)) {
+                this.dataset.original = this.value;
+                saveIndividualScore(this);
+            }
             const all = Array.from(document.querySelectorAll('.score-input:not(:disabled)'));
             const idx = all.indexOf(this);
             if (idx < all.length - 1) all[idx + 1].focus();
@@ -1838,14 +1861,14 @@ function tipPosition(inp) {
 function tipRefresh(inp) {
     if (!inp) return;
     const row = inp.closest('tr');
-    const val = parseFloat(inp.value) || 0;
+    const val = scoreNum(inp.value);
     const max = parseFloat(inp.dataset.max) || 100;
     const fieldName = (inp.dataset.field || '').toUpperCase();
 
     // Live compute total + cum
     let ca1 = 0, ca2 = 0, ca3 = 0, exam = 0;
     row.querySelectorAll('.score-input').forEach(i => {
-        const v = parseFloat(i.value) || 0;
+        const v = scoreNum(i.value);
         switch (i.dataset.field) {
             case 'ca1':  ca1  = v; break;
             case 'ca2':  ca2  = v; break;
@@ -1866,7 +1889,7 @@ function tipRefresh(inp) {
     document.getElementById('stAvatar').src        = row.dataset.avatar || '{{ asset("storage/student_avatars/unnamed.jpg") }}';
     document.getElementById('stName').textContent  = row.dataset.name || '—';
     document.getElementById('stMeta').textContent  = (row.dataset.admissionno || '—') + ' · ' + fieldName + ' (max ' + max + ')';
-    document.getElementById('stVal').textContent   = val % 1 === 0 ? String(val) : val.toFixed(1);
+    document.getElementById('stVal').textContent   = isAbs(inp.value) ? 'ABS (absent)' : (val % 1 === 0 ? String(val) : val.toFixed(1));
     document.getElementById('stTotal').textContent = fmtN(total);
     const gEl = document.getElementById('stGrade'); gEl.textContent = grade; gEl.style.color = col;
     document.getElementById('stProgLabel').textContent = fmtN(total) + ' / 100 marks';

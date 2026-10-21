@@ -24,6 +24,7 @@ class Broadsheets extends Model
         'ca2',
         'ca3',
         'exam',
+        'absent_fields',   // comma list of fields the student was absent for
 
         // ── Computed ────────────────────────────────────────────────────
         'total',
@@ -251,6 +252,38 @@ class Broadsheets extends Model
         $this->save();
 
         return $this;
+    }
+
+    // =========================================================================
+    // ABSENCE ("ABS") HELPERS
+    // =========================================================================
+
+    public const SCORE_FIELDS = ['ca1', 'ca2', 'ca3', 'exam'];
+
+    /** True when a typed score value means "absent" (ABS / ABSENT / A). */
+    public static function isAbsentMark($value): bool
+    {
+        return is_string($value)
+            && in_array(strtoupper(trim($value)), ['ABS', 'ABSENT', 'A'], true);
+    }
+
+    /**
+     * Fields this student is marked absent for. A field only counts as absent
+     * while its stored score is still 0, so a real score entered later
+     * (e.g. by an admin or an import) always wins over a stale ABS flag.
+     */
+    public function absentFieldList(): array
+    {
+        $list = array_filter(array_map('trim', explode(',', (string) ($this->absent_fields ?? ''))));
+
+        return array_values(array_filter($list, function ($f) {
+            return in_array($f, self::SCORE_FIELDS, true) && (float) ($this->$f ?? 0) == 0.0;
+        }));
+    }
+
+    public function isAbsentFor(string $field): bool
+    {
+        return in_array($field, $this->absentFieldList(), true);
     }
 
     public function hasScheduledUnlock(): bool

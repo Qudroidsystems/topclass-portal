@@ -269,7 +269,11 @@
                 <td>{{ $student->admissionno ?? '-' }}</td>
                 <td class="name-col"><strong>{{ $student->lname ?? '' }}</strong> {{ $student->fname ?? '' }} {{ $student->mname ?? '' }}</td>
                 @foreach(['ca1'=>'CA1','ca2'=>'CA2','ca3'=>'CA3','exam'=>'Exam'] as $k => $lbl)
-                    <td>{{ number_format($student->{$k} ?? 0, 1) }}</td>
+                    @if(method_exists($student, 'isAbsentFor') && $student->isAbsentFor($k))
+                        <td style="color:#b91c1c;font-weight:700;">ABS</td>
+                    @else
+                        <td>{{ number_format($student->{$k} ?? 0, 1) }}</td>
+                    @endif
                 @endforeach
                 <td style="font-weight:700;">{{ number_format($rowTotal, 1) }}</td>
                 <td>{{ number_format($student->bf ?? 0, 1) }}</td>
@@ -304,6 +308,9 @@
     </tfoot>
     @endif
 </table>
+@if($broadsheets->contains(fn($b) => method_exists($b, 'absentFieldList') && count($b->absentFieldList()) > 0))
+    <div style="font-size:8.5px;color:#555;margin-top:3px;"><strong style="color:#b91c1c;">ABS</strong> = student was absent (counted as 0 in the total).</div>
+@endif
 
 {{-- ── SIGNATURES ─────────────────────────────────────────────────── --}}
 <div class="sig-section">
