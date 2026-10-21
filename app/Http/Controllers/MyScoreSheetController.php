@@ -241,6 +241,7 @@ class MyScoreSheetController extends Controller
             'broadsheets.ca2',
             'broadsheets.ca3',
             'broadsheets.exam',
+            'broadsheets.absent_fields',
 
             'broadsheets.total',
             'broadsheets.bf',
@@ -686,11 +687,18 @@ class MyScoreSheetController extends Controller
             ], 423);
         }
 
+        // Each score is a number 0–100, or "ABS" when the student was absent.
+        $scoreRule = ['nullable', function ($attribute, $value, $fail) {
+            if (Broadsheets::isAbsentMark($value)) return;
+            if (!is_numeric($value) || $value < 0 || $value > 100) {
+                $fail(strtoupper($attribute) . ' must be a number between 0 and 100, or ABS if the student was absent.');
+            }
+        }];
         $request->validate([
-            'ca1'  => 'nullable|numeric|min:0|max:100',
-            'ca2'  => 'nullable|numeric|min:0|max:100',
-            'ca3'  => 'nullable|numeric|min:0|max:100',
-            'exam' => 'nullable|numeric|min:0|max:100',
+            'ca1'  => $scoreRule,
+            'ca2'  => $scoreRule,
+            'ca3'  => $scoreRule,
+            'exam' => $scoreRule,
         ]);
 
         $broadsheet = Broadsheets::findOrFail($id);
@@ -703,10 +711,8 @@ class MyScoreSheetController extends Controller
             return response()->json(['success' => false, 'message' => 'Broadsheet record not found.'], 404);
         }
 
-        $ca1  = (float) ($request->ca1 ?? 0);
-        $ca2  = (float) ($request->ca2 ?? 0);
-        $ca3  = (float) ($request->ca3 ?? 0);
-        $exam = (float) ($request->exam ?? 0);
+        [$scoreVals, $absentFields] = $this->readScoreInput($request->only(Broadsheets::SCORE_FIELDS));
+        ['ca1' => $ca1, 'ca2' => $ca2, 'ca3' => $ca3, 'exam' => $exam] = $scoreVals;
 
         $caAverage = ($ca1 + $ca2 + $ca3) / 3;
         $total = round(($caAverage + $exam) / 2, 1);
@@ -724,6 +730,7 @@ class MyScoreSheetController extends Controller
             'ca2'              => $ca2,
             'ca3'              => $ca3,
             'exam'             => $exam,
+            'absent_fields'    => $absentFields,
             'total'            => $total,
             'bf'               => $bf,
             'cum'              => $cum,
@@ -747,6 +754,7 @@ class MyScoreSheetController extends Controller
                 'ca2'    => (float) $fresh->ca2,
                 'ca3'    => (float) $fresh->ca3,
                 'exam'   => (float) $fresh->exam,
+                'absent_fields' => $fresh->absentFieldList(),
                 'total'  => (float) $fresh->total,
                 'bf'     => (float) $fresh->bf,
                 'cum'    => (float) $fresh->cum,
@@ -807,10 +815,8 @@ class MyScoreSheetController extends Controller
                 $broadsheet = Broadsheets::find($score['id']);
                 if (!$broadsheet) continue;
 
-                $ca1  = (float) ($score['ca1']  ?? 0);
-                $ca2  = (float) ($score['ca2']  ?? 0);
-                $ca3  = (float) ($score['ca3']  ?? 0);
-                $exam = (float) ($score['exam'] ?? 0);
+                [$scoreVals, $absentFields] = $this->readScoreInput($score);
+                ['ca1' => $ca1, 'ca2' => $ca2, 'ca3' => $ca3, 'exam' => $exam] = $scoreVals;
 
                 $caAverage = ($ca1 + $ca2 + $ca3) / 3;
                 $total = round(($caAverage + $exam) / 2, 1);
@@ -833,6 +839,7 @@ class MyScoreSheetController extends Controller
                     'ca2'              => $ca2,
                     'ca3'              => $ca3,
                     'exam'             => $exam,
+                    'absent_fields'    => $absentFields,
                     'total'            => $total,
                     'bf'               => $bf,
                     'cum'              => $cum,
@@ -902,6 +909,31 @@ class MyScoreSheetController extends Controller
     // =========================================================================
     // GRADE HELPERS
     // =========================================================================
+
+    /**
+     * Turn posted ca1/ca2/ca3/exam values into numbers, noting which ones were
+     * entered as "ABS" (absent). An absent field scores 0 in every calculation,
+     * but is remembered so the scoresheet shows ABS instead of a plain 0.
+     *
+     * @return array{0: array<string,float>, 1: ?string}  [scores, absent_fields]
+     */
+    protected function readScoreInput(array $input): array
+    {
+        $values = [];
+        $absent = [];
+
+        foreach (Broadsheets::SCORE_FIELDS as $field) {
+            $raw = $input[$field] ?? null;
+            if (Broadsheets::isAbsentMark($raw)) {
+                $absent[]       = $field;
+                $values[$field] = 0.0;
+            } else {
+                $values[$field] = is_numeric($raw) ? (float) $raw : 0.0;
+            }
+        }
+
+        return [$values, $absent ? implode(',', $absent) : null];
+    }
 
     protected function getDefaultGrade($score)
     {
