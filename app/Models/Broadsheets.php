@@ -281,6 +281,43 @@ class Broadsheets extends Model
         }));
     }
 
+    /**
+     * Turn posted ca1/ca2/ca3/exam values into numbers, noting which were
+     * entered as "ABS". An absent field scores 0 in every calculation but is
+     * remembered so scoresheets show ABS instead of a plain 0.
+     *
+     * @return array{0: array<string,float>, 1: ?string}  [scores, absent_fields]
+     */
+    public static function readScoreInput(array $input): array
+    {
+        $values = [];
+        $absent = [];
+
+        foreach (self::SCORE_FIELDS as $field) {
+            $raw = $input[$field] ?? null;
+            if (self::isAbsentMark($raw)) {
+                $absent[]       = $field;
+                $values[$field] = 0.0;
+            } else {
+                $values[$field] = is_numeric($raw) ? (float) $raw : 0.0;
+            }
+        }
+
+        return [$values, $absent ? implode(',', $absent) : null];
+    }
+
+    /** Validation rule: a number 0–100, or ABS for absent. */
+    public static function scoreRule(): array
+    {
+        return ['nullable', function ($attribute, $value, $fail) {
+            if (self::isAbsentMark($value)) return;
+            if (!is_numeric($value) || $value < 0 || $value > 100) {
+                $label = strtoupper(\Illuminate\Support\Str::afterLast($attribute, '.'));
+                $fail($label . ' must be a number between 0 and 100, or ABS if the student was absent.');
+            }
+        }];
+    }
+
     public function isAbsentFor(string $field): bool
     {
         return in_array($field, $this->absentFieldList(), true);
