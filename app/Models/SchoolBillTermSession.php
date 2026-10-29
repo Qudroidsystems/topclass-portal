@@ -18,6 +18,7 @@ class SchoolBillTermSession extends Model
         'class_id',
         'termid_id',
         'session_id',
+        'student_status_id',
         'created_by',
         'is_active',
         'display_order',
@@ -29,6 +30,7 @@ class SchoolBillTermSession extends Model
         'class_id'      => 'integer',
         'termid_id'     => 'integer',
         'session_id'    => 'integer',
+        'student_status_id' => 'integer',
         'created_by'    => 'integer',
         'is_active'     => 'boolean',
         'is_required'   => 'boolean',
@@ -90,6 +92,52 @@ class SchoolBillTermSession extends Model
     public function scopeForSession($query, $sessionId)
     {
         return $query->where('session_id', $sessionId);
+    }
+
+
+    // ── Old / New student targeting ────────────────────────────────────
+
+    /**
+     * SQL expression for "which students does this assignment apply to".
+     * The assignment's own student_status_id wins; when it is NULL (older rows)
+     * the bill's own statusId is used. 0 / NULL / '' means both old and new.
+     * Requires school_bill to be joined in the query.
+     */
+    public static function effectiveStatusExpr(
+        string $assignTable = 'school_bill_class_term_session',
+        string $billTable = 'school_bill'
+    ): string {
+        return "COALESCE({$assignTable}.student_status_id, {$billTable}.statusId)";
+    }
+
+    /**
+     * Restrict a query (Eloquent or DB::table) to the assignments that apply to a
+     * student of the given status (student_status.id: 1 = old, 2 = new).
+     */
+    public static function applyStudentStatusFilter(
+        $query,
+        $studentStatusId,
+        string $assignTable = 'school_bill_class_term_session',
+        string $billTable = 'school_bill'
+    ) {
+        $eff = self::effectiveStatusExpr($assignTable, $billTable);
+
+        return $query->where(function ($q) use ($eff, $studentStatusId) {
+            $q->whereRaw("{$eff} IS NULL")
+              ->orWhereRaw("{$eff} = ''")
+              ->orWhereRaw("{$eff} = 0")
+              ->orWhereRaw("{$eff} = ?", [(int) $studentStatusId]);
+        });
+    }
+
+    public static function audienceLabel($statusId): ?string
+    {
+        if ($statusId === null || $statusId === '') return null;
+        return match ((int) $statusId) {
+            1       => 'Old students',
+            2       => 'New students',
+            default => 'Old & new students',
+        };
     }
 
     // ── Static helpers ─────────────────────────────────────────────────

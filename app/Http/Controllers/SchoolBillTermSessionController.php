@@ -72,6 +72,8 @@ class SchoolBillTermSessionController extends Controller
                 'school_bill_class_term_session.class_id',
                 'school_bill_class_term_session.termid_id',
                 'school_bill_class_term_session.session_id',
+                'school_bill_class_term_session.student_status_id',
+                'school_bill.statusId as bill_status_id',
                 'schoolclass.schoolclass as schoolclass',
                 'schoolarm.arm as arm_name',
                 'schoolterm.term as schoolterm',
@@ -82,7 +84,57 @@ class SchoolBillTermSessionController extends Controller
                 'school_bill_class_term_session.updated_at as updated_at',
             ]);
 
+        // Newest first: the current term of the current session, then the rest of the
+        // current session, then every other session (latest session / term first).
+        $currentSessionId = (int) (Schoolsession::where('status', 'Current')->value('id') ?? 0);
+        $currentTermId    = (int) (optional(Schoolterm::current())->id ?? 0);
+
+        $assignments
+            ->orderByRaw(
+                'CASE WHEN CAST(school_bill_class_term_session.session_id AS UNSIGNED) = ? '
+                . 'AND CAST(school_bill_class_term_session.termid_id AS UNSIGNED) = ? THEN 0 '
+                . 'WHEN CAST(school_bill_class_term_session.session_id AS UNSIGNED) = ? THEN 1 ELSE 2 END',
+                [$currentSessionId, $currentTermId, $currentSessionId]
+            )
+            ->orderByRaw('CAST(school_bill_class_term_session.session_id AS UNSIGNED) DESC')
+            ->orderByRaw('CAST(school_bill_class_term_session.termid_id AS UNSIGNED) DESC')
+            ->orderBy('school_bill_class_term_session.id', 'desc');
+
         return DataTables::of($assignments)
+            // Ordering is fixed above; ignore the browser's column ordering.
+            ->order(function () {
+            })
+            // Searching: 'createdBy' etc. are aliases/joined columns, so point the search at the
+            // real columns (otherwise it looks for school_bill_class_term_session.createdBy).
+            ->filterColumn('createdBy', function ($q, $kw) {
+                $q->whereRaw('LOWER(users.name) LIKE ?', ['%' . mb_strtolower($kw) . '%']);
+            })
+            ->filterColumn('formatted_bill', function ($q, $kw) {
+                $q->whereRaw('LOWER(school_bill.title) LIKE ?', ['%' . mb_strtolower($kw) . '%']);
+            })
+            ->filterColumn('formatted_class', function ($q, $kw) {
+                $q->whereRaw("LOWER(CONCAT(schoolclass.schoolclass, ' ', COALESCE(schoolarm.arm, ''))) LIKE ?", ['%' . mb_strtolower($kw) . '%']);
+            })
+            ->filterColumn('formatted_term_session', function ($q, $kw) {
+                $q->whereRaw("LOWER(CONCAT(schoolterm.term, ' ', schoolsession.session)) LIKE ?", ['%' . mb_strtolower($kw) . '%']);
+            })
+            ->filterColumn('formatted_audience', function ($q, $kw) {
+                $k = mb_strtolower($kw);
+                $q->where(function ($w) use ($k) {
+                    if (str_contains($k, 'old')) {
+                        $w->orWhereRaw('COALESCE(school_bill_class_term_session.student_status_id, school_bill.statusId) = 1');
+                    }
+                    if (str_contains($k, 'new')) {
+                        $w->orWhereRaw('COALESCE(school_bill_class_term_session.student_status_id, school_bill.statusId) = 2');
+                    }
+                    if (str_contains($k, 'both') || str_contains($k, '&')) {
+                        $w->orWhereRaw("COALESCE(school_bill_class_term_session.student_status_id, school_bill.statusId, 0) IN (0, '')");
+                    }
+                    if (!str_contains($k, 'old') && !str_contains($k, 'new') && !str_contains($k, 'both') && !str_contains($k, '&')) {
+                        $w->orWhereRaw('1 = 0');
+                    }
+                });
+            })
             ->addIndexColumn()
             ->addColumn('formatted_class', function ($row) {
                 return trim($row->schoolclass . ($row->arm_name ? ' ' . $row->arm_name : ''));
@@ -94,6 +146,17 @@ class SchoolBillTermSessionController extends Controller
                     . '<span class="ts-badge ts-badge-session ms-1">'
                     . e($row->schoolsession)
                     . '</span>';
+            })
+            ->addColumn('formatted_audience', function ($row) {
+                // Assignment setting wins; legacy rows (NULL) fall back to the bill's own type.
+                $effective = $row->student_status_id ?? $row->bill_status_id;
+                $label     = SchoolBillTermSession::audienceLabel($effective) ?? 'Old & new students';
+                $cls       = match ((int) $effective) {
+                    1       => 'bg-info-subtle text-info',
+                    2       => 'bg-success-subtle text-success',
+                    default => 'bg-secondary-subtle text-secondary',
+                };
+                return '<span class="badge ' . $cls . '">' . e($label) . '</span>';
             })
             ->addColumn('formatted_bill', function ($row) {
                 return '<div class="fw-semibold">' . e($row->schoolbill) . '</div>'
@@ -117,7 +180,8 @@ class SchoolBillTermSessionController extends Controller
                         data-bill_id="'    . $row->bill_id    . '"
                         data-class_id="'   . $row->class_id   . '"
                         data-termid_id="'  . $row->termid_id  . '"
-                        data-session_id="' . $row->session_id . '">
+                        data-session_id="' . $row->session_id . '"
+                        data-student_status_id="' . ($row->student_status_id ?? $row->bill_status_id ?? 0) . '">
                         <i class="ri-pencil-line"></i>
                     </button>';
                 }
@@ -131,7 +195,7 @@ class SchoolBillTermSessionController extends Controller
                 $buttons .= '</div>';
                 return $buttons;
             })
-            ->rawColumns(['formatted_term_session', 'formatted_bill', 'formatted_date', 'action'])
+            ->rawColumns(['formatted_term_session', 'formatted_audience', 'formatted_bill', 'formatted_date', 'action'])
             ->make(true);
     }
 
@@ -176,7 +240,9 @@ class SchoolBillTermSessionController extends Controller
             'termid_id'    => 'required|array|min:1',
             'termid_id.*'  => 'exists:schoolterm,id',
             'session_id'   => 'required|exists:schoolsession,id',
+            'student_status_id' => 'nullable|in:0,1,2',
         ], [
+            'student_status_id.in' => 'Student type must be Both, Old or New.',
             'bill_id.required'    => 'Please select a school bill.',
             'bill_id.exists'      => 'Selected bill does not exist.',
             'class_id.required'   => 'Please select at least one class.',
@@ -199,12 +265,23 @@ class SchoolBillTermSessionController extends Controller
         $class_ids  = array_values(array_filter((array) $request->input('class_id', [])));
         $term_ids   = array_values(array_filter((array) $request->input('termid_id', [])));
         $session_id = $request->input('session_id');
+        // 0 = both, 1 = old, 2 = new
+        $status_id  = $request->filled('student_status_id') ? (int) $request->input('student_status_id') : 0;
 
-        // Pre-check: find any existing combinations and describe them
+        // Pre-check: find any existing combinations that would overlap and describe them.
+        // A "both" assignment overlaps every existing one; an old/new one only overlaps
+        // the same type, a "both" one, or a legacy (unset) one.
         $existing = SchoolBillTermSession::where('bill_id', $bill_id)
             ->whereIn('class_id', $class_ids)
             ->whereIn('termid_id', $term_ids)
             ->where('session_id', $session_id)
+            ->when($status_id !== 0, function ($q) use ($status_id) {
+                $q->where(function ($w) use ($status_id) {
+                    $w->whereNull('student_status_id')
+                      ->orWhere('student_status_id', 0)
+                      ->orWhere('student_status_id', $status_id);
+                });
+            })
             ->get(['class_id', 'termid_id']);
 
         if ($existing->isNotEmpty()) {
@@ -231,6 +308,7 @@ class SchoolBillTermSessionController extends Controller
                         'class_id'   => $class_id,
                         'termid_id'  => $term_id,
                         'session_id' => $session_id,
+                        'student_status_id' => $status_id,
                         'created_by' => auth()->id(),
                     ]);
                 }
@@ -304,6 +382,7 @@ class SchoolBillTermSessionController extends Controller
             'class_id'   => 'required|exists:schoolclass,id',
             'termid_id'  => 'required|exists:schoolterm,id',
             'session_id' => 'required|exists:schoolsession,id',
+            'student_status_id' => 'nullable|in:0,1,2',
         ]);
 
         if ($validator->fails()) {
@@ -314,11 +393,22 @@ class SchoolBillTermSessionController extends Controller
             ], 422);
         }
 
+        $status_id = $request->filled('student_status_id')
+            ? (int) $request->input('student_status_id')
+            : (int) ($assignment->student_status_id ?? 0);
+
         $duplicate = SchoolBillTermSession::where('bill_id', $request->bill_id)
             ->where('class_id', $request->class_id)
             ->where('termid_id', $request->termid_id)
             ->where('session_id', $request->session_id)
             ->where('id', '!=', $id)
+            ->when($status_id !== 0, function ($q) use ($status_id) {
+                $q->where(function ($w) use ($status_id) {
+                    $w->whereNull('student_status_id')
+                      ->orWhere('student_status_id', 0)
+                      ->orWhere('student_status_id', $status_id);
+                });
+            })
             ->exists();
 
         if ($duplicate) {
@@ -333,6 +423,7 @@ class SchoolBillTermSessionController extends Controller
             'class_id'   => $request->class_id,
             'termid_id'  => $request->termid_id,
             'session_id' => $request->session_id,
+            'student_status_id' => $status_id,
         ]);
 
         return response()->json([
