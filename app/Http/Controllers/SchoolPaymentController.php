@@ -335,28 +335,50 @@ class SchoolPaymentController extends Controller
 
     private function fetchStudentData(int $studentId, int $termid, int $sessionid): ?object
     {
-        return Student::where('studentRegistration.id', $studentId)
-            ->leftJoin('studentclass', 'studentclass.studentId', '=', 'studentRegistration.id')
-            ->leftJoin('parentRegistration', 'parentRegistration.id', '=', 'studentRegistration.id')
-            ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
-            ->leftJoin('schoolclass', 'schoolclass.id', '=', 'studentclass.schoolclassid')
-            ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
-            ->select([
-                'studentRegistration.id as id',
-                'studentRegistration.admissionNo as admissionNo',
-                'studentRegistration.firstname as firstname',
-                'studentRegistration.lastname as lastname',
-                'studentRegistration.othername as othername',
-                'studentRegistration.home_address2 as homeadd',
-                'parentRegistration.father_phone as phone',
-                'studentRegistration.statusId as statusId',
-                'studentRegistration.student_status as student_status',
-                'studentpicture.picture as avatar',
-                'schoolclass.schoolclass as schoolclass',
-                'schoolarm.arm as arm',
-                'studentclass.schoolclassid as schoolclassId',
-            ])
-            ->first();
+        // A student has one studentclass row per term/session, so the class MUST be
+        // matched on the selected term and session. (Joining on studentId alone returned
+        // an arbitrary row - usually the oldest class, e.g. JSS 1 A after promotion.)
+        $build = function (bool $forTermSession) use ($studentId, $termid, $sessionid) {
+            $q = Student::where('studentRegistration.id', $studentId)
+                ->leftJoin('studentclass', function ($join) use ($forTermSession, $termid, $sessionid) {
+                    $join->on('studentclass.studentId', '=', 'studentRegistration.id');
+                    if ($forTermSession) {
+                        $join->where('studentclass.termid', '=', $termid)
+                             ->where('studentclass.sessionid', '=', $sessionid);
+                    }
+                })
+                ->leftJoin('parentRegistration', 'parentRegistration.id', '=', 'studentRegistration.id')
+                ->leftJoin('studentpicture', 'studentpicture.studentid', '=', 'studentRegistration.id')
+                ->leftJoin('schoolclass', 'schoolclass.id', '=', 'studentclass.schoolclassid')
+                ->leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+                ->select([
+                    'studentRegistration.id as id',
+                    'studentRegistration.admissionNo as admissionNo',
+                    'studentRegistration.firstname as firstname',
+                    'studentRegistration.lastname as lastname',
+                    'studentRegistration.othername as othername',
+                    'studentRegistration.home_address2 as homeadd',
+                    'parentRegistration.father_phone as phone',
+                    'studentRegistration.statusId as statusId',
+                    'studentRegistration.student_status as student_status',
+                    'studentpicture.picture as avatar',
+                    'schoolclass.schoolclass as schoolclass',
+                    'schoolarm.arm as arm',
+                    'studentclass.schoolclassid as schoolclassId',
+                ]);
+
+            return $forTermSession ? $q->first() : $q->orderByDesc('studentclass.id')->first();
+        };
+
+        $row = $build(true);
+
+        // No class record for that exact term/session: fall back to the latest class
+        // the student has, so the page still opens.
+        if (!$row || empty($row->schoolclassId)) {
+            $row = $build(false) ?: $row;
+        }
+
+        return $row;
     }
 
     /**
