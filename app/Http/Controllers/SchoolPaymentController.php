@@ -367,7 +367,22 @@ class SchoolPaymentController extends Controller
                     'studentclass.schoolclassid as schoolclassId',
                 ]);
 
-            return $forTermSession ? $q->first() : $q->orderByDesc('studentclass.id')->first();
+            if ($forTermSession) {
+                return $q->first();
+            }
+
+            // Fallback: the class promotion marked as the student's current one
+            // (student_current_term.is_current), then the most recent class by
+            // session, then term, then row id as a last tie-break.
+            return $q->orderByRaw(
+                        '(studentclass.schoolclassid = (SELECT sct.schoolclassId FROM student_current_term sct '
+                        . 'WHERE sct.studentId = ? AND sct.is_current = 1 ORDER BY sct.id DESC LIMIT 1)) DESC',
+                        [$studentId]
+                     )
+                     ->orderByRaw('CAST(studentclass.sessionid AS UNSIGNED) DESC')
+                     ->orderByRaw('CAST(studentclass.termid AS UNSIGNED) DESC')
+                     ->orderByDesc('studentclass.id')
+                     ->first();
         };
 
         $row = $build(true);
