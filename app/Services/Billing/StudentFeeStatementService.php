@@ -95,12 +95,7 @@ class StudentFeeStatementService
             ->where('bcts.termid_id', $termId)
             ->where('bcts.session_id', $sessionId)
             ->tap(fn ($q) => $this->notDeleted($q, 'school_bill_class_term_session', 'bcts'))
-            ->where(function ($q) use ($student) {
-                $q->whereNull('sb.statusId')
-                  ->orWhere('sb.statusId', '')
-                  ->orWhere('sb.statusId', 0)
-                  ->orWhere('sb.statusId', $student->statusId);
-            })
+            ->tap(fn ($q) => \App\Models\SchoolBillTermSession::applyStudentStatusFilter($q, $student->statusId, 'bcts', 'sb'))
             ->orderBy('bcts.display_order')
             ->orderBy('sb.title')
             ->get([

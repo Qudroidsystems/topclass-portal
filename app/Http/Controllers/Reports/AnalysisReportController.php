@@ -499,7 +499,7 @@ public function exportPDF($class_id, $termid_id, $session_id, $action = 'view')
             'school_bill.title as title',
             'school_bill.description as description',
             'school_bill.bill_amount as amount',
-            'school_bill.statusId as billStatusId',
+            \Illuminate\Support\Facades\DB::raw(\App\Models\SchoolBillTermSession::effectiveStatusExpr() . ' as billStatusId'),
         ])
         ->get();
 
@@ -700,7 +700,7 @@ public function exportPDF($class_id, $termid_id, $session_id, $action = 'view')
         }
 
         $bills = $billQuery->join('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
-            ->select('school_bill.id as schoolbillid', 'school_bill.bill_amount as amount', 'school_bill.statusId as billStatusId')
+            ->select('school_bill.id as schoolbillid', 'school_bill.bill_amount as amount', \Illuminate\Support\Facades\DB::raw(\App\Models\SchoolBillTermSession::effectiveStatusExpr() . ' as billStatusId'))
             ->get();
 
         $studentIds = $students->pluck('stid')->toArray();

@@ -150,6 +150,7 @@
                             <th>School Bill</th>
                             <th>Class</th>
                             <th>Term | Session</th>
+                            <th>Applies To</th>
                             <th>Created By</th>
                             <th>Last Updated</th>
                             <th width="100">Actions</th>
@@ -186,9 +187,19 @@
                         <select id="bill_id" class="form-select" required>
                             <option value="">— Select School Bill —</option>
                             @foreach($schoolbills as $bill)
-                                <option value="{{ $bill->id }}">{{ $bill->title }}</option>
+                                <option value="{{ $bill->id }}" data-status="{{ (int) ($bill->statusId ?? 0) }}">{{ $bill->title }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Applies To <span class="text-danger">*</span></label>
+                        <select id="student_status_id" class="form-select" required>
+                            <option value="0">Both old &amp; new students</option>
+                            <option value="1">Old students only</option>
+                            <option value="2">New students only</option>
+                        </select>
+                        <div class="text-muted small mt-1">Based on each student's status (old / new). Picking a bill pre-selects that bill's own type.</div>
                     </div>
 
                     <div class="mb-4" id="classCheckboxGroup">
@@ -371,6 +382,7 @@ $(document).ready(function () {
             { data: 'formatted_bill',         orderable: false },
             { data: 'formatted_class',        orderable: false },
             { data: 'formatted_term_session', orderable: false },
+            { data: 'formatted_audience',     orderable: false, searchable: false },
             { data: 'createdBy',              orderable: false },
             { data: 'formatted_date',         orderable: false },
             { data: 'action',                 orderable: false, searchable: false },
@@ -459,6 +471,7 @@ $(document).ready(function () {
     function resetForm() {
         $('#assignmentId').val('');
         $('#bill_id').val('');
+        $('#student_status_id').val('0');
         $('.class-cb').prop('checked', false);
         $('#selectAllClasses').prop('checked', false);
         $('.term-cb').prop('checked', false);
@@ -467,6 +480,13 @@ $(document).ready(function () {
         $('#termid_id_single').val('');
         $('#formErrors').addClass('d-none').html('');
     }
+
+    // Picking a bill (on create) pre-selects that bill's own Old / New type; the user can change it.
+    $('#bill_id').on('change', function () {
+        if ($('#assignmentId').val()) return; // editing: keep the saved value
+        const st = $(this).find('option:selected').data('status');
+        $('#student_status_id').val(String(st === 1 || st === 2 ? st : 0));
+    });
 
     $('#createAssignmentBtn').on('click', function () {
         resetForm();
@@ -488,6 +508,7 @@ $(document).ready(function () {
 
         $('#assignmentId').val(id);
         $('#bill_id').val(bill_id);
+        $('#student_status_id').val(String($(this).data('student_status_id') || 0));
         $('#class_id_single').val(class_id);
         $('#termid_id_single').val(termid_id);
         $('#ses_' + session_id).prop('checked', true);
@@ -509,6 +530,7 @@ $(document).ready(function () {
 
         const payload = {
             bill_id:    $('#bill_id').val(),
+            student_status_id: $('#student_status_id').val(),
             session_id: $('input[name="session_id"]:checked').val() || '',
             _token:     CSRF,
         };
@@ -549,11 +571,15 @@ $(document).ready(function () {
                          || 'Server error (' + xhr.status + '): ' + (xhr.statusText || 'Unknown');
 
                 // Duplicate / validation errors — close modal, refresh, warn
-                if (xhr.status === 422) {
+                if (xhr.status === 422 && /already exist/i.test(msg)) {
                     $('#tsModal').modal('hide');
                     table.ajax.reload(null, false);
                     loadStats();
                     toast('warning', 'Duplicate', msg);
+                } else if (xhr.status === 422) {
+                    // Plain validation problem (e.g. no term selected): keep the modal open
+                    showErrors(msg, json ? json.errors : null);
+                    toast('warning', 'Check your input', msg);
                 } else {
                     // Other server errors — keep modal open, show details
                     showErrors(msg, json ? json.errors : null);

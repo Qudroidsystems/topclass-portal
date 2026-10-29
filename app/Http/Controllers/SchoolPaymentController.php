@@ -528,12 +528,7 @@ class SchoolPaymentController extends Controller
                 ->where('school_bill_class_term_session.session_id', $sessionid)
                 ->whereNull('school_bill_class_term_session.deleted_at')
                 ->join('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
-                ->where(function ($q) use ($studentdata) {
-                    $q->whereNull('school_bill.statusId')
-                      ->orWhere('school_bill.statusId', '')
-                      ->orWhere('school_bill.statusId', 0)
-                      ->orWhere('school_bill.statusId', $studentdata->statusId);
-                })
+                ->tap(fn ($q) => SchoolBillTermSession::applyStudentStatusFilter($q, $studentdata->statusId))
                 ->select([
                     'school_bill_class_term_session.id as id',
                     'school_bill.id as schoolbillid',
@@ -1344,12 +1339,7 @@ class SchoolPaymentController extends Controller
                 ->where('school_bill_class_term_session.session_id', $sessionid)
                 ->whereNull('school_bill_class_term_session.deleted_at')
                 ->join('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
-                ->where(function ($q) use ($student) {
-                    $q->whereNull('school_bill.statusId')
-                      ->orWhere('school_bill.statusId', '')
-                      ->orWhere('school_bill.statusId', 0)
-                      ->orWhere('school_bill.statusId', $student->statusId);
-                })
+                ->tap(fn ($q) => SchoolBillTermSession::applyStudentStatusFilter($q, $student->statusId))
                 ->select([
                     'school_bill.id as school_bill_id',
                     'school_bill.title as title',
@@ -1597,12 +1587,7 @@ class SchoolPaymentController extends Controller
             ->where('school_bill_class_term_session.session_id', $sessionid)
             ->whereNull('school_bill_class_term_session.deleted_at')
             ->join('school_bill', 'school_bill.id', '=', 'school_bill_class_term_session.bill_id')
-            ->where(function ($q) use ($student) {
-                $q->whereNull('school_bill.statusId')
-                  ->orWhere('school_bill.statusId', '')
-                  ->orWhere('school_bill.statusId', 0)
-                  ->orWhere('school_bill.statusId', $student->statusId);
-            })
+            ->tap(fn ($q) => SchoolBillTermSession::applyStudentStatusFilter($q, $student->statusId))
             ->select([
                 DB::raw('school_bill.id as schoolbillid'),
                 'school_bill.title',
