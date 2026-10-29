@@ -750,9 +750,62 @@ class SchoolPaymentController extends Controller
             // Past-term/session arrears (excludes the currently selected term+session)
             $arrears = $this->arrears->getStudentArrears($studentId, $termid, $sessionid);
 
+            // Class history strip: where the student was, session by session (oldest first),
+            // with the promotion decision saved for that class so a promotion / repeat /
+            // move down can be seen at a glance. Built from studentclass (one row per
+            // term) + promotionStatus, the same sources the promotion screens use.
+            $classHistory = [];
+            try {
+                $historyRows = \App\Models\Studentclass::where('studentId', $studentId)
+                    ->with(['schoolclass.armRelation', 'term', 'session'])
+                    ->orderByRaw('CAST(sessionid AS UNSIGNED) ASC')
+                    ->orderByRaw('CAST(termid AS UNSIGNED) ASC')
+                    ->get();
+
+                $historyStatuses = \App\Models\PromotionStatus::where('studentId', $studentId)->get();
+
+                foreach ($historyRows as $row) {
+                    $key = $row->sessionid . '-' . $row->schoolclassid;
+                    $decision = optional($historyStatuses->first(fn ($p) =>
+                        (int) $p->schoolclassid === (int) $row->schoolclassid
+                        && (int) $p->sessionid === (int) $row->sessionid
+                        && (int) $p->termid === (int) $row->termid
+                    ))->promotionStatus;
+
+                    if (!isset($classHistory[$key])) {
+                        $classHistory[$key] = [
+                            'session_id' => (int) $row->sessionid,
+                            'session'    => optional($row->session)->session,
+                            'class_id'   => (int) $row->schoolclassid,
+                            'class'      => trim((optional($row->schoolclass)->schoolclass ?? '?') . ' '
+                                                . (optional(optional($row->schoolclass)->armRelation)->arm ?? '')),
+                            'terms'      => [],
+                            'term_ids'   => [],
+                            'status'     => null,
+                        ];
+                    }
+                    $classHistory[$key]['terms'][]    = optional($row->term)->term;
+                    $classHistory[$key]['term_ids'][] = (int) $row->termid;
+                    // Keep the latest decision seen for this class/session
+                    if ($decision && $decision !== 'ADVANCED') {
+                        $classHistory[$key]['status'] = $decision;
+                    }
+                }
+
+                $classHistory = array_values(array_map(function ($h) use ($termid, $sessionid) {
+                    $h['is_selected'] = $h['session_id'] === (int) $sessionid
+                        && in_array((int) $termid, $h['term_ids'], true);
+                    return $h;
+                }, $classHistory));
+            } catch (\Throwable $e) {
+                Log::warning('Class history for payment page failed', ['student_id' => $studentId, 'error' => $e->getMessage()]);
+                $classHistory = [];
+            }
+
             return response()->json([
                 'success' => true,
                 'data'    => [
+                    'class_history' => $classHistory,
                     'student' => [
                         'id'             => $studentdata->id,
                         'name'           => $fullName,

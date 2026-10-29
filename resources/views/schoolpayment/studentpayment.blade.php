@@ -1170,6 +1170,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+
+    // Small strip showing the student's class by session (oldest -> newest) with the
+    // promotion decision, so you can see where they were promoted from / moved to.
+    function classHistoryStrip(history) {
+        if (!history || history.length === 0) return '';
+        const statusMap = {
+            PROMOTED: ['Promoted', 'bg-success-subtle text-success'],
+            TRIAL: ['Trial', 'bg-warning-subtle text-warning'],
+            SEE_PRINCIPAL: ['See Principal', 'bg-warning-subtle text-warning'],
+            PARENTS_TO_SEE_PRINCIPAL: ['Parents to see Principal', 'bg-warning-subtle text-warning'],
+            REPEAT: ['Repeat', 'bg-danger-subtle text-danger']
+        };
+        const items = history.map(function (h) {
+            const st = h.status ? (statusMap[h.status] || [h.status, 'bg-secondary-subtle text-secondary']) : null;
+            const terms = (h.terms || []).map(function (t) { return (t || '').replace(' Term', ''); }).join(', ');
+            return '<span class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded border' +
+                (h.is_selected ? ' border-primary bg-primary-subtle' : ' bg-light') + '" style="font-size:11px">' +
+                '<span class="fw-semibold">' + escapeHtml(h.class || '') + '</span>' +
+                '<span class="text-muted">' + escapeHtml(h.session || '') + (terms ? ' · ' + escapeHtml(terms) : '') + '</span>' +
+                (st ? '<span class="badge ' + st[1] + '" style="font-size:10px">' + escapeHtml(st[0]) + '</span>' : '') +
+                '</span>';
+        });
+        return '<div class="d-flex align-items-center flex-wrap gap-1 mb-3">' +
+            '<span class="text-muted small me-1"><i class="ri-route-line"></i> Class history:</span>' +
+            items.join('<i class="ri-arrow-right-s-line text-muted"></i>') + '</div>';
+    }
+
     function renderPaymentContent(data, usedFallback) {
         const student = data.student;
         const bills = data.bills;
@@ -1369,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', function () {
             '<span class="badge ' + (student.statusId == 1 ? 'bg-info-subtle text-info' : 'bg-warning-subtle text-warning') +
             ' px-2 py-1" style="font-size:11px">' + (student.statusId == 1 ? 'Returning Student' : 'New Student') + '</span>' +
             '</div>' +
-            '<div class="text-muted small font-monospace mb-3">' + escapeHtml(student.admissionNo) + '</div>' +
+            '<div class="text-muted small font-monospace mb-2">' + escapeHtml(student.admissionNo) + '</div>' +
+            classHistoryStrip(data.class_history || []) +
             '<div class="d-flex flex-wrap gap-2">' +
             '<div class="info-chip"><i class="ri-building-line text-success"></i>' +
             escapeHtml(student.schoolclass) + ' ' + escapeHtml(student.arm) + '</div>' +
