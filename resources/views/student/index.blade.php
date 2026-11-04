@@ -1269,203 +1269,415 @@ use Spatie\Permission\Models\Role;
         </div>
 
         <!-- Print/Export Report Modal -->
-        <div id="printStudentReportModal" class="modal fade" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content">
+        <style>
+            #printStudentReportModal {
+                --rpt-primary: var(--bs-primary, #405189);
+                --rpt-primary-rgb: var(--bs-primary-rgb, 64, 81, 137);
+                --rpt-border: var(--bs-border-color, #e9ebec);
+                --rpt-bg: var(--bs-body-bg, #fff);
+                --rpt-soft: var(--bs-tertiary-bg, #f3f6f9);
+                --rpt-muted: var(--bs-secondary-color, #878a99);
+                --rpt-text: var(--bs-body-color, #212529);
+                --rpt-accent: var(--rpt-primary);
+            }
+            [data-bs-theme="dark"] #printStudentReportModal { --rpt-accent: #9fb0ea; }
+            #printStudentReportModal .rpt-modal { border: 0; border-radius: 16px; overflow: hidden; }
+            #printStudentReportModal .rpt-subtitle { font-size: 13px; opacity: .85; margin-top: 4px; }
+            #printStudentReportModal .modal-body { padding: 0; background: var(--rpt-soft); }
+
+            #printStudentReportModal .rpt-section { padding: 20px 24px; background: var(--rpt-bg); border-bottom: 1px solid var(--rpt-border); }
+            #printStudentReportModal .rpt-section:last-child { border-bottom: 0; }
+            #printStudentReportModal .rpt-section-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+            #printStudentReportModal .rpt-section-head h6 { margin: 0 0 2px; font-weight: 600; font-size: 15px; }
+            #printStudentReportModal .rpt-section-head small { color: var(--rpt-muted); font-size: 13px; }
+            #printStudentReportModal .rpt-step {
+                flex: none; width: 26px; height: 26px; border-radius: 50%;
+                background: rgba(var(--rpt-primary-rgb), .12); color: var(--rpt-accent);
+                font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center;
+            }
+            #printStudentReportModal .rpt-label { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: block; }
+
+            /* Quick-start presets */
+            #printStudentReportModal .rpt-presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+            #printStudentReportModal .rpt-presets-label { font-size: 13px; color: var(--rpt-muted); margin-right: 2px; }
+            #printStudentReportModal .rpt-chip {
+                border: 1px solid var(--rpt-border); background: var(--rpt-bg); color: var(--rpt-text);
+                border-radius: 999px; padding: 4px 12px; font-size: 13px; line-height: 1.5;
+                display: inline-flex; align-items: center; gap: 5px; transition: border-color .15s, color .15s, background .15s;
+            }
+            #printStudentReportModal .rpt-chip:hover { border-color: var(--rpt-primary); color: var(--rpt-accent); background: rgba(var(--rpt-primary-rgb), .06); }
+
+            /* Two-panel column picker */
+            #printStudentReportModal .rpt-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+            #printStudentReportModal .rpt-panel { border: 1px solid var(--rpt-border); border-radius: 12px; display: flex; flex-direction: column; background: var(--rpt-bg); min-width: 0; }
+            #printStudentReportModal .rpt-panel-head {
+                display: flex; justify-content: space-between; align-items: center; gap: 8px;
+                padding: 10px 14px; border-bottom: 1px solid var(--rpt-border); font-weight: 600; font-size: 13px; min-height: 45px;
+            }
+            #printStudentReportModal .rpt-panel-head small { font-weight: 400; color: var(--rpt-muted); }
+            #printStudentReportModal .rpt-link { border: 0; background: none; padding: 0; color: var(--rpt-accent); font-size: 13px; font-weight: 500; }
+            #printStudentReportModal .rpt-link:hover { text-decoration: underline; }
+            #printStudentReportModal .rpt-search { position: relative; padding: 10px 12px 4px; }
+            #printStudentReportModal .rpt-search i { position: absolute; left: 23px; top: 17px; color: var(--rpt-muted); pointer-events: none; }
+            #printStudentReportModal .rpt-search input { padding-left: 32px; }
+            #printStudentReportModal .rpt-field-list { height: 340px; overflow-y: auto; padding: 4px 8px 10px; }
+            #printStudentReportModal .rpt-group-title {
+                font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--rpt-muted);
+                font-weight: 600; padding: 10px 8px 4px;
+            }
+            #printStudentReportModal .rpt-field {
+                display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px;
+                cursor: pointer; font-size: 14px; margin: 0; transition: background .12s;
+            }
+            #printStudentReportModal .rpt-field:hover { background: var(--rpt-soft); }
+            #printStudentReportModal .rpt-field .form-check-input { margin: 0; flex: none; cursor: pointer; }
+            #printStudentReportModal .rpt-field.is-checked { color: var(--rpt-accent); font-weight: 500; }
+            #printStudentReportModal .rpt-no-match { padding: 24px 8px; text-align: center; color: var(--rpt-muted); font-size: 13px; }
+
+            #printStudentReportModal .rpt-panel-order .rpt-panel-body { height: 383px; display: flex; flex-direction: column; min-height: 0; }
+            #printStudentReportModal .rpt-sel-list {
+                list-style: none; margin: 0; padding: 8px; overflow-y: auto; flex: 1;
+                display: flex; flex-direction: column; gap: 6px;
+            }
+            #printStudentReportModal .rpt-sel-item {
+                display: flex; align-items: center; gap: 10px; padding: 7px 6px 7px 6px;
+                border: 1px solid var(--rpt-border); border-radius: 10px; background: var(--rpt-bg);
+                cursor: grab; user-select: none; transition: border-color .15s, box-shadow .15s;
+            }
+            #printStudentReportModal .rpt-sel-item:hover { border-color: rgba(var(--rpt-primary-rgb), .45); box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+            #printStudentReportModal .rpt-handle { color: var(--rpt-muted); font-size: 18px; display: inline-flex; flex: none; }
+            #printStudentReportModal .rpt-num {
+                flex: none; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 6px;
+                background: rgba(var(--rpt-primary-rgb), .14); color: var(--rpt-accent);
+                font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+            }
+            #printStudentReportModal .rpt-sel-label { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #printStudentReportModal .rpt-sel-actions { display: flex; gap: 2px; flex: none; }
+            #printStudentReportModal .rpt-icon-btn {
+                border: 0; background: transparent; width: 28px; height: 28px; border-radius: 6px; padding: 0;
+                color: var(--rpt-muted); display: inline-flex; align-items: center; justify-content: center; font-size: 17px; cursor: pointer;
+            }
+            #printStudentReportModal .rpt-icon-btn:hover:not(:disabled) { background: var(--rpt-soft); color: var(--rpt-text); }
+            #printStudentReportModal .rpt-icon-btn:disabled { opacity: .3; cursor: default; }
+            #printStudentReportModal .rpt-remove:hover:not(:disabled) { color: var(--bs-danger, #f06548); background: rgba(var(--bs-danger-rgb, 240, 101, 72), .1); }
+            #printStudentReportModal .rpt-icon-btn:focus-visible,
+            #printStudentReportModal .rpt-chip:focus-visible,
+            #printStudentReportModal .rpt-link:focus-visible { outline: 2px solid var(--rpt-primary); outline-offset: 1px; }
+
+            #printStudentReportModal .rpt-ghost { opacity: .45; border-style: dashed; border-color: var(--rpt-primary); background: rgba(var(--rpt-primary-rgb), .06); }
+            #printStudentReportModal .rpt-chosen { border-color: var(--rpt-primary); }
+            .rpt-fallback { box-shadow: 0 12px 28px rgba(15, 23, 42, .18) !important; border-color: var(--bs-primary, #405189) !important; opacity: 1 !important; cursor: grabbing !important; }
+            #printStudentReportModal .rpt-sel-item.is-new { animation: rptFlash 1.2s ease; }
+            @keyframes rptFlash { from { background: rgba(var(--rpt-primary-rgb), .16); } to { background: var(--rpt-bg); } }
+
+            #printStudentReportModal .rpt-sel-empty {
+                flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                text-align: center; padding: 24px 16px; color: var(--rpt-muted); font-size: 13px;
+            }
+            #printStudentReportModal .rpt-sel-empty i { font-size: 34px; opacity: .5; margin-bottom: 6px; }
+            #printStudentReportModal .rpt-sel-empty p { margin: 0; }
+            #printStudentReportModal .rpt-width-tip {
+                margin: 0 8px 8px; padding: 8px 10px; border-radius: 8px; font-size: 13px;
+                background: rgba(var(--bs-warning-rgb, 247, 184, 75), .15); display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+            }
+
+            /* Output choices */
+            #printStudentReportModal .rpt-choice-group { display: flex; gap: 10px; }
+            #printStudentReportModal .rpt-choice {
+                flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 0;
+                border: 1px solid var(--rpt-border); border-radius: 10px; cursor: pointer; background: var(--rpt-bg);
+                transition: border-color .15s, background .15s, box-shadow .15s;
+            }
+            #printStudentReportModal .rpt-choice i { font-size: 22px; flex: none; }
+            #printStudentReportModal .rpt-choice strong { display: block; font-size: 14px; font-weight: 600; }
+            #printStudentReportModal .rpt-choice small { display: block; font-size: 12px; color: var(--rpt-muted); }
+            #printStudentReportModal .rpt-choice:hover { border-color: rgba(var(--rpt-primary-rgb), .45); }
+            #printStudentReportModal .btn-check:checked + .rpt-choice {
+                border-color: var(--rpt-primary); background: rgba(var(--rpt-primary-rgb), .05);
+                box-shadow: inset 0 0 0 1px var(--rpt-primary);
+            }
+            #printStudentReportModal .btn-check:focus-visible + .rpt-choice { outline: 2px solid var(--rpt-primary); outline-offset: 2px; }
+            #printStudentReportModal .rpt-rotate { transform: rotate(90deg); }
+            #printStudentReportModal .rpt-switches .form-check { margin-bottom: 10px; }
+            #printStudentReportModal .rpt-switches .form-check:last-child { margin-bottom: 0; }
+
+            #printStudentReportModal .rpt-footer {
+                justify-content: space-between; gap: 12px; padding: 14px 24px; flex-wrap: wrap;
+                background: var(--rpt-bg); border-top: 1px solid var(--rpt-border);
+            }
+            #printStudentReportModal .rpt-footer > * { margin: 0; }
+            #printStudentReportModal .rpt-summary { font-size: 13px; color: var(--rpt-muted); }
+            #printStudentReportModal .rpt-summary strong { color: var(--rpt-text); font-weight: 600; }
+
+            @media (max-width: 767.98px) {
+                #printStudentReportModal .rpt-columns { grid-template-columns: 1fr; }
+                #printStudentReportModal .rpt-field-list { height: 260px; }
+                #printStudentReportModal .rpt-panel-order .rpt-panel-body { height: auto; min-height: 220px; max-height: 340px; }
+            }
+            @media (max-width: 575.98px) {
+                #printStudentReportModal .rpt-section { padding: 16px; }
+                #printStudentReportModal .rpt-footer { padding: 12px 16px; }
+                #printStudentReportModal .rpt-footer-actions { width: 100%; flex-wrap: wrap; }
+                #printStudentReportModal .rpt-footer-actions .btn { flex: 1; }
+                #printStudentReportModal .rpt-footer-actions .btn-success { order: -1; flex-basis: 100%; }
+                #printStudentReportModal .rpt-choice-group { flex-direction: column; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #printStudentReportModal .rpt-sel-item.is-new { animation: none; }
+            }
+        </style>
+        <div id="printStudentReportModal" class="modal fade" tabindex="-1" aria-hidden="true" aria-labelledby="printReportTitle">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content rpt-modal">
                     <div class="modal-header modal-header-gradient">
-                        <h5 class="modal-title">
-                            <i class="fas fa-file-export me-2"></i>Generate Report
-                        </h5>
+                        <div>
+                            <h5 class="modal-title" id="printReportTitle">
+                                <i class="fas fa-file-export me-2"></i>Generate Report
+                            </h5>
+                            <p class="rpt-subtitle mb-0">Choose the students, pick and order your columns, then download.</p>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
 
-                    <div class="modal-body p-4">
-                        <form id="printReportForm">
-                            <!-- Filters Section -->
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label">Class</label>
-                                    <select class="form-select" name="class_id">
-                                        <option value="">— All Classes —</option>
-                                        @foreach ($schoolclasses as $class)
-                                            <option value="{{ $class->id }}">{{ $class->class_display }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Status</label>
-                                    <select class="form-select" name="status">
-                                        <option value="">— All —</option>
-                                        <option value="1">Old Students</option>
-                                        <option value="2">New Students</option>
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        <option value="Left">Left</option>
-                                        <option value="Transferred">Transferred</option>
-                                        <option value="Graduated">Graduated</option>
-                                        <option value="Expelled">Expelled</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <div class="modal-body">
+                        <form id="printReportForm" onsubmit="return false;">
+                            <input type="hidden" name="columns_order" id="columnsOrderInput" value="">
 
-                            <!-- Term and Session Filters -->
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label">Term</label>
-                                    <select class="form-select" name="term_id">
-                                        <option value="">— All Terms —</option>
-                                        @foreach ($schoolterms as $term)
-                                            <option value="{{ $term->id }}">{{ $term->name }}</option>
-                                        @endforeach
-                                    </select>
+                            <!-- 1. Students -->
+                            <section class="rpt-section">
+                                <div class="rpt-section-head">
+                                    <span class="rpt-step">1</span>
+                                    <div>
+                                        <h6>Students</h6>
+                                        <small>Only students matching these filters will be included.</small>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Session</label>
-                                    <select class="form-select" name="session_id">
-                                        <option value="">— All Sessions —</option>
-                                        @foreach ($schoolsessions as $session)
-                                            <option value="{{ $session->id }}">{{ $session->name }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="row g-3">
+                                    <div class="col-lg-3 col-sm-6">
+                                        <label class="rpt-label" for="rptClass">Class</label>
+                                        <select class="form-select" name="class_id" id="rptClass">
+                                            <option value="">All classes</option>
+                                            @foreach ($schoolclasses as $class)
+                                                <option value="{{ $class->id }}">{{ $class->class_display }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-sm-6">
+                                        <label class="rpt-label" for="rptStatus">Status</label>
+                                        <select class="form-select" name="status" id="rptStatus">
+                                            <option value="">All students</option>
+                                            <option value="1">Old Students</option>
+                                            <option value="2">New Students</option>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                            <option value="Left">Left</option>
+                                            <option value="Transferred">Transferred</option>
+                                            <option value="Graduated">Graduated</option>
+                                            <option value="Expelled">Expelled</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-sm-6">
+                                        <label class="rpt-label" for="rptTerm">Term</label>
+                                        <select class="form-select" name="term_id" id="rptTerm">
+                                            <option value="">All terms</option>
+                                            @foreach ($schoolterms as $term)
+                                                <option value="{{ $term->id }}">{{ $term->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-sm-6">
+                                        <label class="rpt-label" for="rptSession">Session</label>
+                                        <select class="form-select" name="session_id" id="rptSession">
+                                            <option value="">All sessions</option>
+                                            @foreach ($schoolsessions as $session)
+                                                <option value="{{ $session->id }}">{{ $session->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
+                            </section>
 
-                            <!-- Column Selection with Drag & Drop -->
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">
-                                    <i class="ri-draggable me-1"></i> Select & Arrange Columns (Drag to reorder)
-                                </label>
-                                <div class="row g-3" id="columnsContainer">
-                                    <input type="hidden" name="columns_order" id="columnsOrderInput" value="">
-                                    @php
-                                        $availableColumns = [
+                            <!-- 2. Columns -->
+                            <section class="rpt-section">
+                                <div class="rpt-section-head">
+                                    <span class="rpt-step">2</span>
+                                    <div>
+                                        <h6>Columns</h6>
+                                        <small>Tick the fields you need, then drag them on the right to set their order.</small>
+                                    </div>
+                                </div>
+
+                                <div class="rpt-presets" role="group" aria-label="Quick start column sets">
+                                    <span class="rpt-presets-label">Quick start:</span>
+                                    <button type="button" class="rpt-chip" data-preset="classlist"><i class="ri-list-check-2"></i> Class list</button>
+                                    <button type="button" class="rpt-chip" data-preset="contact"><i class="ri-contacts-book-line"></i> Contact list</button>
+                                    <button type="button" class="rpt-chip" data-preset="biodata"><i class="ri-profile-line"></i> Bio-data</button>
+                                    <button type="button" class="rpt-chip" data-preset="health"><i class="ri-heart-pulse-line"></i> Health &amp; emergency</button>
+                                </div>
+
+                                @php
+                                    $columnGroups = [
+                                        'Student & enrolment' => [
                                             'photo'          => 'Photo',
                                             'admissionNo'    => 'Admission No',
                                             'lastname'       => 'Last Name',
                                             'firstname'      => 'First Name',
                                             'othername'      => 'Other Name',
-                                            'gender'         => 'Gender',
-                                            'dateofbirth'    => 'Date of Birth',
-                                            'age'            => 'Age',
                                             'class'          => 'Class / Arm',
                                             'status'         => 'Student Status',
                                             'admission_date' => 'Admission Date',
-                                            'phone_number'   => 'Phone Number',
-                                            'state'          => 'State of Origin',
-                                            'local'          => 'LGA',
-                                            'religion'       => 'Religion',
-                                            'blood_group'    => 'Blood Group',
-                                            'genotype'       => 'Genotype',
-                                            'father_name'    => "Father's Name",
-                                            'mother_name'    => "Mother's Name",
-                                            'guardian_phone' => 'Guardian Phone',
-                                            'guardian_name'                => 'Guardian Name',
-                                            'guardian_relationship'        => 'Guardian Relationship',
-                                            'whatsapp_number'              => 'Parent/Guardian WhatsApp',
-                                            'emergency_contact_name'       => 'Emergency Contact Name',
-                                            'emergency_contact_phone'      => 'Emergency Contact Phone',
-                                            'allergies_medical_conditions' => 'Allergies / Medical Conditions',
                                             'term'           => 'Term',
                                             'session'        => 'Session',
-                                        ];
-                                    @endphp
-                                    @foreach ($availableColumns as $key => $label)
-                                        <div class="col-md-4 col-sm-6">
-                                            <div class="form-check border rounded p-2 mb-2 bg-light draggable-item" data-column="{{ $key }}">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="drag-handle me-2">
-                                                        <i class="ri-draggable"></i>
-                                                    </span>
-                                                    <input class="form-check-input column-checkbox" type="checkbox" name="columns[]" value="{{ $key }}" id="col_{{ $key }}"
-                                                        {{ in_array($key, ['admissionNo','lastname','firstname','class','gender']) ? 'checked' : '' }}>
-                                                    <label class="form-check-label w-100" for="col_{{ $key }}">
-                                                        {{ $label }}
-                                                    </label>
+                                        ],
+                                        'Personal details' => [
+                                            'gender'      => 'Gender',
+                                            'dateofbirth' => 'Date of Birth',
+                                            'age'         => 'Age',
+                                            'state'       => 'State of Origin',
+                                            'local'       => 'LGA',
+                                            'religion'    => 'Religion',
+                                        ],
+                                        'Parents & contacts' => [
+                                            'phone_number'            => 'Phone Number',
+                                            'father_name'             => "Father's Name",
+                                            'mother_name'             => "Mother's Name",
+                                            'guardian_name'           => 'Guardian Name',
+                                            'guardian_relationship'   => 'Guardian Relationship',
+                                            'guardian_phone'          => 'Guardian Phone',
+                                            'whatsapp_number'         => 'Parent/Guardian WhatsApp',
+                                            'emergency_contact_name'  => 'Emergency Contact Name',
+                                            'emergency_contact_phone' => 'Emergency Contact Phone',
+                                        ],
+                                        'Health' => [
+                                            'blood_group'                  => 'Blood Group',
+                                            'genotype'                     => 'Genotype',
+                                            'allergies_medical_conditions' => 'Allergies / Medical Conditions',
+                                        ],
+                                    ];
+                                @endphp
+
+                                <div class="rpt-columns">
+                                    <!-- Available fields -->
+                                    <div class="rpt-panel">
+                                        <div class="rpt-panel-head">
+                                            <span>Available fields</span>
+                                            <span class="d-flex gap-2 align-items-center">
+                                                <button type="button" class="rpt-link" id="rptSelectAll">Select all</button>
+                                                <span class="text-muted" aria-hidden="true">·</span>
+                                                <button type="button" class="rpt-link" id="rptClearAll">Clear</button>
+                                            </span>
+                                        </div>
+                                        <div class="rpt-search">
+                                            <i class="ri-search-line"></i>
+                                            <input type="search" id="rptFieldSearch" class="form-control form-control-sm" placeholder="Search fields…" aria-label="Search fields" autocomplete="off">
+                                        </div>
+                                        <div class="rpt-field-list" id="rptFieldList">
+                                            @foreach ($columnGroups as $groupName => $fields)
+                                                <div class="rpt-group">
+                                                    <div class="rpt-group-title">{{ $groupName }}</div>
+                                                    @foreach ($fields as $key => $label)
+                                                        <label class="rpt-field" for="col_{{ $key }}" data-search="{{ strtolower($label) }}">
+                                                            <input class="form-check-input column-checkbox" type="checkbox" name="columns[]" value="{{ $key }}" id="col_{{ $key }}" data-label="{{ $label }}">
+                                                            <span>{{ $label }}</span>
+                                                        </label>
+                                                    @endforeach
                                                 </div>
-                                            </div>
+                                            @endforeach
+                                            <div class="rpt-no-match d-none" id="rptNoMatch">No fields match your search.</div>
                                         </div>
-                                    @endforeach
-                                </div>
-                                <small class="text-muted">Drag columns by the handle <i class="ri-draggable"></i> to arrange their order in the report</small>
-                            </div>
+                                    </div>
 
-                            <!-- Report Header Options -->
-                            <div class="card mb-4">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0"><i class="ri-file-info-line me-2"></i> Report Header Options</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" role="switch" name="include_header" id="includeHeader" checked>
-                                                <label class="form-check-label" for="includeHeader">
-                                                    <i class="ri-building-line me-1"></i> Include School Header
-                                                </label>
-                                            </div>
+                                    <!-- Selected, ordered columns -->
+                                    <div class="rpt-panel rpt-panel-order">
+                                        <div class="rpt-panel-head">
+                                            <span>Report columns <span class="badge rounded-pill bg-primary ms-1" id="rptSelCount">0</span></span>
+                                            <small>First column = far left</small>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" role="switch" name="include_logo" id="includeLogo" checked>
-                                                <label class="form-check-label" for="includeLogo">
-                                                    <i class="ri-image-line me-1"></i> Include School Logo
-                                                </label>
+                                        <div class="rpt-panel-body">
+                                            <ol class="rpt-sel-list" id="columnsContainer" aria-label="Selected report columns in order"></ol>
+                                            <div class="rpt-sel-empty d-none" id="rptSelEmpty">
+                                                <i class="ri-layout-column-line"></i>
+                                                <p>No columns yet.<br>Tick fields on the left or pick a quick start.</p>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label for="orientation" class="form-label">Page Orientation</label>
-                                                <select class="form-select" name="orientation" id="orientation">
-                                                    <option value="portrait">Portrait</option>
-                                                    <option value="landscape">Landscape</option>
-                                                </select>
+                                            <div class="rpt-width-tip d-none" id="rptWidthTip">
+                                                <i class="ri-lightbulb-flash-line"></i>
+                                                <span>Lots of columns may be cramped in portrait.</span>
+                                                <button type="button" class="rpt-link" id="rptUseLandscape">Switch to landscape</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
-                            <!-- Export Format -->
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Export Format</label>
-                                <div class="d-flex gap-3 flex-wrap">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="format" id="format_pdf" value="pdf" checked>
-                                        <label class="form-check-label" for="format_pdf">
-                                            <i class="ri-file-pdf-2-line text-danger me-1"></i> PDF
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="format" id="format_excel" value="excel">
-                                        <label class="form-check-label" for="format_excel">
-                                            <i class="ri-file-excel-2-line text-success me-1"></i> Excel
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Preview -->
-                            <div class="alert alert-info small mb-0">
-                                <div class="d-flex align-items-center">
-                                    <i class="ri-information-fill me-2"></i>
+                            <!-- 3. Output -->
+                            <section class="rpt-section">
+                                <div class="rpt-section-head">
+                                    <span class="rpt-step">3</span>
                                     <div>
-                                        <strong>Preview:</strong>
-                                        <span id="columnOrderPreview">admissionNo, lastname, firstname, class, gender</span>
-                                        <br>
-                                        <small>Only students matching the selected filters will be included.</small>
+                                        <h6>Output</h6>
+                                        <small>File type and page layout.</small>
                                     </div>
                                 </div>
-                            </div>
+                                <div class="row g-3">
+                                    <div class="col-lg-4">
+                                        <span class="rpt-label">Format</span>
+                                        <div class="rpt-choice-group">
+                                            <input type="radio" class="btn-check" name="format" id="format_pdf" value="pdf" checked>
+                                            <label class="rpt-choice" for="format_pdf">
+                                                <i class="ri-file-pdf-2-line text-danger"></i>
+                                                <span><strong>PDF</strong><small>Ready to print</small></span>
+                                            </label>
+                                            <input type="radio" class="btn-check" name="format" id="format_excel" value="excel">
+                                            <label class="rpt-choice" for="format_excel">
+                                                <i class="ri-file-excel-2-line text-success"></i>
+                                                <span><strong>Excel</strong><small>Editable sheet</small></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <span class="rpt-label">Page orientation</span>
+                                        <div class="rpt-choice-group">
+                                            <input type="radio" class="btn-check" name="orientation" id="orient_portrait" value="portrait" checked>
+                                            <label class="rpt-choice" for="orient_portrait">
+                                                <i class="ri-file-3-line"></i>
+                                                <span><strong>Portrait</strong><small>Up to ~7 columns</small></span>
+                                            </label>
+                                            <input type="radio" class="btn-check" name="orientation" id="orient_landscape" value="landscape">
+                                            <label class="rpt-choice" for="orient_landscape">
+                                                <i class="ri-file-3-line rpt-rotate"></i>
+                                                <span><strong>Landscape</strong><small>Wide reports</small></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <span class="rpt-label">Page header</span>
+                                        <div class="rpt-switches">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="include_header" id="includeHeader" checked>
+                                                <label class="form-check-label" for="includeHeader">School name &amp; address</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" name="include_logo" id="includeLogo" checked>
+                                                <label class="form-check-label" for="includeLogo">School logo</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                         </form>
                     </div>
 
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-success" id="generateReportBtn">
-                            <i class="ri-printer-line me-1"></i> Generate & Download
-                        </button>
+                    <div class="modal-footer rpt-footer">
+                        <div class="rpt-summary" id="rptSummary" aria-live="polite"></div>
+                        <div class="d-flex gap-2 rpt-footer-actions">
+                            <button type="button" class="btn btn-light" id="rptReset" title="Restore the default columns and options">
+                                <i class="ri-refresh-line me-1"></i>Reset
+                            </button>
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-success" id="generateReportBtn">
+                                <i class="ri-download-2-line me-1"></i> Generate &amp; Download
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3127,7 +3339,7 @@ use Spatie\Permission\Models\Role;
 </div>
 
 <!-- Include required libraries -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
@@ -5246,174 +5458,287 @@ use Spatie\Permission\Models\Role;
     const ReportManager = {
         sortableInstance: null,
         columnOrder: [],
-
-        initializeReportModal: function() {
-            console.log('Initializing report modal with drag and drop...');
-
-            // Initialize column order array
-            this.columnOrder = [];
-
-            // Make sure default columns are checked
-            const defaultColumns = ['admissionNo', 'lastname', 'firstname', 'class', 'gender'];
-            defaultColumns.forEach(col => {
-                const checkbox = document.getElementById(`col_${col}`);
-                if (checkbox) {
-                    checkbox.checked = true;
-                }
-            });
-
-            // Initialize Sortable after a small delay to ensure DOM is ready
-            setTimeout(() => {
-                this.initSortable();
-                this.updateColumnOrder();
-                this.updatePreview();
-            }, 100);
+        initialized: false,
+        storageKey: 'studentReport.columns.v2',
+        defaultColumns: ['admissionNo', 'lastname', 'firstname', 'gender', 'class'],
+        presets: {
+            classlist: ['admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'class'],
+            contact:   ['admissionNo', 'lastname', 'firstname', 'class', 'father_name', 'mother_name', 'guardian_phone', 'whatsapp_number'],
+            biodata:   ['admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'dateofbirth', 'age', 'state', 'local', 'religion', 'class'],
+            health:    ['admissionNo', 'lastname', 'firstname', 'class', 'blood_group', 'genotype', 'allergies_medical_conditions', 'emergency_contact_name', 'emergency_contact_phone'],
         },
 
-        initSortable: function() {
-            const container = document.getElementById('columnsContainer');
-            if (!container) {
-                console.error('Columns container not found!');
-                return;
+        initializeReportModal: function() {
+            if (!this.initialized) {
+                this.bindEvents();
+                this.columnOrder = this.loadSaved() || this.defaultColumns.slice();
+                this.initialized = true;
+            }
+            this.syncCheckboxes();
+            this.render();
+            this.initSortable();
+        },
+
+        // ---------- helpers ----------
+        form: function() { return document.getElementById('printReportForm'); },
+        getCheckbox: function(key) { return document.getElementById(`col_${key}`); },
+        labelFor: function(key) {
+            const cb = this.getCheckbox(key);
+            return cb ? (cb.dataset.label || key) : key;
+        },
+        escape: function(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        },
+        loadSaved: function() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+                if (Array.isArray(saved)) {
+                    const valid = saved.filter(k => this.getCheckbox(k));
+                    if (valid.length) return valid;
+                }
+            } catch (e) {}
+            return null;
+        },
+        save: function() {
+            try { localStorage.setItem(this.storageKey, JSON.stringify(this.columnOrder)); } catch (e) {}
+        },
+
+        // ---------- state ----------
+        syncCheckboxes: function() {
+            const form = this.form();
+            if (!form) return;
+            form.querySelectorAll('.column-checkbox').forEach(cb => {
+                cb.checked = this.columnOrder.includes(cb.value);
+                const row = cb.closest('.rpt-field');
+                if (row) row.classList.toggle('is-checked', cb.checked);
+            });
+        },
+
+        setColumns: function(list) {
+            const seen = new Set();
+            this.columnOrder = list.filter(k => this.getCheckbox(k) && !seen.has(k) && seen.add(k));
+            this.syncCheckboxes();
+            this.render();
+        },
+
+        handleCheckboxChange: function(cb) {
+            if (!cb || !cb.value) return;
+            const key = cb.value;
+            if (cb.checked && !this.columnOrder.includes(key)) this.columnOrder.push(key);
+            if (!cb.checked) this.columnOrder = this.columnOrder.filter(k => k !== key);
+            const row = cb.closest('.rpt-field');
+            if (row) row.classList.toggle('is-checked', cb.checked);
+            this.render();
+            if (cb.checked) {
+                const item = document.querySelector(`#columnsContainer [data-column="${key}"]`);
+                if (item) {
+                    item.classList.add('is-new');
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        },
+
+        filterFields: function(query) {
+            const q = (query || '').trim().toLowerCase();
+            let anyMatch = false;
+            document.querySelectorAll('#rptFieldList .rpt-group').forEach(group => {
+                let groupMatch = false;
+                group.querySelectorAll('.rpt-field').forEach(field => {
+                    const match = !q || (field.dataset.search || '').includes(q);
+                    field.classList.toggle('d-none', !match);
+                    if (match) groupMatch = true;
+                });
+                group.classList.toggle('d-none', !groupMatch);
+                if (groupMatch) anyMatch = true;
+            });
+            const none = document.getElementById('rptNoMatch');
+            if (none) none.classList.toggle('d-none', anyMatch);
+        },
+
+        moveColumn: function(key, delta) {
+            const i = this.columnOrder.indexOf(key);
+            const j = i + delta;
+            if (i < 0 || j < 0 || j >= this.columnOrder.length) return;
+            [this.columnOrder[i], this.columnOrder[j]] = [this.columnOrder[j], this.columnOrder[i]];
+            this.render();
+        },
+
+        resetAll: function() {
+            const form = this.form();
+            if (!form) return;
+            ['rptClass', 'rptStatus', 'rptTerm', 'rptSession'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const pdf = document.getElementById('format_pdf');
+            const portrait = document.getElementById('orient_portrait');
+            const header = document.getElementById('includeHeader');
+            const logo = document.getElementById('includeLogo');
+            const search = document.getElementById('rptFieldSearch');
+            if (pdf) pdf.checked = true;
+            if (portrait) portrait.checked = true;
+            if (header) header.checked = true;
+            if (logo) logo.checked = true;
+            if (search) { search.value = ''; this.filterFields(''); }
+            this.setColumns(this.defaultColumns.slice());
+        },
+
+        // ---------- events ----------
+        bindEvents: function() {
+            const form = this.form();
+            if (!form) return;
+
+            form.querySelectorAll('.column-checkbox').forEach(cb => {
+                cb.addEventListener('change', () => this.handleCheckboxChange(cb));
+            });
+
+            form.querySelectorAll('[data-preset]').forEach(btn => {
+                btn.addEventListener('click', () => this.setColumns((this.presets[btn.dataset.preset] || []).slice()));
+            });
+
+            const selectAll = document.getElementById('rptSelectAll');
+            if (selectAll) selectAll.addEventListener('click', () => {
+                const visible = Array.from(form.querySelectorAll('.rpt-field:not(.d-none) .column-checkbox')).map(cb => cb.value);
+                this.setColumns(this.columnOrder.concat(visible.filter(k => !this.columnOrder.includes(k))));
+            });
+
+            const clearAll = document.getElementById('rptClearAll');
+            if (clearAll) clearAll.addEventListener('click', () => this.setColumns([]));
+
+            const reset = document.getElementById('rptReset');
+            if (reset) reset.addEventListener('click', () => this.resetAll());
+
+            const search = document.getElementById('rptFieldSearch');
+            if (search) {
+                search.addEventListener('input', (e) => this.filterFields(e.target.value));
+                search.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
             }
 
-            // Check if Sortable is available
+            const landscape = document.getElementById('rptUseLandscape');
+            if (landscape) landscape.addEventListener('click', () => {
+                const l = document.getElementById('orient_landscape');
+                if (l) { l.checked = true; this.render(); }
+            });
+
+            form.querySelectorAll('select, input[name="format"], input[name="orientation"]').forEach(el => {
+                el.addEventListener('change', () => this.render());
+            });
+
+            const list = document.getElementById('columnsContainer');
+            if (list) list.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn || btn.disabled) return;
+                const item = btn.closest('[data-column]');
+                if (!item) return;
+                const key = item.dataset.column;
+                const action = btn.dataset.action;
+
+                if (action === 'remove') {
+                    this.columnOrder = this.columnOrder.filter(k => k !== key);
+                    this.syncCheckboxes();
+                    this.render();
+                    return;
+                }
+                this.moveColumn(key, action === 'up' ? -1 : 1);
+                // keep keyboard focus on the moved item
+                const again = list.querySelector(`[data-column="${key}"] [data-action="${action}"]`);
+                const fallback = list.querySelector(`[data-column="${key}"] [data-action="${action === 'up' ? 'down' : 'up'}"]`);
+                if (again && !again.disabled) again.focus();
+                else if (fallback) fallback.focus();
+            });
+        },
+
+        // ---------- rendering ----------
+        render: function() {
+            const list = document.getElementById('columnsContainer');
+            const form = this.form();
+            if (!list || !form) return;
+
+            const n = this.columnOrder.length;
+            list.innerHTML = this.columnOrder.map((key, i) => {
+                const label = this.escape(this.labelFor(key));
+                return `
+                <li class="rpt-sel-item" data-column="${key}">
+                    <span class="rpt-handle" title="Drag to reorder" aria-hidden="true"><i class="ri-draggable"></i></span>
+                    <span class="rpt-num">${i + 1}</span>
+                    <span class="rpt-sel-label" title="${label}">${label}</span>
+                    <span class="rpt-sel-actions">
+                        <button type="button" class="rpt-icon-btn" data-action="up" ${i === 0 ? 'disabled' : ''} aria-label="Move ${label} up" title="Move up"><i class="ri-arrow-up-s-line"></i></button>
+                        <button type="button" class="rpt-icon-btn" data-action="down" ${i === n - 1 ? 'disabled' : ''} aria-label="Move ${label} down" title="Move down"><i class="ri-arrow-down-s-line"></i></button>
+                        <button type="button" class="rpt-icon-btn rpt-remove" data-action="remove" aria-label="Remove ${label}" title="Remove"><i class="ri-close-line"></i></button>
+                    </span>
+                </li>`;
+            }).join('');
+
+            list.classList.toggle('d-none', n === 0);
+            const empty = document.getElementById('rptSelEmpty');
+            if (empty) empty.classList.toggle('d-none', n > 0);
+            const count = document.getElementById('rptSelCount');
+            if (count) count.textContent = n;
+
+            const orderInput = document.getElementById('columnsOrderInput');
+            if (orderInput) orderInput.value = this.columnOrder.join(',');
+
+            const format = (form.querySelector('input[name="format"]:checked') || {}).value || 'pdf';
+            const orient = (form.querySelector('input[name="orientation"]:checked') || {}).value || 'portrait';
+
+            const tip = document.getElementById('rptWidthTip');
+            if (tip) tip.classList.toggle('d-none', !(format === 'pdf' && orient === 'portrait' && n > 7));
+
+            const classSel = document.getElementById('rptClass');
+            const className = classSel && classSel.value ? classSel.options[classSel.selectedIndex].text : 'All classes';
+            const summary = document.getElementById('rptSummary');
+            if (summary) {
+                summary.innerHTML = n === 0
+                    ? '<span class="text-danger"><i class="ri-error-warning-line me-1"></i>Select at least one column</span>'
+                    : `<strong>${this.escape(className)}</strong> · ${n} column${n === 1 ? '' : 's'} · ${format === 'excel' ? 'Excel' : 'PDF, ' + (orient === 'landscape' ? 'landscape' : 'portrait')}`;
+            }
+
+            const generateBtn = document.getElementById('generateReportBtn');
+            if (generateBtn) generateBtn.disabled = n === 0;
+
+            this.save();
+        },
+
+        // kept for compatibility with older callers
+        updateColumnOrder: function() { this.render(); },
+        updatePreview: function() { this.render(); },
+
+        initSortable: function() {
+            const list = document.getElementById('columnsContainer');
+            if (!list) return;
             if (typeof Sortable === 'undefined') {
-                console.error('Sortable library not loaded!');
-                // Try to load Sortable dynamically
                 this.loadSortableLibrary();
                 return;
             }
+            if (this.sortableInstance) return; // the list element is reused, so one instance is enough
 
-            // Destroy existing instance if any
-            if (this.sortableInstance) {
-                this.sortableInstance.destroy();
-            }
-
-            console.log('Initializing Sortable on container:', container);
-
-            // Make all draggable items actually draggable
-            document.querySelectorAll('.draggable-item').forEach(item => {
-                item.style.cursor = 'grab';
-                item.setAttribute('draggable', 'false'); // Let Sortable handle dragging
-            });
-
-            // Create new Sortable instance
-            this.sortableInstance = new Sortable(container, {
-                animation: 250,
-                handle: '.drag-handle',
-                draggable: '.draggable-item',
-                ghostClass: 'sortable-ghost',
-                chosenClass: 'sortable-chosen',
-                dragClass: 'sortable-drag',
-                forceFallback: false,
-                fallbackClass: 'sortable-fallback',
+            this.sortableInstance = new Sortable(list, {
+                animation: 180,
+                draggable: '.rpt-sel-item',
+                filter: '.rpt-icon-btn',
+                preventOnFilter: false,
+                ghostClass: 'rpt-ghost',
+                chosenClass: 'rpt-chosen',
+                forceFallback: true,
                 fallbackOnBody: true,
-
-                onStart: function(evt) {
-                    console.log('Drag started', evt);
-                    document.body.style.cursor = 'grabbing';
-                },
-
-                onEnd: (evt) => {
-                    console.log('Drag ended', evt);
-                    document.body.style.cursor = '';
-                    this.updateColumnOrder();
-                    this.updatePreview();
-                },
-
-                onSort: (evt) => {
-                    console.log('Sorted', evt);
+                fallbackClass: 'rpt-fallback',
+                scroll: true,
+                bubbleScroll: true,
+                onEnd: () => {
+                    this.columnOrder = Array.from(list.querySelectorAll('.rpt-sel-item')).map(li => li.dataset.column);
+                    this.render();
                 }
             });
-
-            // Add event listeners to checkboxes
-            document.querySelectorAll('.column-checkbox').forEach(checkbox => {
-                checkbox.removeEventListener('change', (e) => this.handleCheckboxChange(e));
-                checkbox.addEventListener('change', (e) => this.handleCheckboxChange(e));
-            });
-
-            console.log('Sortable initialized successfully');
-        },
-
-        handleCheckboxChange: function(e) {
-            this.updateColumnOrder();
-            this.updatePreview();
         },
 
         loadSortableLibrary: function() {
-            // Dynamically load Sortable if not available
-            if (document.querySelector('script[src*="Sortable"]')) return;
-
+            if (this._loadingSortable) return;
+            this._loadingSortable = true;
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js';
-            script.onload = () => {
-                console.log('Sortable library loaded dynamically');
-                setTimeout(() => this.initSortable(), 100);
-            };
+            script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+            script.onload = () => this.initSortable();
             document.head.appendChild(script);
-        },
-
-        updateColumnOrder: function() {
-            const container = document.getElementById('columnsContainer');
-            if (!container) return;
-
-            const items = container.querySelectorAll('.draggable-item');
-            const orderInput = document.getElementById('columnsOrderInput');
-
-            // Get the current order from DOM
-            this.columnOrder = Array.from(items).map(item => {
-                return item.dataset.column;
-            });
-
-            // Filter to only include checked columns
-            const checkedInOrder = this.columnOrder.filter(col => {
-                const checkbox = document.getElementById(`col_${col}`);
-                return checkbox && checkbox.checked;
-            });
-
-            // Update hidden input with the order
-            if (orderInput) {
-                orderInput.value = checkedInOrder.join(',');
-                console.log('Column order updated:', orderInput.value);
-            }
-
-            // Update visual indicators
-            items.forEach((item, index) => {
-                const numberBadge = item.querySelector('.order-badge');
-                if (!numberBadge) {
-                    const badge = document.createElement('span');
-                    badge.className = 'order-badge badge bg-primary ms-2';
-                    badge.style.cssText = 'float: right; font-size: 10px;';
-                    badge.textContent = index + 1;
-                    item.querySelector('.drag-handle').after(badge);
-                } else {
-                    numberBadge.textContent = index + 1;
-                }
-            });
-        },
-
-        updatePreview: function() {
-            const previewEl = document.getElementById('columnOrderPreview');
-            if (!previewEl) return;
-
-            const checkedColumns = [];
-            const checkboxes = document.querySelectorAll('.column-checkbox:checked');
-
-            checkboxes.forEach(cb => {
-                const label = document.querySelector(`label[for="${cb.id}"]`);
-                if (label) {
-                    checkedColumns.push(label.innerText.trim());
-                }
-            });
-
-            if (checkedColumns.length === 0) {
-                previewEl.innerHTML = '<span class="text-danger">⚠️ No columns selected</span>';
-            } else {
-                previewEl.innerHTML = checkedColumns.map(col =>
-                    `<span class="badge bg-light text-dark me-1">${col}</span>`
-                ).join(' <span class="text-muted">→</span> ');
-            }
         },
 
         async generateReport() {
