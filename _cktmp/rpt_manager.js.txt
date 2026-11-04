@@ -1,0 +1,286 @@
+    const ReportManager = {
+        sortableInstance: null,
+        columnOrder: [],
+        initialized: false,
+        storageKey: 'studentReport.columns.v2',
+        defaultColumns: ['admissionNo', 'lastname', 'firstname', 'gender', 'class'],
+        presets: {
+            classlist: ['admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'class'],
+            contact:   ['admissionNo', 'lastname', 'firstname', 'class', 'father_name', 'mother_name', 'guardian_phone', 'whatsapp_number'],
+            biodata:   ['admissionNo', 'lastname', 'firstname', 'othername', 'gender', 'dateofbirth', 'age', 'state', 'local', 'religion', 'class'],
+            health:    ['admissionNo', 'lastname', 'firstname', 'class', 'blood_group', 'genotype', 'allergies_medical_conditions', 'emergency_contact_name', 'emergency_contact_phone'],
+        },
+
+        initializeReportModal: function() {
+            if (!this.initialized) {
+                this.bindEvents();
+                this.columnOrder = this.loadSaved() || this.defaultColumns.slice();
+                this.initialized = true;
+            }
+            this.syncCheckboxes();
+            this.render();
+            this.initSortable();
+        },
+
+        // ---------- helpers ----------
+        form: function() { return document.getElementById('printReportForm'); },
+        getCheckbox: function(key) { return document.getElementById(`col_${key}`); },
+        labelFor: function(key) {
+            const cb = this.getCheckbox(key);
+            return cb ? (cb.dataset.label || key) : key;
+        },
+        escape: function(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        },
+        loadSaved: function() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+                if (Array.isArray(saved)) {
+                    const valid = saved.filter(k => this.getCheckbox(k));
+                    if (valid.length) return valid;
+                }
+            } catch (e) {}
+            return null;
+        },
+        save: function() {
+            try { localStorage.setItem(this.storageKey, JSON.stringify(this.columnOrder)); } catch (e) {}
+        },
+
+        // ---------- state ----------
+        syncCheckboxes: function() {
+            const form = this.form();
+            if (!form) return;
+            form.querySelectorAll('.column-checkbox').forEach(cb => {
+                cb.checked = this.columnOrder.includes(cb.value);
+                const row = cb.closest('.rpt-field');
+                if (row) row.classList.toggle('is-checked', cb.checked);
+            });
+        },
+
+        setColumns: function(list) {
+            const seen = new Set();
+            this.columnOrder = list.filter(k => this.getCheckbox(k) && !seen.has(k) && seen.add(k));
+            this.syncCheckboxes();
+            this.render();
+        },
+
+        handleCheckboxChange: function(cb) {
+            if (!cb || !cb.value) return;
+            const key = cb.value;
+            if (cb.checked && !this.columnOrder.includes(key)) this.columnOrder.push(key);
+            if (!cb.checked) this.columnOrder = this.columnOrder.filter(k => k !== key);
+            const row = cb.closest('.rpt-field');
+            if (row) row.classList.toggle('is-checked', cb.checked);
+            this.render();
+            if (cb.checked) {
+                const item = document.querySelector(`#columnsContainer [data-column="${key}"]`);
+                if (item) {
+                    item.classList.add('is-new');
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        },
+
+        filterFields: function(query) {
+            const q = (query || '').trim().toLowerCase();
+            let anyMatch = false;
+            document.querySelectorAll('#rptFieldList .rpt-group').forEach(group => {
+                let groupMatch = false;
+                group.querySelectorAll('.rpt-field').forEach(field => {
+                    const match = !q || (field.dataset.search || '').includes(q);
+                    field.classList.toggle('d-none', !match);
+                    if (match) groupMatch = true;
+                });
+                group.classList.toggle('d-none', !groupMatch);
+                if (groupMatch) anyMatch = true;
+            });
+            const none = document.getElementById('rptNoMatch');
+            if (none) none.classList.toggle('d-none', anyMatch);
+        },
+
+        moveColumn: function(key, delta) {
+            const i = this.columnOrder.indexOf(key);
+            const j = i + delta;
+            if (i < 0 || j < 0 || j >= this.columnOrder.length) return;
+            [this.columnOrder[i], this.columnOrder[j]] = [this.columnOrder[j], this.columnOrder[i]];
+            this.render();
+        },
+
+        resetAll: function() {
+            const form = this.form();
+            if (!form) return;
+            ['rptClass', 'rptStatus', 'rptTerm', 'rptSession'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            const pdf = document.getElementById('format_pdf');
+            const portrait = document.getElementById('orient_portrait');
+            const header = document.getElementById('includeHeader');
+            const logo = document.getElementById('includeLogo');
+            const search = document.getElementById('rptFieldSearch');
+            if (pdf) pdf.checked = true;
+            if (portrait) portrait.checked = true;
+            if (header) header.checked = true;
+            if (logo) logo.checked = true;
+            if (search) { search.value = ''; this.filterFields(''); }
+            this.setColumns(this.defaultColumns.slice());
+        },
+
+        // ---------- events ----------
+        bindEvents: function() {
+            const form = this.form();
+            if (!form) return;
+
+            form.querySelectorAll('.column-checkbox').forEach(cb => {
+                cb.addEventListener('change', () => this.handleCheckboxChange(cb));
+            });
+
+            form.querySelectorAll('[data-preset]').forEach(btn => {
+                btn.addEventListener('click', () => this.setColumns((this.presets[btn.dataset.preset] || []).slice()));
+            });
+
+            const selectAll = document.getElementById('rptSelectAll');
+            if (selectAll) selectAll.addEventListener('click', () => {
+                const visible = Array.from(form.querySelectorAll('.rpt-field:not(.d-none) .column-checkbox')).map(cb => cb.value);
+                this.setColumns(this.columnOrder.concat(visible.filter(k => !this.columnOrder.includes(k))));
+            });
+
+            const clearAll = document.getElementById('rptClearAll');
+            if (clearAll) clearAll.addEventListener('click', () => this.setColumns([]));
+
+            const reset = document.getElementById('rptReset');
+            if (reset) reset.addEventListener('click', () => this.resetAll());
+
+            const search = document.getElementById('rptFieldSearch');
+            if (search) {
+                search.addEventListener('input', (e) => this.filterFields(e.target.value));
+                search.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+            }
+
+            const landscape = document.getElementById('rptUseLandscape');
+            if (landscape) landscape.addEventListener('click', () => {
+                const l = document.getElementById('orient_landscape');
+                if (l) { l.checked = true; this.render(); }
+            });
+
+            form.querySelectorAll('select, input[name="format"], input[name="orientation"]').forEach(el => {
+                el.addEventListener('change', () => this.render());
+            });
+
+            const list = document.getElementById('columnsContainer');
+            if (list) list.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn || btn.disabled) return;
+                const item = btn.closest('[data-column]');
+                if (!item) return;
+                const key = item.dataset.column;
+                const action = btn.dataset.action;
+
+                if (action === 'remove') {
+                    this.columnOrder = this.columnOrder.filter(k => k !== key);
+                    this.syncCheckboxes();
+                    this.render();
+                    return;
+                }
+                this.moveColumn(key, action === 'up' ? -1 : 1);
+                // keep keyboard focus on the moved item
+                const again = list.querySelector(`[data-column="${key}"] [data-action="${action}"]`);
+                const fallback = list.querySelector(`[data-column="${key}"] [data-action="${action === 'up' ? 'down' : 'up'}"]`);
+                if (again && !again.disabled) again.focus();
+                else if (fallback) fallback.focus();
+            });
+        },
+
+        // ---------- rendering ----------
+        render: function() {
+            const list = document.getElementById('columnsContainer');
+            const form = this.form();
+            if (!list || !form) return;
+
+            const n = this.columnOrder.length;
+            list.innerHTML = this.columnOrder.map((key, i) => {
+                const label = this.escape(this.labelFor(key));
+                return `
+                <li class="rpt-sel-item" data-column="${key}">
+                    <span class="rpt-handle" title="Drag to reorder" aria-hidden="true"><i class="ri-draggable"></i></span>
+                    <span class="rpt-num">${i + 1}</span>
+                    <span class="rpt-sel-label" title="${label}">${label}</span>
+                    <span class="rpt-sel-actions">
+                        <button type="button" class="rpt-icon-btn" data-action="up" ${i === 0 ? 'disabled' : ''} aria-label="Move ${label} up" title="Move up"><i class="ri-arrow-up-s-line"></i></button>
+                        <button type="button" class="rpt-icon-btn" data-action="down" ${i === n - 1 ? 'disabled' : ''} aria-label="Move ${label} down" title="Move down"><i class="ri-arrow-down-s-line"></i></button>
+                        <button type="button" class="rpt-icon-btn rpt-remove" data-action="remove" aria-label="Remove ${label}" title="Remove"><i class="ri-close-line"></i></button>
+                    </span>
+                </li>`;
+            }).join('');
+
+            list.classList.toggle('d-none', n === 0);
+            const empty = document.getElementById('rptSelEmpty');
+            if (empty) empty.classList.toggle('d-none', n > 0);
+            const count = document.getElementById('rptSelCount');
+            if (count) count.textContent = n;
+
+            const orderInput = document.getElementById('columnsOrderInput');
+            if (orderInput) orderInput.value = this.columnOrder.join(',');
+
+            const format = (form.querySelector('input[name="format"]:checked') || {}).value || 'pdf';
+            const orient = (form.querySelector('input[name="orientation"]:checked') || {}).value || 'portrait';
+
+            const tip = document.getElementById('rptWidthTip');
+            if (tip) tip.classList.toggle('d-none', !(format === 'pdf' && orient === 'portrait' && n > 7));
+
+            const classSel = document.getElementById('rptClass');
+            const className = classSel && classSel.value ? classSel.options[classSel.selectedIndex].text : 'All classes';
+            const summary = document.getElementById('rptSummary');
+            if (summary) {
+                summary.innerHTML = n === 0
+                    ? '<span class="text-danger"><i class="ri-error-warning-line me-1"></i>Select at least one column</span>'
+                    : `<strong>${this.escape(className)}</strong> · ${n} column${n === 1 ? '' : 's'} · ${format === 'excel' ? 'Excel' : 'PDF, ' + (orient === 'landscape' ? 'landscape' : 'portrait')}`;
+            }
+
+            const generateBtn = document.getElementById('generateReportBtn');
+            if (generateBtn) generateBtn.disabled = n === 0;
+
+            this.save();
+        },
+
+        // kept for compatibility with older callers
+        updateColumnOrder: function() { this.render(); },
+        updatePreview: function() { this.render(); },
+
+        initSortable: function() {
+            const list = document.getElementById('columnsContainer');
+            if (!list) return;
+            if (typeof Sortable === 'undefined') {
+                this.loadSortableLibrary();
+                return;
+            }
+            if (this.sortableInstance) return; // the list element is reused, so one instance is enough
+
+            this.sortableInstance = new Sortable(list, {
+                animation: 180,
+                draggable: '.rpt-sel-item',
+                filter: '.rpt-icon-btn',
+                preventOnFilter: false,
+                ghostClass: 'rpt-ghost',
+                chosenClass: 'rpt-chosen',
+                forceFallback: true,
+                fallbackOnBody: true,
+                fallbackClass: 'rpt-fallback',
+                scroll: true,
+                bubbleScroll: true,
+                onEnd: () => {
+                    this.columnOrder = Array.from(list.querySelectorAll('.rpt-sel-item')).map(li => li.dataset.column);
+                    this.render();
+                }
+            });
+        },
+
+        loadSortableLibrary: function() {
+            if (this._loadingSortable) return;
+            this._loadingSortable = true;
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+            script.onload = () => this.initSortable();
+            document.head.appendChild(script);
+        },
+
