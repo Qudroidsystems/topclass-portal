@@ -1,3 +1,22 @@
+@php
+    if (!function_exists('tcFormatReportDate')) {
+        function tcFormatReportDate($value) {
+            $value = is_string($value) ? trim($value) : $value;
+            if ($value === null || $value === '' || $value === 'N/A' || str_starts_with((string) $value, '0000-00-00')) {
+                return 'N/A';
+            }
+            try {
+                if (is_numeric($value) && (float) $value > 0 && (float) $value < 100000) {
+                    // Excel date serial number (e.g. 42111 = 17/04/2015)
+                    return \Carbon\Carbon::create(1899, 12, 30)->addDays((int) $value)->format('d/m/Y');
+                }
+                return \Carbon\Carbon::parse($value)->format('d/m/Y');
+            } catch (\Throwable $e) {
+                return (string) $value; // show raw value instead of crashing
+            }
+        }
+    }
+@endphp
 <!DOCTYPE html>
 <html>
 <head>
@@ -510,11 +529,7 @@
                     <td class="text-center {{ $widthClass }}">{{ $student->gender ?? 'N/A' }}</td>
                     @elseif($col == 'dateofbirth')
                     <td class="text-center {{ $widthClass }} nowrap">
-                        @if($student->dateofbirth)
-                            {{ \Carbon\Carbon::parse($student->dateofbirth)->format('d/m/Y') }}
-                        @else
-                            N/A
-                        @endif
+                        {{ tcFormatReportDate($student->dateofbirth) }}
                     </td>
                     @elseif($col == 'age')
                     <td class="text-center {{ $widthClass }}">{{ $student->age ?? 'N/A' }}</td>
@@ -544,11 +559,7 @@
                     </td>
                     @elseif($col == 'admission_date')
                     <td class="text-center {{ $widthClass }} nowrap">
-                        @if($student->admission_date)
-                            {{ \Carbon\Carbon::parse($student->admission_date)->format('d/m/Y') }}
-                        @else
-                            N/A
-                        @endif
+                        {{ tcFormatReportDate($student->admission_date) }}
                     </td>
                     @elseif($col == 'phone_number')
                     <td class="text-left {{ $widthClass }}">{{ $student->phone_number ?? 'N/A' }}</td>

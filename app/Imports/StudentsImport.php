@@ -176,7 +176,12 @@ class StudentsImport implements
         // Normalise DOB to Y-m-d if it parsed as a date; otherwise store as-is.
         if ($dob) {
             try {
-                $dob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+                if (is_numeric($dob) && (float) $dob > 0 && (float) $dob < 100000) {
+                    // Excel date serial number (e.g. 42111 = 2015-04-17)
+                    $dob = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $dob)->format('Y-m-d');
+                } else {
+                    $dob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+                }
             } catch (\Exception $e) {
                 // leave as-is — column is varchar
             }
