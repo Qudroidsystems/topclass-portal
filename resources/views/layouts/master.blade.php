@@ -38,6 +38,8 @@
 
     <!-- layout.js must run AFTER the CSS above -->
     <script src="{{ asset('theme/layouts/assets/js/layout.js') }}"></script>
+    {{-- Portal themes: appearance (light/dark/auto) + style (default/apple). Must stay in <head>. --}}
+    <script src="{{ asset('js/portal-theme.js') }}?v={{ @filemtime(public_path('js/portal-theme.js')) }}"></script>
 
     <!-- NProgress -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.css"/>
@@ -427,6 +429,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/cb-ui.css') }}?v={{ @filemtime(public_path('css/cb-ui.css')) }}" rel="stylesheet">
+    <link href="{{ asset('css/portal-theme.css') }}?v={{ @filemtime(public_path('css/portal-theme.css')) }}" rel="stylesheet">
 </head>
 
 {{-- CB UI global skin is applied only to the ported modules so score/result pages keep their original look. --}}
@@ -1635,13 +1638,18 @@
                 <div class="d-flex align-items-center gap-1">
                     <!-- Theme Toggle -->
                     <div class="position-relative" id="theme-toggle-wrapper">
-                        <button type="button" id="theme-toggle-btn" class="btn btn-icon btn-topbar btn-ghost-dark rounded-circle" style="width:38px;height:38px;">
-                            <i id="theme-icon" class="bi bi-sun align-middle fs-3xl"></i>
+                        <button type="button" id="theme-toggle-btn" class="btn btn-icon btn-topbar btn-ghost-dark rounded-circle" style="width:38px;height:38px;" title="Theme" aria-label="Theme" aria-haspopup="menu">
+                            <i id="theme-icon" class="ri-sun-line align-middle fs-3xl"></i>
                         </button>
-                        <div id="theme-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:170px;background:var(--vz-dropdown-bg,#fff);border:1px solid var(--vz-border-color,#e9ebec);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;overflow:hidden;padding:6px;">
-                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="light"><i class="bi bi-sun"></i> Light</a>
-                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="dark"><i class="bi bi-moon"></i> Dark</a>
-                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="auto"><i class="bi bi-moon-stars"></i> Auto</a>
+                        <div id="theme-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:210px;background:var(--tb-secondary-bg,#fff);border:1px solid var(--tb-border-color,#e9ebec);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;overflow:hidden;padding:6px;" role="menu">
+                            <div class="pt-menu-label">Appearance</div>
+                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="light" role="menuitemradio"><i class="ri-sun-line"></i> Light<i class="ri-check-line pt-check"></i></a>
+                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="dark" role="menuitemradio"><i class="ri-moon-line"></i> Dark<i class="ri-check-line pt-check"></i></a>
+                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-mode="auto" role="menuitemradio"><i class="ri-contrast-2-line"></i> Auto <small>(system)</small><i class="ri-check-line pt-check"></i></a>
+                            <div class="pt-menu-sep"></div>
+                            <div class="pt-menu-label">Style</div>
+                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-ui="default" role="menuitemradio"><i class="ri-layout-grid-line"></i> Default<i class="ri-check-line pt-check"></i></a>
+                            <a href="javascript:void(0)" class="theme-mode-item d-flex align-items-center gap-2 px-3 py-2 rounded-2 text-decoration-none" data-ui="apple" role="menuitemradio"><i class="ri-apple-line"></i> Apple<i class="ri-check-line pt-check"></i></a>
                         </div>
                     </div>
 
@@ -1933,31 +1941,44 @@
 
     /* ── theme ── */
     function initTheme() {
-        var html   = document.documentElement;
+        // Appearance + style are applied by js/portal-theme.js (loaded in <head>);
+        // this only wires up the top-bar menu and keeps it in sync.
+        var PT     = window.PortalTheme;
         var iconEl = document.getElementById('theme-icon');
-        var ICON   = { light:'bi bi-sun align-middle fs-3xl', dark:'bi bi-moon align-middle fs-3xl', auto:'bi bi-moon-stars align-middle fs-3xl' };
+        var ICON   = { light:'ri-sun-line align-middle fs-3xl', dark:'ri-moon-line align-middle fs-3xl', auto:'ri-contrast-2-line align-middle fs-3xl' };
 
-        function applyMode(mode) {
-            var scheme = mode === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
-            html.setAttribute('data-bs-theme', scheme);
-            html.setAttribute('data-topbar', scheme === 'dark' ? 'dark' : 'light');
+        function setMode(m) {
+            if (PT) return PT.setMode(m);
+            var dark = m === 'dark' || (m === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+            try { localStorage.setItem('app-theme', m); } catch (e) {}
+            sync();
+        }
+        function sync() {
+            var mode = PT ? PT.mode : (localStorage.getItem('app-theme') || 'light');
+            var ui   = PT ? PT.ui   : 'default';
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             if (iconEl) iconEl.className = ICON[mode] || ICON.light;
-            localStorage.setItem('app-theme', mode);
-            var r = document.getElementById(scheme === 'dark' ? 'layout-mode-dark' : 'layout-mode-light');
+            var r = document.getElementById(dark ? 'layout-mode-dark' : 'layout-mode-light');
             if (r) r.checked = true;
             qsa('.theme-mode-item').forEach(function(a){
-                a.style.fontWeight = a.getAttribute('data-mode') === mode ? '600' : '';
-                a.style.color      = a.getAttribute('data-mode') === mode ? 'var(--vz-primary,#405189)' : '';
+                var on = a.hasAttribute('data-ui') ? a.getAttribute('data-ui') === ui : a.getAttribute('data-mode') === mode;
+                a.classList.toggle('is-active', on);
+                a.setAttribute('aria-checked', on ? 'true' : 'false');
             });
         }
-        applyMode(localStorage.getItem('app-theme') || 'light');
         qsa('.theme-mode-item').forEach(function(a){
-            a.addEventListener('click', function(e){ e.preventDefault(); applyMode(a.getAttribute('data-mode')); document.getElementById('theme-dropdown').style.display='none'; });
+            a.addEventListener('click', function(e){
+                e.preventDefault();
+                if (a.hasAttribute('data-ui')) { if (PT) PT.setUi(a.getAttribute('data-ui')); }
+                else setMode(a.getAttribute('data-mode'));
+                var dd = document.getElementById('theme-dropdown');
+                if (dd) dd.style.display = 'none';
+            });
         });
-        qsa('[name="data-bs-theme"]').forEach(function(r){ r.addEventListener('change', function(){ applyMode(r.value); }); });
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
-            if (localStorage.getItem('app-theme') === 'auto') applyMode('auto');
-        });
+        qsa('[name="data-bs-theme"]').forEach(function(r){ r.addEventListener('change', function(){ setMode(r.value); }); });
+        document.addEventListener('portal-theme-change', sync);
+        sync();
     }
 
     /* ── NProgress ── */
@@ -2067,7 +2088,7 @@
     /* ── reset layout ── */
     function initReset() {
         var btn = document.getElementById('reset-layout');
-        if (btn) btn.addEventListener('click', function(){ sessionStorage.clear(); localStorage.removeItem('app-theme'); location.reload(); });
+        if (btn) btn.addEventListener('click', function(){ sessionStorage.clear(); localStorage.removeItem('app-theme'); localStorage.removeItem('app-ui'); location.reload(); });
     }
 
     /* ── INIT ── */
