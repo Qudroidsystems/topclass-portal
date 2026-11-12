@@ -817,6 +817,22 @@
             </div>
             <!--end:Menu item-->
             @endcan
+            @can('View session clone')
+            <!--begin:Menu item-->
+            <div  class="menu-item" >
+              <a class="menu-link  {{ request()->is('setup-clone*')
+                ? ' active' : '' }}"  href="{{ route('sessionclone.index') }}" >
+              <span  class="menu-bullet" >
+              <span class="bullet bullet-dot">
+              </span>
+              </span>
+              <span  class="menu-title" >
+              Clone Session / Term Setup
+              </span>
+              </a>
+            </div>
+            <!--end:Menu item-->
+            @endcan
             @can('schoolhouse-list')
             <!--begin:Menu item-->
             <div  class="menu-item" >

@@ -1325,6 +1325,7 @@
                                 <ul class="nav nav-sm flex-column">
                                     @can('View session')     <li class="nav-item"><a href="{{ route('session.index') }}"    class="nav-link">School Session</a></li> @endcan
                                     @can('View term')        <li class="nav-item"><a href="{{ route('term.index') }}"       class="nav-link">School Term</a></li>    @endcan
+                                    @can('View session clone') <li class="nav-item"><a href="{{ route('sessionclone.index') }}" class="nav-link">Clone Session / Term Setup</a></li> @endcan
                                     @can('View schoolhouse') <li class="nav-item"><a href="{{ route('schoolhouse.index') }}" class="nav-link">School House</a></li> @endcan
                                 </ul>
                             </div>
@@ -2232,6 +2233,7 @@
         {title:'School Information',                    url:'{{ route("school-information.index") }}',                       icon:'mdi-domain',                  category:'School Settings',     keywords:['school','info','name','address','logo']},
         {title:'School Session',                        url:'{{ route("session.index") }}',                                  icon:'mdi-calendar-range',          category:'School Settings',     keywords:['session','year','academic']},
         {title:'School Term',                           url:'{{ route("term.index") }}',                                     icon:'mdi-calendar',                category:'School Settings',     keywords:['term','semester','period']},
+        @can('View session clone'){title:'Clone Session / Term Setup',            url:'{{ route("sessionclone.index") }}',                             icon:'mdi-content-copy',            category:'School Settings',     keywords:['clone','cloning','copy','duplicate','rollover','new term','new session','setup','snapshot','undo','revert']},@endcan
         {title:'School House',                          url:'{{ route("schoolhouse.index") }}',                              icon:'mdi-home-group',              category:'School Settings',     keywords:['house','group','dormitory']},
         {title:'Class Arm',                             url:'{{ route("schoolarm.index") }}',                                icon:'mdi-table-chair',             category:'School Settings',     keywords:['arm','stream','class','division']},
         {title:'Class Category',                        url:'{{ route("classcategories.index") }}',                          icon:'mdi-format-list-bulleted',    category:'School Settings',     keywords:['category','class','type','level']},

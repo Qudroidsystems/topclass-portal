@@ -387,7 +387,13 @@ class SearchController extends Controller
         // ============================================================
         $staticPages = $this->getStaticPages();
         foreach ($staticPages as $page) {
-            if (stripos($page['title'], $query) !== false || stripos($page['category'], $query) !== false) {
+            if (!empty($page['permission']) && !auth()->user()->can($page['permission'])) {
+                continue;
+            }
+            if (stripos($page['title'], $query) !== false
+                || stripos($page['category'], $query) !== false
+                || stripos($page['keywords'] ?? '', $query) !== false) {
+                unset($page['permission'], $page['keywords']);
                 $results[] = $page;
             }
         }
@@ -436,6 +442,7 @@ class SearchController extends Controller
             ['title' => 'School Information', 'url' => route('school-information.index'), 'icon' => 'mdi-domain', 'category' => 'School Settings'],
             ['title' => 'School Session', 'url' => route('session.index'), 'icon' => 'mdi-calendar-range', 'category' => 'School Settings'],
             ['title' => 'School Term', 'url' => route('term.index'), 'icon' => 'mdi-calendar', 'category' => 'School Settings'],
+            ['title' => 'Clone Session / Term Setup', 'url' => route('sessionclone.index'), 'icon' => 'mdi-content-copy', 'category' => 'School Settings', 'permission' => 'View session clone', 'keywords' => 'clone cloning copy duplicate rollover new term new session setup snapshot undo revert'],
             ['title' => 'School House', 'url' => route('schoolhouse.index'), 'icon' => 'mdi-home-group', 'category' => 'School Settings'],
             ['title' => 'Class Arm', 'url' => route('schoolarm.index'), 'icon' => 'mdi-table-chair', 'category' => 'School Settings'],
             ['title' => 'Class Category', 'url' => route('classcategories.index'), 'icon' => 'mdi-format-list-bulleted', 'category' => 'School Settings'],

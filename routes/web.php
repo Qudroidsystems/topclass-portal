@@ -64,6 +64,7 @@ use App\Http\Controllers\SchoolHouseController;
 use App\Http\Controllers\SchoolPaymentController;
 use App\Http\Controllers\SchoolsessionController;
 use App\Http\Controllers\SchooltermController;
+use App\Http\Controllers\SessionCloneController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SportController;
 use App\Http\Controllers\StaffAttendanceController;
@@ -349,6 +350,19 @@ Route::group(['middleware' => ['auth']], function () {
             // Legacy JSON endpoints (if used elsewhere)
             Route::post('/updateterm', [SchooltermController::class, 'updateterm'])->name('updateterm');
             Route::post('/deleteterm', [SchooltermController::class, 'deleteterm'])->name('deleteterm');
+        });
+
+        // Clone session/term setup (subject teachers, subject classes, class teachers, etc.)
+        Route::prefix('setup-clone')->name('sessionclone.')->group(function () {
+            Route::get('/', [SessionCloneController::class, 'index'])->name('index');
+            Route::post('/preview', [SessionCloneController::class, 'preview'])->name('preview');
+            Route::post('/run', [SessionCloneController::class, 'clone'])->name('clone');
+
+            // Snapshots: every clone run can be reviewed, downloaded and undone
+            Route::get('/history', [SessionCloneController::class, 'history'])->name('history');
+            Route::get('/history/{batch}', [SessionCloneController::class, 'showBatch'])->whereNumber('batch')->name('history.show');
+            Route::get('/history/{batch}/download', [SessionCloneController::class, 'downloadBatch'])->whereNumber('batch')->name('history.download');
+            Route::post('/history/{batch}/revert', [SessionCloneController::class, 'revertBatch'])->whereNumber('batch')->name('history.revert');
         });
 
 
