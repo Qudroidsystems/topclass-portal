@@ -1613,13 +1613,25 @@ class SchoolPaymentController extends Controller
 
             $safeFilename = 'invoice_' . preg_replace('/[\/\\\\]/', '-', $student->admissionNo ?? $studentId) . '_' . date('Ymd_His') . '.pdf';
 
-            $pdf = PDF::loadView('schoolpayment.studentinvoicepdf', $data)
-                ->setOptions([
-                    'defaultFont' => 'DejaVu Sans',
-                    'isRemoteEnabled' => false,
-                    'isHtml5ParserEnabled' => true,
-                    'isPhpEnabled' => false,
-                ]);
+            // The template sizes itself to fill one A4 page. If DomPDF still needs a
+            // second page (unusual content), re-render a little smaller until it fits.
+            $fitAdjust = 1.0;
+            for ($attempt = 0; $attempt < 5; $attempt++) {
+                $pdf = app('dompdf.wrapper')
+                    ->setOptions([
+                        'defaultFont' => 'DejaVu Sans',
+                        'isRemoteEnabled' => false,
+                        'isHtml5ParserEnabled' => true,
+                        'isPhpEnabled' => false,
+                    ])
+                    ->setPaper('a4', 'portrait')
+                    ->loadView('schoolpayment.studentinvoicepdf', $data + ['fitAdjust' => $fitAdjust]);
+                $pdf->render();
+                if ($pdf->getDomPDF()->getCanvas()->get_page_count() <= 1) {
+                    break;
+                }
+                $fitAdjust *= 0.9;
+            }
             return $pdf->download($safeFilename);
         }
 

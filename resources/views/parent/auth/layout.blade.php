@@ -29,5 +29,6 @@
         <div class="text-center mt-3 small"><a href="{{ route('login') }}" class="text-muted">Back to sign in</a></div>
     </div>
 </div>
+<script src="{{ asset('js/searchable-select.js') }}?v={{ @filemtime(public_path('js/searchable-select.js')) }}"></script>
 </body>
 </html>

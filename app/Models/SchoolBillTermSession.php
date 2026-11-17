@@ -120,6 +120,12 @@ class SchoolBillTermSession extends Model
         string $assignTable = 'school_bill_class_term_session',
         string $billTable = 'school_bill'
     ) {
+        // A student with no old/new status recorded gets every bill for the class,
+        // instead of silently losing all the old-only / new-only ones.
+        if ($studentStatusId === null || $studentStatusId === '' || (int) $studentStatusId === 0) {
+            return $query;
+        }
+
         $eff = self::effectiveStatusExpr($assignTable, $billTable);
 
         return $query->where(function ($q) use ($eff, $studentStatusId) {

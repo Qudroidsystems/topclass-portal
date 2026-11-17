@@ -2699,5 +2699,6 @@
     @include('layouts.pages-assets.js.scholarship-list-js')
 @endif
 
+<script src="{{ asset('js/searchable-select.js') }}?v={{ @filemtime(public_path('js/searchable-select.js')) }}"></script>
 </body>
 </html>

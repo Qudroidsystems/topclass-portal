@@ -603,5 +603,6 @@ window.onbeforeprint = function () {
     if (panel) panel.classList.remove('open');
 };
 </script>
+<script src="{{ asset('js/searchable-select.js') }}?v={{ @filemtime(public_path('js/searchable-select.js')) }}"></script>
 </body>
 </html>

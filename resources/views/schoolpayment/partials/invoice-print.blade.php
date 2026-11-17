@@ -2,18 +2,77 @@
      Single-page (A4) printable invoice. Shared by the PDF download
      (studentinvoicepdf.blade.php) and the "Print Invoice" button on the
      web view (studentinvoice.blade.php), so both always print on ONE page.
-     Uses tables only (no flexbox) so DomPDF renders it the same as a browser. --}}
+     Uses tables only (no flexbox) so DomPDF renders it the same as a browser.
+     Sizes scale automatically so the invoice fills one A4 page (see the size calculation below). --}}
 @php
-    $student   = $studentdata->first() ?? null;
-    $itemCount = $studentpaymentbill->count();
-    // Shrink rows progressively for long bill lists so it still fits one page
-    $density   = $itemCount > 26 ? 'inv-xs' : ($itemCount > 16 ? 'inv-sm' : '');
+    $student     = $studentdata->first() ?? null;
+    $itemCount   = $studentpaymentbill->count();
     $lastPayment = $studentpaymentbill->first();
+
+    /*
+     | Auto-fit to ONE A4 page.
+     | Every size below is multiplied by $s. We estimate the page height the
+     | content needs at a given scale and pick the largest scale that fits:
+     | short invoices grow to use the page, long ones shrink to stay on one page.
+     | Any space still left is shared out as taller rows and a gap above the
+     | totals/signature block, so the invoice always reaches the bottom of the page.
+     | All numbers are CSS px at 96dpi (A4 minus 10mm margins = 1047px tall).
+     */
+    $pageH   = 1000;                         // usable height we aim for (a little safety)
+    $hasDesc = $studentpaymentbill->contains(fn ($b) => !empty($b->description));
+    $textLen = $studentpaymentbill->map(fn ($b) => mb_strlen(trim(($b->title ?? '') . ' · ' . ($b->description ?? '')))
+                                                   + (!empty($b->total_savings) && $b->total_savings > 0 ? 24 : 0))->values()->all();
+    $titleLen = $studentpaymentbill->map(fn ($b) => mb_strlen($b->title ?? ''))->values()->all();
+    $methodLen = $studentpaymentbill->map(fn ($b) => mb_strlen($b->paymentMethod ?? 'N/A'))->values()->all();
+    // Longest money figure in the table: large amounts need narrower text to stay on one line.
+    $money = fn ($v) => mb_strlen('N' . number_format((float) $v, 2));
+    $amtLen = 10;
+    foreach ($studentpaymentbill as $b) {
+        $amtLen = max($amtLen, $money($b->amount ?? 0), $money($b->previousPaid ?? 0), $money($b->amountPaid ?? 0), $money($b->balance ?? 0));
+    }
+    $maxScale = min(1.35, 12.5 / $amtLen);
+    // Student / invoice detail boxes: 4 per row, long values wrap.
+    $gridRows = [
+        [mb_strlen($studentFullName ?? ''), mb_strlen($student->admissionNo ?? ''), mb_strlen(trim(($student->schoolclass ?? '') . ' ' . ($student->arm ?? ''))), mb_strlen(($schoolterm ?? '') . ' · ' . ($schoolsession ?? ''))],
+        [12, 12, 14, $money($totalBillAmount ?? 0)],
+    ];
+    // Fixed parts (header, details grid, table head, totals, signature, footer) at scale 1,
+    // plus the logo / stamp images when present. Measured from DomPDF output.
+    $base = 289 + (!empty($schoolInfo->logo_base64) ? 50 : 0) + (!empty($schoolInfo->stamp_base64) ? 12 : 0);
+    $estimate = function ($s, $hideDesc = false) use ($textLen, $titleLen, $methodLen, $gridRows, $base) {
+        $cpl  = 48 / $s;                     // characters per line in the "Bill Description" column
+        $rows = 0;
+        foreach ($textLen as $i => $len) {
+            $len   = $hideDesc ? $titleLen[$i] : $len;
+            $lines = max(ceil($len / $cpl), ceil($methodLen[$i] * $s / 13.5), 1);
+            $rows += 26.8 + 14.3 * ($lines - 1);                    // one-line row + each wrapped line
+        }
+        $grid = 0;
+        foreach ($gridRows as $vals) {
+            $grid += 14.3 * (max(array_map(fn ($l) => max(1, ceil($l * $s / 28)), $vals)) - 1);
+        }
+        return $s * ($base + $grid + max($rows, 40));
+    };
+    $hideDesc = false;
+    $s = 1.0;
+    $pageH = $pageH * ($fitAdjust ?? 1);   // the controller lowers this if DomPDF still needed 2 pages
+    for ($try = $maxScale; $try >= 0.62; $try -= 0.01) {
+        $s = $try;
+        if ($estimate($try) <= $pageH) break;
+    }
+    if ($estimate($s) > $pageH && $hasDesc) {          // still too long: drop descriptions
+        $hideDesc = true;
+        for ($try = 1.0; $try >= 0.55; $try -= 0.01) { $s = $try; if ($estimate($try, true) <= $pageH) break; }
+    }
+    $spare   = max(0, $pageH - $estimate($s, $hideDesc));
+    $rowPad  = $itemCount ? min(18, $spare * 0.6 / $itemCount) : 0;   // extra px per row (split top/bottom)
+    $gap     = max(0, $spare - $rowPad * $itemCount);                   // the rest goes above the totals block
+    $z = fn ($px) => round($px * $s, 2) . 'px';
 @endphp
 <style>
     @page { size: A4 portrait; margin: 10mm 12mm; }
     html, body { margin:0; padding:0; background:#fff; }
-    .inv { font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size:10px; color:#1f2937; line-height:1.3;
+    .inv { font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size:{{ $z(10) }}; color:#1f2937; line-height:1.3;
            -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .inv * { box-sizing: border-box; }
     .inv table { width:100%; border-collapse:collapse; }
@@ -27,47 +86,42 @@
     .inv .warn { color:#d97706; }
 
     .inv .hdr td { padding:0; vertical-align: middle; }
-    .inv .logo-img { max-height:46px; max-width:170px; }
-    .inv .school-name { font-size:14px; font-weight:bold; color:#1e3a5f; }
-    .inv .school-meta { font-size:8px; color:#6b7280; margin-top:2px; }
-    .inv .doc-title { font-size:18px; font-weight:bold; color:#1e3a5f; letter-spacing:1px; }
-    .inv .doc-no { font-size:9px; color:#0d6efd; font-weight:bold; }
-    .inv .rule { border-bottom:2px solid #1e3a5f; margin:6px 0 8px; }
+    .inv .logo-img { max-height:{{ $z(46) }}; max-width:{{ $z(170) }}; }
+    .inv .school-name { font-size:{{ $z(14) }}; font-weight:bold; color:#1e3a5f; }
+    .inv .school-meta { font-size:{{ $z(8) }}; color:#6b7280; margin-top:{{ $z(2) }}; }
+    .inv .doc-title { font-size:{{ $z(18) }}; font-weight:bold; color:#1e3a5f; letter-spacing:{{ $z(1) }}; }
+    .inv .doc-no { font-size:{{ $z(9) }}; color:#0d6efd; font-weight:bold; }
+    .inv .rule { border-bottom:2px solid #1e3a5f; margin:{{ $z(6) }} 0 {{ $z(8) }}; }
 
-    .inv .info td { border:1px solid #e5e7eb; padding:4px 6px; width:25%; }
-    .inv .lbl { font-size:7px; color:#6b7280; text-transform:uppercase; letter-spacing:0.3px; }
-    .inv .val { font-size:10px; font-weight:bold; color:#1e3a5f; }
+    .inv .info td { border:1px solid #e5e7eb; padding:{{ $z(4) }} {{ $z(6) }}; width:25%; }
+    .inv .lbl { font-size:{{ $z(7) }}; color:#6b7280; text-transform:uppercase; letter-spacing:{{ $z(0.3) }}; }
+    .inv .val { font-size:{{ $z(10) }}; font-weight:bold; color:#1e3a5f; }
 
-    .inv .items { margin-top:8px; }
-    .inv .items th { background:#1e3a5f; color:#fff; font-size:7.5px; text-transform:uppercase; padding:4px 5px; text-align:left; }
+    .inv .items { margin-top:{{ $z(8) }}; }
+    .inv .items th { background:#1e3a5f; color:#fff; font-size:{{ $z(7.5) }}; text-transform:uppercase; padding:{{ $z(4) }} {{ $z(5) }}; text-align:left; }
     .inv .items th.r { text-align:right; }
-    .inv .items td { padding:5px 5px; border-bottom:1px solid #e5e7eb; font-size:9.5px; }
+    .inv .items td { padding:{{ round(5*$s + $rowPad/2, 2) }}px {{ $z(5) }}; border-bottom:1px solid #e5e7eb; font-size:{{ $z(9.5) }}; }
     .inv .items tr { page-break-inside: avoid; }
-    .inv .desc { font-size:8px; color:#6b7280; }
+    .inv .desc { font-size:{{ $z(8) }}; color:#6b7280; }
 
-    .inv .bottom { margin-top:8px; page-break-inside: avoid; }
+    .inv .bottom { margin-top:{{ $z(8) }}; page-break-inside: avoid; }
     .inv .bottom > tbody > tr > td { padding:0; }
-    .inv .pinfo td { padding:2px 0; font-size:9px; }
+    .inv .pinfo td { padding:{{ $z(2) }} 0; font-size:{{ $z(9) }}; }
     .inv .pinfo .k { color:#6b7280; width:38%; }
     .inv .pinfo .v { font-weight:bold; color:#1e3a5f; }
-    .inv .tot td { padding:2px 6px; font-size:9.5px; }
+    .inv .tot td { padding:{{ $z(2) }} {{ $z(6) }}; font-size:{{ $z(9.5) }}; }
     .inv .tot .v { text-align:right; font-weight:bold; color:#1e3a5f; white-space:nowrap; }
-    .inv .tot .grand td { border-top:2px solid #1e3a5f; font-size:12px; padding-top:4px; font-weight:bold; color:#1e3a5f; }
+    .inv .tot .grand td { border-top:2px solid #1e3a5f; font-size:{{ $z(12) }}; padding-top:{{ $z(4) }}; font-weight:bold; color:#1e3a5f; }
 
-    .inv .sign { margin-top:6px; }
-    .inv .stamp { max-height:55px; max-width:100px; }
-    .inv .sign-line { border-top:1px solid #1e3a5f; width:170px; margin-top:22px; }
-    .inv .footer { margin-top:8px; border-top:1px solid #e5e7eb; padding-top:4px; font-size:7.5px; color:#9ca3af; text-align:center; }
+    .inv .sign { margin-top:{{ $z(6) }}; }
+    .inv .stamp { max-height:{{ $z(55) }}; max-width:{{ $z(100) }}; }
+    .inv .sign-line { border-top:1px solid #1e3a5f; width:{{ $z(170) }}; margin-top:{{ $z(22) }}; }
+    .inv .footer { margin-top:{{ $z(8) }}; border-top:1px solid #e5e7eb; padding-top:{{ $z(4) }}; font-size:{{ $z(7.5) }}; color:#9ca3af; text-align:center; }
 
-    /* Denser modes for long bill lists */
-    .inv.inv-sm .items td { padding:2px 4px; font-size:8px; }
-    .inv.inv-sm .desc { font-size:7px; }
-    .inv.inv-xs .items td { padding:1px 4px; font-size:7.5px; }
-    .inv.inv-xs .items th { padding:3px 4px; }
-    .inv.inv-xs .desc { display:none; }
+    .inv .bottom { margin-top: {{ round(8*$s + $gap, 2) }}px; }
 </style>
 
-<div class="inv {{ $density }}">
+<div class="inv">
     {{-- Header --}}
     <table class="hdr">
         <tr>
@@ -127,7 +181,7 @@
                 <td class="c">{{ $loop->iteration }}</td>
                 <td>
                     <strong>{{ $sp->title }}</strong>
-                    @if($sp->description)<span class="desc"> &middot; {{ $sp->description }}</span>@endif
+                    @if($sp->description && !$hideDesc)<span class="desc"> &middot; {{ $sp->description }}</span>@endif
                     @if(isset($sp->total_savings) && $sp->total_savings > 0)
                         <span class="desc ok"> &middot; Savings &#8358;{{ number_format($sp->total_savings, 2) }}</span>
                     @endif
@@ -140,7 +194,7 @@
                 <td class="r nw {{ $sp->balance > 0 ? 'bad' : 'ok' }}">&#8358;{{ number_format($sp->balance, 2) }}</td>
             </tr>
             @empty
-            <tr><td colspan="8" class="c muted" style="padding:12px;">No payment records found for this student.</td></tr>
+            <tr><td colspan="8" class="c muted" style="padding:{{ $z(12) }};">No payment records found for this student.</td></tr>
             @endforelse
         </tbody>
     </table>
@@ -148,9 +202,9 @@
     {{-- Payment info + signature (left)  |  Totals (right) --}}
     <table class="bottom">
         <tr>
-            <td style="width:50%; padding-right:14px;">
+            <td style="width:50%; padding-right:{{ $z(14) }};">
                 @if($lastPayment)
-                <div class="lbl" style="margin-bottom:2px;">Latest Payment Information</div>
+                <div class="lbl" style="margin-bottom:{{ $z(2) }};">Latest Payment Information</div>
                 <table class="pinfo">
                     <tr><td class="k">Payment Method</td><td class="v">{{ $lastPayment->paymentMethod ?? 'N/A' }}</td></tr>
                     <tr><td class="k">Received By</td><td class="v">{{ $lastPayment->receivedBy ?? $lastPayment->recievedBy ?? 'School Administration' }}</td></tr>
@@ -161,8 +215,8 @@
                     <tr>
                         <td style="vertical-align:bottom;">
                             <div class="sign-line"></div>
-                            <div style="font-weight:bold; font-size:9px; margin-top:2px;">Authorized Signatory</div>
-                            <div class="muted" style="font-size:7.5px;">{{ $schoolInfo->school_name ?? 'School Name' }}</div>
+                            <div style="font-weight:bold; font-size:{{ $z(9) }}; margin-top:{{ $z(2) }};">Authorized Signatory</div>
+                            <div class="muted" style="font-size:{{ $z(7.5) }};">{{ $schoolInfo->school_name ?? 'School Name' }}</div>
                         </td>
                         <td class="r" style="vertical-align:bottom;">
                             @if($schoolInfo && $schoolInfo->stamp_base64)

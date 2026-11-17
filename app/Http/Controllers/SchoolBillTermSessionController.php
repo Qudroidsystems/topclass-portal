@@ -46,7 +46,7 @@ class SchoolBillTermSessionController extends Controller
             })
             ->sortBy('schoolclass');
 
-        $schoolbills = SchoolBillModel::whereIn('statusId', [1, 2])->get();
+        $schoolbills = SchoolBillModel::orderBy('title')->get();
 
         return view('schoolbilltermsession.index', compact(
             'pagetitle', 'schoolbills', 'schoolclasses', 'terms', 'schoolsessions'
@@ -83,6 +83,35 @@ class SchoolBillTermSessionController extends Controller
                 'school_bill.bill_amount as bill_amount',
                 'school_bill_class_term_session.updated_at as updated_at',
             ]);
+
+        // ── Filter bar ────────────────────────────────────────────────
+        $t = 'school_bill_class_term_session';
+        if ($request->filled('f_session')) $assignments->where("$t.session_id", (int) $request->f_session);
+        if ($request->filled('f_term'))    $assignments->where("$t.termid_id",  (int) $request->f_term);
+        if ($request->filled('f_class'))   $assignments->where("$t.class_id",   (int) $request->f_class);
+        if ($request->filled('f_bill'))    $assignments->where("$t.bill_id",    (int) $request->f_bill);
+        if ($request->filled('f_audience')) {
+            $aud = (int) $request->f_audience;
+            $eff = SchoolBillTermSession::effectiveStatusExpr();
+            if ($aud === 0) {
+                $assignments->where(fn ($w) => $w->whereRaw("$eff IS NULL")->orWhereRaw("$eff = 0"));
+            } else {
+                $assignments->whereRaw("$eff = ?", [$aud]);
+            }
+        }
+        if ($request->filled('f_search')) {
+            foreach (preg_split('/\s+/', mb_strtolower(trim($request->f_search))) as $word) {
+                $like = '%' . $word . '%';
+                $assignments->where(function ($w) use ($like) {
+                    $w->whereRaw('LOWER(school_bill.title) LIKE ?', [$like])
+                      ->orWhereRaw("LOWER(CONCAT(schoolclass.schoolclass, ' ', COALESCE(schoolarm.arm, ''))) LIKE ?", [$like])
+                      ->orWhereRaw('LOWER(schoolterm.term) LIKE ?', [$like])
+                      ->orWhereRaw('LOWER(schoolsession.session) LIKE ?', [$like])
+                      ->orWhereRaw('LOWER(users.name) LIKE ?', [$like])
+                      ->orWhereRaw('CAST(school_bill.bill_amount AS CHAR) LIKE ?', [$like]);
+                });
+            }
+        }
 
         // Newest first: the current term of the current session, then the rest of the
         // current session, then every other session (latest session / term first).
@@ -268,14 +297,16 @@ class SchoolBillTermSessionController extends Controller
         // 0 = both, 1 = old, 2 = new
         $status_id  = $request->filled('student_status_id') ? (int) $request->input('student_status_id') : 0;
 
-        // Pre-check: find any existing combinations that would overlap and describe them.
-        // A "both" assignment overlaps every existing one; an old/new one only overlaps
-        // the same type, a "both" one, or a legacy (unset) one.
+        $hasStatusCol = \Illuminate\Support\Facades\Schema::hasColumn('school_bill_class_term_session', 'student_status_id');
+
+        // Existing (live) rows for this bill/session among the chosen classes & terms.
+        // A "both" request overlaps anything; an old/new request overlaps the same type,
+        // a "both" row, or a legacy (unset) row.
         $existing = SchoolBillTermSession::where('bill_id', $bill_id)
             ->whereIn('class_id', $class_ids)
             ->whereIn('termid_id', $term_ids)
             ->where('session_id', $session_id)
-            ->when($status_id !== 0, function ($q) use ($status_id) {
+            ->when($hasStatusCol && $status_id !== 0, function ($q) use ($status_id) {
                 $q->where(function ($w) use ($status_id) {
                     $w->whereNull('student_status_id')
                       ->orWhere('student_status_id', 0)
@@ -284,68 +315,114 @@ class SchoolBillTermSessionController extends Controller
             })
             ->get(['class_id', 'termid_id']);
 
-        if ($existing->isNotEmpty()) {
-            $existingLabels = $existing->map(function ($row) {
-                $class = Schoolclass::with('armRelation')->find($row->class_id);
-                $term  = Schoolterm::find($row->termid_id);
-                $label = trim(($class->schoolclass ?? '?') . ' ' . ($class->armRelation->arm ?? ''));
-                return $label . ' / ' . ($term->term ?? '?');
-            })->unique()->values()->implode(', ');
-
-            return response()->json([
-                'success' => false,
-                'message' => 'These combinations already exist: ' . $existingLabels,
-            ], 422);
+        $taken = [];
+        foreach ($existing as $row) {
+            $taken[(int) $row->class_id . '-' . (int) $row->termid_id] = true;
         }
+
+        $created = [];
+        $skipped = [];
 
         DB::beginTransaction();
         try {
-            $created = [];
             foreach ($term_ids as $term_id) {
                 foreach ($class_ids as $class_id) {
-                    $created[] = SchoolBillTermSession::create([
+                    $key = (int) $class_id . '-' . (int) $term_id;
+                    if (isset($taken[$key])) {
+                        $skipped[] = $key;
+                        continue;
+                    }
+
+                    // Old soft-deleted rows for the same combination still occupy the
+                    // database unique key and make the insert fail — clear them first.
+                    SchoolBillTermSession::onlyTrashed()
+                        ->where('bill_id', $bill_id)
+                        ->where('class_id', $class_id)
+                        ->where('termid_id', $term_id)
+                        ->where('session_id', $session_id)
+                        ->forceDelete();
+
+                    $data = [
                         'bill_id'    => $bill_id,
                         'class_id'   => $class_id,
                         'termid_id'  => $term_id,
                         'session_id' => $session_id,
-                        'student_status_id' => $status_id,
                         'created_by' => auth()->id(),
-                    ]);
+                    ];
+                    if ($hasStatusCol) {
+                        $data['student_status_id'] = $status_id;
+                    }
+
+                    try {
+                        // Savepoint so one clash doesn't abort the whole batch.
+                        $created[] = DB::transaction(fn () => SchoolBillTermSession::create($data));
+                    } catch (QueryException $e) {
+                        if (($e->errorInfo[1] ?? null) === 1062) {
+                            $skipped[] = $key;
+                            continue;
+                        }
+                        throw $e;
+                    }
                 }
             }
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => count($created) . ' assignment(s) created successfully.',
-                'data'    => $created,
-            ], 201);
-
-        } catch (QueryException $e) {
-            DB::rollBack();
-
-            // 1062 = duplicate entry (unique key violation)
-            if (($e->errorInfo[1] ?? null) === 1062) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'One or more of these combinations already exist. Please refresh and try again.',
-                ], 422);
-            }
-
-            Log::error('SchoolBillTermSession store QueryException', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage(),
-            ], 500);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('SchoolBillTermSession store failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Could not save the assignment: ' . $e->getMessage(),
             ], 500);
         }
+
+        $skippedLabel = $this->describeCombos($skipped);
+
+        if (empty($created)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nothing new to assign — this bill is already assigned to: ' . $skippedLabel
+                    . ($hasStatusCol ? '' : ' (run "php artisan migrate" to allow separate old/new-student assignments)'),
+            ], 422);
+        }
+
+        $msg = count($created) . ' assignment(s) created.';
+        if ($skipped) {
+            $msg .= ' Skipped ' . count($skipped) . ' that already existed: ' . $skippedLabel . '.';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $msg,
+            'created' => count($created),
+            'skipped' => count($skipped),
+        ], 201);
+    }
+
+    /** Turn ["classId-termId", ...] into "JSS 1 A / First Term, ..." */
+    private function describeCombos(array $keys): string
+    {
+        if (!$keys) return '';
+        $classIds = $termIds = [];
+        foreach ($keys as $k) {
+            [$c, $t] = explode('-', $k);
+            $classIds[] = (int) $c;
+            $termIds[]  = (int) $t;
+        }
+        $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->whereIn('schoolclass.id', array_unique($classIds))
+            ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])
+            ->keyBy('id');
+        $terms = Schoolterm::whereIn('id', array_unique($termIds))->pluck('term', 'id');
+
+        $labels = [];
+        foreach ($keys as $k) {
+            [$c, $t] = explode('-', $k);
+            $cl = $classes[(int) $c] ?? null;
+            $labels[] = trim(($cl->schoolclass ?? '?') . ' ' . ($cl->arm_name ?? '')) . ' / ' . ($terms[(int) $t] ?? '?');
+        }
+        $labels = array_values(array_unique($labels));
+        $more = count($labels) > 12 ? ' and ' . (count($labels) - 12) . ' more' : '';
+        return implode(', ', array_slice($labels, 0, 12)) . $more;
     }
 
     // =========================================================================
@@ -418,13 +495,30 @@ class SchoolBillTermSessionController extends Controller
             ], 422);
         }
 
-        $assignment->update([
-            'bill_id'    => $request->bill_id,
-            'class_id'   => $request->class_id,
-            'termid_id'  => $request->termid_id,
-            'session_id' => $request->session_id,
-            'student_status_id' => $status_id,
-        ]);
+        SchoolBillTermSession::onlyTrashed()
+            ->where('bill_id', $request->bill_id)
+            ->where('class_id', $request->class_id)
+            ->where('termid_id', $request->termid_id)
+            ->where('session_id', $request->session_id)
+            ->forceDelete();
+
+        try {
+            $assignment->update([
+                'bill_id'    => $request->bill_id,
+                'class_id'   => $request->class_id,
+                'termid_id'  => $request->termid_id,
+                'session_id' => $request->session_id,
+                'student_status_id' => $status_id,
+            ]);
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) === 1062) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This bill is already assigned to that class and term. Run "php artisan migrate" if you need separate old/new-student versions.',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,

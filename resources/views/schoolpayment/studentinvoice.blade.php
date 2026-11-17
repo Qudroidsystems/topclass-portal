@@ -1125,6 +1125,15 @@ document.addEventListener('DOMContentLoaded', function () {
         Promise.all(imgs.map(img => img.complete ? Promise.resolve()
                 : new Promise(res => { img.onload = img.onerror = res; })))
             .then(() => {
+                // Browsers lay text out slightly differently from the PDF engine:
+                // measure at A4 width and shrink a touch if it would spill to page 2.
+                try {
+                    frame.style.width = '703px';            // A4 width minus 12mm side margins
+                    const inv = doc.querySelector('.inv');
+                    const h = inv ? inv.getBoundingClientRect().height : 0;
+                    const pageH = 1040;                      // A4 height minus 10mm top/bottom margins
+                    if (inv && h > pageH) inv.style.zoom = (pageH / h).toFixed(3);
+                } catch (e) {}
                 frame.contentWindow.focus();
                 frame.contentWindow.print();
                 setTimeout(() => { document.title = originalTitle; }, 1000);

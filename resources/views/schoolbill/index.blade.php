@@ -67,6 +67,8 @@
 .bill-badge-new     { background:#dcfce7; color:#16a34a; }
 .bill-badge-unknown { background:#f3f4f6; color:#6b7280; }
 
+.bill-filters { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; }
+#billsTable_filter { display:none; }
 /* ── DataTables overrides ──────────────────────────────── */
 .dataTables_wrapper .dataTables_filter input {
     border:1.5px solid var(--bill-border); border-radius:8px;
@@ -200,6 +202,69 @@
                 </button>
             </div>
 
+            <div class="bill-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small mb-1">Search</label>
+                        <input type="text" id="f_search" class="form-control" placeholder="Title, description, amount…">
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label small mb-1">Student type</label>
+                        <select id="f_type" class="form-select bill-filter">
+                            <option value="">All</option>
+                            <option value="1">Old students</option>
+                            <option value="2">New students</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label small mb-1">Class</label>
+                        <select id="f_class" class="form-select bill-filter">
+                            <option value="">Any class</option>
+                            @foreach($schoolclasses as $class)
+                                <option value="{{ $class->id }}">{{ $class->label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label small mb-1">Session</label>
+                        <select id="f_session" class="form-select bill-filter">
+                            <option value="">Any session</option>
+                            @foreach($schoolsessions as $session)
+                                <option value="{{ $session->id }}">{{ $session->session }}{{ $session->status === 'Current' ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-1 col-md-4">
+                        <label class="form-label small mb-1">Term</label>
+                        <select id="f_term" class="form-select bill-filter">
+                            <option value="">Any</option>
+                            @foreach($terms as $term)
+                                <option value="{{ $term->id }}">{{ $term->term }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label small mb-1">Assignment</label>
+                        <select id="f_assigned" class="form-select bill-filter">
+                            <option value="">Any</option>
+                            <option value="yes">Assigned (to the class/term/session picked)</option>
+                            <option value="no">Not assigned (to the class/term/session picked)</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small mb-1">Min amount (&#8358;)</label>
+                        <input type="number" min="0" id="f_min" class="form-control bill-filter-num" placeholder="0">
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small mb-1">Max amount (&#8358;)</label>
+                        <input type="number" min="0" id="f_max" class="form-control bill-filter-num" placeholder="Any">
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <button type="button" class="btn btn-light w-100" id="f_clear"><i class="ri-refresh-line me-1"></i>Clear filters</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-responsive">
                 <table class="table bill-table w-100 mb-0" id="billsTable">
                     <thead>
@@ -321,6 +386,16 @@ $(document).ready(function () {
     const CSRF = $('meta[name="csrf-token"]').attr('content');
     let table, deleteId = null;
 
+    // ── Filters ────────────────────────────────────────────────────────
+    var billFilterTimer;
+    $(document).on('change', '.bill-filter', function () { table.ajax.reload(); });
+    $(document).on('input', '#f_search, .bill-filter-num', function () {
+        clearTimeout(billFilterTimer); billFilterTimer = setTimeout(function () { table.ajax.reload(); }, 350);
+    });
+    $(document).on('click', '#f_clear', function () {
+        $('#f_search, .bill-filter, .bill-filter-num').val(''); table.ajax.reload();
+    });
+
     // ── DataTable ──────────────────────────────────────────────────────
     table = $('#billsTable').DataTable({
         processing: true,
@@ -329,6 +404,9 @@ $(document).ready(function () {
             url: ROUTES.index,
             type: 'GET',
             dataType: 'json',
+            data: function (d) {
+                ['f_search','f_type','f_class','f_session','f_term','f_assigned','f_min','f_max'].forEach(function (k) { d[k] = $('#' + k).val(); });
+            },
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             error: function (xhr, status, error) {
                 console.error('DataTables error:', {

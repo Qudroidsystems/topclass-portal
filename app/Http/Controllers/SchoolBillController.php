@@ -64,12 +64,39 @@ class SchoolBillController extends Controller
                     ]);
 
                 // Apply search
-                if (!empty($search)) {
-                    $query->where(function($q) use ($search) {
-                        $q->where('school_bill.title', 'like', "%{$search}%")
-                          ->orWhere('school_bill.description', 'like', "%{$search}%")
-                          ->orWhere('school_bill.bill_amount', 'like', "%{$search}%");
-                    });
+                $search = trim((string) ($request->get('f_search') ?: $search));
+                if ($search !== '') {
+                    foreach (preg_split('/\s+/', $search) as $word) {
+                        $query->where(function($q) use ($word) {
+                            $q->where('school_bill.title', 'like', "%{$word}%")
+                              ->orWhere('school_bill.description', 'like', "%{$word}%")
+                              ->orWhere('school_bill.category', 'like', "%{$word}%")
+                              ->orWhere('school_bill.bill_amount', 'like', "%{$word}%");
+                        });
+                    }
+                }
+
+                // ── Filter bar ────────────────────────────────────────
+                if ($request->filled('f_type')) {
+                    $query->where('school_bill.statusId', (int) $request->f_type);
+                }
+                if ($request->filled('f_min')) {
+                    $query->where('school_bill.bill_amount', '>=', (float) $request->f_min);
+                }
+                if ($request->filled('f_max')) {
+                    $query->where('school_bill.bill_amount', '<=', (float) $request->f_max);
+                }
+                if ($request->filled('f_class') || $request->filled('f_session') || $request->filled('f_term') || $request->filled('f_assigned')) {
+                    $assignedIds = \App\Models\SchoolBillTermSession::query()
+                        ->when($request->filled('f_class'),   fn ($q) => $q->where('class_id',   (int) $request->f_class))
+                        ->when($request->filled('f_session'), fn ($q) => $q->where('session_id', (int) $request->f_session))
+                        ->when($request->filled('f_term'),    fn ($q) => $q->where('termid_id',  (int) $request->f_term))
+                        ->distinct()->pluck('bill_id');
+                    if ($request->input('f_assigned') === 'no') {
+                        $query->whereNotIn('school_bill.id', $assignedIds);
+                    } else {
+                        $query->whereIn('school_bill.id', $assignedIds);
+                    }
                 }
 
                 // Get total count
@@ -169,7 +196,13 @@ class SchoolBillController extends Controller
         }
 
         $pagetitle = 'School Bill Management';
-        return view('schoolbill.index', compact('pagetitle'));
+        $terms          = \App\Models\Schoolterm::all();
+        $schoolsessions = \App\Models\Schoolsession::all();
+        $schoolclasses  = \App\Models\Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->get(['schoolclass.id as id', 'schoolclass.schoolclass as schoolclass', 'schoolarm.arm as arm_name'])
+            ->map(function ($c) { $c->label = trim($c->schoolclass . ($c->arm_name ? ' ' . $c->arm_name : '')); return $c; })
+            ->sortBy('label');
+        return view('schoolbill.index', compact('pagetitle', 'terms', 'schoolsessions', 'schoolclasses'));
     }
 
     /**

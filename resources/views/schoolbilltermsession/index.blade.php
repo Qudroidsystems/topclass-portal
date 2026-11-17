@@ -68,6 +68,11 @@
 .bulk-bar { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 16px; display:none; align-items:center; gap:12px; margin-bottom:12px; }
 .bulk-bar.show { display:flex; }
 
+.ts-filters { background:var(--ts-bg); border:1px solid var(--ts-border); border-radius:10px; padding:12px 14px; }
+.ts-filter-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--ts-muted); pointer-events:none; }
+.ts-chip { display:inline-flex; align-items:center; gap:4px; background:#e0e7ff; color:#3730a3; border-radius:20px; padding:2px 10px; font-size:11px; font-weight:600; }
+.ts-chip button { border:none; background:none; color:inherit; padding:0; line-height:1; cursor:pointer; }
+#assignmentsTable_filter { display:none; }
 .edit-info-note { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; font-size:12px; color:#2563eb; margin-bottom:16px; }
 
 #ts-page-loader { position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .22s, visibility .22s; }
@@ -139,6 +144,67 @@
                 <button class="btn btn-sm btn-danger ms-auto" id="bulkDeleteBtn2">
                     <i class="ri-delete-bin-line me-1"></i>Delete Selected
                 </button>
+            </div>
+
+            <div class="ts-filters mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small mb-1">Search</label>
+                        <div class="position-relative">
+                            <i class="ri-search-line ts-filter-icon"></i>
+                            <input type="text" id="f_search" class="form-control ps-5" placeholder="Bill, class, term, session, staff…">
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label small mb-1">Session</label>
+                        <select id="f_session" class="form-select ts-filter">
+                            <option value="">All sessions</option>
+                            @foreach($schoolsessions as $session)
+                                <option value="{{ $session->id }}">{{ $session->session }}{{ $session->status === 'Current' ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label small mb-1">Term</label>
+                        <select id="f_term" class="form-select ts-filter">
+                            <option value="">All terms</option>
+                            @foreach($terms as $term)
+                                <option value="{{ $term->id }}">{{ $term->term }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label small mb-1">Class</label>
+                        <select id="f_class" class="form-select ts-filter">
+                            <option value="">All classes</option>
+                            @foreach($schoolclasses as $class)
+                                <option value="{{ $class->id }}">{{ $class->label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label small mb-1">Bill</label>
+                        <select id="f_bill" class="form-select ts-filter">
+                            <option value="">All bills</option>
+                            @foreach($schoolbills as $bill)
+                                <option value="{{ $bill->id }}">{{ $bill->title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-1 col-md-4">
+                        <label class="form-label small mb-1">Applies to</label>
+                        <select id="f_audience" class="form-select ts-filter">
+                            <option value="">All</option>
+                            <option value="0">Both</option>
+                            <option value="1">Old</option>
+                            <option value="2">New</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                    <div id="f_chips" class="d-flex flex-wrap gap-1"></div>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-auto d-none" id="f_clear"><i class="ri-close-circle-line me-1"></i>Clear filters</button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -366,6 +432,14 @@ $(document).ready(function () {
             url:  ROUTES.data,
             type: 'GET',
             cache: false,
+            data: function (d) {
+                d.f_session  = $('#f_session').val();
+                d.f_term     = $('#f_term').val();
+                d.f_class    = $('#f_class').val();
+                d.f_bill     = $('#f_bill').val();
+                d.f_audience = $('#f_audience').val();
+                d.f_search   = $('#f_search').val();
+            },
             error: function (xhr) {
                 console.error('DataTables AJAX error:', xhr.status, xhr.responseText);
                 toast('error', 'Load Error', 'Failed to load assignments. Please refresh.');
@@ -424,6 +498,30 @@ $(document).ready(function () {
         });
     }
     loadStats();
+
+    // =========================================================================
+    // FILTERS
+    // =========================================================================
+    function renderChips() {
+        var html = '', any = false;
+        $('.ts-filter').each(function () {
+            if (this.value === '') return;
+            any = true;
+            var lbl = $(this).closest('div').find('label').first().text();
+            html += '<span class="ts-chip">' + $('<i>').text(lbl + ': ' + $(this).find('option:selected').text()).html()
+                 +  '<button type="button" data-clear="#' + this.id + '">&times;</button></span>';
+        });
+        if ($('#f_search').val()) { any = true; html += '<span class="ts-chip">Search: ' + $('<i>').text($('#f_search').val()).html() + '<button type="button" data-clear="#f_search">&times;</button></span>'; }
+        $('#f_chips').html(html);
+        $('#f_clear').toggleClass('d-none', !any);
+    }
+    function reloadFiltered() { renderChips(); table.ajax.reload(); }
+
+    $('.ts-filter').on('change', reloadFiltered);
+    var searchTimer;
+    $('#f_search').on('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(reloadFiltered, 350); });
+    $(document).on('click', '#f_chips [data-clear]', function () { $($(this).data('clear')).val('').trigger('change'); if ($(this).data('clear') === '#f_search') reloadFiltered(); });
+    $('#f_clear').on('click', function () { $('.ts-filter, #f_search').val(''); reloadFiltered(); });
 
     // =========================================================================
     // CHECKBOXES / BULK BAR
@@ -558,7 +656,11 @@ $(document).ready(function () {
                     $('#tsModal').modal('hide');
                     table.ajax.reload();
                     loadStats();
-                    toast('success', 'Saved!', res.message);
+                    if (res.skipped) {
+                        Swal.fire({ icon: 'info', title: 'Bills assigned', text: res.message });
+                    } else {
+                        toast('success', 'Saved!', res.message);
+                    }
                 } else {
                     showErrors(res.message, res.errors);
                 }
@@ -570,12 +672,11 @@ $(document).ready(function () {
                          || (json && json.errors && Object.values(json.errors).flat()[0])
                          || 'Server error (' + xhr.status + '): ' + (xhr.statusText || 'Unknown');
 
-                // Duplicate / validation errors — close modal, refresh, warn
-                if (xhr.status === 422 && /already exist/i.test(msg)) {
-                    $('#tsModal').modal('hide');
-                    table.ajax.reload(null, false);
-                    loadStats();
-                    toast('warning', 'Duplicate', msg);
+                if (xhr.status === 403) {
+                    showErrors('Your account does not have permission to assign bills (Create school-bill-for-term-session).');
+                    toast('error', 'Not allowed', 'Missing permission to assign bills.');
+                } else if (xhr.status === 419) {
+                    showErrors('Your session expired. Please refresh the page and try again.');
                 } else if (xhr.status === 422) {
                     // Plain validation problem (e.g. no term selected): keep the modal open
                     showErrors(msg, json ? json.errors : null);
