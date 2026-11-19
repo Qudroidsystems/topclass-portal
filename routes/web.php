@@ -611,6 +611,7 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/', [SchoolBillTermSessionController::class, 'index'])->name('index');
         Route::get('/data', [SchoolBillTermSessionController::class, 'data'])->name('data');
         Route::get('/stats', [SchoolBillTermSessionController::class, 'stats'])->name('stats');
+        Route::get('/existing', [SchoolBillTermSessionController::class, 'existing'])->name('existing');
         Route::post('/store', [SchoolBillTermSessionController::class, 'store'])->name('store');
         Route::get('/{id}/edit', [SchoolBillTermSessionController::class, 'edit'])->name('edit');
         Route::put('/{id}', [SchoolBillTermSessionController::class, 'update'])->name('update');

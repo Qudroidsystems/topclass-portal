@@ -344,6 +344,7 @@
                         </div>
                     </div>
 
+                    <div class="alert alert-info small d-none" id="existingBox"></div>
                     <div class="alert alert-danger d-none" id="formErrors"></div>
                 </div>
                 <div class="modal-footer border-0 pt-0 px-4 pb-4">
@@ -389,6 +390,7 @@ $(document).ready(function () {
         index:       '{{ route("schoolbilltermsession.index") }}',
         data:        '{{ route("schoolbilltermsession.data") }}',
         stats:       '{{ route("schoolbilltermsession.stats") }}',
+        existing:    '{{ route("schoolbilltermsession.existing") }}',
         store:       '{{ route("schoolbilltermsession.store") }}',
         update:      function(id) { return '{{ url("schoolbilltermsession") }}/' + id; },
         destroy:     function(id) { return '{{ url("schoolbilltermsession") }}/' + id; },
@@ -577,13 +579,51 @@ $(document).ready(function () {
         $('#class_id_single').val('');
         $('#termid_id_single').val('');
         $('#formErrors').addClass('d-none').html('');
+        $('#existingBox').addClass('d-none').html('');
+        $('.class-cb, .term-cb').closest('.form-check').find('.assigned-tag').remove();
     }
+
+    // Create mode: show which classes / terms already have this bill in the chosen session,
+    // so the user does not pick combinations that would be skipped as duplicates.
+    let existingRows = [];
+    function esc(t) { return $('<div>').text(t == null ? '' : String(t)).html(); }
+    function loadExisting() {
+        if ($('#assignmentId').val()) return;
+        const bill = $('#bill_id').val(), ses = $('input[name="session_id"]:checked').val();
+        existingRows = [];
+        $('.assigned-tag').remove();
+        if (!bill || !ses) { $('#existingBox').addClass('d-none').html(''); return; }
+        $.get(ROUTES.existing, { bill_id: bill, session_id: ses }, function (res) {
+            existingRows = (res && res.rows) || [];
+            markExisting();
+        });
+    }
+    function markExisting() {
+        $('.assigned-tag').remove();
+        const box = $('#existingBox');
+        if (!existingRows.length) { box.addClass('d-none').html(''); return; }
+        const want = parseInt($('#student_status_id').val() || '0', 10);
+        const clash = existingRows.filter(r => want === 0 || r.audience === 0 || r.audience === want);
+        const byClass = {};
+        clash.forEach(r => { (byClass[r.class_id] = byClass[r.class_id] || []).push(r.term); });
+        Object.keys(byClass).forEach(function (cid) {
+            $('#cls_' + cid).closest('.form-check').append(' <span class="assigned-tag badge bg-warning-subtle text-warning-emphasis ms-1" title="Already assigned">' + esc(byClass[cid].join(', ')) + '</span>');
+        });
+        const list = existingRows.map(r => '<li>' + esc(r.class) + ' / ' + esc(r.term) + ' <span class="text-muted">— ' + esc(r.audience_label) + '</span></li>').join('');
+        box.removeClass('d-none').html('<b><i class="ri-information-line me-1"></i>This bill is already assigned in this session to:</b>'
+            + '<ul class="mb-1 mt-1 ps-3" style="max-height:140px;overflow:auto">' + list + '</ul>'
+            + (clash.length ? '<span>Those marked <span class="badge bg-warning-subtle text-warning-emphasis">yellow</span> will be skipped for “' + esc($('#student_status_id option:selected').text()) + '”. Choose other classes/terms, or edit the existing assignment.</span>'
+                            : '<span>None of them clash with “' + esc($('#student_status_id option:selected').text()) + '”.</span>'));
+    }
+    $(document).on('change', '#bill_id, input[name="session_id"]', loadExisting);
+    $('#student_status_id').on('change', markExisting);
 
     // Picking a bill (on create) pre-selects that bill's own Old / New type; the user can change it.
     $('#bill_id').on('change', function () {
         if ($('#assignmentId').val()) return; // editing: keep the saved value
         const st = $(this).find('option:selected').data('status');
         $('#student_status_id').val(String(st === 1 || st === 2 ? st : 0));
+        markExisting();
     });
 
     $('#createAssignmentBtn').on('click', function () {

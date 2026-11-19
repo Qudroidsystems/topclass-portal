@@ -18,7 +18,7 @@ class SchoolBillTermSessionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:View school-bill-for-term-session|Create school-bill-for-term-session|Update school-bill-for-term-session|Delete school-bill-for-term-session', ['only' => ['index', 'data', 'stats', 'show', 'getRelated']]);
+        $this->middleware('permission:View school-bill-for-term-session|Create school-bill-for-term-session|Update school-bill-for-term-session|Delete school-bill-for-term-session', ['only' => ['index', 'data', 'stats', 'show', 'getRelated', 'existing']]);
         $this->middleware('permission:Create school-bill-for-term-session', ['only' => ['create', 'store']]);
         $this->middleware('permission:Update school-bill-for-term-session', ['only' => ['edit', 'update']]);
         $this->middleware('permission:Delete school-bill-for-term-session', ['only' => ['destroy', 'bulkDestroy']]);
@@ -299,26 +299,31 @@ class SchoolBillTermSessionController extends Controller
 
         $hasStatusCol = \Illuminate\Support\Facades\Schema::hasColumn('school_bill_class_term_session', 'student_status_id');
 
+        // An old unique key on (bill, class, term, session) — without the audience — makes
+        // MySQL reject a "New students" assignment next to an "Old students" one. Drop it.
+        if ($hasStatusCol) {
+            $this->dropLegacyUniqueKey();
+        }
+
         // Existing (live) rows for this bill/session among the chosen classes & terms.
-        // A "both" request overlaps anything; an old/new request overlaps the same type,
-        // a "both" row, or a legacy (unset) row.
+        // A row's audience is its own student_status_id, or the bill's type for legacy rows.
+        // A "both" request overlaps anything; an old/new request overlaps the same type
+        // or a "both" row.
+        $billStatus = (int) (SchoolBillModel::where('id', $bill_id)->value('statusId') ?? 0);
         $existing = SchoolBillTermSession::where('bill_id', $bill_id)
             ->whereIn('class_id', $class_ids)
             ->whereIn('termid_id', $term_ids)
             ->where('session_id', $session_id)
-            ->when($hasStatusCol && $status_id !== 0, function ($q) use ($status_id) {
-                $q->where(function ($w) use ($status_id) {
-                    $w->whereNull('student_status_id')
-                      ->orWhere('student_status_id', 0)
-                      ->orWhere('student_status_id', $status_id);
-                });
-            })
-            ->get(['class_id', 'termid_id']);
+            ->get($hasStatusCol ? ['class_id', 'termid_id', 'student_status_id'] : ['class_id', 'termid_id']);
 
-        $taken = [];
+        $taken = [];   // "class-term" => audience it is already assigned for
         foreach ($existing as $row) {
-            $taken[(int) $row->class_id . '-' . (int) $row->termid_id] = true;
+            $aud = $hasStatusCol && $row->student_status_id !== null ? (int) $row->student_status_id : $billStatus;
+            $aud = in_array($aud, [1, 2], true) ? $aud : 0;
+            if ($status_id !== 0 && $aud !== 0 && $aud !== $status_id) continue; // old vs new: no clash
+            $taken[(int) $row->class_id . '-' . (int) $row->termid_id][] = $aud;
         }
+        $blocked = [];  // rejected by the database although no matching row was found
 
         $created = [];
         $skipped = [];
@@ -358,7 +363,7 @@ class SchoolBillTermSessionController extends Controller
                         $created[] = DB::transaction(fn () => SchoolBillTermSession::create($data));
                     } catch (QueryException $e) {
                         if (($e->errorInfo[1] ?? null) === 1062) {
-                            $skipped[] = $key;
+                            $blocked[] = $key;
                             continue;
                         }
                         throw $e;
@@ -375,13 +380,25 @@ class SchoolBillTermSessionController extends Controller
             ], 500);
         }
 
-        $skippedLabel = $this->describeCombos($skipped);
+        $skippedLabel = $this->describeCombos($skipped, $taken);
+        $blockedLabel = $this->describeCombos($blocked);
 
         if (empty($created)) {
+            if ($blocked && !$skipped) {
+                $message = 'The database refused these assignments (' . $blockedLabel . '). Another assignment of this bill '
+                    . 'for the same class, term and session is blocking it. Run "php artisan migrate" on the server, then try again.';
+            } else {
+                $message = 'Nothing new to assign — this bill is already assigned to: ' . $skippedLabel
+                    . ($blocked ? '; and the database refused: ' . $blockedLabel : '') . '. '
+                    . ($status_id === 0
+                        ? 'To bill only old or only new students, edit the existing assignment and change "Applies To".'
+                        : 'Pick other classes/terms, or edit the existing assignment to change who it applies to.')
+                    . ($hasStatusCol ? '' : ' (run "php artisan migrate" to allow separate old/new-student assignments)');
+            }
             return response()->json([
-                'success' => false,
-                'message' => 'Nothing new to assign — this bill is already assigned to: ' . $skippedLabel
-                    . ($hasStatusCol ? '' : ' (run "php artisan migrate" to allow separate old/new-student assignments)'),
+                'success'  => false,
+                'message'  => $message,
+                'existing' => array_keys($taken),
             ], 422);
         }
 
@@ -389,17 +406,90 @@ class SchoolBillTermSessionController extends Controller
         if ($skipped) {
             $msg .= ' Skipped ' . count($skipped) . ' that already existed: ' . $skippedLabel . '.';
         }
+        if ($blocked) {
+            $msg .= ' The database refused ' . count($blocked) . ': ' . $blockedLabel . ' (run "php artisan migrate").';
+        }
 
         return response()->json([
             'success' => true,
             'message' => $msg,
             'created' => count($created),
-            'skipped' => count($skipped),
+            'skipped' => count($skipped) + count($blocked),
         ], 201);
     }
 
+    /**
+     * Drops any unique key on (bill_id, class_id, termid_id, session_id) that leaves out
+     * student_status_id (left on databases where the 2026_11_17 migration could not find
+     * it under its expected name), and adds the audience-aware key. Checked once a day.
+     */
+    private function dropLegacyUniqueKey(): void
+    {
+        $table = 'school_bill_class_term_session';
+        if (\Illuminate\Support\Facades\Cache::get('sbcts.uk.checked')) return;
+        try {
+            if (DB::getDriverName() !== 'mysql') return;
+            $cols = [];
+            foreach (DB::select("SHOW INDEX FROM {$table}") as $ix) {
+                if ((int) $ix->Non_unique === 0 && $ix->Key_name !== 'PRIMARY') {
+                    $cols[$ix->Key_name][(int) $ix->Seq_in_index] = $ix->Column_name;
+                }
+            }
+            $legacy = ['bill_id', 'class_id', 'termid_id', 'session_id'];
+            $hasAudienceKey = false;
+            foreach ($cols as $name => $c) {
+                ksort($c);
+                $c = array_values($c);
+                if (in_array('student_status_id', $c, true)) { $hasAudienceKey = true; continue; }
+                if (!array_diff($legacy, $c)) {
+                    // The bill_id foreign key needs an index of its own before the key goes.
+                    $plain = collect(DB::select("SHOW INDEX FROM {$table}"))->where('Column_name', 'bill_id')->where('Seq_in_index', 1)->where('Key_name', '!=', $name)->count();
+                    if (!$plain) DB::statement("ALTER TABLE {$table} ADD INDEX idx_sbcts_bill (bill_id)");
+                    DB::statement("ALTER TABLE {$table} DROP INDEX `{$name}`");
+                    Log::info('Dropped legacy bill-assignment unique key', ['key' => $name]);
+                }
+            }
+            if (!$hasAudienceKey) {
+                try {
+                    DB::statement("ALTER TABLE {$table} ADD UNIQUE uk_sbcts_unique_aud (bill_id, class_id, termid_id, session_id, student_status_id)");
+                } catch (\Throwable $e) {
+                    // Existing duplicates: the app checks for duplicates itself.
+                }
+            }
+            \Illuminate\Support\Facades\Cache::put('sbcts.uk.checked', 1, now()->addDay());
+        } catch (\Throwable $e) {
+            Log::warning('Could not check bill-assignment unique keys', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** Assignments this bill already has in a session — shown in the Create Assignment modal. */
+    public function existing(Request $request)
+    {
+        $billId = (int) $request->get('bill_id');
+        $sessionId = (int) $request->get('session_id');
+        if (!$billId || !$sessionId) return response()->json(['success' => true, 'rows' => []]);
+        $hasStatusCol = \Illuminate\Support\Facades\Schema::hasColumn('school_bill_class_term_session', 'student_status_id');
+        $billStatus = (int) (SchoolBillModel::where('id', $billId)->value('statusId') ?? 0);
+        $rows = SchoolBillTermSession::where('bill_id', $billId)->where('session_id', $sessionId)
+            ->get($hasStatusCol ? ['id', 'class_id', 'termid_id', 'student_status_id'] : ['id', 'class_id', 'termid_id']);
+        $classes = Schoolclass::leftJoin('schoolarm', 'schoolarm.id', '=', 'schoolclass.arm')
+            ->whereIn('schoolclass.id', $rows->pluck('class_id')->unique())
+            ->get(['schoolclass.id', 'schoolclass.schoolclass', 'schoolarm.arm as arm_name'])->keyBy('id');
+        $terms = Schoolterm::whereIn('id', $rows->pluck('termid_id')->unique())->pluck('term', 'id');
+        return response()->json(['success' => true, 'rows' => $rows->map(function ($r) use ($classes, $terms, $hasStatusCol, $billStatus) {
+            $aud = $hasStatusCol && $r->student_status_id !== null ? (int) $r->student_status_id : $billStatus;
+            $aud = in_array($aud, [1, 2], true) ? $aud : 0;
+            $cl = $classes[$r->class_id] ?? null;
+            return [
+                'id' => $r->id, 'class_id' => (int) $r->class_id, 'term_id' => (int) $r->termid_id, 'audience' => $aud,
+                'class' => trim(($cl->schoolclass ?? '?') . ' ' . ($cl->arm_name ?? '')), 'term' => $terms[$r->termid_id] ?? '?',
+                'audience_label' => SchoolBillTermSession::audienceLabel($aud) ?? 'Old & new students',
+            ];
+        })->sortBy([['class', 'asc'], ['term_id', 'asc']])->values()]);
+    }
+
     /** Turn ["classId-termId", ...] into "JSS 1 A / First Term, ..." */
-    private function describeCombos(array $keys): string
+    private function describeCombos(array $keys, array $audiences = []): string
     {
         if (!$keys) return '';
         $classIds = $termIds = [];
@@ -418,7 +508,10 @@ class SchoolBillTermSessionController extends Controller
         foreach ($keys as $k) {
             [$c, $t] = explode('-', $k);
             $cl = $classes[(int) $c] ?? null;
-            $labels[] = trim(($cl->schoolclass ?? '?') . ' ' . ($cl->arm_name ?? '')) . ' / ' . ($terms[(int) $t] ?? '?');
+            $aud = array_key_exists($k, $audiences)
+                ? ' (' . collect((array) $audiences[$k])->unique()->sort()->map(fn ($a) => SchoolBillTermSession::audienceLabel($a) ?? 'Old & new students')->implode(' + ') . ')'
+                : '';
+            $labels[] = trim(($cl->schoolclass ?? '?') . ' ' . ($cl->arm_name ?? '')) . ' / ' . ($terms[(int) $t] ?? '?') . $aud;
         }
         $labels = array_values(array_unique($labels));
         $more = count($labels) > 12 ? ' and ' . (count($labels) - 12) . ' more' : '';
