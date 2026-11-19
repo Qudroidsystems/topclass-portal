@@ -99,6 +99,8 @@
                         @foreach($about as $p)<li><a href="{{ route('site.page', $p['slug']) }}">{{ $p['title'] }}</a></li>@endforeach
                         <li><a href="{{ route('site.people') }}">Our people</a></li>
                         <li><a href="{{ route('site.gallery') }}">Gallery</a></li>
+                        <li><a href="{{ route('site.yearbooks') }}">Yearbooks</a></li>
+                        <li><a href="{{ route('site.alumni') }}">Alumni</a></li>
                         <li><a href="{{ route('site.news') }}">News &amp; updates</a></li>
                     </ul>
                 </div>

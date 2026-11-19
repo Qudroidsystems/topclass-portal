@@ -688,6 +688,13 @@
                     </li>
                     @endif
 
+                    {{-- YEARBOOK (students, parents & staff: view; the upload link for their own entry is on the page) --}}
+                    @if(Route::has('site.yearbooks') && !auth()->user()->can('Manage yearbook'))
+                    <li class="nav-item">
+                        <a href="{{ route('site.yearbooks') }}" class="nav-link menu-link"><i class="ri-book-open-line"></i> <span>Yearbook &amp; Alumni</span></a>
+                    </li>
+                    @endif
+
                     
 
                     {{-- MY PAY (staff self-service) --}}
@@ -1113,6 +1120,18 @@
                         <li class="nav-item">
                             <a href="{{ route('admin.backups.index') }}" class="nav-link {{ request()->routeIs('admin.backups.*') ? 'active' : '' }}">
                                 <i class="ri-database-2-line"></i> <span>Database Backups</span>
+                            </a>
+                        </li>
+                    @endif
+                    @endcan
+
+                    @can('Manage yearbook')
+                    @if(Route::has('yearbook.admin.index'))
+                        <li class="nav-item">
+                            <a href="{{ route('yearbook.admin.index') }}" class="nav-link {{ request()->routeIs('yearbook.admin.*', 'alumni.admin.*') ? 'active' : '' }}">
+                                <i class="ri-book-open-line"></i> <span>Yearbook &amp; Alumni</span>
+                                @php $ybWait = 0; try { $ybWait = \App\Models\Website\YearbookEntry::whereNotNull('pending_at')->count() + \App\Models\Website\Alumnus::where(fn ($q) => $q->where('status', 'pending')->orWhereNotNull('pending_at'))->count(); } catch (\Throwable $e) {} @endphp
+                                @if($ybWait)<span class="badge bg-warning text-dark ms-1">{{ $ybWait }}</span>@endif
                             </a>
                         </li>
                     @endif

@@ -270,7 +270,8 @@ class WebsiteContent
             'academics' => fn () => ['url' => route('site.academics'),
                 'children' => array_merge([['Classes & subjects', route('site.academics')]], $group('academics'), [['School calendar', route('site.calendar')]])],
             'life' => fn () => ['url' => route('site.news'),
-                'children' => array_merge([['News & updates', route('site.news')], ['Events', route('site.news', ['type' => 'event'])], ['Gallery', route('site.gallery')]], $group('life'))],
+                'children' => array_merge([['News & updates', route('site.news')], ['Events', route('site.news', ['type' => 'event'])], ['Gallery', route('site.gallery')],
+                    ['Yearbooks', route('site.yearbooks')], ['Alumni', route('site.alumni')]], $group('life'))],
         ];
         $cur = '/' . ltrim(request()->path(), '/');
         $out = [];

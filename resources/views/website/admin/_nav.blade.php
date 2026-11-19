@@ -26,6 +26,7 @@
             @if($label === 'Messages' && $unread)<span class="badge bg-danger ms-1">{{ $unread }}</span>@endif
         </a>
     @endforeach
+    @if(\Illuminate\Support\Facades\Route::has('yearbook.admin.index') && auth()->user()->can('Manage yearbook'))<a href="{{ route('yearbook.admin.index') }}" class="btn btn-sm btn-light"><i class="ri-book-open-line me-1"></i>Yearbooks &amp; alumni</a>@endif
     @if($wa = \App\Services\Website\WebsiteContent::websiteAdminUrl())<a href="{{ $wa }}" target="_blank" rel="noopener" class="btn btn-sm btn-primary ms-auto"><i class="ri-dashboard-3-line me-1"></i>Live website admin</a>@endif
     <a href="{{ \App\Services\Website\WebsiteContent::homeUrl() }}" target="_blank" class="btn btn-sm btn-outline-success {{ $wa ?? null ? '' : 'ms-auto' }}"><i class="ri-external-link-line me-1"></i>View website</a>
 </div>
