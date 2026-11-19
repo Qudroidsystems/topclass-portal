@@ -818,6 +818,9 @@
                                     @can('View question')
                                         <li class="nav-item"><a href="{{ route('questions.all') }}" class="nav-link">Questions Management</a></li>
                                     @endcan
+                                    @can('Manage offline-cbt')
+                                        <li class="nav-item"><a href="{{ route('offlinecbt.index') }}" class="nav-link">Offline CBT</a></li>
+                                    @endcan
                                 </ul>
                             </div>
                         </li>
@@ -2150,6 +2153,7 @@
         /* ── Exams & CBT ── */
         {title:'All Examinations',                      url:'{{ route("exams.index") }}',                                    icon:'mdi-clipboard-text',          category:'Exams & CBT',         keywords:['exam','test','examination']},
         {title:'Questions Management',                  url:'{{ route("questions.all") }}',                                  icon:'mdi-help-circle',             category:'Exams & CBT',         keywords:['questions','bank','quiz']},
+        {title:'Offline CBT',                           url:'{{ route("offlinecbt.index") }}',                               icon:'mdi-wifi-off',                category:'Exams & CBT',         keywords:['offline','cbt','sync','desktop','pin']},
         {title:'CBT Exercise',                          url:'{{ route("cbt.index") }}',                                      icon:'mdi-monitor',                 category:'Exams & CBT',         keywords:['cbt','computer','online','test']},
 
         /* ── Timetable ── */

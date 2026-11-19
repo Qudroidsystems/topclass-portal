@@ -1111,6 +1111,16 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/{question}/details', [QuestionController::class, 'details'])->name('questions.details');
     Route::get('/questions/{question}/edit', [QuestionController::class, 'edit'])->name('questions.edit');
 
+    // Offline CBT (desktop app): device keys, student PINs, sync log
+    Route::prefix('offline-cbt')->name('offlinecbt.')->group(function () {
+        Route::get('/',                    [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'index'])->name('index');
+        Route::post('/devices',            [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'storeDevice'])->name('devices.store');
+        Route::post('/devices/{id}/revoke',[\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'revokeDevice'])->name('devices.revoke');
+        Route::post('/pins',               [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'generatePins'])->name('pins.generate');
+        Route::get('/pins/print',          [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'printPins'])->name('pins.print');
+        Route::get('/syncs/{id}',          [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'showSync'])->name('syncs.show');
+        Route::post('/syncs/{id}/resolve', [\App\Http\Controllers\OfflineCbt\OfflineCbtController::class, 'resolve'])->name('syncs.resolve');
+    });
     Route::resource('cbt', CBTController::class);
     Route::get('/cbt/{examid}/takecbt', [CBTController::class, 'takeCBT'])->name('cbt.take');
     Route::post('/cbt/submit', [CBTController::class, 'submit'])->name('cbt.submit');

@@ -738,8 +738,11 @@ class ExamController extends Controller
 
         $classId = $request->query('class_id');
 
+        // exam_attempts.student_id / answers.user_id / results.user_id hold users.id (see CBTController),
+        // so go through users to reach the student's registration record.
         $query = DB::table('exam_attempts')
-            ->join('studentRegistration', 'exam_attempts.student_id', '=', 'studentRegistration.id')
+            ->join('users', 'users.id', '=', 'exam_attempts.student_id')
+            ->join('studentRegistration', 'users.student_id', '=', 'studentRegistration.id')
             ->leftJoin('studentpicture', 'studentRegistration.id', '=', 'studentpicture.studentid')
             ->leftJoin('studentclass', function ($join) {
                 $join->on('studentRegistration.id', '=', 'studentclass.studentId')
@@ -769,8 +772,17 @@ class ExamController extends Controller
             $query->where('studentclass.schoolclassid', $classId);
         }
 
-        $query->select(
-            'studentRegistration.id',
+        // Attempts uploaded from the Offline CBT app get an "Offline" label.
+        if (\Illuminate\Support\Facades\Schema::hasTable('offline_cbt_syncs')) {
+            $query->leftJoin('offline_cbt_syncs as ocs', function ($join) {
+                $join->on('ocs.exam_attempt_id', '=', 'exam_attempts.id')
+                     ->whereIn('ocs.status', ['synced', 'conflict_accepted']);
+            })->addSelect('ocs.id as offline_sync_id', 'ocs.workstation as offline_workstation');
+        }
+
+        $query->addSelect(
+            'users.id as id',                        // the id answers/results/attempts use
+            'studentRegistration.id as student_reg_id',
             'studentRegistration.firstname',
             'studentRegistration.lastname',
             'studentRegistration.admissionNo',
@@ -828,10 +840,12 @@ class ExamController extends Controller
                     $correctAnswer = trim(strip_tags($correctOption->option_text ?? ''));
 
                     if (!empty($studentAnswer) && !empty($correctAnswer)) {
-                        $normalizedStudent = $this->normalizeTextForComparison($studentAnswer);
-                        $normalizedCorrect = $this->normalizeTextForComparison($correctAnswer);
-
-                        if ($normalizedStudent === $normalizedCorrect) {
+                        // Same rule as the CBT itself (CBTController::submit), so this page
+                        // never stores a different score from the one the student was given.
+                        $x = strtolower($studentAnswer);
+                        $y = strtolower($correctAnswer);
+                        similar_text($x, $y, $percent);
+                        if ($x === $y || $percent >= 80) {
                             $correctCount++;
                             $marksEarned += $questionMarks;
                         }
@@ -966,6 +980,21 @@ class ExamController extends Controller
     /**
      * Show student answers for an exam.
      */
+    /**
+     * CBT tables store users.id for the student. Resolve that to the student's
+     * registration record (name, admission no, photo).
+     */
+    private function cbtStudent($userId)
+    {
+        return DB::table('users')
+            ->join('studentRegistration', 'studentRegistration.id', '=', 'users.student_id')
+            ->leftJoin('studentpicture', 'studentRegistration.id', '=', 'studentpicture.studentid')
+            ->where('users.id', $userId)
+            ->select('users.id as id', 'studentRegistration.id as student_reg_id', 'studentRegistration.firstname',
+                     'studentRegistration.lastname', 'studentRegistration.admissionNo', 'studentpicture.picture as picture')
+            ->first();
+    }
+
     public function showStudentAnswers($examId, $studentId)
     {
         $exam = Exam::where('id', $examId)
@@ -975,10 +1004,8 @@ class ExamController extends Controller
                     }])
                     ->firstOrFail();
 
-        $student = DB::table('studentRegistration')
-            ->where('id', $studentId)
-            ->select('id', 'firstname', 'lastname', 'admissionNo')
-            ->firstOrFail();
+        $student = $this->cbtStudent($studentId);
+        abort_unless($student, 404);
 
         $result = DB::table('results')
             ->where('user_id', $studentId)
@@ -1134,7 +1161,8 @@ class ExamController extends Controller
         $lowestScore = $results->min('score') ?? 0;
 
         $topPerformers = DB::table('results')
-            ->join('studentRegistration', 'results.user_id', '=', 'studentRegistration.id')
+            ->join('users', 'users.id', '=', 'results.user_id')
+            ->join('studentRegistration', 'users.student_id', '=', 'studentRegistration.id')
             ->where('results.exam_id', $examId)
             ->select('studentRegistration.firstname', 'studentRegistration.lastname', 'results.score', 'results.total_marks')
             ->orderByDesc('results.score')
@@ -1413,8 +1441,10 @@ public function showTransferScoresheet($schoolclassid, $subjectclassid, $staffid
         // Get students who attempted exams
         Log::info('Step 8: Fetching students who attempted exams');
 
+        // exam_attempts.student_id is users.id; the scoresheet needs the registration id.
         $students = DB::table('exam_attempts')
-            ->join('studentRegistration', 'exam_attempts.student_id', '=', 'studentRegistration.id')
+            ->join('users', 'users.id', '=', 'exam_attempts.student_id')
+            ->join('studentRegistration', 'users.student_id', '=', 'studentRegistration.id')
             ->leftJoin('studentpicture', 'studentRegistration.id', '=', 'studentpicture.studentid')
             ->leftJoin('results', function ($join) {
                 $join->on('exam_attempts.student_id', '=', 'results.user_id')
@@ -2083,17 +2113,7 @@ public function generateQuestionPaperPdf(Exam $exam, $studentId)
         Log::info('Step 2: Authorization passed');
 
         // Get student details
-        $student = DB::table('studentRegistration')
-            ->leftJoin('studentpicture', 'studentRegistration.id', '=', 'studentpicture.studentid')
-            ->where('studentRegistration.id', $studentId)
-            ->select(
-                'studentRegistration.id',
-                'studentRegistration.firstname',
-                'studentRegistration.lastname',
-                'studentRegistration.admissionNo',
-                'studentpicture.picture as picture'
-            )
-            ->first();
+        $student = $this->cbtStudent($studentId);
 
         if (!$student) {
             Log::error('Step 3: Student not found', ['student_id' => $studentId]);

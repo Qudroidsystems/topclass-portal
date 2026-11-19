@@ -21,3 +21,16 @@ Route::middleware('remote.portal')->prefix('feature-flags')->group(function () {
     Route::get('/catalog', [\App\Http\Controllers\Api\FeatureFlagApiController::class, 'catalog']);
     Route::post('/sync', [\App\Http\Controllers\Api\FeatureFlagApiController::class, 'sync']);
 });
+
+// =========================================================================
+// Offline CBT desktop app (device key auth) — /api/offline-cbt/v1/...
+// =========================================================================
+Route::prefix('offline-cbt/v1')
+    ->middleware([\App\Http\Middleware\OfflineCbtDevice::class, 'throttle:120,1'])
+    ->group(function () {
+        Route::get('ping',            [\App\Http\Controllers\OfflineCbt\OfflineCbtApiController::class, 'ping']);
+        Route::get('exams',           [\App\Http\Controllers\OfflineCbt\OfflineCbtApiController::class, 'exams']);
+        Route::post('package',        [\App\Http\Controllers\OfflineCbt\OfflineCbtApiController::class, 'package']);
+        Route::post('attempts',       [\App\Http\Controllers\OfflineCbt\OfflineCbtApiController::class, 'upload']);
+        Route::post('attempts/status',[\App\Http\Controllers\OfflineCbt\OfflineCbtApiController::class, 'status']);
+    });

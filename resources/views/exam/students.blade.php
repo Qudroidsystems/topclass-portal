@@ -156,7 +156,11 @@
                                                              class="rounded-circle avatar-xs"
                                                              onerror="this.src='{{ asset('storage/student_avatars/unnamed.jpg') }}';">
                                                     </td>
-                                                    <td>{{ $student->lastname }} {{ $student->firstname }}</td>
+                                                    <td>{{ $student->lastname }} {{ $student->firstname }}
+                                                        @if(!empty($student->offline_sync_id))
+                                                            <span class="badge bg-info-subtle text-info ms-1" title="Written on the Offline CBT app{{ $student->offline_workstation ? ' (' . $student->offline_workstation . ')' : '' }}">Offline</span>
+                                                        @endif
+                                                    </td>
                                                     <td>{{ $student->admissionNo }}</td>
                                                     <td>
                                                         @if($student->attempt_status === 'in_progress')

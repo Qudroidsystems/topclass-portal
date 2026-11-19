@@ -346,87 +346,21 @@ class CBTController extends Controller
                 'status'   => 'completed'
             ]);
 
-            $totalMarks = 0;
-            $score      = 0;
-            $attempted  = 0;
+            // Marking is shared with offline-CBT sync (App\Services\OfflineCbt\CbtMarker)
+            $marked     = \App\Services\OfflineCbt\CbtMarker::mark($exam, $data['answers']);
+            $totalMarks = $marked['total_marks'];
+            $score      = $marked['score'];
+            $attempted  = $marked['attempted'];
 
-            foreach ($data['answers'] as $submittedAnswer) {
-                $question = $exam->questions->firstWhere('id', $submittedAnswer['question_id']);
-                if ($question) {
-                    Log::info('Processing answer', [
-                        'question_id'   => $question->id,
-                        'question_type' => $question->type,
-                        'student_answer' => $submittedAnswer['answer'] ?? null,
-                        'question_marks' => $question->marks,
-                    ]);
-
-                    $questionMarks = (float) ($question->marks ?? 1.0);
-                    $totalMarks += $questionMarks;
-
-                    $studentAnswer = trim($submittedAnswer['answer'] ?? '');
-
-                    if (!empty($studentAnswer)) {
-                        $attempted++;
-
-                        $optionId        = null;
-                        $shortAnswerText = null;
-
-                        if ($question->type === 'short_answer') {
-                            $shortAnswerText = $studentAnswer;
-
-                            $correctOption = $question->options->where('is_correct', true)->first();
-                            if ($correctOption) {
-                                $correctAnswer = trim($correctOption->option_text);
-
-                                Log::info('Short answer comparison', [
-                                    'student_answer' => $studentAnswer,
-                                    'correct_answer' => $correctAnswer,
-                                    'type'           => $question->type
-                                ]);
-
-                                if (strtolower($studentAnswer) === strtolower($correctAnswer)) {
-                                    $score += $questionMarks;
-                                } else {
-                                    similar_text(strtolower($studentAnswer), strtolower($correctAnswer), $percent);
-                                    if ($percent >= 80) {
-                                        $score += $questionMarks;
-                                    }
-                                }
-                            }
-                        } else {
-                            $shortAnswerText = null;
-
-                            $selectedOption = $question->options->first(function ($option) use ($studentAnswer) {
-                                return trim($option->option_text) === $studentAnswer;
-                            });
-
-                            if ($selectedOption) {
-                                $optionId = $selectedOption->id;
-                                if ($selectedOption->is_correct) {
-                                    $score += $questionMarks;
-                                }
-                            }
-                        }
-
-                        Log::info('Creating answer record', [
-                            'question_id'   => $question->id,
-                            'question_type' => $question->type,
-                            'option_id'     => $optionId,
-                            'short_answer'  => $shortAnswerText,
-                            'question_marks' => $questionMarks,
-                            'score_added'   => $score
-                        ]);
-
-                        // Store answer — user_id = users.id
-                        Answer::create([
-                            'user_id'      => $authUserId,
-                            'exam_id'      => $data['exam_id'],
-                            'question_id'  => $submittedAnswer['question_id'],
-                            'option_id'    => $optionId,
-                            'short_answer' => $shortAnswerText,
-                        ]);
-                    }
-                }
+            foreach ($marked['rows'] as $row) {
+                // Store answer — user_id = users.id
+                Answer::create([
+                    'user_id'      => $authUserId,
+                    'exam_id'      => $data['exam_id'],
+                    'question_id'  => $row['question_id'],
+                    'option_id'    => $row['option_id'],
+                    'short_answer' => $row['short_answer'],
+                ]);
             }
 
             // Store result — user_id = users.id
