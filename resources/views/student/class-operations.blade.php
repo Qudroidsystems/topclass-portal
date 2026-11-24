@@ -383,6 +383,43 @@
                         <input type="number" class="form-control" id="examExtraRows" value="0" min="0" max="20">
                     </div>
                 </div>
+
+                {{-- ── Signatories ─────────────────────────────────────── --}}
+                <hr class="my-3">
+                <h6 class="fw-semibold mb-1"><i class="ri-user-star-line me-1"></i>Signatories</h6>
+                <p class="text-muted small mb-3">
+                    Pick the staff members whose names should be printed on the signature lines.
+                    Leave a field on "Leave blank" to keep that line empty for handwriting.
+                </p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold mb-1">Exam Supervisor</label>
+                        <select class="form-control" id="examSupervisor">
+                            <option value="">— Leave blank —</option>
+                            @foreach ($staff as $person)
+                                <option value="{{ $person->id }}">{{ $person->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold mb-1">Examiner / Invigilator</label>
+                        <select class="form-control" id="examInvigilator">
+                            <option value="">— Leave blank —</option>
+                            @foreach ($staff as $person)
+                                <option value="{{ $person->id }}">{{ $person->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold mb-1">Exam Officer / Head of Department</label>
+                        <select class="form-control" id="examOfficer">
+                            <option value="">— Leave blank —</option>
+                            @foreach ($staff as $person)
+                                <option value="{{ $person->id }}">{{ $person->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div class="card border-0 shadow-sm">
@@ -1033,6 +1070,10 @@
                 duration:     document.getElementById('examDuration').value.trim(),
                 venue:        document.getElementById('examVenue').value.trim(),
                 extra_rows:   document.getElementById('examExtraRows').value || 0,
+                // Signatories (empty string = leave the line blank on the PDF)
+                supervisor_id:   document.getElementById('examSupervisor').value,
+                invigilator_id:  document.getElementById('examInvigilator').value,
+                exam_officer_id: document.getElementById('examOfficer').value,
             };
 
             const form = document.getElementById('examPdfForm');

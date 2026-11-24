@@ -9,6 +9,7 @@ use App\Models\Schoolterm;
 use App\Models\Student;
 use App\Models\StudentCurrentTerm;
 use App\Models\SubjectTeacher;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,8 +66,12 @@ class StudentClassOperationsController extends Controller
         $schoolterms    = Schoolterm::select('id', 'term as name')->get();
         $schoolsessions = Schoolsession::select('id', 'session as name')->get();
 
+        // Staff list for the exam attendance sheet signatory dropdowns
+        // (Exam Supervisor, Examiner / Invigilator, Exam Officer / HOD).
+        $staff = User::select('id', 'name')->orderBy('name')->get();
+
         return view('student.class-operations', compact(
-            'schoolclasses', 'schoolterms', 'schoolsessions', 'pagetitle'
+            'schoolclasses', 'schoolterms', 'schoolsessions', 'staff', 'pagetitle'
         ));
     }
 
@@ -345,6 +350,10 @@ class StudentClassOperationsController extends Controller
             'duration'          => 'nullable|string|max:50',
             'venue'             => 'nullable|string|max:255',
             'extra_rows'        => 'nullable|integer|min:0|max:20',
+            // Signatories chosen from the staff dropdowns
+            'supervisor_id'     => 'nullable|exists:users,id',
+            'invigilator_id'    => 'nullable|exists:users,id',
+            'exam_officer_id'   => 'nullable|exists:users,id',
         ]);
 
         // Only students actually registered in this class/term/session
@@ -377,22 +386,30 @@ class StudentClassOperationsController extends Controller
             $teacherName = $st->user->name ?? $teacherName;
         }
 
+        // Resolve the three signatories (null when none was selected)
+        $supervisorName  = $request->filled('supervisor_id')   ? User::find($request->supervisor_id)->name   ?? null : null;
+        $invigilatorName = $request->filled('invigilator_id')  ? User::find($request->invigilator_id)->name  ?? null : null;
+        $examOfficerName = $request->filled('exam_officer_id') ? User::find($request->exam_officer_id)->name ?? null : null;
+
         $data = [
-            'school'      => SchoolInformation::getActiveSchool(),
-            'students'    => $students,
-            'className'   => $class ? trim($class->schoolclass . ' ' . ($class->armRelation->arm ?? '')) : 'N/A',
-            'termName'    => $term->term ?? 'N/A',
-            'sessionName' => $session->session ?? 'N/A',
-            'subjectName' => $subjectName ?: '—',
-            'subjectCode' => $subjectCode,
-            'teacherName' => $teacherName ?: '—',
-            'examTitle'   => $request->input('exam_title') ?: 'Examination',
-            'examDate'    => $request->filled('exam_date') ? \Carbon\Carbon::parse($request->exam_date)->format('l, d F Y') : null,
-            'startTime'   => $request->start_time,
-            'duration'    => $request->duration,
-            'venue'       => $request->venue,
-            'extraRows'   => (int) $request->input('extra_rows', 0),
-            'generatedBy' => auth()->user()->name ?? '',
+            'school'          => SchoolInformation::getActiveSchool(),
+            'students'        => $students,
+            'className'       => $class ? trim($class->schoolclass . ' ' . ($class->armRelation->arm ?? '')) : 'N/A',
+            'termName'        => $term->term ?? 'N/A',
+            'sessionName'     => $session->session ?? 'N/A',
+            'subjectName'     => $subjectName ?: '—',
+            'subjectCode'     => $subjectCode,
+            'teacherName'     => $teacherName ?: '—',
+            'examTitle'       => $request->input('exam_title') ?: 'Examination',
+            'examDate'        => $request->filled('exam_date') ? \Carbon\Carbon::parse($request->exam_date)->format('l, d F Y') : null,
+            'startTime'       => $request->start_time,
+            'duration'        => $request->duration,
+            'venue'           => $request->venue,
+            'extraRows'       => (int) $request->input('extra_rows', 0),
+            'supervisorName'  => $supervisorName,
+            'invigilatorName' => $invigilatorName,
+            'examOfficerName' => $examOfficerName,
+            'generatedBy'     => auth()->user()->name ?? '',
         ];
 
         $filename = 'Exam-Attendance_' . preg_replace('/[^A-Za-z0-9\-]+/', '-', $data['className'] . '_' . $data['subjectName']) . '.pdf';

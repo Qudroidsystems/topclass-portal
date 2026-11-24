@@ -28,6 +28,7 @@
     .sign { margin-top: 18px; page-break-inside: avoid; }
     .sign td { width: 33%; padding: 0 8px; vertical-align: bottom; font-size: 9px; text-align: center; }
     .sign .line { border-top: 1px solid #111; padding-top: 2px; margin-top: 28px; }
+    .sign .signee { font-weight: bold; font-size: 9.5px; margin-bottom: 1px; }
     .footer { position: fixed; bottom: -34px; left: 0; right: 0; font-size: 8px; color: #666; text-align: center; }
     .pagenum:before { content: counter(page); }
 </style>
@@ -130,11 +131,28 @@
     </tr>
 </table>
 
+{{-- Signatories: names come from the dropdowns on the Class Operations page.
+     When none is selected the line stays blank for handwriting. --}}
 <table class="sign">
     <tr>
-        <td><div class="line">Examiner / Invigilator (Name &amp; Sign)</div></td>
-        <td><div class="line">Subject Teacher: {{ $teacherName }}<br>(Sign &amp; Date)</div></td>
-        <td><div class="line">Exam Officer / Head of Department<br>(Sign &amp; Date)</div></td>
+        <td>
+            <div class="line">
+                @if(!empty($supervisorName))<div class="signee">{{ $supervisorName }}</div>@endif
+                Exam Supervisor<br>(Sign &amp; Date)
+            </div>
+        </td>
+        <td>
+            <div class="line">
+                @if(!empty($invigilatorName))<div class="signee">{{ $invigilatorName }}</div>@endif
+                Examiner / Invigilator<br>(Sign &amp; Date)
+            </div>
+        </td>
+        <td>
+            <div class="line">
+                @if(!empty($examOfficerName))<div class="signee">{{ $examOfficerName }}</div>@endif
+                Exam Officer / Head of Department<br>(Sign &amp; Date)
+            </div>
+        </td>
     </tr>
 </table>
 
