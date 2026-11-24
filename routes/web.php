@@ -442,6 +442,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('students/bulk-update-status', [StudentClassOperationsController::class, 'bulkUpdateStatus'])->name('students.bulk-update-status');
     Route::post('student/{studentId}/update-current-term', [StudentClassOperationsController::class, 'updateCurrentTerm'])->name('student.update-current-term');
     Route::post('students/bulk-update-current-term', [StudentClassOperationsController::class, 'bulkUpdateCurrentTerm'])->name('students.bulk-update-current-term');
+    Route::get('students/exam-attendance/subjects', [StudentClassOperationsController::class, 'getExamSubjects'])->name('students.exam-attendance.subjects');
+    Route::post('students/exam-attendance/pdf', [StudentClassOperationsController::class, 'examAttendancePdf'])->name('students.exam-attendance.pdf');
 
     // Optimized listing + AJAX
     Route::get('students/optimized', [StudentController::class, 'getStudentsOptimized'])->name('students.optimized');

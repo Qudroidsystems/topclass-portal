@@ -28,7 +28,7 @@
 .ss-modal-header { background: var(--ss-primary); border: none; }
 .ss-modal-header .modal-title { color: #fff; }
 
-.section-nav { display:flex; gap:8px; margin-bottom:16px; }
+.section-nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .section-nav .btn { border-radius: 20px; font-weight:600; font-size:13px; }
 
 .filter-card { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: var(--ss-radius); box-shadow: var(--ss-shadow); }
@@ -43,11 +43,11 @@
 .status-pill.old       { background: #e0e7ff; color: var(--ss-info); }
 .status-pill.current   { background: #dcfce7; color: var(--ss-success); }
 
-#rosterTable, #registrationCards { font-size: 12.5px; }
-#rosterTable thead tr { background: var(--ss-primary); color: #fff; }
-#rosterTable thead th { padding: 10px 8px; font-weight: 600; white-space: nowrap; border: none; }
-#rosterTable tbody td { padding: 8px; vertical-align: middle; border-bottom: 1px solid var(--ss-border); }
-#rosterTable tbody tr:hover { background: #f0f6ff; }
+#rosterTable, #examTable, #registrationCards { font-size: 12.5px; }
+#rosterTable thead tr, #examTable thead tr { background: var(--ss-primary); color: #fff; }
+#rosterTable thead th, #examTable thead th { padding: 10px 8px; font-weight: 600; white-space: nowrap; border: none; }
+#rosterTable tbody td, #examTable tbody td { padding: 8px; vertical-align: middle; border-bottom: 1px solid var(--ss-border); }
+#rosterTable tbody tr:hover, #examTable tbody tr:hover { background: #f0f6ff; }
 
 .avatar-title { display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-weight:700; }
 .bg-soft-primary { background-color: rgba(30,58,95,.1); color: var(--ss-primary); }
@@ -81,7 +81,8 @@
         <i class="ri-information-line fs-5 mt-1"></i>
         <div>
             <strong>What lives here:</strong> anything that acts on a <em>set</em> of students defined by class/term/session —
-            bulk status changes, assigning a current term, and removing term registrations.
+            bulk status changes, assigning a current term, removing term registrations, and printing
+            examination attendance sheets.
             For finding and editing a single student, use
             <a href="{{ route('student.index') }}">All Students</a> instead.
         </div>
@@ -94,6 +95,9 @@
         </button>
         <button type="button" class="btn btn-outline-secondary" id="navTermReg" onclick="switchSection('termreg')">
             <i class="ri-calendar-check-line me-1"></i>Term Registration Management
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="navExam" onclick="switchSection('exam')">
+            <i class="ri-file-list-3-line me-1"></i>Exam Attendance Sheet
         </button>
     </div>
 
@@ -292,6 +296,135 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════════════════════════════════════════
+         SECTION 3 — EXAM ATTENDANCE SHEET
+         ══════════════════════════════════════════════════════════════ --}}
+    <div id="sectionExam" class="d-none">
+
+        <div class="row mb-3">
+            <div class="col-lg-12">
+                <div class="filter-card p-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1">Class</label>
+                            <select class="form-control" id="examClass">
+                                <option value="">Select Class</option>
+                                @foreach ($schoolclasses as $class)
+                                    <option value="{{ $class->id }}">{{ $class->class_display }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1">Term</label>
+                            <select class="form-control" id="examTerm">
+                                <option value="">Select Term</option>
+                                @foreach ($schoolterms as $term)
+                                    <option value="{{ $term->id }}">{{ $term->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold mb-1">Session</label>
+                            <select class="form-control" id="examSession">
+                                <option value="">Select Session</option>
+                                @foreach ($schoolsessions as $session)
+                                    <option value="{{ $session->id }}">{{ $session->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-primary w-100" id="loadExamBtn" style="background:var(--ss-primary);border-color:var(--ss-primary);">
+                                <i class="ri-search-line me-1"></i>Load Students &amp; Subjects
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="examCard" class="d-none">
+            <div class="filter-card p-3 mb-3">
+                <h6 class="fw-semibold mb-3"><i class="ri-file-list-3-line me-1"></i>Sheet Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold mb-1">Subject &amp; Teacher</label>
+                        <select class="form-control" id="examSubjectTeacher"></select>
+                    </div>
+                    <div class="col-md-3 exam-manual d-none">
+                        <label class="form-label fw-semibold mb-1">Subject</label>
+                        <input type="text" class="form-control" id="examSubjectName" placeholder="e.g. Mathematics">
+                    </div>
+                    <div class="col-md-3 exam-manual d-none">
+                        <label class="form-label fw-semibold mb-1">Teacher</label>
+                        <input type="text" class="form-control" id="examTeacherName" placeholder="Teacher's name">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Exam Title</label>
+                        <input type="text" class="form-control" id="examTitle" value="Terminal Examination">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Date</label>
+                        <input type="date" class="form-control" id="examDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Start Time</label>
+                        <input type="text" class="form-control" id="examStartTime" placeholder="e.g. 9:00 AM">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Duration</label>
+                        <input type="text" class="form-control" id="examDuration" placeholder="e.g. 2 hrs">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Venue / Hall</label>
+                        <input type="text" class="form-control" id="examVenue">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold mb-1">Extra blank rows</label>
+                        <input type="number" class="form-control" id="examExtraRows" value="0" min="0" max="20">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header ss-card-header d-flex align-items-center flex-wrap gap-2 py-3">
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0"><i class="ri-group-line me-2"></i>Students on the sheet
+                            <span class="badge bg-white text-primary ms-1" id="examCount">0</span>
+                            <small class="ms-2 text-white-50">(<span id="examSelectedCount">0</span> selected)</small>
+                        </h5>
+                    </div>
+                    <button type="button" class="btn btn-warning" style="color:#111827;" onclick="ExamAttendanceManager.generate()">
+                        <i class="ri-printer-line me-1"></i>Generate PDF
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height:480px;overflow:auto;">
+                        <table class="table table-nowrap align-middle mb-0" id="examTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:44px;"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="examCheckAll" checked></div></th>
+                                    <th style="width:50px;">S/N</th>
+                                    <th>Admission No</th>
+                                    <th>Student (alphabetical)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="examTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="empty-note" id="examEmptyNote">
+            <i class="ri-file-list-3-line"></i>
+            Select a class, term and session, then click "Load Students &amp; Subjects".
+        </div>
+
+        <form id="examPdfForm" method="POST" action="{{ route('students.exam-attendance.pdf') }}" target="_blank" class="d-none">
+            @csrf
+        </form>
+    </div>
+
     {{-- ══ ASSIGN / UPDATE TERM MODAL ══════════════════════════════════ --}}
     <div class="modal fade" id="assignTermModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
@@ -423,34 +556,21 @@
        SECTION SWITCHER
        ══════════════════════════════════════════════════════════════ */
     window.switchSection = function (section) {
-        const roster = document.getElementById('sectionRoster');
-        const termreg = document.getElementById('sectionTermReg');
-        const navRoster = document.getElementById('navRoster');
-        const navTermReg = document.getElementById('navTermReg');
-
-        if (section === 'roster') {
-            roster.classList.remove('d-none');
-            termreg.classList.add('d-none');
-            navRoster.classList.add('active', 'btn-primary');
-            navRoster.classList.remove('btn-outline-secondary');
-            navRoster.style.background = 'var(--ss-primary)';
-            navRoster.style.borderColor = 'var(--ss-primary)';
-            navTermReg.classList.remove('active', 'btn-primary');
-            navTermReg.classList.add('btn-outline-secondary');
-            navTermReg.style.background = '';
-            navTermReg.style.borderColor = '';
-        } else {
-            termreg.classList.remove('d-none');
-            roster.classList.add('d-none');
-            navTermReg.classList.add('active', 'btn-primary');
-            navTermReg.classList.remove('btn-outline-secondary');
-            navTermReg.style.background = 'var(--ss-primary)';
-            navTermReg.style.borderColor = 'var(--ss-primary)';
-            navRoster.classList.remove('active', 'btn-primary');
-            navRoster.classList.add('btn-outline-secondary');
-            navRoster.style.background = '';
-            navRoster.style.borderColor = '';
-        }
+        const map = {
+            roster:  ['sectionRoster',  'navRoster'],
+            termreg: ['sectionTermReg', 'navTermReg'],
+            exam:    ['sectionExam',    'navExam'],
+        };
+        Object.entries(map).forEach(([key, [secId, navId]]) => {
+            const on  = key === section;
+            const nav = document.getElementById(navId);
+            document.getElementById(secId).classList.toggle('d-none', !on);
+            nav.classList.toggle('active', on);
+            nav.classList.toggle('btn-primary', on);
+            nav.classList.toggle('btn-outline-secondary', !on);
+            nav.style.background  = on ? 'var(--ss-primary)' : '';
+            nav.style.borderColor = on ? 'var(--ss-primary)' : '';
+        });
     };
 
     /* ══════════════════════════════════════════════════════════════
@@ -803,10 +923,142 @@
     window.TermRegistrationManager = TermRegistrationManager;
 
     /* ══════════════════════════════════════════════════════════════
+       SECTION 3 — EXAM ATTENDANCE SHEET
+       ══════════════════════════════════════════════════════════════ */
+    const ExamAttendanceManager = {
+        filters: null,
+
+        async load() {
+            const classId   = document.getElementById('examClass').value;
+            const termId    = document.getElementById('examTerm').value;
+            const sessionId = document.getElementById('examSession').value;
+
+            if (!classId || !termId || !sessionId) {
+                showToast('Please select class, term and session.', 'warning');
+                return;
+            }
+            this.filters = { class_id: classId, term_id: termId, session_id: sessionId };
+
+            const btn = document.getElementById('loadExamBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ri-loader-4-line"></i> Loading…';
+
+            try {
+                const [stuRes, subRes] = await Promise.all([
+                    axios.get('/students-in-term', { params: this.filters }),
+                    axios.get('/students/exam-attendance/subjects', { params: this.filters }),
+                ]);
+
+                if (!stuRes.data.success) { showToast(stuRes.data.message || 'Failed to load students.', 'danger'); return; }
+
+                this.renderSubjects(subRes.data.subjects || []);
+                this.renderStudents(stuRes.data.students || []);
+
+                document.getElementById('examCard').classList.remove('d-none');
+                document.getElementById('examEmptyNote').classList.add('d-none');
+            } catch (err) {
+                console.error('[class-operations] exam load failed', err);
+                showToast(err.response?.data?.message || 'Error loading data.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-search-line me-1"></i>Load Students &amp; Subjects';
+            }
+        },
+
+        renderSubjects(subjects) {
+            const sel = document.getElementById('examSubjectTeacher');
+            let html = '<option value="">Select Subject &amp; Teacher</option>';
+            html += subjects.map(s =>
+                `<option value="${s.id}">${escapeHtml(s.subject)} — ${escapeHtml(s.teacher)}</option>`).join('');
+            html += '<option value="manual">Other — enter manually…</option>';
+            sel.innerHTML = html;
+            this.toggleManual();
+        },
+
+        toggleManual() {
+            const manual = document.getElementById('examSubjectTeacher').value === 'manual';
+            document.querySelectorAll('.exam-manual').forEach(el => el.classList.toggle('d-none', !manual));
+        },
+
+        renderStudents(students) {
+            // fullname is "Lastname Firstname Othername", so a plain sort gives alphabetical order
+            const sorted = [...students].sort((a, b) =>
+                (a.fullname || '').localeCompare(b.fullname || '', undefined, { sensitivity: 'base' }));
+
+            document.getElementById('examCount').textContent = sorted.length;
+            document.getElementById('examCheckAll').checked = true;
+
+            const tbody = document.getElementById('examTableBody');
+            if (!sorted.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No students registered for this class/term/session.</td></tr>';
+                this.updateCount();
+                return;
+            }
+
+            tbody.innerHTML = sorted.map((s, i) => `
+                <tr>
+                    <td><div class="form-check mb-0"><input class="form-check-input exam-checkbox" type="checkbox" value="${s.student_id}" checked></div></td>
+                    <td>${i + 1}</td>
+                    <td>${escapeHtml(s.admissionNo)}</td>
+                    <td class="fw-semibold">${escapeHtml(s.fullname)}</td>
+                </tr>`).join('');
+            this.updateCount();
+        },
+
+        getSelectedIds() {
+            return Array.from(document.querySelectorAll('.exam-checkbox:checked')).map(cb => cb.value);
+        },
+
+        updateCount() {
+            document.getElementById('examSelectedCount').textContent = this.getSelectedIds().length;
+        },
+
+        generate() {
+            const ids = this.getSelectedIds();
+            const st  = document.getElementById('examSubjectTeacher').value;
+            const subjectName = document.getElementById('examSubjectName').value.trim();
+
+            if (!ids.length) { showToast('Select at least one student.', 'warning'); return; }
+            if (!st)         { showToast('Select a subject & teacher.', 'warning'); return; }
+            if (st === 'manual' && !subjectName) { showToast('Enter the subject name.', 'warning'); return; }
+
+            const fields = {
+                ...this.filters,
+                subjectteacher_id: st === 'manual' ? '' : st,
+                subject_name: subjectName,
+                teacher_name: document.getElementById('examTeacherName').value.trim(),
+                exam_title:   document.getElementById('examTitle').value.trim(),
+                exam_date:    document.getElementById('examDate').value,
+                start_time:   document.getElementById('examStartTime').value.trim(),
+                duration:     document.getElementById('examDuration').value.trim(),
+                venue:        document.getElementById('examVenue').value.trim(),
+                extra_rows:   document.getElementById('examExtraRows').value || 0,
+            };
+
+            const form = document.getElementById('examPdfForm');
+            form.querySelectorAll('input:not([name="_token"])').forEach(i => i.remove());
+
+            const add = (name, value) => {
+                const input = document.createElement('input');
+                input.type = 'hidden'; input.name = name; input.value = value;
+                form.appendChild(input);
+            };
+            Object.entries(fields).forEach(([k, v]) => add(k, v ?? ''));
+            ids.forEach(id => add('student_ids[]', id));
+
+            form.submit();   // opens the PDF in a new tab
+        },
+    };
+
+    window.ExamAttendanceManager = ExamAttendanceManager;
+
+    /* ══════════════════════════════════════════════════════════════
        EVENT BINDINGS
        ══════════════════════════════════════════════════════════════ */
     document.getElementById('loadRosterBtn')?.addEventListener('click', () => RosterManager.loadRoster());
     document.getElementById('loadTermRegBtn')?.addEventListener('click', () => TermRegistrationManager.loadRegistrations());
+    document.getElementById('loadExamBtn')?.addEventListener('click', () => ExamAttendanceManager.load());
+    document.getElementById('examSubjectTeacher')?.addEventListener('change', () => ExamAttendanceManager.toggleManual());
 
     document.getElementById('rosterCheckAll')?.addEventListener('change', function () {
         document.querySelectorAll('.roster-checkbox').forEach(cb => cb.checked = this.checked);
@@ -817,11 +1069,19 @@
         document.querySelectorAll('.term-reg-checkbox').forEach(cb => cb.checked = this.checked);
     });
 
+    document.getElementById('examCheckAll')?.addEventListener('change', function () {
+        document.querySelectorAll('.exam-checkbox').forEach(cb => cb.checked = this.checked);
+        ExamAttendanceManager.updateCount();
+    });
+
     // Row checkboxes are rendered dynamically, so listen at the document level
     // rather than rebinding one-by-one after every render.
     document.addEventListener('change', function (e) {
         if (e.target.classList.contains('roster-checkbox')) {
             RosterManager.updateAssignTermButtonState();
+        }
+        if (e.target.classList.contains('exam-checkbox')) {
+            ExamAttendanceManager.updateCount();
         }
     });
 
