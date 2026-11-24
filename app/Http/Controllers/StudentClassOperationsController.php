@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Schoolclass;
+use App\Models\SchoolInformation;
 use App\Models\Schoolsession;
 use App\Models\Schoolterm;
 use App\Models\Student;
 use App\Models\StudentCurrentTerm;
+use App\Models\SubjectTeacher;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +22,7 @@ use Illuminate\Support\Facades\Log;
  * class + term + session, as opposed to StudentController which owns
  * "directory" operations (find/view/edit one student at a time).
  *
- * Split out of StudentController on {{ date }} to separate two different
- * mental models that were previously mixed into one 2000+ line controller:
- *   - Directory:  "find this one student and do something to them"
- *   - Class Ops:  "give me everyone in Class X / Session Y and act on them"
- *
- * Endpoints moved here verbatim (no logic changes) from StudentController:
+ * Endpoints:
  *   - bulkUpdateCurrentTerm()
  *   - updateCurrentTerm()
  *   - getStudentsByClassAndSession()
@@ -32,6 +30,8 @@ use Illuminate\Support\Facades\Log;
  *   - getStudentsInTerm()
  *   - removeFromTerm()
  *   - bulkRemoveFromTerm()
+ *   - getExamSubjects()      (exam attendance sheet)
+ *   - examAttendancePdf()    (exam attendance sheet)
  */
 class StudentClassOperationsController extends Controller
 {
@@ -44,6 +44,9 @@ class StudentClassOperationsController extends Controller
         ]]);
         $this->middleware('permission:Delete student', ['only' => [
             'removeFromTerm', 'bulkRemoveFromTerm',
+        ]]);
+        $this->middleware('permission:View student|Show Student|Create student|Update student|Delete student', ['only' => [
+            'getExamSubjects', 'examAttendancePdf',
         ]]);
     }
 
@@ -283,5 +286,120 @@ class StudentClassOperationsController extends Controller
             DB::rollBack();
             return response()->json(['success'=>false,'message'=>$e->getMessage()], 500);
         }
+    }
+
+    /**
+     * ── Exam Attendance Sheet ───────────────────────────────────────
+     */
+
+    /**
+     * Subjects (with their teachers) assigned to a class for a term + session.
+     */
+    public function getExamSubjects(Request $request)
+    {
+        try {
+            $request->validate([
+                'class_id'   => 'required|exists:schoolclass,id',
+                'term_id'    => 'required|exists:schoolterm,id',
+                'session_id' => 'required|exists:schoolsession,id',
+            ]);
+
+            $rows = SubjectTeacher::with(['subject', 'user'])
+                ->where('termid', $request->term_id)
+                ->where('sessionid', $request->session_id)
+                ->whereHas('subjectclass', fn ($q) => $q->where('schoolclassid', $request->class_id))
+                ->get()
+                ->map(fn ($st) => [
+                    'id'      => $st->id,
+                    'subject' => $st->subject->subject ?? 'N/A',
+                    'code'    => $st->subject->subject_code ?? '',
+                    'teacher' => $st->user->name ?? 'N/A',
+                ])
+                ->sortBy('subject', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
+
+            return response()->json(['success' => true, 'subjects' => $rows]);
+        } catch (\Exception $e) {
+            Log::error('getExamSubjects: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Printable examination attendance sheet.
+     */
+    public function examAttendancePdf(Request $request)
+    {
+        $request->validate([
+            'class_id'          => 'required|exists:schoolclass,id',
+            'term_id'           => 'required|exists:schoolterm,id',
+            'session_id'        => 'required|exists:schoolsession,id',
+            'student_ids'       => 'required|array|min:1',
+            'student_ids.*'     => 'exists:studentRegistration,id',
+            'subjectteacher_id' => 'nullable|exists:subjectteacher,id',
+            'subject_name'      => 'nullable|string|max:255',
+            'teacher_name'      => 'nullable|string|max:255',
+            'exam_title'        => 'nullable|string|max:255',
+            'exam_date'         => 'nullable|date',
+            'start_time'        => 'nullable|string|max:50',
+            'duration'          => 'nullable|string|max:50',
+            'venue'             => 'nullable|string|max:255',
+            'extra_rows'        => 'nullable|integer|min:0|max:20',
+        ]);
+
+        // Only students actually registered in this class/term/session
+        $registeredIds = StudentCurrentTerm::where('schoolclassId', $request->class_id)
+            ->where('termId', $request->term_id)
+            ->where('sessionId', $request->session_id)
+            ->whereIn('studentId', $request->student_ids)
+            ->pluck('studentId');
+
+        $students = Student::whereIn('id', $registeredIds)
+            ->orderBy('lastname')->orderBy('firstname')
+            ->get(['id', 'admissionNo', 'firstname', 'lastname', 'othername']);
+
+        if ($students->isEmpty()) {
+            return back()->with('error', 'No registered students found for the selection.');
+        }
+
+        $class   = Schoolclass::with('armRelation')->find($request->class_id);
+        $term    = Schoolterm::find($request->term_id);
+        $session = Schoolsession::find($request->session_id);
+
+        $subjectName = $request->subject_name;
+        $teacherName = $request->teacher_name;
+        $subjectCode = null;
+
+        if ($request->filled('subjectteacher_id')) {
+            $st = SubjectTeacher::with(['subject', 'user'])->find($request->subjectteacher_id);
+            $subjectName = $st->subject->subject ?? $subjectName;
+            $subjectCode = $st->subject->subject_code ?? null;
+            $teacherName = $st->user->name ?? $teacherName;
+        }
+
+        $data = [
+            'school'      => SchoolInformation::getActiveSchool(),
+            'students'    => $students,
+            'className'   => $class ? trim($class->schoolclass . ' ' . ($class->armRelation->arm ?? '')) : 'N/A',
+            'termName'    => $term->term ?? 'N/A',
+            'sessionName' => $session->session ?? 'N/A',
+            'subjectName' => $subjectName ?: '—',
+            'subjectCode' => $subjectCode,
+            'teacherName' => $teacherName ?: '—',
+            'examTitle'   => $request->input('exam_title') ?: 'Examination',
+            'examDate'    => $request->filled('exam_date') ? \Carbon\Carbon::parse($request->exam_date)->format('l, d F Y') : null,
+            'startTime'   => $request->start_time,
+            'duration'    => $request->duration,
+            'venue'       => $request->venue,
+            'extraRows'   => (int) $request->input('extra_rows', 0),
+            'generatedBy' => auth()->user()->name ?? '',
+        ];
+
+        $filename = 'Exam-Attendance_' . preg_replace('/[^A-Za-z0-9\-]+/', '-', $data['className'] . '_' . $data['subjectName']) . '.pdf';
+
+        return Pdf::loadView('student.reports.exam_attendance_pdf', $data)
+            ->setPaper('A4', 'portrait')
+            ->setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'DejaVu Sans'])
+            ->stream($filename);
     }
 }
